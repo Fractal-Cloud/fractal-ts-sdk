@@ -5,7 +5,7 @@
  */
 export type PascalCaseString = {
   value: string;
-}
+};
 
 /**
  * Builder interface for constructing PascalCaseString objects.
@@ -47,21 +47,21 @@ export type PascalCaseStringBuilder = {
 
 export const getPascalCaseStringBuilder = (): PascalCaseStringBuilder => {
   const DEFAULT_STRING: PascalCaseString = {
-    value: ''
+    value: '',
   } as const;
 
   const internalState: PascalCaseString = {
-    ... DEFAULT_STRING
+    ...DEFAULT_STRING,
   };
 
   const isPascalCase = (value: string) => {
-      return /^[A-Z][a-zA-Z]*$/.test(value);
-  }
+    return /^[A-Z][a-zA-Z]*$/.test(value);
+  };
 
   const builder = {
     withValue: (value: string) => {
       if (!isPascalCase(value)) {
-        throw new RangeError('Value must be in Pascal case')
+        throw new RangeError('Value must be in Pascal case');
       }
       internalState.value = value;
       return builder;
@@ -72,13 +72,13 @@ export const getPascalCaseStringBuilder = (): PascalCaseStringBuilder => {
     },
     build: (): PascalCaseString => {
       if (internalState.value === DEFAULT_STRING.value) {
-        throw new SyntaxError('Pascal Case String must be initialized')
+        throw new SyntaxError('Pascal Case String must be initialized');
       }
       return {
-        ... internalState
+        ...internalState,
       } as const;
-    }
-  }
+    },
+  };
 
   return builder;
-}
+};

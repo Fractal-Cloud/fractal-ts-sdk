@@ -14,5 +14,5 @@ export enum ServiceDeliveryModel {
   CaaS = 'CaaS',
   PaaS = 'PaaS',
   FaaS = 'FaaS',
-  SaaS = 'SaaS'
+  SaaS = 'SaaS',
 }

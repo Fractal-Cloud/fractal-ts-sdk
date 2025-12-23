@@ -10,7 +10,7 @@ export type Version = {
   major: number;
   minor: number;
   patch: number;
-}
+};
 
 /**
  * Determines whether two version objects are equivalent by comparing their
@@ -22,9 +22,7 @@ export type Version = {
  * of both version objects are equal, otherwise `false`.
  */
 export const areVersionsEquivalent = (a: Version, b: Version): boolean =>
-  a.major === b.major 
-  && a.minor === b.minor
-  && a.patch === b.patch;
+  a.major === b.major && a.minor === b.minor && a.patch === b.patch;
 
 /**
  * Builder interface for constructing version objects.
@@ -95,11 +93,11 @@ export const getVersionBuilder = (): VersionBuilder => {
   const DEFAULT_VERSION: Version = {
     major: 0,
     minor: 0,
-    patch: 0
+    patch: 0,
   } as const;
 
   const internalState: Version = {
-    ... DEFAULT_VERSION
+    ...DEFAULT_VERSION,
   };
 
   const builder = {
@@ -127,10 +125,10 @@ export const getVersionBuilder = (): VersionBuilder => {
       }
 
       return {
-        ... internalState
+        ...internalState,
       } as const;
-    }
-  }
+    },
+  };
 
   return builder;
 };

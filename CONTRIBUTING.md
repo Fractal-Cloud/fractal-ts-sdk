@@ -57,6 +57,19 @@ To run tests in watch mode:
 npm run test:watch
 ```
 
+### Linting
+We use [Google TypeScript Style (gts)](https://github.com/google/gts) to maintain code quality. Note that `npm run test` will automatically run the linter afterwards.
+
+To check for linting issues:
+```bash
+npm run lint
+```
+
+To automatically fix most linting issues:
+```bash
+npm run lint:fix
+```
+
 ### Documentation
 Documentation is generated using `TypeDoc`. To build the documentation:
 
