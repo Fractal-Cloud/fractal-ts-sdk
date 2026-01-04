@@ -34,6 +34,39 @@ export type OwnerIdBuilder = {
 };
 
 /**
+ * A constant variable representing the default owner ID.
+ *
+ * This variable is used as a placeholder or default value
+ * for the owner identifier in contexts where an explicit
+ * owner ID is not provided. It is an immutable constant
+ * meant to ensure consistency in scenarios requiring a
+ * reference to a default owner.
+ *
+ * The `value` property within this object is initialized
+ * to an empty string, implying no specific owner is set.
+ */
+export const DEFAULT_OWNER_ID: OwnerId = {
+  value: '',
+} as const;
+
+/**
+ * Determines whether the provided value is a valid owner ID.
+ *
+ * This function checks if the given string matches the standard format
+ * of a UUID (Universally Unique Identifier) version 4. A valid owner ID
+ * is expected to follow the pattern "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+ * where "x" represents a hexadecimal digit.
+ *
+ * @param {string} value - The string to be validated as a UUID.
+ * @returns {boolean} Returns true if the string matches the UUID format; otherwise, false.
+ */
+export const isValidOwnerId = (value: string) => {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+    value,
+  );
+};
+
+/**
  * Creates a builder for constructing a OwnerId object. The builder enforces uuid case formatting and ensures
  * a valid string is set before building. Once built, the OwnerId object becomes immutable.
  *
@@ -43,36 +76,25 @@ export type OwnerIdBuilder = {
  * - `reset(): void` – Resets the builder to its default state, clearing the current value.
  * - `build(): OwnerId` – Constructs and returns a OwnerId object based on the current state. Throws a `SyntaxError` if no value has been set before building.
  */
-
 export const getOwnerIdBuilder = (): OwnerIdBuilder => {
-  const DEFAULT_STRING: OwnerId = {
-    value: '',
-  } as const;
-
   const internalState: OwnerId = {
-    ...DEFAULT_STRING,
-  };
-
-  const isOwnerId = (value: string) => {
-    return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
-      value,
-    );
+    ...DEFAULT_OWNER_ID,
   };
 
   const builder = {
     withValue: (value: string) => {
-      if (!isOwnerId(value)) {
+      if (!isValidOwnerId(value)) {
         throw new RangeError('Value must be a uuid');
       }
       internalState.value = value;
       return builder;
     },
     reset: () => {
-      internalState.value = DEFAULT_STRING.value;
+      internalState.value = DEFAULT_OWNER_ID.value;
       return builder;
     },
     build: (): OwnerId => {
-      if (internalState.value === DEFAULT_STRING.value) {
+      if (internalState.value === DEFAULT_OWNER_ID.value) {
         throw new SyntaxError('OwnerId must be initialized');
       }
       return {

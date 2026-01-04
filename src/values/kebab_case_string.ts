@@ -34,6 +34,36 @@ export type KebabCaseStringBuilder = {
 };
 
 /**
+ * A constant variable representing a default kebab-case string.
+ *
+ * The `DEFAULT_KEBAB_CASE_STRING` is initialized with a `value` key,
+ * containing an empty string as its default value.
+ *
+ * This variable is declared as a constant to prevent modification
+ * and is designed to represent a string in kebab-case format.
+ *
+ * @type {KebabCaseString}
+ */
+export const DEFAULT_KEBAB_CASE_STRING: KebabCaseString = {
+  value: '',
+} as const;
+
+/**
+ * Checks if a given string follows the kebab-case format.
+ *
+ * A valid kebab-case string consists of lowercase letters,
+ * optionally followed by hyphen-separated segments containing
+ * alphanumeric characters. It must not start or end with
+ * a hyphen and cannot contain consecutive hyphens.
+ *
+ * @param {string} value - The string to validate.
+ * @returns {boolean} - Returns true if the string is in kebab-case, otherwise false.
+ */
+export const isValidKebabCaseString = (value: string) => {
+  return /^[a-z]+(?:-[a-z0-9]+)*$/.test(value);
+};
+
+/**
  * Creates a builder for constructing a KebabCaseString object. The builder enforces Kebab case formatting and ensures
  * a valid string is set before building. Once built, the KebabCaseString object becomes immutable.
  *
@@ -43,34 +73,25 @@ export type KebabCaseStringBuilder = {
  * - `reset(): void` – Resets the builder to its default state, clearing the current value.
  * - `build(): KebabCaseString` – Constructs and returns a KebabCaseString object based on the current state. Throws a `SyntaxError` if no value has been set before building.
  */
-
 export const getKebabCaseStringBuilder = (): KebabCaseStringBuilder => {
-  const DEFAULT_STRING: KebabCaseString = {
-    value: '',
-  } as const;
-
   const internalState: KebabCaseString = {
-    ...DEFAULT_STRING,
-  };
-
-  const isKebabCase = (value: string) => {
-    return /^[a-z]+(?:-[a-z0-9]+)*$/.test(value);
+    ...DEFAULT_KEBAB_CASE_STRING,
   };
 
   const builder = {
     withValue: (value: string) => {
-      if (!isKebabCase(value)) {
+      if (!isValidKebabCaseString(value)) {
         throw new RangeError('Value must be in Kebab case');
       }
       internalState.value = value;
       return builder;
     },
     reset: () => {
-      internalState.value = DEFAULT_STRING.value;
+      internalState.value = DEFAULT_KEBAB_CASE_STRING.value;
       return builder;
     },
     build: (): KebabCaseString => {
-      if (internalState.value === DEFAULT_STRING.value) {
+      if (internalState.value === DEFAULT_KEBAB_CASE_STRING.value) {
         throw new SyntaxError('Kebab Case String must be initialized');
       }
       return {

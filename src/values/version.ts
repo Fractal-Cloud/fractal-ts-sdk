@@ -65,6 +65,27 @@ export type VersionBuilder = {
 };
 
 /**
+ * Represents the default version for an application or library.
+ * The version follows the Semantic Versioning (SemVer) format,
+ * consisting of three components: major, minor, and patch versions.
+ *
+ * Default values:
+ * - `major`: 0
+ * - `minor`: 0
+ * - `patch`: 0
+ *
+ * This constant is immutable and serves as a baseline or fallback version.
+ */
+export const DEFAULT_VERSION: Version = {
+  major: 0,
+  minor: 0,
+  patch: 0,
+} as const;
+
+export const isValidVersion = (version: Version): boolean =>
+  !areVersionsEquivalent(version, DEFAULT_VERSION);
+
+/**
  * Creates a builder object for constructing and managing version objects.
  * The builder allows for setting major, minor, and patch versions, resetting to defaults,
  * and building the final version object. The default version is considered uninitialized and
@@ -90,12 +111,6 @@ export type VersionBuilder = {
  *   is not initialized (when it matches the default version).
  */
 export const getVersionBuilder = (): VersionBuilder => {
-  const DEFAULT_VERSION: Version = {
-    major: 0,
-    minor: 0,
-    patch: 0,
-  } as const;
-
   const internalState: Version = {
     ...DEFAULT_VERSION,
   };
@@ -103,13 +118,22 @@ export const getVersionBuilder = (): VersionBuilder => {
   const builder = {
     withMajor: (major: number) => {
       internalState.major = major;
+      if (major < 0) {
+        throw new RangeError('Major version must be non-negative');
+      }
       return builder;
     },
     withMinor: (minor: number) => {
+      if (minor < 0) {
+        throw new RangeError('Minor version must be non-negative');
+      }
       internalState.minor = minor;
       return builder;
     },
     withPatch: (patch: number) => {
+      if (patch < 0) {
+        throw new RangeError('Patch version must be non-negative');
+      }
       internalState.patch = patch;
       return builder;
     },
@@ -120,7 +144,7 @@ export const getVersionBuilder = (): VersionBuilder => {
       return builder;
     },
     build: (): Version => {
-      if (areVersionsEquivalent(internalState, DEFAULT_VERSION)) {
+      if (!isValidVersion(internalState)) {
         throw new SyntaxError('Version must be initialized');
       }
 
