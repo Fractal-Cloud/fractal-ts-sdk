@@ -1,6 +1,12 @@
 /**
- * Represents a string that adheres to the KebabCase naming convention.
- * This convention capitalizes the first letter of each concatenated word without any spaces, dashes, or underscores.
+ * Represents a string formatted in kebab-case.
+ * Kebab-case is a naming convention where words are
+ * concatenated together, separated by hyphens, and all
+ * characters are in lowercase.
+ *
+ * This type enforces the structure of a string that adheres
+ * to the kebab-case standard. It is typically used in contexts
+ * where consistent, hyphen-delimited identifiers are required.
  */
 export type KebabCaseString = {
   value: string;
@@ -59,9 +65,8 @@ export const DEFAULT_KEBAB_CASE_STRING: KebabCaseString = {
  * @param {string} value - The string to validate.
  * @returns {boolean} - Returns true if the string is in kebab-case, otherwise false.
  */
-export const isValidKebabCaseString = (value: string) => {
-  return /^[a-z]+(?:-[a-z0-9]+)*$/.test(value);
-};
+export const isValidKebabCaseString = (value: string): boolean =>
+  /^[a-z][a-z0-9]*(-[a-z][a-z0-9]*)*$/.test(value);
 
 /**
  * Creates a builder for constructing a KebabCaseString object. The builder enforces Kebab case formatting and ensures
@@ -81,7 +86,7 @@ export const getKebabCaseStringBuilder = (): KebabCaseStringBuilder => {
   const builder = {
     withValue: (value: string) => {
       if (!isValidKebabCaseString(value)) {
-        throw new RangeError('Value must be in Kebab case');
+        throw new RangeError(`Value '${value}' is not in kebab case`);
       }
       internalState.value = value;
       return builder;

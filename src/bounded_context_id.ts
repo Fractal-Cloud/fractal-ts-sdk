@@ -23,7 +23,13 @@ export type BoundedContextId = {
   ownerType: OwnerType;
   ownerId: OwnerId;
   name: KebabCaseString;
+  equals: (other: BoundedContextId) => boolean;
 };
+
+const equals = (a: BoundedContextId, b: BoundedContextId): boolean =>
+  a.ownerType === b.ownerType &&
+  a.ownerId.value === b.ownerId.value &&
+  a.name.value === b.name.value;
 
 /**
  * A default value for the bounded context identifier used in the system.
@@ -47,6 +53,8 @@ export const DEFAULT_BOUNDED_CONTEXT_ID: BoundedContextId = {
   ownerType: OwnerType.Personal,
   ownerId: DEFAULT_OWNER_ID,
   name: DEFAULT_KEBAB_CASE_STRING,
+  equals: (other: BoundedContextId) =>
+    equals(DEFAULT_BOUNDED_CONTEXT_ID, other),
 } as const;
 
 /**
@@ -146,9 +154,13 @@ export const getBoundedContextIdBuilder = (): BoundedContextIdBuilder => {
           ' Bounded Context ID is invalid. OwnerId must be initialized and name must be in Kebab case',
         );
       }
-      return {
+      const builtBoundedContextId = {
         ...internalState,
+        equals: (other: BoundedContextId) =>
+          equals(builtBoundedContextId, other),
       } as const;
+
+      return builtBoundedContextId;
     },
   };
 

@@ -75,7 +75,7 @@ export const getPascalCaseStringBuilder = (): PascalCaseStringBuilder => {
   const builder = {
     withValue: (value: string) => {
       if (!isValidPascalCaseString(value)) {
-        throw new RangeError('Value must be in Pascal case');
+        throw new RangeError(`Value '${value}' is not pascal case`);
       }
       internalState.value = value;
       return builder;

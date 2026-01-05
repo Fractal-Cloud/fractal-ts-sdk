@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import {getOwnerIdBuilder, OwnerId} from './owner_id';
+import {aUuid} from "../test_utils.test";
 
 describe('Owner Id Builder', () => {
   const sut = getOwnerIdBuilder();
@@ -7,7 +8,7 @@ describe('Owner Id Builder', () => {
   beforeEach(() => sut.reset());
 
   it('should return a valid Owner Id when set correctly', () => {
-    const expected = '550e8400-e29b-41d4-a716-446655440000';
+    const expected = aUuid();
     expect(sut.withValue(expected).build())
     .toSatisfy( ({value}: OwnerId) => value === expected);
   });
