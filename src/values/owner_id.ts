@@ -36,34 +36,32 @@ export type OwnerIdBuilder = {
 /**
  * A constant variable representing the default owner ID.
  *
- * This variable is used as a placeholder or default value
- * for the owner identifier in contexts where an explicit
- * owner ID is not provided. It is an immutable constant
- * meant to ensure consistency in scenarios requiring a
- * reference to a default owner.
- *
- * The `value` property within this object is initialized
- * to an empty string, implying no specific owner is set.
+ * This variable is declared as a constant to prevent modification
+ * and is designed to not pass validation checks.
  */
 export const DEFAULT_OWNER_ID: OwnerId = {
   value: '',
 } as const;
 
 /**
- * Determines whether the provided value is a valid owner ID.
+ * Validates whether the given string value is a valid UUID.
  *
- * This function checks if the given string matches the standard format
- * of a UUID (Universally Unique Identifier) version 4. A valid owner ID
- * is expected to follow the pattern "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
- * where "x" represents a hexadecimal digit.
+ * This function checks if the provided `value` conforms to the UUID format.
+ * If the validation fails, an array containing an error message will be returned.
+ * If the validation passes, an empty array is returned.
  *
- * @param {string} value - The string to be validated as a UUID.
- * @returns {boolean} Returns true if the string matches the UUID format; otherwise, false.
+ * @param {string} value - The string value to be validated.
+ * @returns {string[]} An array containing error messages if invalid, or an empty array if valid.
  */
-export const isValidOwnerId = (value: string) => {
-  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
-    value,
-  );
+export const isValidOwnerId = (value: string): string[] => {
+  const isValidUuid =
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+      value,
+    );
+  if (!isValidUuid) {
+    return ['Owner Id must be a valid uuid'];
+  }
+  return [] as const;
 };
 
 /**
@@ -94,12 +92,14 @@ export const getOwnerIdBuilder = (): OwnerIdBuilder => {
       return builder;
     },
     build: (): OwnerId => {
-      if (internalState.value === DEFAULT_OWNER_ID.value) {
-        throw new SyntaxError('OwnerId must be initialized');
+      const validationErrors = isValidOwnerId(internalState.value);
+      if (validationErrors.length > 0) {
+        throw new SyntaxError(validationErrors.join('\n'));
       }
+
       return {
         ...internalState,
-      } as const;
+      };
     },
   };
 

@@ -1,7 +1,7 @@
-import {BoundedContextId, getBoundedContextIdBuilder} from "./bounded_context_id";
 import {OwnerType} from "./values/owner_type";
 import {getOwnerIdBuilder, OwnerId} from "./values/owner_id";
 import {getKebabCaseStringBuilder, KebabCaseString} from "./values/kebab_case_string";
+import {BoundedContextId, getBoundedContextIdBuilder} from "./bounded_context/id";
 
   export const aUuid = (): string => crypto.randomUUID();
 

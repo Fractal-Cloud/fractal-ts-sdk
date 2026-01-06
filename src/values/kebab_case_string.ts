@@ -46,7 +46,7 @@ export type KebabCaseStringBuilder = {
  * containing an empty string as its default value.
  *
  * This variable is declared as a constant to prevent modification
- * and is designed to represent a string in kebab-case format.
+ * and is designed to not pass validation checks.
  *
  * @type {KebabCaseString}
  */
@@ -55,18 +55,24 @@ export const DEFAULT_KEBAB_CASE_STRING: KebabCaseString = {
 } as const;
 
 /**
- * Checks if a given string follows the kebab-case format.
+ * Validates whether a given string follows the kebab-case format.
  *
- * A valid kebab-case string consists of lowercase letters,
- * optionally followed by hyphen-separated segments containing
- * alphanumeric characters. It must not start or end with
- * a hyphen and cannot contain consecutive hyphens.
+ * A string is considered as valid kebab-case if it:
+ * - Starts with a lowercase letter.
+ * - Contains only lowercase letters, numbers, and hyphens.
+ * - Does not have consecutive hyphens.
+ * - Does not end or begin with a hyphen.
  *
  * @param {string} value - The string to validate.
- * @returns {boolean} - Returns true if the string is in kebab-case, otherwise false.
+ * @returns {string[]} - An empty array if the string is valid, otherwise an array containing an error message.
  */
-export const isValidKebabCaseString = (value: string): boolean =>
-  /^[a-z][a-z0-9]*(-[a-z][a-z0-9]*)*$/.test(value);
+export const isValidKebabCaseString = (value: string): string[] => {
+  const isValid = /^[a-z][a-z0-9]*(-[a-z][a-z0-9]*)*$/.test(value);
+  if (!isValid) {
+    return ['Value must be in kebab-case'];
+  }
+  return [] as const;
+};
 
 /**
  * Creates a builder for constructing a KebabCaseString object. The builder enforces Kebab case formatting and ensures
@@ -96,12 +102,13 @@ export const getKebabCaseStringBuilder = (): KebabCaseStringBuilder => {
       return builder;
     },
     build: (): KebabCaseString => {
-      if (internalState.value === DEFAULT_KEBAB_CASE_STRING.value) {
-        throw new SyntaxError('Kebab Case String must be initialized');
+      const validationErrors = isValidKebabCaseString(internalState.value);
+      if (validationErrors.length > 0) {
+        throw new SyntaxError(validationErrors.join('\n'));
       }
       return {
         ...internalState,
-      } as const;
+      };
     },
   };
 

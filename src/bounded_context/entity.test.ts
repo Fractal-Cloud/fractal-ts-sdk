@@ -1,9 +1,9 @@
 import {beforeEach, describe, expect, it} from 'vitest';
-import {BoundedContext, getBoundedContextBuilder} from "./bounded_context";
-import {aBoundedContextId} from "./test_utils.test";
+import {BoundedContext} from "./";
+import {aBoundedContextId} from "../test_utils.test";
 
 describe('Bounded Context Builder', () => {
-  const sut = getBoundedContextBuilder();
+  const sut = BoundedContext.getBuilder();
 
   beforeEach(() => sut.reset());
 

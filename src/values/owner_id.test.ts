@@ -13,12 +13,12 @@ describe('Owner Id Builder', () => {
     .toSatisfy( ({value}: OwnerId) => value === expected);
   });
 
-  it('should throw a RangeError if Owner Id is empty', () => {
-    expect(() => sut.withValue('').build()).toThrow(RangeError);
+  it('should throw a SyntaxError if Owner Id is empty', () => {
+    expect(() => sut.withValue('').build()).toThrow(SyntaxError);
   })
 
-  it('should throw a RangeError if Owner Id is set incorrectly', () => {
-    expect(() => sut.withValue('whatever').build()).toThrow(RangeError);
+  it('should throw a SyntaxError if Owner Id is set incorrectly', () => {
+    expect(() => sut.withValue('whatever').build()).toThrow(SyntaxError);
   })
 
   it('should throw a SyntaxError if Owner Id is built without initialization', () => {

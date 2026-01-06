@@ -12,12 +12,12 @@ describe('Pascal Case String Builder', () => {
     .toSatisfy( ({value}: PascalCaseString) => value === expected);
   });
 
-  it('should throw a RangeError if Pascal String is empty', () => {
-    expect(() => sut.withValue('').build()).toThrow(RangeError);
+  it('should throw a SyntaxError if Pascal String is empty', () => {
+    expect(() => sut.withValue('').build()).toThrow(SyntaxError);
   })
 
-  it('should throw a RangeError if Pascal String is set incorrectly', () => {
-    expect(() => sut.withValue('whatever').build()).toThrow(RangeError);
+  it('should throw a SyntaxError if Pascal String is set incorrectly', () => {
+    expect(() => sut.withValue('whatever').build()).toThrow(SyntaxError);
   })
 
   it('should throw a SyntaxError if Pascal String is built without initialization', () => {

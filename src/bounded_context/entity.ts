@@ -1,40 +1,13 @@
-import {isNonEmptyString} from './values/string';
+import {isNonEmptyString} from '../values/string';
+import type {BoundedContext as BoundedContextT} from './';
 import {
-  BoundedContextId,
   DEFAULT_BOUNDED_CONTEXT_ID,
-  isValidBoundedContextId,
-} from './bounded_context_id';
+  BoundedContextId,
+  isValidId,
+  boundedContextIdToString,
+} from './id';
 
-/**
- * Represents a bounded context in a domain-driven design framework.
- * A bounded context defines a specific boundary within which a particular model is defined and used, encapsulating domain logic and avoiding ambiguity with other models.
- *
- * @typedef {Object} BoundedContext
- * @property {BoundedContextId} id - A unique identifier for the bounded context.
- * @property {string} displayName - A human-readable name for the bounded context.
- * @property {string} [description] - An optional description providing additional details about the bounded context's purpose or scope.
- */
-export type BoundedContext = {
-  id: BoundedContextId;
-  displayName: string;
-  description?: string;
-};
-
-/**
- * Represents the default bounded context utilized within the application.
- * A bounded context is a central pattern in domain-driven design, defining a specific
- * responsibility or area of the domain model with clear boundaries.
- *
- * This constant provides a preconfigured bounded context with a default identifier and
- * an empty display name. It is primarily used as a fallback or initial default in scenarios
- * where no other bounded context is explicitly specified.
- *
- * Properties:
- * - `id`: Represents the unique identifier for the bounded context, initialized with the
- *   value of `DEFAULT_BOUNDED_CONTEXT_ID`.
- * - `displayName`: Represents the display name of the bounded context, initialized as an empty string.
- */
-export const DEFAULT_BOUNDED_CONTEXT: BoundedContext = {
+const DEFAULT: BoundedContextT = {
   id: DEFAULT_BOUNDED_CONTEXT_ID,
   displayName: '',
 } as const;
@@ -49,8 +22,22 @@ export const DEFAULT_BOUNDED_CONTEXT: BoundedContext = {
  * @param {BoundedContext} value - The bounded context object to be validated.
  * @returns {boolean} Returns true if the bounded context is valid; otherwise, returns false.
  */
-export const isValidBoundedContext = (value: BoundedContext): boolean =>
-  isValidBoundedContextId(value.id) && isNonEmptyString(value.displayName);
+const isValidBoundedContext = (value: BoundedContextT): string[] => {
+  const idErrors = isValidId(value.id);
+  const displayNameErrors = isNonEmptyString(value.displayName)
+    ? []
+    : ['Display name must be a non-empty string'];
+  return [
+    ...idErrors.map(
+      x =>
+        `[Bounded Context: ${boundedContextIdToString(value.id)}] Id error: ${x}`,
+    ),
+    ...displayNameErrors.map(
+      x =>
+        `[Bounded Context: ${boundedContextIdToString(value.id)}] Display Name error: ${x}`,
+    ),
+  ];
+};
 
 /**
  * Creates a builder for constructing a BoundedContext object with a fluid API.
@@ -102,7 +89,7 @@ export type BoundedContextBuilder = {
    * @returns The constructed BoundedContext object
    * @throws {SyntaxError} If the bounded context is invalid (e.g., missing required fields)
    */
-  build: () => BoundedContext;
+  build: () => BoundedContextT;
 };
 
 /**
@@ -119,8 +106,8 @@ export type BoundedContextBuilder = {
  * that is invalid, such as when required fields are not initialized.
  */
 export const getBoundedContextBuilder = (): BoundedContextBuilder => {
-  const internalState: BoundedContext = {
-    ...DEFAULT_BOUNDED_CONTEXT,
+  const internalState: BoundedContextT = {
+    ...DEFAULT,
   };
 
   const builder = {
@@ -137,20 +124,20 @@ export const getBoundedContextBuilder = (): BoundedContextBuilder => {
       return builder;
     },
     reset: () => {
-      internalState.id = DEFAULT_BOUNDED_CONTEXT.id;
-      internalState.displayName = DEFAULT_BOUNDED_CONTEXT.displayName;
-      internalState.description = DEFAULT_BOUNDED_CONTEXT.description;
+      internalState.id = DEFAULT.id;
+      internalState.displayName = DEFAULT.displayName;
+      internalState.description = DEFAULT.description;
       return builder;
     },
-    build: (): BoundedContext => {
-      if (!isValidBoundedContext(internalState)) {
-        throw new SyntaxError(
-          ' Bounded Context is invalid. Id must be initialized and display name must be defined',
-        );
+    build: (): BoundedContextT => {
+      const validationErrors = isValidBoundedContext(internalState);
+      if (validationErrors.length > 0) {
+        throw new SyntaxError(validationErrors.join('\n'));
       }
+
       return {
         ...internalState,
-      } as const;
+      };
     },
   };
 

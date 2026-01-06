@@ -12,7 +12,7 @@
  * @property {string} Observability - Represents a delivery model focused on monitoring and observability.
  * @property {string} Security - Represents a delivery model related to security and protection measures.
  */
-export enum ServiceDeliveryModel {
+export enum InfrastructureDomain {
   ApiManagement = 'APIManagement',
   CustomWorkloads = 'CustomWorkloads',
   Messaging = 'Messaging',

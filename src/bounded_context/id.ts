@@ -1,10 +1,10 @@
-import {OwnerType} from './values/owner_type';
-import {DEFAULT_OWNER_ID, isValidOwnerId, OwnerId} from './values/owner_id';
+import {OwnerType} from '../values/owner_type';
+import {DEFAULT_OWNER_ID, isValidOwnerId, OwnerId} from '../values/owner_id';
 import {
   DEFAULT_KEBAB_CASE_STRING,
   isValidKebabCaseString,
   KebabCaseString,
-} from './values/kebab_case_string';
+} from '../values/kebab_case_string';
 
 /**
  * Represents the unique identifier for a bounded context.
@@ -33,21 +33,7 @@ const equals = (a: BoundedContextId, b: BoundedContextId): boolean =>
 
 /**
  * A default value for the bounded context identifier used in the system.
- * Represents the unique context in which a set of related operations
- * or processes occur. This constant provides a predefined configuration
- * for cases where a bounded context identifier is required but not explicitly
- * defined.
- *
- * Properties:
- * - `ownerType`: Specifies the ownership type of the bounded context. In this default,
- *   it is predefined as personal ownership (`OwnerType.Personal`).
- * - `ownerId`: Denotes the unique identifier of the owner. This uses the system-wide
- *   `DEFAULT_OWNER_ID` constant.
- * - `name`: The name of the bounded context represented as a kebab-case string. This
- *   is preconfigured to use the `DEFAULT_KEBAB_CASE_STRING` constant.
- *
- * This constant is immutable to ensure consistency and safe usage throughout the
- * application.
+ * It contains values that will not pass validation checks.
  */
 export const DEFAULT_BOUNDED_CONTEXT_ID: BoundedContextId = {
   ownerType: OwnerType.Personal,
@@ -58,73 +44,87 @@ export const DEFAULT_BOUNDED_CONTEXT_ID: BoundedContextId = {
 } as const;
 
 /**
- * Determines whether the given value is a valid BoundedContextId.
+ * Determines whether the given value is a valid Id.
  *
- * @param {BoundedContextId} value - The BoundedContextId to validate.
- * @returns {boolean} True if the BoundedContextId is valid; otherwise, false.
+ * @param {BoundedContextId} value - The Id to validate.
+ * @returns {boolean} True if the Id is valid; otherwise, false.
  *
- * A BoundedContextId is considered valid if:
+ * A Id is considered valid if:
  * - The `ownerId` component of the value is a valid owner identifier, as verified
  *   by the `isValidOwnerId` function.
  * - The `name` component of the value is in kebab-case format, as verified by
  *   the `isValidKebabCaseString` function.
  */
-export const isValidBoundedContextId = (value: BoundedContextId): boolean =>
-  isValidOwnerId(value.ownerId.value) &&
-  isValidKebabCaseString(value.name.value);
+export const isValidId = (value: BoundedContextId): string[] => {
+  const ownerIdErrors = isValidOwnerId(value.ownerId.value);
+  const nameErrors = isValidKebabCaseString(value.name.value);
+  return [
+    ...ownerIdErrors.map(
+      x =>
+        `[Bounded Context Id: ${boundedContextIdToString(value)}] Owner Id error: ${x}`,
+    ),
+    ...nameErrors.map(
+      x =>
+        `[Bounded Context Id: ${boundedContextIdToString(value)}] Name error: ${x}`,
+    ),
+  ];
+};
+
+export const boundedContextIdToString = (id: BoundedContextId) =>
+  `${id.ownerType.toString()}/${id.ownerId.value}/${id.name.value}`;
 
 /**
- * Builder interface for constructing BoundedContextId objects.
+ * Builder interface for constructing Id objects.
  * Provides a fluent API for setting and validating bounded context identifiers.
  */
-export type BoundedContextIdBuilder = {
+export type IdBuilder = {
   /**
-   * Sets the owner type of the BoundedContextId.
+   * Sets the owner type of the Id.
    * @param ownerType - The type of the owner (e.g., Personal, Organization)
    * @returns The builder instance for method chaining
    */
-  withOwnerType: (ownerType: OwnerType) => BoundedContextIdBuilder;
+  withOwnerType: (ownerType: OwnerType) => IdBuilder;
 
   /**
-   * Sets the owner ID of the BoundedContextId.
+   * Sets the owner ID of the Id.
    * @param ownerId - The unique identifier of the owner
    * @returns The builder instance for method chaining
    */
-  withOwnerId: (ownerId: OwnerId) => BoundedContextIdBuilder;
+  withOwnerId: (ownerId: OwnerId) => IdBuilder;
 
   /**
-   * Sets the name of the BoundedContextId.
+   * Sets the name of the Id.
    * @param name - The name in kebab-case format
    * @returns The builder instance for method chaining
    */
-  withName: (name: KebabCaseString) => BoundedContextIdBuilder;
+  withName: (name: KebabCaseString) => IdBuilder;
 
   /**
    * Resets the builder to its default state, restoring all default values.
    * @returns The builder instance for method chaining
    */
-  reset: () => BoundedContextIdBuilder;
+  reset: () => IdBuilder;
 
   /**
-   * Constructs and returns the final BoundedContextId object.
-   * @returns The constructed BoundedContextId object
-   * @throws {SyntaxError} If the resulting BoundedContextId is invalid
+   * Constructs and returns the final Id object.
+   * @returns The constructed Id object
+   * @throws {SyntaxError} If the resulting Id is invalid
    */
   build: () => BoundedContextId;
 };
 
 /**
- * Creates and returns a builder for constructing a `BoundedContextId` object.
+ * Creates and returns a builder for constructing a `Id` object.
  *
- * The builder allows customization of the `BoundedContextId` properties such as `ownerType`,
+ * The builder allows customization of the `Id` properties such as `ownerType`,
  * while also enforcing constraints during the construction process, ensuring the resulting object is valid.
  * The builder is stateful and provides a method to reset to default values if needed.
  *
- * @returns {BoundedContextIdBuilder} A builder object that provides methods for modifying and constructing a `BoundedContextId`.
+ * @returns {IdBuilder} A builder object that provides methods for modifying and constructing a `Id`.
  *
- * @throws {SyntaxError} Throws an error if the resulting `BoundedContextId` is invalid when the `build` method is invoked.
+ * @throws {SyntaxError} Throws an error if the resulting `Id` is invalid when the `build` method is invoked.
  */
-export const getBoundedContextIdBuilder = (): BoundedContextIdBuilder => {
+export const getBoundedContextIdBuilder = (): IdBuilder => {
   const internalState: BoundedContextId = {
     ...DEFAULT_BOUNDED_CONTEXT_ID,
   };
@@ -149,18 +149,17 @@ export const getBoundedContextIdBuilder = (): BoundedContextIdBuilder => {
       return builder;
     },
     build: (): BoundedContextId => {
-      if (!isValidBoundedContextId(internalState)) {
-        throw new SyntaxError(
-          ' Bounded Context ID is invalid. OwnerId must be initialized and name must be in Kebab case',
-        );
+      const validationErrors = isValidId(internalState);
+      if (validationErrors.length > 0) {
+        throw new SyntaxError(validationErrors.join('\n'));
       }
-      const builtBoundedContextId = {
-        ...internalState,
-        equals: (other: BoundedContextId) =>
-          equals(builtBoundedContextId, other),
-      } as const;
 
-      return builtBoundedContextId;
+      const builtId = {
+        ...internalState,
+        equals: (other: BoundedContextId) => equals(builtId, other),
+      };
+
+      return builtId;
     },
   };
 

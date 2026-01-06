@@ -1,10 +1,10 @@
 import {beforeEach, describe, expect, it} from 'vitest';
-import {BoundedContextId, getBoundedContextIdBuilder} from "./bounded_context_id";
-import {OwnerType} from "./values/owner_type";
-import {aKebabCaseString, aOwnerId} from "./test_utils.test";
+import {BoundedContext} from "./";
+import {OwnerType} from "../values/owner_type";
+import {aKebabCaseString, aOwnerId} from "../test_utils.test";
 
 describe('Bounded Context Id Builder', () => {
-  const sut = getBoundedContextIdBuilder();
+  const sut = BoundedContext.Id.getBuilder();
 
   beforeEach(() => sut.reset());
 
@@ -16,7 +16,7 @@ describe('Bounded Context Id Builder', () => {
       .withOwnerId(expectedOwnerId)
       .withName(expectedName)
       .build())
-    .toSatisfy( ({ownerType, ownerId, name}: BoundedContextId) =>
+    .toSatisfy( ({ownerType, ownerId, name}: BoundedContext.Id) =>
       ownerType === OwnerType.Personal &&
       ownerId.value === expectedOwnerId.value &&
       name.value === expectedName.value);
