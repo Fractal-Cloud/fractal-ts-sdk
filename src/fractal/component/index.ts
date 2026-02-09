@@ -10,6 +10,13 @@ export namespace BlueprintComponent {
     export const getBuilder = getBlueprintComponentTypeBuilder;
   }
 
+  export type Id = Component.Id;
+  export namespace Id {
+    export type Builder = Component.Id.Builder;
+    export const getBuilder = Component.Id.getBuilder;
+  }
+
+
   export type Builder = BlueprintComponentBuilder;
   export type Dependency = BlueprintComponentDependency;
   export const getBuilder = getBlueprintComponentBuilder;

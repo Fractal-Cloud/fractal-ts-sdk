@@ -22,8 +22,8 @@ export const DEFAULT_FRACTAL: Fractal = {
   isPrivate: false,
   description: '',
   components: [],
-  deploy: () => {},
-  destroy: () => {}
+  deploy: () => Promise.reject(),
+  destroy: () => Promise.reject(),
 }
 
 /**

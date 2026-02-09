@@ -21,6 +21,12 @@ export namespace Fractal {
       export type Builder = BlueprintComponentTypeBuilder;
       export const getBuilder = getBlueprintComponentTypeBuilder;
     }
+
+    export type Id = BlueprintComponent.Id;
+    export namespace Id {
+      export type Builder = BlueprintComponent.Id.Builder;
+      export const getBuilder = BlueprintComponent.Id.getBuilder;
+    }
   }
 
   export type Builder = FractalBuilder;

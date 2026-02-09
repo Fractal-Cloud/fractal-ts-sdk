@@ -1,5 +1,5 @@
 import {Component} from "../../component";
-import {ServiceDeliveryModel} from "../../values/service_delivery_models";
+import {ServiceDeliveryModel} from "../../values/service_delivery_model";
 import {InfrastructureDomain} from "../../values/infrastructure_domain";
 import {isValidPascalCaseString, PascalCaseString} from "../../values/pascal_case_string";
 import {DEFAULT_COMPONENT_TYPE, isValidComponentType} from "../../component/type";
