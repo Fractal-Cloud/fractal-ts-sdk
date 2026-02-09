@@ -16,8 +16,10 @@ export type BoundedContext = BoundedContextInternal.BoundedContext;
 export const Fractal = FractalInternal.Fractal;
 export type Fractal = FractalInternal.Fractal;
 
-export const InfrastructureDomain = InfrastructureDomainInternal.InfrastructureDomain;
-export type InfrastructureDomain = InfrastructureDomainInternal.InfrastructureDomain;
+export const InfrastructureDomain =
+  InfrastructureDomainInternal.InfrastructureDomain;
+export type InfrastructureDomain =
+  InfrastructureDomainInternal.InfrastructureDomain;
 
 export const KebabCaseString = KebabCaseStringInternal.KebabCaseString;
 export type KebabCaseString = KebabCaseStringInternal.KebabCaseString;
@@ -31,14 +33,18 @@ export type OwnerType = OwnerTypeInternal.OwnerType;
 export const PascalCaseString = PascalCaseStringInternal.PascalCaseString;
 export type PascalCaseString = PascalCaseStringInternal.PascalCaseString;
 
-export const ServiceAccountCredentials = ServiceAccountCredentialsInternal.ServiceAccountCredentials;
-export type ServiceAccountCredentials = ServiceAccountCredentialsInternal.ServiceAccountCredentials;
+export const ServiceAccountCredentials =
+  ServiceAccountCredentialsInternal.ServiceAccountCredentials;
+export type ServiceAccountCredentials =
+  ServiceAccountCredentialsInternal.ServiceAccountCredentials;
 
 export const ServiceAccountId = ServiceAccountIdInternal.ServiceAccountId;
 export type ServiceAccountId = ServiceAccountIdInternal.ServiceAccountId;
 
-export const ServiceDeliveryModel = ServiceDeliveryModelInternal.ServiceDeliveryModel;
-export type ServiceDeliveryModel = ServiceDeliveryModelInternal.ServiceDeliveryModel;
+export const ServiceDeliveryModel =
+  ServiceDeliveryModelInternal.ServiceDeliveryModel;
+export type ServiceDeliveryModel =
+  ServiceDeliveryModelInternal.ServiceDeliveryModel;
 
 export const Version = VersionInternal.Version;
 export type Version = VersionInternal.Version;

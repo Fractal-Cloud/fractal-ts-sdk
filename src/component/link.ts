@@ -1,6 +1,13 @@
-import {ComponentType, DEFAULT_COMPONENT_TYPE, isValidComponentType} from './type';
+import {
+  ComponentType,
+  DEFAULT_COMPONENT_TYPE,
+  isValidComponentType,
+} from './type';
 import {ComponentId, DEFAULT_COMPONENT_ID, isValidId} from './id';
-import {GenericParameters, getParametersInstance} from "../values/generic_parameters";
+import {
+  GenericParameters,
+  getParametersInstance,
+} from '../values/generic_parameters';
 
 /**
  * Represents a link object with an identifier, type, and associated parameters.
@@ -38,7 +45,7 @@ export const isValidLink = (link: ComponentLink): string[] => {
 const DEFAULT_LINK: ComponentLink = {
   id: DEFAULT_COMPONENT_ID,
   type: DEFAULT_COMPONENT_TYPE,
-  parameters: getParametersInstance()
+  parameters: getParametersInstance(),
 };
 
 /**
@@ -150,7 +157,7 @@ export const getLinkBuilder = (): LinkBuilder => {
       }
 
       return {
-        ...internalState
+        ...internalState,
       };
     },
   };

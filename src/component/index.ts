@@ -1,6 +1,13 @@
 import {Version} from '../values/version';
-import {ComponentTypeBuilder, getComponentTypeBuilder, ComponentType} from './type';
-import {GenericParameters, getParametersInstance} from '../values/generic_parameters';
+import {
+  ComponentTypeBuilder,
+  getComponentTypeBuilder,
+  ComponentType,
+} from './type';
+import {
+  GenericParameters,
+  getParametersInstance,
+} from '../values/generic_parameters';
 import {ComponentLink, getLinkBuilder, LinkBuilder} from './link';
 import {ComponentId, ComponentIdBuilder, getComponentIdBuilder} from './id';
 import {

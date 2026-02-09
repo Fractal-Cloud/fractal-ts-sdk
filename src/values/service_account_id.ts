@@ -1,4 +1,4 @@
-import {isValidUuid} from "./guid";
+import {isValidUuid} from './guid';
 
 /**
  * Represents a unique identifier for a service account.
@@ -6,7 +6,7 @@ import {isValidUuid} from "./guid";
  * This type is used to encapsulate the value of a service account's unique ID as a string.
  */
 export type ServiceAccountId = {
-  serviceAccountIdValue: string
+  serviceAccountIdValue: string;
 };
 
 /**
@@ -66,7 +66,7 @@ export const isValidServiceAccountId = (value: ServiceAccountId): string[] => {
   }
 
   return isValidUuid(value.serviceAccountIdValue);
-}
+};
 
 /**
  * Creates and returns a builder object for constructing a ServiceAccountId.
@@ -98,7 +98,8 @@ export const getServiceAccountIdBuilder = (): ServiceAccountIdBuilder => {
       return builder;
     },
     reset: () => {
-      internalState.serviceAccountIdValue = DEFAULT_SERVICE_ACCOUNT_ID.serviceAccountIdValue;
+      internalState.serviceAccountIdValue =
+        DEFAULT_SERVICE_ACCOUNT_ID.serviceAccountIdValue;
       return builder;
     },
     build: (): ServiceAccountId => {

@@ -1,12 +1,12 @@
-import {BlueprintComponent} from "./index";
-import {DEFAULT_COMPONENT, isValidComponent} from "../../component/entity";
-import {BlueprintComponentType, DEFAULT_BLUEPRINT_COMPONENT_TYPE} from "./type";
-import {Component} from "../../component";
-import {Version} from "../../values/version";
-import {GenericParameters} from "../../values/generic_parameters";
-import {BlueprintComponentDependency} from "./dependency";
-import {ComponentId} from "../../component/id";
-import {ComponentLink} from "../../component/link";
+import {BlueprintComponent} from './index';
+import {DEFAULT_COMPONENT, isValidComponent} from '../../component/entity';
+import {BlueprintComponentType, DEFAULT_BLUEPRINT_COMPONENT_TYPE} from './type';
+import {Component} from '../../component';
+import {Version} from '../../values/version';
+import {GenericParameters} from '../../values/generic_parameters';
+import {BlueprintComponentDependency} from './dependency';
+import {ComponentId} from '../../component/id';
+import {ComponentLink} from '../../component/link';
 
 export const DEFAULT_BLUEPRINT_COMPONENT: BlueprintComponent = {
   ...DEFAULT_COMPONENT,
@@ -16,13 +16,15 @@ export const DEFAULT_BLUEPRINT_COMPONENT: BlueprintComponent = {
   recreateOnFailure: false,
 } as const;
 
-export const isValidBlueprintComponent = (component: BlueprintComponent): string[] => {
-  var simplifiedComponent = {
-      ...component,
-      dependencies: [] as Component.Dependency[]
+export const isValidBlueprintComponent = (
+  component: BlueprintComponent,
+): string[] => {
+  const simplifiedComponent = {
+    ...component,
+    dependencies: [] as Component.Dependency[],
   };
   return isValidComponent(simplifiedComponent);
-}
+};
 
 /**
  */
@@ -96,7 +98,9 @@ export type BlueprintComponentBuilder = {
    * @returns {BlueprintComponentBuilder} The updated instance of the
    * BlueprintComponentBuilder with the specified dependencies included.
    */
-  withDependencies: (dependencies: BlueprintComponentDependency[]) => BlueprintComponentBuilder;
+  withDependencies: (
+    dependencies: BlueprintComponentDependency[],
+  ) => BlueprintComponentBuilder;
 
   /**
    * Adds or updates the `isLocked` attribute for the blueprint component.
@@ -217,7 +221,8 @@ export const getBlueprintComponentBuilder = (): BlueprintComponentBuilder => {
       internalState.links = DEFAULT_BLUEPRINT_COMPONENT.links;
       internalState.dependencies = DEFAULT_BLUEPRINT_COMPONENT.dependencies;
       internalState.isLocked = DEFAULT_BLUEPRINT_COMPONENT.isLocked;
-      internalState.recreateOnFailure = DEFAULT_BLUEPRINT_COMPONENT.recreateOnFailure;
+      internalState.recreateOnFailure =
+        DEFAULT_BLUEPRINT_COMPONENT.recreateOnFailure;
       return builder;
     },
     build: (): BlueprintComponent => {
@@ -234,4 +239,3 @@ export const getBlueprintComponentBuilder = (): BlueprintComponentBuilder => {
 
   return builder;
 };
-

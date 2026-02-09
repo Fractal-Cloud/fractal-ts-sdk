@@ -87,7 +87,9 @@ export const getPascalCaseStringBuilder = (): PascalCaseStringBuilder => {
       return builder;
     },
     build: (): PascalCaseString => {
-      const validationErrors = isValidPascalCaseString(internalState.pascalValue);
+      const validationErrors = isValidPascalCaseString(
+        internalState.pascalValue,
+      );
       if (validationErrors.length > 0) {
         throw new SyntaxError(validationErrors.join('\n'));
       }

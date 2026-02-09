@@ -28,12 +28,10 @@ const isValidBoundedContext = (value: BoundedContextT): string[] => {
     : ['Display name must be a non-empty string'];
   return [
     ...idErrors.map(
-      x =>
-        `[Bounded Context: ${value.id.toString()}] Id error: ${x}`,
+      x => `[Bounded Context: ${value.id.toString()}] Id error: ${x}`,
     ),
     ...displayNameErrors.map(
-      x =>
-        `[Bounded Context: ${value.id.toString()}] Display Name error: ${x}`,
+      x => `[Bounded Context: ${value.id.toString()}] Display Name error: ${x}`,
     ),
   ];
 };

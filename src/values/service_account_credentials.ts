@@ -1,4 +1,8 @@
-import {DEFAULT_SERVICE_ACCOUNT_ID, isValidServiceAccountId, ServiceAccountId} from "./service_account_id";
+import {
+  DEFAULT_SERVICE_ACCOUNT_ID,
+  isValidServiceAccountId,
+  ServiceAccountId,
+} from './service_account_id';
 
 /**
  * Represents the credentials used for a service account.
@@ -66,11 +70,15 @@ const DEFAULT_SERVICE_ACCOUNT_CREDENTIALS: ServiceAccountCredentials = {
  * @returns {string[]} - An array of error messages, where each message describes a validation issue.
  *                       If the credentials are valid, the array is empty.
  */
-export const isValidServiceAccountCredentials = (value: ServiceAccountCredentials): string[] => {
+export const isValidServiceAccountCredentials = (
+  value: ServiceAccountCredentials,
+): string[] => {
   const idErrors = isValidServiceAccountId(value.id);
-  const secretErrors = value.secret ? [] : ['Secret must be a non-empty string'];
+  const secretErrors = value.secret
+    ? []
+    : ['Secret must be a non-empty string'];
   return [...idErrors, ...secretErrors];
-}
+};
 
 /**
  * Creates and returns a builder for constructing service account credentials.
@@ -81,39 +89,41 @@ export const isValidServiceAccountCredentials = (value: ServiceAccountCredential
  *
  * @returns {ServiceAccountCredentialsBuilder} A builder object to construct `ServiceAccountCredentials`.
  */
-export const getServiceAccountCredentialsBuilder = (): ServiceAccountCredentialsBuilder => {
-  const internalState: ServiceAccountCredentials = {
-    ...DEFAULT_SERVICE_ACCOUNT_CREDENTIALS,
+export const getServiceAccountCredentialsBuilder =
+  (): ServiceAccountCredentialsBuilder => {
+    const internalState: ServiceAccountCredentials = {
+      ...DEFAULT_SERVICE_ACCOUNT_CREDENTIALS,
+    };
+
+    const builder = {
+      withId: (value: ServiceAccountId) => {
+        internalState.id = value;
+        return builder;
+      },
+      withSecret: (value: string) => {
+        internalState.secret = value;
+        return builder;
+      },
+      reset: () => {
+        internalState.id = DEFAULT_SERVICE_ACCOUNT_CREDENTIALS.id;
+        internalState.secret = DEFAULT_SERVICE_ACCOUNT_CREDENTIALS.secret;
+        return builder;
+      },
+      build: (): ServiceAccountCredentials => {
+        const validationErrors =
+          isValidServiceAccountCredentials(internalState);
+        if (validationErrors.length > 0) {
+          throw new SyntaxError(validationErrors.join('\n'));
+        }
+
+        return {
+          ...internalState,
+        };
+      },
+    };
+
+    return builder;
   };
-
-  const builder = {
-    withId: (value: ServiceAccountId) => {
-      internalState.id = value;
-      return builder;
-    },
-    withSecret: (value: string) => {
-      internalState.secret = value;
-      return builder;
-    },
-    reset: () => {
-      internalState.id = DEFAULT_SERVICE_ACCOUNT_CREDENTIALS.id;
-      internalState.secret = DEFAULT_SERVICE_ACCOUNT_CREDENTIALS.secret;
-      return builder;
-    },
-    build: (): ServiceAccountCredentials => {
-      const validationErrors = isValidServiceAccountCredentials(internalState);
-      if (validationErrors.length > 0) {
-        throw new SyntaxError(validationErrors.join('\n'));
-      }
-
-      return {
-        ...internalState,
-      };
-    },
-  };
-
-  return builder;
-};
 
 export namespace ServiceAccountCredentials {
   export const getBuilder = getServiceAccountCredentialsBuilder;

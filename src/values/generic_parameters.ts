@@ -43,10 +43,11 @@ export const getParametersInstance = (): GenericParameters => {
     },
     getOptionalFieldByName: (name: string) => container[name] ?? null,
     getAllFieldNames: () => Object.keys(container),
-    push: (key: string, value: Record<string, object>) => container[key] = value,
+    push: (key: string, value: Record<string, object>) =>
+      (container[key] = value),
     remove: (key: string) => delete container[key],
     toMap: () => ({
-      ...container
+      ...container,
     }),
   };
 };

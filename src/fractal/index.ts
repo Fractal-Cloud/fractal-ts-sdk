@@ -1,9 +1,15 @@
-import {FractalId, FractalIdBuilder, getFractalIdBuilder} from "./id";
-import {BlueprintComponent} from "./component";
-import {ServiceAccountCredentials} from "../values/service_account_credentials";
-import {FractalBuilder, getFractalBuilder} from "./entity";
-import {BlueprintComponentBuilder, getBlueprintComponentBuilder} from "./component/entity";
-import {BlueprintComponentTypeBuilder, getBlueprintComponentTypeBuilder} from "./component/type";
+import {FractalId, FractalIdBuilder, getFractalIdBuilder} from './id';
+import {BlueprintComponent} from './component';
+import {ServiceAccountCredentials} from '../values/service_account_credentials';
+import {FractalBuilder, getFractalBuilder} from './entity';
+import {
+  BlueprintComponentBuilder,
+  getBlueprintComponentBuilder,
+} from './component/entity';
+import {
+  BlueprintComponentTypeBuilder,
+  getBlueprintComponentTypeBuilder,
+} from './component/type';
 
 export namespace Fractal {
   export type Id = FractalId;
