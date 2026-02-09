@@ -10,6 +10,7 @@ export type Version = {
   major: number;
   minor: number;
   patch: number;
+  equals: (other: Version) => boolean;
 };
 
 /**
@@ -21,7 +22,7 @@ export type Version = {
  * @returns {boolean} - Returns `true` if the major, minor, and patch values
  * of both version objects are equal, otherwise `false`.
  */
-export const areVersionsEquivalent = (a: Version, b: Version): boolean =>
+const equals = (a: Version, b: Version): boolean =>
   a.major === b.major && a.minor === b.minor && a.patch === b.patch;
 
 /**
@@ -74,6 +75,8 @@ export const DEFAULT_VERSION: Version = {
   major: 0,
   minor: 0,
   patch: 0,
+  equals: (other: Version) =>
+    equals(DEFAULT_VERSION, other),
 } as const;
 
 /**
@@ -84,7 +87,7 @@ export const DEFAULT_VERSION: Version = {
  *                     an array containing one error message. Otherwise, it returns an empty array.
  */
 export const isValidVersion = (version: Version): string[] => {
-  if (areVersionsEquivalent(version, DEFAULT_VERSION)) {
+  if (equals(version, DEFAULT_VERSION)) {
     return ['Version must be initialized'];
   }
   return [] as const;
@@ -153,10 +156,12 @@ export const getVersionBuilder = (): VersionBuilder => {
       if (validationErrors.length > 0) {
         throw new SyntaxError(validationErrors.join('\n'));
       }
-
-      return {
+      const builtVersion: Version = {
         ...internalState,
+        equals: (other: Version) => equals(builtVersion, other),
       };
+
+      return builtVersion;
     },
   };
 

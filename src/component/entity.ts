@@ -1,11 +1,11 @@
 import {Component} from './';
 import {ComponentType, DEFAULT_TYPE, isValidType} from './type';
 import {DEFAULT_VERSION, isValidVersion, Version} from '../values/version';
-import {ComponentParameters, getParametersInstance} from './parameters';
+import {GenericParameters, getParametersInstance} from '../values/genericParameters';
 import {ComponentId, DEFAULT_COMPONENT_ID, isValidId} from './id';
-import {isNonEmptyString} from '../values/string';
+import {isNonEmptyString} from '../values/helpers';
 import {ComponentLink} from './link';
-import {Dependency} from './dependency';
+import {ComponentDependency} from './dependency';
 
 /**
  * Represents an object structure where the `value` field contains
@@ -34,7 +34,7 @@ const DEFAULT: Component = {
   dependencies: [],
 } as const;
 
-const isValidComponent = (component: Component): string[] => {
+const   isValidComponent = (component: Component): string[] => {
   const idErrors = isValidId(component.id);
   const typeErrors = isValidType(component.type);
   const versionErrors = isValidVersion(component.version);
@@ -111,10 +111,10 @@ export type ComponentBuilder = {
   /**
    * Sets the parameters for the component being built.
    *
-   * @param {ComponentParameters} parameters - The parameters to associate with the component.
+   * @param {GenericParameters} parameters - The parameters to associate with the component.
    * @returns {ComponentBuilder} The builder instance for method chaining.
    */
-  withParameters: (parameters: ComponentParameters) => ComponentBuilder;
+  withParameters: (parameters: GenericParameters) => ComponentBuilder;
 
   /**
    * Sets the links for the component being built.
@@ -130,7 +130,7 @@ export type ComponentBuilder = {
    * @param {Dependency[]} dependencies - The dependencies to associate with the component.
    * @returns {ComponentBuilder} The builder instance for method chaining.
    */
-  withDependencies: (dependencies: Dependency[]) => ComponentBuilder;
+  withDependencies: (dependencies: ComponentDependency[]) => ComponentBuilder;
 
   /**
    * Resets the builder's internal state to default values.
@@ -207,7 +207,7 @@ export const getComponentBuilder = (): ComponentBuilder => {
       internalState.description = description;
       return builder;
     },
-    withParameters: (parameters: ComponentParameters) => {
+    withParameters: (parameters: GenericParameters) => {
       internalState.parameters = parameters;
       return builder;
     },
@@ -215,15 +215,19 @@ export const getComponentBuilder = (): ComponentBuilder => {
       internalState.links = links;
       return builder;
     },
-    withDependencies: (dependencies: Dependency[]) => {
+    withDependencies: (dependencies: ComponentDependency[]) => {
       internalState.dependencies = dependencies;
       return builder;
     },
     reset: () => {
       internalState.type = DEFAULT.type;
       internalState.id = DEFAULT.id;
+      internalState.version = DEFAULT.version;
       internalState.displayName = DEFAULT.displayName;
       internalState.description = DEFAULT.description;
+      internalState.parameters = DEFAULT.parameters;
+      internalState.links = DEFAULT.links;
+      internalState.dependencies = DEFAULT.dependencies;
       return builder;
     },
     build: (): Component => {

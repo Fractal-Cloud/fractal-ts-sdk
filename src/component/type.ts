@@ -11,11 +11,17 @@ import {InfrastructureDomain} from '../values/infrastructure_domain';
  * @typedef {Object} ComponentType
  * @property {InfrastructureDomain} domain - The domain associated with the type, representing a specific area of infrastructure.
  * @property {PascalCaseString} name - The PascalCase formatted string that represents the name of the type.
+ * @property {Function} equals - Compares the current type with another and returns whether they are equal.
  */
 export type ComponentType = {
   domain: InfrastructureDomain;
   name: PascalCaseString;
+  equals: (other: ComponentType) => boolean;
 };
+
+const equals = (a: ComponentType, b: ComponentType): boolean =>
+  a.domain === b.domain
+  && a.name === b.name;
 
 /**
  * Represents the default type configuration for a component.
@@ -26,6 +32,8 @@ export type ComponentType = {
 export const DEFAULT_TYPE: ComponentType = {
   domain: InfrastructureDomain.ApiManagement,
   name: DEFAULT_PASCAL_CASE_STRING,
+  equals: (other: ComponentType) =>
+    equals(DEFAULT_TYPE, other)
 };
 
 /**
@@ -144,9 +152,12 @@ export const getTypeBuilder = (): TypeBuilder => {
         throw new SyntaxError(validationErrors.join('\n'));
       }
 
-      return {
+      const builtType: ComponentType = {
         ...internalState,
+        equals: (other: ComponentType) => equals(builtType, other),
       };
+
+      return builtType;
     },
   };
 

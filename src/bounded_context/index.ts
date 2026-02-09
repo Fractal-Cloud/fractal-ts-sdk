@@ -1,17 +1,15 @@
 import {
   BoundedContextId,
-  IdBuilder,
+  BoundedContextIdBuilder,
   getBoundedContextIdBuilder,
-  boundedContextIdToString,
 } from './id';
 import {BoundedContextBuilder, getBoundedContextBuilder} from './entity';
 
 export namespace BoundedContext {
   export type Id = BoundedContextId;
   export namespace Id {
-    export type Builder = IdBuilder;
+    export type Builder = BoundedContextIdBuilder;
     export const getBuilder = getBoundedContextIdBuilder;
-    export const toString = boundedContextIdToString;
   }
   export type Builder = BoundedContextBuilder;
   export const getBuilder = getBoundedContextBuilder;

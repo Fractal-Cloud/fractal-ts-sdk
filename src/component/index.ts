@@ -1,8 +1,8 @@
 import {Version} from '../values/version';
 import {TypeBuilder, getTypeBuilder, ComponentType} from './type';
-import {ComponentParameters, getParametersInstance} from './parameters';
+import {GenericParameters, getParametersInstance} from '../values/genericParameters';
 import {ComponentLink, getLinkBuilder, LinkBuilder} from './link';
-import {ComponentId, isValidId} from './id';
+import {ComponentId, ComponentIdBuilder, getComponentIdBuilder} from './id';
 import {
   ComponentBuilder,
   ComponentOutputFields,
@@ -17,7 +17,7 @@ export namespace Component {
     export const getBuilder = getTypeBuilder;
   }
 
-  export type Parameters = ComponentParameters;
+  export type Parameters = GenericParameters;
   export namespace Parameters {
     export const getInstance = getParametersInstance;
   }
@@ -25,18 +25,23 @@ export namespace Component {
   export type Link = ComponentLink;
   export namespace Link {
     export type Builder = LinkBuilder;
+    export type Parameters = GenericParameters;
+    export namespace Parameters {
+      export const getInstance = getParametersInstance;
+    }
     export const getBuilder = getLinkBuilder;
   }
 
   export type Id = ComponentId;
   export namespace Id {
-    export const isValid = isValidId;
+    export type Builder = ComponentIdBuilder;
+    export const getBuilder = getComponentIdBuilder;
   }
 
   export type OutputFields = ComponentOutputFields;
   export type Builder = ComponentBuilder;
-  export const getBuilder = getComponentBuilder;
   export type Dependency = ComponentDependency;
+  export const getBuilder = getComponentBuilder;
 }
 
 export type Component = {

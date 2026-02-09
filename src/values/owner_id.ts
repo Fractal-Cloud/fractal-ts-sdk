@@ -59,7 +59,7 @@ export const isValidOwnerId = (value: string): string[] => {
       value,
     );
   if (!isValidUuid) {
-    return ['Owner Id must be a valid uuid'];
+    return [`Owner Id '${value}' must be a valid uuid`];
   }
   return [] as const;
 };

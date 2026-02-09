@@ -1,29 +1,22 @@
 import {ComponentType, DEFAULT_TYPE, isValidType} from './type';
 import {DEFAULT_COMPONENT_ID, ComponentId, isValidId} from './id';
+import {deepEqual} from "../values/helpers";
+import {GenericParameters, getParametersInstance} from "../values/genericParameters";
 
 /**
- * Represents a link object with an identifier, type, and associated settings.
+ * Represents a link object with an identifier, type, and associated parameters.
  *
  * @typedef {Object} ComponentLink
  * @property {ComponentId} id - The unique identifier for the link.
  * @property {ComponentType} type - The type of the link, indicating its category or purpose.
- * @property {Record<string, object>} settings - A dictionary of configuration settings,
+ * @property {GenericParameters} parameters - A dictionary of configuration parameters,
  * where keys are setting names and values are their corresponding configuration objects.
  */
 export type ComponentLink = {
   id: ComponentId;
   type: ComponentType;
-  settings: LinkSettings;
-};
-
-/**
- * Represents a settings configuration object.
- *
- * This type is used to define a mapping of keys to corresponding configuration objects.
- * Each key is a string, and its associated value is an object containing configuration details.
- */
-export type LinkSettings = {
-  value: Record<string, object>;
+  parameters: GenericParameters;
+  equals: (other: ComponentLink) => boolean;
 };
 
 /**
@@ -44,12 +37,18 @@ export const isValidLink = (link: ComponentLink): string[] => {
   ];
 };
 
+const equals = (a: ComponentLink, b: ComponentLink): boolean => {
+  return a.id.equals(b.id)
+    && a.type.equals(b.type)
+    && deepEqual(a.parameters.toMap(), b.parameters.toMap());
+}
+
 const DEFAULT_LINK: ComponentLink = {
   id: DEFAULT_COMPONENT_ID,
   type: DEFAULT_TYPE,
-  settings: {
-    value: {},
-  },
+  parameters: getParametersInstance(),
+  equals: (other: ComponentLink) =>
+    equals(DEFAULT_LINK, other),
 };
 
 /**
@@ -79,12 +78,12 @@ export type LinkBuilder = {
   withType: (type: ComponentType) => LinkBuilder;
 
   /**
-   * Sets the settings for the link being built.
+   * Sets the parameters for the link being built.
    *
-   * @param {LinkSettings} settings - The configuration settings to associate with the link.
+   * @param {GenericParameters} parameters - The configuration parameters to associate with the link.
    * @returns {LinkBuilder} The builder instance for method chaining.
    */
-  withSettings: (settings: LinkSettings) => LinkBuilder;
+  withParameters: (parameters: GenericParameters) => LinkBuilder;
 
   /**
    * Resets the builder's internal state to default values.
@@ -114,14 +113,14 @@ export type LinkBuilder = {
  * Creates and returns a builder for constructing `ComponentLink` objects.
  *
  * The `getLinkBuilder` function provides a fluent interface for configuring a `ComponentLink` instance.
- * It allows setting properties such as `id`, `type`, and `settings`. The builder maintains an internal
+ * It allows setting properties such as `id`, `type`, and `parameters`. The builder maintains an internal
  * state to incrementally configure the `ComponentLink` object.
  *
  * Functions exposed by the builder:
  *
  * - `withId(id: ComponentId): LinkBuilder`: Assigns the provided `id` to the `ComponentLink`.
  * - `withType(type: ComponentType): LinkBuilder`: Assigns the provided `type` to the `ComponentLink`.
- * - `withSettings(settings: LinkSettings): LinkBuilder`: Assigns the provided `settings` to the `ComponentLink`.
+ * - `withParameters(parameters: LinkParameters): LinkBuilder`: Assigns the provided `parameters` to the `ComponentLink`.
  * - `reset(): LinkBuilder`: Resets the builder state to its default values.
  * - `build(): ComponentLink`: Validates the internal state and constructs an immutable `ComponentLink` instance.
  *
@@ -144,14 +143,14 @@ export const getLinkBuilder = (): LinkBuilder => {
       internalState.type = type;
       return builder;
     },
-    withSettings: (settings: LinkSettings) => {
-      internalState.settings = settings;
+    withParameters: (parameters: GenericParameters) => {
+      internalState.parameters = parameters;
       return builder;
     },
     reset: () => {
       internalState.id = DEFAULT_LINK.id;
       internalState.type = DEFAULT_LINK.type;
-      internalState.settings = DEFAULT_LINK.settings;
+      internalState.parameters = DEFAULT_LINK.parameters;
       return builder;
     },
     build: (): ComponentLink => {
@@ -160,9 +159,12 @@ export const getLinkBuilder = (): LinkBuilder => {
         throw new SyntaxError(validationErrors.join('\n'));
       }
 
-      return {
+      const builtLink: ComponentLink = {
         ...internalState,
+        equals: (other: ComponentLink) => equals(builtLink, other),
       };
+
+      return builtLink;
     },
   };
 
