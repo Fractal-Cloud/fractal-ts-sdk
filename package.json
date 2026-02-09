@@ -6,7 +6,7 @@
   "author": "Fractal Cloud",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
+  "types": "dist/index.d.mts",
   "files": [
     "dist"
   ],
@@ -15,9 +15,9 @@
     "url": "https://github.com/Fractal-Cloud/fractal-ts-sdk"
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsdown",
     "build:docs": "typedoc --entryPointStrategy Expand --exclude \"**/*+(.test|.e2e).ts\" src",
-    "dev": "tsup --watch",
+    "dev": "tsdown --watch",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "gts lint",
@@ -28,7 +28,7 @@
     "@types/node": "^22.7.5",
     "@types/superagent": "^8.1.9",
     "gts": "^7.0.0",
-    "tsup": "^8.5.1",
+    "tsdown": "^0.20.3",
     "typedoc": "^0.28.15",
     "typescript": "^5.9.3",
     "vitest": "^4.0.16"
