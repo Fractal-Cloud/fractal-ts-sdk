@@ -1,4 +1,8 @@
-import {DEFAULT_PASCAL_CASE_STRING, isValidPascalCaseString, PascalCaseString,} from '../values/pascal_case_string';
+import {
+  DEFAULT_PASCAL_CASE_STRING,
+  isValidPascalCaseString,
+  PascalCaseString,
+} from '../values/pascal_case_string';
 import {InfrastructureDomain} from '../values/infrastructure_domain';
 
 /**
@@ -43,7 +47,9 @@ export type ComponentTypeBuilder = {
    * @param {InfrastructureDomain} domain - The infrastructure domain to associate with the type.
    * @returns {ComponentTypeBuilder} The builder instance for method chaining.
    */
-  withInfrastructureDomain: (domain: InfrastructureDomain) => ComponentTypeBuilder;
+  withInfrastructureDomain: (
+    domain: InfrastructureDomain,
+  ) => ComponentTypeBuilder;
 
   /**
    * Sets the PascalCase name for the type being built.

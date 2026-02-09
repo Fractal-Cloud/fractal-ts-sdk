@@ -3,18 +3,14 @@ import {
   isValidKebabCaseString,
   KebabCaseString,
 } from '../values/kebab_case_string';
-import {OwnerType} from "../values/owner_type";
-import {OwnerId} from "../values/owner_id";
 
 /**
- * Represents a unique identifier for a component.
- *
- * This type is used to ensure that component identifiers follow a specific format and provide methods
- * for comparison with other component identifiers.
+ * Represents a unique identifier for a component, adhering to a kebab-case format.
+ * Provides functionality to compare two ComponentId instances for equality.
  *
  * @typedef {Object} ComponentId
- * @property {KebabCaseString} value - A string in kebab-case format that uniquely represents the component.
- * @property {Function} equals - Compares the current component identifier with another and returns whether they are equal.
+ * @property {KebabCaseString} value - The string representation of the component identifier in kebab-case format.
+ * @property {function(ComponentId): boolean} equals - A method to check if the given ComponentId is equal to the current instance.
  */
 export type ComponentId = {
   value: KebabCaseString;
@@ -33,8 +29,7 @@ export const isValidId = (id: ComponentId): string[] => {
   );
 };
 
-const equals = (a: ComponentId, b: ComponentId): boolean =>
-  a.value === b.value;
+const equals = (a: ComponentId, b: ComponentId): boolean => a.value === b.value;
 
 /**
  * Represents the default identifier used in the application.
@@ -42,8 +37,7 @@ const equals = (a: ComponentId, b: ComponentId): boolean =>
  */
 export const DEFAULT_COMPONENT_ID: ComponentId = {
   value: DEFAULT_KEBAB_CASE_STRING,
-  equals: (other: ComponentId) =>
-    equals(DEFAULT_COMPONENT_ID, other),
+  equals: (other: ComponentId) => equals(DEFAULT_COMPONENT_ID, other),
 };
 
 /**

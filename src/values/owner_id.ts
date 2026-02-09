@@ -1,4 +1,4 @@
-import {isValidUuid} from "./guid";
+import {isValidUuid} from './guid';
 
 /**
  * Represents a string that adheres to the OwnerId naming convention.
@@ -61,7 +61,7 @@ export const isValidOwnerId = (value: OwnerId): string[] => {
   }
 
   return isValidUuid(value.ownerIdValue);
-}
+};
 
 /**
  * Creates a builder for constructing a OwnerId object. The builder enforces uuid case formatting and ensures

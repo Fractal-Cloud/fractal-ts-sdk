@@ -3,9 +3,12 @@ import {
   isValidKebabCaseString,
   KebabCaseString,
 } from '../values/kebab_case_string';
-import {BoundedContext} from "../bounded_context";
-import {DEFAULT_VERSION, isValidVersion, Version} from "../values/version";
-import {DEFAULT_BOUNDED_CONTEXT_ID, isValidBoundedContextId} from "../bounded_context/id";
+import {BoundedContext} from '../bounded_context';
+import {DEFAULT_VERSION, isValidVersion, Version} from '../values/version';
+import {
+  DEFAULT_BOUNDED_CONTEXT_ID,
+  isValidBoundedContextId,
+} from '../bounded_context/id';
 
 /**
  * Represents a unique identifier for a fractal within a system.
@@ -20,12 +23,13 @@ import {DEFAULT_BOUNDED_CONTEXT_ID, isValidBoundedContextId} from "../bounded_co
  */
 export type FractalId = {
   boundedContextId: BoundedContext.Id;
-  name: KebabCaseString
-  version: Version
-  toString: () => string
+  name: KebabCaseString;
+  version: Version;
+  toString: () => string;
 };
 
-const toString = (id: FractalId): string => `${id.boundedContextId.toString()}/${id.name.kebabValue}:${id.version.toString()}`;
+const toString = (id: FractalId): string =>
+  `${id.boundedContextId.toString()}/${id.name.kebabValue}:${id.version.toString()}`;
 
 /**
  * Validates a given Fractal ID and returns a list of error messages if any validation fails.
@@ -39,20 +43,15 @@ export const isValidFractalId = (id: FractalId): string[] => {
   const nameErrors = isValidKebabCaseString(id.name.kebabValue);
   const versionErrors = isValidVersion(id.version);
   return [
-    ...boundedContextIdErrors.map(x => `[Fractal Id: ${id.toString()}] Bounded Context Id error: ${x}`),
-    ...nameErrors.map(
-      x => `[Fractal Id: ${id.toString()}] Name errors: ${x}`,
+    ...boundedContextIdErrors.map(
+      x => `[Fractal Id: ${id.toString()}] Bounded Context Id error: ${x}`,
     ),
+    ...nameErrors.map(x => `[Fractal Id: ${id.toString()}] Name errors: ${x}`),
     ...versionErrors.map(
       x => `[Fractal Id: ${id.toString()}] Version error: ${x}`,
-    )
+    ),
   ];
 };
-
-const equals = (a: FractalId, b: FractalId): boolean =>
-  a.boundedContextId.equals(b.boundedContextId) &&
-  a.name === b.name
-  && a.version.equals(b.version);
 
 /**
  * Represents the default identifier for a fractal instance.
@@ -73,7 +72,7 @@ const equals = (a: FractalId, b: FractalId): boolean =>
 export const DEFAULT_FRACTAL_ID: FractalId = {
   boundedContextId: DEFAULT_BOUNDED_CONTEXT_ID,
   name: DEFAULT_KEBAB_CASE_STRING,
-  version: DEFAULT_VERSION
+  version: DEFAULT_VERSION,
 };
 
 /**

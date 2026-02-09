@@ -1,7 +1,14 @@
 import {Component} from './';
-import {ComponentType, DEFAULT_COMPONENT_TYPE, isValidComponentType} from './type';
+import {
+  ComponentType,
+  DEFAULT_COMPONENT_TYPE,
+  isValidComponentType,
+} from './type';
 import {DEFAULT_VERSION, isValidVersion, Version} from '../values/version';
-import {GenericParameters, getParametersInstance} from '../values/generic_parameters';
+import {
+  GenericParameters,
+  getParametersInstance,
+} from '../values/generic_parameters';
 import {ComponentId, DEFAULT_COMPONENT_ID, isValidId} from './id';
 import {isNonEmptyString} from '../values/helpers';
 import {ComponentLink} from './link';

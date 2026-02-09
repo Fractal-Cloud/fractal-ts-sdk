@@ -70,8 +70,7 @@ export const DEFAULT_VERSION: Version = {
   major: 0,
   minor: 0,
   patch: 0,
-  equals: (other: Version) =>
-    equals(DEFAULT_VERSION, other),
+  equals: (other: Version) => equals(DEFAULT_VERSION, other),
 } as const;
 
 /**

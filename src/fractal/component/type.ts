@@ -1,8 +1,11 @@
-import {Component} from "../../component";
-import {ServiceDeliveryModel} from "../../values/service_delivery_models";
-import {InfrastructureDomain} from "../../values/infrastructure_domain";
-import {isValidPascalCaseString, PascalCaseString} from "../../values/pascal_case_string";
-import {DEFAULT_COMPONENT_TYPE, isValidComponentType} from "../../component/type";
+import {Component} from '../../component';
+import {ServiceDeliveryModel} from '../../values/service_delivery_model';
+import {InfrastructureDomain} from '../../values/infrastructure_domain';
+import {PascalCaseString} from '../../values/pascal_case_string';
+import {
+  DEFAULT_COMPONENT_TYPE,
+  isValidComponentType,
+} from '../../component/type';
 
 /**
  * Represents a blueprint component type that extends the base `Component.Type`
@@ -19,7 +22,7 @@ import {DEFAULT_COMPONENT_TYPE, isValidComponentType} from "../../component/type
  * - Adds a `serviceDeliveryModel` property to specify how the service is delivered.
  * - Reimplements the `equals` method for comparing two blueprint component types.
  */
-export type BlueprintComponentType = Omit<Component.Type, "equals"> & {
+export type BlueprintComponentType = Omit<Component.Type, 'equals'> & {
   serviceDeliveryModel: ServiceDeliveryModel;
 };
 
@@ -46,7 +49,9 @@ export type BlueprintComponentTypeBuilder = {
    * @param {InfrastructureDomain} domain - The infrastructure domain to associate with the type.
    * @returns {BlueprintComponentTypeBuilder} The builder instance for method chaining.
    */
-  withInfrastructureDomain: (domain: InfrastructureDomain) => BlueprintComponentTypeBuilder;
+  withInfrastructureDomain: (
+    domain: InfrastructureDomain,
+  ) => BlueprintComponentTypeBuilder;
 
   /**
    * Configures the builder to use the specified service delivery model.
@@ -54,7 +59,9 @@ export type BlueprintComponentTypeBuilder = {
    * @param {ServiceDeliveryModel} serviceDeliveryModel - The service delivery model to be applied during the building process.
    * @returns {BlueprintComponentTypeBuilder} The builder instance for chaining additional configurations.
    */
-  withServiceDeliveryModel: (serviceDeliveryModel: ServiceDeliveryModel) => BlueprintComponentTypeBuilder;
+  withServiceDeliveryModel: (
+    serviceDeliveryModel: ServiceDeliveryModel,
+  ) => BlueprintComponentTypeBuilder;
 
   /**
    * Sets the PascalCase name for the type being built.
@@ -98,7 +105,9 @@ export type BlueprintComponentTypeBuilder = {
  * @param {BlueprintComponentType} type - The component type object to be validated.
  * @returns {string[]} An array of error messages if validation fails; an empty array if the name is valid.
  */
-export const isValidBlueprintComponentType = (type: BlueprintComponentType): string[] => isValidComponentType(type);
+export const isValidBlueprintComponentType = (
+  type: BlueprintComponentType,
+): string[] => isValidComponentType(type);
 
 /**
  * Creates and returns a builder for constructing a `TypeBuilder` instance.
@@ -121,41 +130,45 @@ export const isValidBlueprintComponentType = (type: BlueprintComponentType): str
  * and returns a finalized `ComponentType` object. Throws a `SyntaxError` if
  * validation fails.
  */
-export const getBlueprintComponentTypeBuilder = (): BlueprintComponentTypeBuilder => {
-  const internalState: BlueprintComponentType = {
-    ...DEFAULT_BLUEPRINT_COMPONENT_TYPE,
+export const getBlueprintComponentTypeBuilder =
+  (): BlueprintComponentTypeBuilder => {
+    const internalState: BlueprintComponentType = {
+      ...DEFAULT_BLUEPRINT_COMPONENT_TYPE,
+    };
+
+    const builder = {
+      withInfrastructureDomain: (domain: InfrastructureDomain) => {
+        internalState.domain = domain;
+        return builder;
+      },
+      withServiceDeliveryModel: (
+        serviceDeliveryModel: ServiceDeliveryModel,
+      ) => {
+        internalState.serviceDeliveryModel = serviceDeliveryModel;
+        return builder;
+      },
+      withName: (name: PascalCaseString) => {
+        internalState.name = name;
+        return builder;
+      },
+      reset: () => {
+        internalState.domain = DEFAULT_BLUEPRINT_COMPONENT_TYPE.domain;
+        internalState.serviceDeliveryModel =
+          DEFAULT_BLUEPRINT_COMPONENT_TYPE.serviceDeliveryModel;
+        internalState.name = DEFAULT_BLUEPRINT_COMPONENT_TYPE.name;
+        return builder;
+      },
+      build: (): BlueprintComponentType => {
+        const validationErrors = isValidBlueprintComponentType(internalState);
+        if (validationErrors.length > 0) {
+          throw new SyntaxError(validationErrors.join('\n'));
+        }
+
+        return {
+          ...internalState,
+        };
+      },
+    };
+
+    return builder;
   };
-
-  const builder = {
-    withInfrastructureDomain: (domain: InfrastructureDomain) => {
-      internalState.domain = domain;
-      return builder;
-    },
-    withServiceDeliveryModel: (serviceDeliveryModel: ServiceDeliveryModel) => {
-      internalState.serviceDeliveryModel = serviceDeliveryModel;
-      return builder;
-    },
-    withName: (name: PascalCaseString) => {
-      internalState.name = name;
-      return builder;
-    },
-    reset: () => {
-      internalState.domain = DEFAULT_BLUEPRINT_COMPONENT_TYPE.domain;
-      internalState.serviceDeliveryModel = DEFAULT_BLUEPRINT_COMPONENT_TYPE.serviceDeliveryModel;
-      internalState.name = DEFAULT_BLUEPRINT_COMPONENT_TYPE.name;
-      return builder;
-    },
-    build: (): BlueprintComponentType => {
-      const validationErrors = isValidBlueprintComponentType(internalState);
-      if (validationErrors.length > 0) {
-        throw new SyntaxError(validationErrors.join('\n'));
-      }
-
-      return {
-        ...internalState,
-      };
-    },
-  };
-
-  return builder;
-};

@@ -1,8 +1,8 @@
-import {Fractal} from "./index";
-import {DEFAULT_FRACTAL_ID, FractalId, isValidFractalId} from "./id";
-import {isValidBlueprintComponent} from "./component/entity";
-import {BlueprintComponent} from "./component";
-import {FractalService} from "./service";
+import {Fractal} from './index';
+import {DEFAULT_FRACTAL_ID, FractalId, isValidFractalId} from './id';
+import {isValidBlueprintComponent} from './component/entity';
+import {BlueprintComponent} from './component';
+import {FractalService} from './service';
 
 /**
  * Represents the default configuration for a fractal object.
@@ -22,9 +22,9 @@ export const DEFAULT_FRACTAL: Fractal = {
   isPrivate: false,
   description: '',
   components: [],
-  deploy: () => {},
-  destroy: () => {}
-}
+  deploy: () => Promise.reject(),
+  destroy: () => Promise.reject(),
+};
 
 /**
  * Validates a given fractal object and returns a list of error messages if any issues are found.
@@ -43,15 +43,15 @@ export const DEFAULT_FRACTAL: Fractal = {
  */
 export const isValidFractal = (fractal: Fractal): string[] => {
   const idErrors = isValidFractalId(fractal.id);
-  const componentsErrors = !fractal.components || fractal.components.length == 0
-    ? [`[Fractal: ${fractal.id.toString()}]: components must not be empty`]
-    : fractal.components.reduce((acc, x) => {
-      acc.push(...isValidBlueprintComponent(x));
-      return acc;
-    }, [] as string[]);
+  const componentsErrors =
+    !fractal.components || fractal.components.length === 0
+      ? [`[Fractal: ${fractal.id.toString()}]: components must not be empty`]
+      : fractal.components.reduce((acc, x) => {
+          acc.push(...isValidBlueprintComponent(x));
+          return acc;
+        }, [] as string[]);
   return [...idErrors, ...componentsErrors];
-}
-
+};
 
 export type FractalBuilder = {
   withId: (value: FractalId) => FractalBuilder;
@@ -110,11 +110,13 @@ export const getFractalBuilder = (): FractalBuilder => {
 
       return {
         ...internalState,
-        deploy: credentials => FractalService.deploy(credentials, internalState),
-        destroy: credentials => FractalService.destroy(credentials, internalState.id),
+        deploy: credentials =>
+          FractalService.deploy(credentials, internalState),
+        destroy: credentials =>
+          FractalService.destroy(credentials, internalState.id),
       };
-    }
-  }
+    },
+  };
 
   return builder;
-}
+};
