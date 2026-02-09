@@ -1,16 +1,15 @@
-import {
-  DEFAULT_PASCAL_CASE_STRING,
-  isValidPascalCaseString,
-  PascalCaseString,
-} from '../values/pascal_case_string';
+import {DEFAULT_PASCAL_CASE_STRING, isValidPascalCaseString, PascalCaseString,} from '../values/pascal_case_string';
 import {InfrastructureDomain} from '../values/infrastructure_domain';
 
 /**
- * Represents a type definition with properties that describe a specific domain and its corresponding name.
+ * Describes a component type within a specific infrastructure domain.
+ *
+ * This type represents a blueprint for defining components by associating
+ * a domain category and a specific name in PascalCase format.
  *
  * @typedef {Object} ComponentType
- * @property {InfrastructureDomain} domain - The domain associated with the type, representing a specific area of infrastructure.
- * @property {PascalCaseString} name - The PascalCase formatted string that represents the name of the type.
+ * @property {InfrastructureDomain} domain - The domain category to which the component belongs.
+ * @property {PascalCaseString} name - The name of the component, formatted using PascalCase.
  */
 export type ComponentType = {
   domain: InfrastructureDomain;
@@ -23,7 +22,7 @@ export type ComponentType = {
  * This variable is declared as a constant to prevent modification
  * and is designed to not pass validation checks.
  */
-export const DEFAULT_TYPE: ComponentType = {
+export const DEFAULT_COMPONENT_TYPE: ComponentType = {
   domain: InfrastructureDomain.ApiManagement,
   name: DEFAULT_PASCAL_CASE_STRING,
 };
@@ -35,24 +34,24 @@ export const DEFAULT_TYPE: ComponentType = {
  * validate the configuration, and produce an immutable Type instance. It follows
  * the builder pattern, allowing method chaining for a more readable API.
  *
- * @typedef {Object} TypeBuilder
+ * @typedef {Object} ComponentTypeBuilder
  */
-export type TypeBuilder = {
+export type ComponentTypeBuilder = {
   /**
    * Sets the infrastructure domain for the type being built.
    *
    * @param {InfrastructureDomain} domain - The infrastructure domain to associate with the type.
-   * @returns {TypeBuilder} The builder instance for method chaining.
+   * @returns {ComponentTypeBuilder} The builder instance for method chaining.
    */
-  withInfrastructureDomain: (domain: InfrastructureDomain) => TypeBuilder;
+  withInfrastructureDomain: (domain: InfrastructureDomain) => ComponentTypeBuilder;
 
   /**
    * Sets the PascalCase name for the type being built.
    *
    * @param {PascalCaseString} name - The PascalCase formatted name for the type.
-   * @returns {TypeBuilder} The builder instance for method chaining.
+   * @returns {ComponentTypeBuilder} The builder instance for method chaining.
    */
-  withName: (name: PascalCaseString) => TypeBuilder;
+  withName: (name: PascalCaseString) => ComponentTypeBuilder;
 
   /**
    * Resets the builder's internal state to default values.
@@ -61,9 +60,9 @@ export type TypeBuilder = {
    * the builder to its initial state, allowing it to be reused for
    * constructing a new Type instance.
    *
-   * @returns {TypeBuilder} The builder instance for method chaining.
+   * @returns {ComponentTypeBuilder} The builder instance for method chaining.
    */
-  reset: () => TypeBuilder;
+  reset: () => ComponentTypeBuilder;
 
   /**
    * Validates and constructs the final Type object.
@@ -88,11 +87,11 @@ export type TypeBuilder = {
  * @param {ComponentType} type - The component type object to be validated.
  * @returns {string[]} An array of error messages if validation fails; an empty array if the name is valid.
  */
-export const isValidType = (type: ComponentType): string[] => {
-  const nameError = isValidPascalCaseString(type.name.value);
+export const isValidComponentType = (type: ComponentType): string[] => {
+  const nameError = isValidPascalCaseString(type.name.pascalValue);
   if (nameError.length > 0) {
     return nameError.map(
-      x => `[Component Type: ${type.name.value}] Name error: ${x}`,
+      x => `[Component Type: ${type.name.pascalValue}] Name error: ${x}`,
     );
   }
   return [] as const;
@@ -104,7 +103,7 @@ export const isValidType = (type: ComponentType): string[] => {
  * This builder provides methods to configure and customize the properties
  * of a `ComponentType` object before it is finalized and built.
  *
- * @returns {TypeBuilder} A builder instance for constructing a `ComponentType`.
+ * @returns {ComponentTypeBuilder} A builder instance for constructing a `ComponentType`.
  *
  * @property {Function} withInfrastructureDomain - Sets the `domain` property
  * of the internal state with the provided `InfrastructureDomain` value.
@@ -119,9 +118,9 @@ export const isValidType = (type: ComponentType): string[] => {
  * and returns a finalized `ComponentType` object. Throws a `SyntaxError` if
  * validation fails.
  */
-export const getTypeBuilder = (): TypeBuilder => {
+export const getComponentTypeBuilder = (): ComponentTypeBuilder => {
   const internalState: ComponentType = {
-    ...DEFAULT_TYPE,
+    ...DEFAULT_COMPONENT_TYPE,
   };
 
   const builder = {
@@ -134,12 +133,12 @@ export const getTypeBuilder = (): TypeBuilder => {
       return builder;
     },
     reset: () => {
-      internalState.domain = DEFAULT_TYPE.domain;
-      internalState.name = DEFAULT_TYPE.name;
+      internalState.domain = DEFAULT_COMPONENT_TYPE.domain;
+      internalState.name = DEFAULT_COMPONENT_TYPE.name;
       return builder;
     },
     build: (): ComponentType => {
-      const validationErrors = isValidType(internalState);
+      const validationErrors = isValidComponentType(internalState);
       if (validationErrors.length > 0) {
         throw new SyntaxError(validationErrors.join('\n'));
       }

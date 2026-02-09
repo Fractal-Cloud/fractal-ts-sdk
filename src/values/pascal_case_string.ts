@@ -4,7 +4,7 @@
  * Commonly used in naming conventions for programming constructs such as types, classes, or enums.
  */
 export type PascalCaseString = {
-  value: string;
+  pascalValue: string;
 };
 
 /**
@@ -47,7 +47,7 @@ export type PascalCaseStringBuilder = {
 export const isValidPascalCaseString = (value: string): string[] => {
   const isValid = /^[A-Z][a-zA-Z]*$/.test(value);
   if (!isValid) {
-    return ['Value must be in PascalCase'];
+    return [`Value '${value}' must be in PascalCase`];
   }
   return [] as const;
 };
@@ -59,7 +59,7 @@ export const isValidPascalCaseString = (value: string): string[] => {
  * and is designed to not pass validation checks.
  */
 export const DEFAULT_PASCAL_CASE_STRING: PascalCaseString = {
-  value: '',
+  pascalValue: '',
 } as const;
 
 /**
@@ -79,18 +79,15 @@ export const getPascalCaseStringBuilder = (): PascalCaseStringBuilder => {
 
   const builder = {
     withValue: (value: string) => {
-      if (!isValidPascalCaseString(value)) {
-        throw new RangeError(`Value '${value}' is not pascal case`);
-      }
-      internalState.value = value;
+      internalState.pascalValue = value;
       return builder;
     },
     reset: () => {
-      internalState.value = DEFAULT_PASCAL_CASE_STRING.value;
+      internalState.pascalValue = DEFAULT_PASCAL_CASE_STRING.pascalValue;
       return builder;
     },
     build: (): PascalCaseString => {
-      const validationErrors = isValidPascalCaseString(internalState.value);
+      const validationErrors = isValidPascalCaseString(internalState.pascalValue);
       if (validationErrors.length > 0) {
         throw new SyntaxError(validationErrors.join('\n'));
       }
@@ -103,3 +100,7 @@ export const getPascalCaseStringBuilder = (): PascalCaseStringBuilder => {
 
   return builder;
 };
+
+export namespace PascalCaseString {
+  export const getBuilder = getPascalCaseStringBuilder;
+}

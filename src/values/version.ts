@@ -10,19 +10,15 @@ export type Version = {
   major: number;
   minor: number;
   patch: number;
+  equals: (other: Version) => boolean;
+  toString: () => string;
 };
 
-/**
- * Determines whether two version objects are equivalent by comparing their
- * major, minor, and patch versions.
- *
- * @param {Version} a - The first version object to compare.
- * @param {Version} b - The second version object to compare.
- * @returns {boolean} - Returns `true` if the major, minor, and patch values
- * of both version objects are equal, otherwise `false`.
- */
-export const areVersionsEquivalent = (a: Version, b: Version): boolean =>
+const equals = (a: Version, b: Version): boolean =>
   a.major === b.major && a.minor === b.minor && a.patch === b.patch;
+
+const toString = (version: Version): string =>
+  `v${version.major}.${version.minor}.${version.patch}`;
 
 /**
  * Builder interface for constructing version objects.
@@ -74,6 +70,8 @@ export const DEFAULT_VERSION: Version = {
   major: 0,
   minor: 0,
   patch: 0,
+  equals: (other: Version) =>
+    equals(DEFAULT_VERSION, other),
 } as const;
 
 /**
@@ -84,7 +82,7 @@ export const DEFAULT_VERSION: Version = {
  *                     an array containing one error message. Otherwise, it returns an empty array.
  */
 export const isValidVersion = (version: Version): string[] => {
-  if (areVersionsEquivalent(version, DEFAULT_VERSION)) {
+  if (equals(version, DEFAULT_VERSION)) {
     return ['Version must be initialized'];
   }
   return [] as const;
@@ -153,12 +151,19 @@ export const getVersionBuilder = (): VersionBuilder => {
       if (validationErrors.length > 0) {
         throw new SyntaxError(validationErrors.join('\n'));
       }
-
-      return {
+      const builtVersion: Version = {
         ...internalState,
+        equals: (other: Version) => equals(builtVersion, other),
+        toString: () => toString(builtVersion),
       };
+
+      return builtVersion;
     },
   };
 
   return builder;
 };
+
+export namespace Version {
+  export const getBuilder = getVersionBuilder;
+}

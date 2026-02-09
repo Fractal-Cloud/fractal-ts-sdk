@@ -1,10 +1,9 @@
-import {isNonEmptyString} from '../values/string';
+import {isNonEmptyString} from '../values/helpers';
 import type {BoundedContext as BoundedContextT} from './';
 import {
   DEFAULT_BOUNDED_CONTEXT_ID,
   BoundedContextId,
-  isValidId,
-  boundedContextIdToString,
+  isValidBoundedContextId,
 } from './id';
 
 const DEFAULT: BoundedContextT = {
@@ -23,18 +22,18 @@ const DEFAULT: BoundedContextT = {
  * @returns {boolean} Returns true if the bounded context is valid; otherwise, returns false.
  */
 const isValidBoundedContext = (value: BoundedContextT): string[] => {
-  const idErrors = isValidId(value.id);
+  const idErrors = isValidBoundedContextId(value.id);
   const displayNameErrors = isNonEmptyString(value.displayName)
     ? []
     : ['Display name must be a non-empty string'];
   return [
     ...idErrors.map(
       x =>
-        `[Bounded Context: ${boundedContextIdToString(value.id)}] Id error: ${x}`,
+        `[Bounded Context: ${value.id.toString()}] Id error: ${x}`,
     ),
     ...displayNameErrors.map(
       x =>
-        `[Bounded Context: ${boundedContextIdToString(value.id)}] Display Name error: ${x}`,
+        `[Bounded Context: ${value.id.toString()}] Display Name error: ${x}`,
     ),
   ];
 };

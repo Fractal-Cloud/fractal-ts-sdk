@@ -9,7 +9,7 @@
  * where consistent, hyphen-delimited identifiers are required.
  */
 export type KebabCaseString = {
-  value: string;
+  kebabValue: string;
 };
 
 /**
@@ -51,7 +51,7 @@ export type KebabCaseStringBuilder = {
  * @type {KebabCaseString}
  */
 export const DEFAULT_KEBAB_CASE_STRING: KebabCaseString = {
-  value: '',
+  kebabValue: '',
 } as const;
 
 /**
@@ -91,18 +91,15 @@ export const getKebabCaseStringBuilder = (): KebabCaseStringBuilder => {
 
   const builder = {
     withValue: (value: string) => {
-      if (!isValidKebabCaseString(value)) {
-        throw new RangeError(`Value '${value}' is not in kebab case`);
-      }
-      internalState.value = value;
+      internalState.kebabValue = value;
       return builder;
     },
     reset: () => {
-      internalState.value = DEFAULT_KEBAB_CASE_STRING.value;
+      internalState.kebabValue = DEFAULT_KEBAB_CASE_STRING.kebabValue;
       return builder;
     },
     build: (): KebabCaseString => {
-      const validationErrors = isValidKebabCaseString(internalState.value);
+      const validationErrors = isValidKebabCaseString(internalState.kebabValue);
       if (validationErrors.length > 0) {
         throw new SyntaxError(validationErrors.join('\n'));
       }
@@ -114,3 +111,7 @@ export const getKebabCaseStringBuilder = (): KebabCaseStringBuilder => {
 
   return builder;
 };
+
+export namespace KebabCaseString {
+  export const getBuilder = getKebabCaseStringBuilder;
+}

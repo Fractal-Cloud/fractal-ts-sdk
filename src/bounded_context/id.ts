@@ -24,12 +24,13 @@ export type BoundedContextId = {
   ownerId: OwnerId;
   name: KebabCaseString;
   equals: (other: BoundedContextId) => boolean;
+  toString: () => string;
 };
 
 const equals = (a: BoundedContextId, b: BoundedContextId): boolean =>
   a.ownerType === b.ownerType &&
-  a.ownerId.value === b.ownerId.value &&
-  a.name.value === b.name.value;
+  a.ownerId.ownerIdValue === b.ownerId.ownerIdValue &&
+  a.name.kebabValue === b.name.kebabValue;
 
 /**
  * A default value for the bounded context identifier used in the system.
@@ -41,6 +42,7 @@ export const DEFAULT_BOUNDED_CONTEXT_ID: BoundedContextId = {
   name: DEFAULT_KEBAB_CASE_STRING,
   equals: (other: BoundedContextId) =>
     equals(DEFAULT_BOUNDED_CONTEXT_ID, other),
+  toString: () => boundedContextIdToString(DEFAULT_BOUNDED_CONTEXT_ID),
 } as const;
 
 /**
@@ -55,9 +57,9 @@ export const DEFAULT_BOUNDED_CONTEXT_ID: BoundedContextId = {
  * - The `name` component of the value is in kebab-case format, as verified by
  *   the `isValidKebabCaseString` function.
  */
-export const isValidId = (value: BoundedContextId): string[] => {
-  const ownerIdErrors = isValidOwnerId(value.ownerId.value);
-  const nameErrors = isValidKebabCaseString(value.name.value);
+export const isValidBoundedContextId = (value: BoundedContextId): string[] => {
+  const ownerIdErrors = isValidOwnerId(value.ownerId);
+  const nameErrors = isValidKebabCaseString(value.name.kebabValue);
   return [
     ...ownerIdErrors.map(
       x =>
@@ -70,40 +72,40 @@ export const isValidId = (value: BoundedContextId): string[] => {
   ];
 };
 
-export const boundedContextIdToString = (id: BoundedContextId) =>
-  `${id.ownerType.toString()}/${id.ownerId.value}/${id.name.value}`;
+const boundedContextIdToString = (id: BoundedContextId) =>
+  `${id.ownerType.toString()}/${id.ownerId.ownerIdValue}/${id.name.kebabValue}`;
 
 /**
  * Builder interface for constructing Id objects.
  * Provides a fluent API for setting and validating bounded context identifiers.
  */
-export type IdBuilder = {
+export type BoundedContextIdBuilder = {
   /**
    * Sets the owner type of the Id.
    * @param ownerType - The type of the owner (e.g., Personal, Organization)
    * @returns The builder instance for method chaining
    */
-  withOwnerType: (ownerType: OwnerType) => IdBuilder;
+  withOwnerType: (ownerType: OwnerType) => BoundedContextIdBuilder;
 
   /**
    * Sets the owner ID of the Id.
    * @param ownerId - The unique identifier of the owner
    * @returns The builder instance for method chaining
    */
-  withOwnerId: (ownerId: OwnerId) => IdBuilder;
+  withOwnerId: (ownerId: OwnerId) => BoundedContextIdBuilder;
 
   /**
    * Sets the name of the Id.
    * @param name - The name in kebab-case format
    * @returns The builder instance for method chaining
    */
-  withName: (name: KebabCaseString) => IdBuilder;
+  withName: (name: KebabCaseString) => BoundedContextIdBuilder;
 
   /**
    * Resets the builder to its default state, restoring all default values.
    * @returns The builder instance for method chaining
    */
-  reset: () => IdBuilder;
+  reset: () => BoundedContextIdBuilder;
 
   /**
    * Constructs and returns the final Id object.
@@ -120,11 +122,11 @@ export type IdBuilder = {
  * while also enforcing constraints during the construction process, ensuring the resulting object is valid.
  * The builder is stateful and provides a method to reset to default values if needed.
  *
- * @returns {IdBuilder} A builder object that provides methods for modifying and constructing a `Id`.
+ * @returns {BoundedContextIdBuilder} A builder object that provides methods for modifying and constructing a `Id`.
  *
  * @throws {SyntaxError} Throws an error if the resulting `Id` is invalid when the `build` method is invoked.
  */
-export const getBoundedContextIdBuilder = (): IdBuilder => {
+export const getBoundedContextIdBuilder = (): BoundedContextIdBuilder => {
   const internalState: BoundedContextId = {
     ...DEFAULT_BOUNDED_CONTEXT_ID,
   };
@@ -149,14 +151,15 @@ export const getBoundedContextIdBuilder = (): IdBuilder => {
       return builder;
     },
     build: (): BoundedContextId => {
-      const validationErrors = isValidId(internalState);
+      const validationErrors = isValidBoundedContextId(internalState);
       if (validationErrors.length > 0) {
         throw new SyntaxError(validationErrors.join('\n'));
       }
 
-      const builtId = {
+      const builtId: BoundedContextId = {
         ...internalState,
         equals: (other: BoundedContextId) => equals(builtId, other),
+        toString: () => boundedContextIdToString(builtId),
       };
 
       return builtId;

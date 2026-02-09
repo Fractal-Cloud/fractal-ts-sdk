@@ -1,11 +1,11 @@
 import {Component} from './';
-import {ComponentType, DEFAULT_TYPE, isValidType} from './type';
+import {ComponentType, DEFAULT_COMPONENT_TYPE, isValidComponentType} from './type';
 import {DEFAULT_VERSION, isValidVersion, Version} from '../values/version';
-import {ComponentParameters, getParametersInstance} from './parameters';
+import {GenericParameters, getParametersInstance} from '../values/generic_parameters';
 import {ComponentId, DEFAULT_COMPONENT_ID, isValidId} from './id';
-import {isNonEmptyString} from '../values/string';
+import {isNonEmptyString} from '../values/helpers';
 import {ComponentLink} from './link';
-import {Dependency} from './dependency';
+import {ComponentDependency} from './dependency';
 
 /**
  * Represents an object structure where the `value` field contains
@@ -22,8 +22,23 @@ export type ComponentOutputFields = {
   value: Record<string, object>;
 };
 
-const DEFAULT: Component = {
-  type: DEFAULT_TYPE,
+/**
+ * Represents the default configuration for a component within the system.
+ * This constant can be used as a template or fallback value when no specific component configuration is available.
+ *
+ * Properties of this constant include:
+ * - `type`: The default component type identifier.
+ * - `id`: The unique identifier for the default component.
+ * - `version`: The version of the default component.
+ * - `displayName`: An empty string representing a placeholder for the display name.
+ * - `description`: An empty string serving as a placeholder for the component description.
+ * - `parameters`: Default parameters for the component, retrieved from a predefined instance.
+ * - `outputFields`: The default output fields structure with a nested empty object under `value`.
+ * - `links`: An empty array indicating no predefined links for the default configuration.
+ * - `dependencies`: An empty array representing no external dependencies.
+ */
+export const DEFAULT_COMPONENT: Component = {
+  type: DEFAULT_COMPONENT_TYPE,
   id: DEFAULT_COMPONENT_ID,
   version: DEFAULT_VERSION,
   displayName: '',
@@ -34,9 +49,23 @@ const DEFAULT: Component = {
   dependencies: [],
 } as const;
 
-const isValidComponent = (component: Component): string[] => {
+/**
+ * Validates a given component object and returns a list of error messages if any validations fail.
+ *
+ * The function checks the following properties of the `component`:
+ * - `id`: Assessed using the `isValidId` function.
+ * - `type`: Assessed using the `isValidComponentType` function.
+ * - `version`: Assessed using the `isValidVersion` function.
+ * - `displayName`: Validated to ensure it is a non-empty string.
+ *
+ * Validation errors are returned as strings formatted with the component's ID for easy identification.
+ *
+ * @param {Component} component - The component object to validate. Must include the fields `id`, `type`, `version`, and `displayName`.
+ * @returns {string[]} An array of error messages, each describing a specific validation failure. If no errors are found, the array will be empty.
+ */
+export const isValidComponent = (component: Component): string[] => {
   const idErrors = isValidId(component.id);
-  const typeErrors = isValidType(component.type);
+  const typeErrors = isValidComponentType(component.type);
   const versionErrors = isValidVersion(component.version);
   const displayNameErrors = isNonEmptyString(component.displayName)
     ? []
@@ -111,10 +140,10 @@ export type ComponentBuilder = {
   /**
    * Sets the parameters for the component being built.
    *
-   * @param {ComponentParameters} parameters - The parameters to associate with the component.
+   * @param {GenericParameters} parameters - The parameters to associate with the component.
    * @returns {ComponentBuilder} The builder instance for method chaining.
    */
-  withParameters: (parameters: ComponentParameters) => ComponentBuilder;
+  withParameters: (parameters: GenericParameters) => ComponentBuilder;
 
   /**
    * Sets the links for the component being built.
@@ -130,7 +159,7 @@ export type ComponentBuilder = {
    * @param {Dependency[]} dependencies - The dependencies to associate with the component.
    * @returns {ComponentBuilder} The builder instance for method chaining.
    */
-  withDependencies: (dependencies: Dependency[]) => ComponentBuilder;
+  withDependencies: (dependencies: ComponentDependency[]) => ComponentBuilder;
 
   /**
    * Resets the builder's internal state to default values.
@@ -183,7 +212,7 @@ export type ComponentBuilder = {
  */
 export const getComponentBuilder = (): ComponentBuilder => {
   const internalState: Component = {
-    ...DEFAULT,
+    ...DEFAULT_COMPONENT,
   };
 
   const builder = {
@@ -207,7 +236,7 @@ export const getComponentBuilder = (): ComponentBuilder => {
       internalState.description = description;
       return builder;
     },
-    withParameters: (parameters: ComponentParameters) => {
+    withParameters: (parameters: GenericParameters) => {
       internalState.parameters = parameters;
       return builder;
     },
@@ -215,15 +244,19 @@ export const getComponentBuilder = (): ComponentBuilder => {
       internalState.links = links;
       return builder;
     },
-    withDependencies: (dependencies: Dependency[]) => {
+    withDependencies: (dependencies: ComponentDependency[]) => {
       internalState.dependencies = dependencies;
       return builder;
     },
     reset: () => {
-      internalState.type = DEFAULT.type;
-      internalState.id = DEFAULT.id;
-      internalState.displayName = DEFAULT.displayName;
-      internalState.description = DEFAULT.description;
+      internalState.type = DEFAULT_COMPONENT.type;
+      internalState.id = DEFAULT_COMPONENT.id;
+      internalState.version = DEFAULT_COMPONENT.version;
+      internalState.displayName = DEFAULT_COMPONENT.displayName;
+      internalState.description = DEFAULT_COMPONENT.description;
+      internalState.parameters = DEFAULT_COMPONENT.parameters;
+      internalState.links = DEFAULT_COMPONENT.links;
+      internalState.dependencies = DEFAULT_COMPONENT.dependencies;
       return builder;
     },
     build: (): Component => {

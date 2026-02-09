@@ -21,11 +21,15 @@
     "posttest": "npm run lint"
   },
   "devDependencies": {
+    "@types/node": "^22.7.5",
+    "@types/superagent": "^8.1.9",
+    "gts": "^7.0.0",
     "tsup": "^8.5.1",
     "typedoc": "^0.28.15",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.16",
-    "gts": "^7.0.0",
-    "@types/node": "^22.7.5"
+    "vitest": "^4.0.16"
+  },
+  "dependencies": {
+    "superagent": "^10.3.0"
   }
 }
