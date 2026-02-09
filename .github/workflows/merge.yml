@@ -27,3 +27,4 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: Fractal-Cloud/fractal-ts-sdk
+          override_branch: main
