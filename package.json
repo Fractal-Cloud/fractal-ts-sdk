@@ -1,5 +1,5 @@
 {
-  "name": "fractal-sdk",
+  "name": "@fractal_cloud/sdk",
   "version": "1.0.0",
   "description": "Typescript Fractal Cloud SDK",
   "license": "GPL-3.0-or-later",
@@ -10,6 +10,10 @@
   "files": [
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Fractal-Cloud/fractal-ts-sdk"
+  },
   "scripts": {
     "build": "tsup",
     "build:docs": "typedoc --entryPointStrategy Expand --exclude \"**/*+(.test|.e2e).ts\" src",
