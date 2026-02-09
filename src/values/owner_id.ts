@@ -1,9 +1,11 @@
+import {isValidUuid} from "./guid";
+
 /**
  * Represents a string that adheres to the OwnerId naming convention.
  * This convention capitalizes the first letter of each concatenated word without any spaces, dashes, or underscores.
  */
 export type OwnerId = {
-  value: string;
+  ownerIdValue: string;
 };
 
 /**
@@ -40,7 +42,7 @@ export type OwnerIdBuilder = {
  * and is designed to not pass validation checks.
  */
 export const DEFAULT_OWNER_ID: OwnerId = {
-  value: '',
+  ownerIdValue: '',
 } as const;
 
 /**
@@ -53,16 +55,13 @@ export const DEFAULT_OWNER_ID: OwnerId = {
  * @param {string} value - The string value to be validated.
  * @returns {string[]} An array containing error messages if invalid, or an empty array if valid.
  */
-export const isValidOwnerId = (value: string): string[] => {
-  const isValidUuid =
-    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
-      value,
-    );
-  if (!isValidUuid) {
-    return [`Owner Id '${value}' must be a valid uuid`];
+export const isValidOwnerId = (value: OwnerId): string[] => {
+  if (!value || !value.ownerIdValue) {
+    return ['Value must be a non-empty string'];
   }
-  return [] as const;
-};
+
+  return isValidUuid(value.ownerIdValue);
+}
 
 /**
  * Creates a builder for constructing a OwnerId object. The builder enforces uuid case formatting and ensures
@@ -74,25 +73,22 @@ export const isValidOwnerId = (value: string): string[] => {
  * - `reset(): void` – Resets the builder to its default state, clearing the current value.
  * - `build(): OwnerId` – Constructs and returns a OwnerId object based on the current state. Throws a `SyntaxError` if no value has been set before building.
  */
-export const getOwnerIdBuilder = (): OwnerIdBuilder => {
+const getOwnerIdBuilder = (): OwnerIdBuilder => {
   const internalState: OwnerId = {
     ...DEFAULT_OWNER_ID,
   };
 
   const builder = {
     withValue: (value: string) => {
-      if (!isValidOwnerId(value)) {
-        throw new RangeError('Value must be a uuid');
-      }
-      internalState.value = value;
+      internalState.ownerIdValue = value;
       return builder;
     },
     reset: () => {
-      internalState.value = DEFAULT_OWNER_ID.value;
+      internalState.ownerIdValue = DEFAULT_OWNER_ID.ownerIdValue;
       return builder;
     },
     build: (): OwnerId => {
-      const validationErrors = isValidOwnerId(internalState.value);
+      const validationErrors = isValidOwnerId(internalState);
       if (validationErrors.length > 0) {
         throw new SyntaxError(validationErrors.join('\n'));
       }
@@ -105,3 +101,7 @@ export const getOwnerIdBuilder = (): OwnerIdBuilder => {
 
   return builder;
 };
+
+export namespace OwnerId {
+  export const getBuilder = getOwnerIdBuilder;
+}

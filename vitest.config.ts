@@ -4,6 +4,6 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    exclude:['src/test_utils.test.ts']
+    exclude:['src/test_utils.test.ts', 'node_modules']
   },
 });

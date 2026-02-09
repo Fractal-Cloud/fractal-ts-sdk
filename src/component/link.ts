@@ -1,7 +1,6 @@
-import {ComponentType, DEFAULT_TYPE, isValidType} from './type';
-import {DEFAULT_COMPONENT_ID, ComponentId, isValidId} from './id';
-import {deepEqual} from "../values/helpers";
-import {GenericParameters, getParametersInstance} from "../values/genericParameters";
+import {ComponentType, DEFAULT_COMPONENT_TYPE, isValidComponentType} from './type';
+import {ComponentId, DEFAULT_COMPONENT_ID, isValidId} from './id';
+import {GenericParameters, getParametersInstance} from "../values/generic_parameters";
 
 /**
  * Represents a link object with an identifier, type, and associated parameters.
@@ -16,7 +15,6 @@ export type ComponentLink = {
   id: ComponentId;
   type: ComponentType;
   parameters: GenericParameters;
-  equals: (other: ComponentLink) => boolean;
 };
 
 /**
@@ -30,25 +28,17 @@ export type ComponentLink = {
  */
 export const isValidLink = (link: ComponentLink): string[] => {
   const idErrors = isValidId(link.id);
-  const typeErrors = isValidType(link.type);
+  const typeErrors = isValidComponentType(link.type);
   return [
     ...idErrors.map(x => `[Link: ${link.id.value}] Id error: ${x}`),
     ...typeErrors.map(x => `[Link: ${link.id.value}] Type error: ${x}`),
   ];
 };
 
-const equals = (a: ComponentLink, b: ComponentLink): boolean => {
-  return a.id.equals(b.id)
-    && a.type.equals(b.type)
-    && deepEqual(a.parameters.toMap(), b.parameters.toMap());
-}
-
 const DEFAULT_LINK: ComponentLink = {
   id: DEFAULT_COMPONENT_ID,
-  type: DEFAULT_TYPE,
-  parameters: getParametersInstance(),
-  equals: (other: ComponentLink) =>
-    equals(DEFAULT_LINK, other),
+  type: DEFAULT_COMPONENT_TYPE,
+  parameters: getParametersInstance()
 };
 
 /**
@@ -159,12 +149,9 @@ export const getLinkBuilder = (): LinkBuilder => {
         throw new SyntaxError(validationErrors.join('\n'));
       }
 
-      const builtLink: ComponentLink = {
-        ...internalState,
-        equals: (other: ComponentLink) => equals(builtLink, other),
+      return {
+        ...internalState
       };
-
-      return builtLink;
     },
   };
 

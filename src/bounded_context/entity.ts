@@ -3,7 +3,7 @@ import type {BoundedContext as BoundedContextT} from './';
 import {
   DEFAULT_BOUNDED_CONTEXT_ID,
   BoundedContextId,
-  isValidId,
+  isValidBoundedContextId,
 } from './id';
 
 const DEFAULT: BoundedContextT = {
@@ -22,7 +22,7 @@ const DEFAULT: BoundedContextT = {
  * @returns {boolean} Returns true if the bounded context is valid; otherwise, returns false.
  */
 const isValidBoundedContext = (value: BoundedContextT): string[] => {
-  const idErrors = isValidId(value.id);
+  const idErrors = isValidBoundedContextId(value.id);
   const displayNameErrors = isNonEmptyString(value.displayName)
     ? []
     : ['Display name must be a non-empty string'];

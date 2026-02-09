@@ -11,19 +11,14 @@ export type Version = {
   minor: number;
   patch: number;
   equals: (other: Version) => boolean;
+  toString: () => string;
 };
 
-/**
- * Determines whether two version objects are equivalent by comparing their
- * major, minor, and patch versions.
- *
- * @param {Version} a - The first version object to compare.
- * @param {Version} b - The second version object to compare.
- * @returns {boolean} - Returns `true` if the major, minor, and patch values
- * of both version objects are equal, otherwise `false`.
- */
 const equals = (a: Version, b: Version): boolean =>
   a.major === b.major && a.minor === b.minor && a.patch === b.patch;
+
+const toString = (version: Version): string =>
+  `v${version.major}.${version.minor}.${version.patch}`;
 
 /**
  * Builder interface for constructing version objects.
@@ -159,6 +154,7 @@ export const getVersionBuilder = (): VersionBuilder => {
       const builtVersion: Version = {
         ...internalState,
         equals: (other: Version) => equals(builtVersion, other),
+        toString: () => toString(builtVersion),
       };
 
       return builtVersion;
@@ -167,3 +163,7 @@ export const getVersionBuilder = (): VersionBuilder => {
 
   return builder;
 };
+
+export namespace Version {
+  export const getBuilder = getVersionBuilder;
+}

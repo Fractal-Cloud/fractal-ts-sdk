@@ -6,8 +6,12 @@ import {
   aVersion,
   aParameters,
   manyComponentLinks,
-  manyComponentDependencies,
+  manyComponentDependencies, deepEqual,
 } from "../test_utils.test";
+
+const areTypesEquivalent = (actual: Component.Type, expected: Component.Type): boolean => {
+  return actual.domain === expected.domain && actual.name === expected.name;
+}
 
 const areParametersEquivalent = (actual: Component.Parameters, expected: Component.Parameters): boolean => {
   const actualFieldNames = actual.getAllFieldNames();
@@ -18,11 +22,11 @@ const areParametersEquivalent = (actual: Component.Parameters, expected: Compone
 
 const areLinksEquivalent = (actual: Component.Link[], expected: Component.Link[]): boolean => {
   var actualLinksByComponentId = actual.reduce((acc, curr) => {
-    acc[curr.id.value.value] = curr;
+    acc[curr.id.value.kebabValue] = curr;
     return acc;
   }, {} as Record<string, Component.Link>);
   return actual.length === expected.length
-    && expected.every(link => actualLinksByComponentId[link.id.value.value].equals(link));
+    && expected.every(link => deepEqual(actualLinksByComponentId[link.id.value.kebabValue], link));
 }
 
 const areDependenciesEquivalent = (actual: Component.Dependency[], expected: Component.Dependency[]): boolean => {
@@ -60,7 +64,7 @@ describe('Component Builder', () => {
       .withDependencies(expectedDependencies)
       .build())
     .toSatisfy( ({type, id, version, displayName, description, parameters, links, dependencies}: Component) =>
-      type.equals(expectedType) &&
+      areTypesEquivalent(type, expectedType) &&
       id.equals(expectedId) &&
       version.equals(expectedVersion) &&
       displayName === expectedDisplayName &&
@@ -83,7 +87,7 @@ describe('Component Builder', () => {
       .withDisplayName(expectedDisplayName)
       .build())
       .toSatisfy( ({type, id, version, displayName}: Component) =>
-        type.equals(expectedType) &&
+        areTypesEquivalent(type, expectedType) &&
         id.equals(expectedId) &&
         version.equals(expectedVersion) &&
         displayName === expectedDisplayName);
@@ -117,7 +121,7 @@ describe('Component Builder', () => {
     const expectedDisplayName = 'A Component';
     const expectedId = aComponentId();
     const expectedType = aComponentType();
-    
+
     expect(() => sut
       .withId(expectedId)
       .withType(expectedType)

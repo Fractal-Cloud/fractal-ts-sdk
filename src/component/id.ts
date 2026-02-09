@@ -28,8 +28,8 @@ export type ComponentId = {
  * @returns {boolean} - Returns true if the identifier is in a valid kebab-case format, false otherwise.
  */
 export const isValidId = (id: ComponentId): string[] => {
-  return isValidKebabCaseString(id.value.value).map(
-    x => `[Component Id: ${id.value.value}] Id error: ${x}`,
+  return isValidKebabCaseString(id.value.kebabValue).map(
+    x => `[Component Id: ${id.value.kebabValue}] Id error: ${x}`,
   );
 };
 

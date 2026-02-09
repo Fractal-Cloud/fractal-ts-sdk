@@ -18,8 +18,8 @@ describe('Bounded Context Id Builder', () => {
       .build())
     .toSatisfy( ({ownerType, ownerId, name}: BoundedContext.Id) =>
       ownerType === OwnerType.Personal &&
-      ownerId.value === expectedOwnerId.value &&
-      name.value === expectedName.value);
+      ownerId.ownerIdValue === expectedOwnerId.ownerIdValue &&
+      name.kebabValue === expectedName.kebabValue);
   });
 
   it('should throw a SyntaxError if Bounded Context Id ownerId is not initialized', () => {

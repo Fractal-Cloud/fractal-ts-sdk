@@ -1,6 +1,6 @@
 import {Version} from '../values/version';
-import {TypeBuilder, getTypeBuilder, ComponentType} from './type';
-import {GenericParameters, getParametersInstance} from '../values/genericParameters';
+import {ComponentTypeBuilder, getComponentTypeBuilder, ComponentType} from './type';
+import {GenericParameters, getParametersInstance} from '../values/generic_parameters';
 import {ComponentLink, getLinkBuilder, LinkBuilder} from './link';
 import {ComponentId, ComponentIdBuilder, getComponentIdBuilder} from './id';
 import {
@@ -13,8 +13,8 @@ import {ComponentDependency} from './dependency';
 export namespace Component {
   export type Type = ComponentType;
   export namespace Type {
-    export type Builder = TypeBuilder;
-    export const getBuilder = getTypeBuilder;
+    export type Builder = ComponentTypeBuilder;
+    export const getBuilder = getComponentTypeBuilder;
   }
 
   export type Parameters = GenericParameters;
