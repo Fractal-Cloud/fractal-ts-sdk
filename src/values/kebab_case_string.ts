@@ -1,9 +1,15 @@
 /**
- * Represents a string that adheres to the KebabCase naming convention.
- * This convention capitalizes the first letter of each concatenated word without any spaces, dashes, or underscores.
+ * Represents a string formatted in kebab-case.
+ * Kebab-case is a naming convention where words are
+ * concatenated together, separated by hyphens, and all
+ * characters are in lowercase.
+ *
+ * This type enforces the structure of a string that adheres
+ * to the kebab-case standard. It is typically used in contexts
+ * where consistent, hyphen-delimited identifiers are required.
  */
 export type KebabCaseString = {
-  value: string;
+  kebabValue: string;
 };
 
 /**
@@ -40,27 +46,32 @@ export type KebabCaseStringBuilder = {
  * containing an empty string as its default value.
  *
  * This variable is declared as a constant to prevent modification
- * and is designed to represent a string in kebab-case format.
+ * and is designed to not pass validation checks.
  *
  * @type {KebabCaseString}
  */
 export const DEFAULT_KEBAB_CASE_STRING: KebabCaseString = {
-  value: '',
+  kebabValue: '',
 } as const;
 
 /**
- * Checks if a given string follows the kebab-case format.
+ * Validates whether a given string follows the kebab-case format.
  *
- * A valid kebab-case string consists of lowercase letters,
- * optionally followed by hyphen-separated segments containing
- * alphanumeric characters. It must not start or end with
- * a hyphen and cannot contain consecutive hyphens.
+ * A string is considered as valid kebab-case if it:
+ * - Starts with a lowercase letter.
+ * - Contains only lowercase letters, numbers, and hyphens.
+ * - Does not have consecutive hyphens.
+ * - Does not end or begin with a hyphen.
  *
  * @param {string} value - The string to validate.
- * @returns {boolean} - Returns true if the string is in kebab-case, otherwise false.
+ * @returns {string[]} - An empty array if the string is valid, otherwise an array containing an error message.
  */
-export const isValidKebabCaseString = (value: string) => {
-  return /^[a-z]+(?:-[a-z0-9]+)*$/.test(value);
+export const isValidKebabCaseString = (value: string): string[] => {
+  const isValid = /^[a-z][a-z0-9]*(-[a-z][a-z0-9]*)*$/.test(value);
+  if (!isValid) {
+    return ['Value must be in kebab-case'];
+  }
+  return [] as const;
 };
 
 /**
@@ -80,25 +91,27 @@ export const getKebabCaseStringBuilder = (): KebabCaseStringBuilder => {
 
   const builder = {
     withValue: (value: string) => {
-      if (!isValidKebabCaseString(value)) {
-        throw new RangeError('Value must be in Kebab case');
-      }
-      internalState.value = value;
+      internalState.kebabValue = value;
       return builder;
     },
     reset: () => {
-      internalState.value = DEFAULT_KEBAB_CASE_STRING.value;
+      internalState.kebabValue = DEFAULT_KEBAB_CASE_STRING.kebabValue;
       return builder;
     },
     build: (): KebabCaseString => {
-      if (internalState.value === DEFAULT_KEBAB_CASE_STRING.value) {
-        throw new SyntaxError('Kebab Case String must be initialized');
+      const validationErrors = isValidKebabCaseString(internalState.kebabValue);
+      if (validationErrors.length > 0) {
+        throw new SyntaxError(validationErrors.join('\n'));
       }
       return {
         ...internalState,
-      } as const;
+      };
     },
   };
 
   return builder;
 };
+
+export namespace KebabCaseString {
+  export const getBuilder = getKebabCaseStringBuilder;
+}

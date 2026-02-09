@@ -9,15 +9,15 @@ describe('Pascal Case String Builder', () => {
   it('should return a valid Pascal String when set correctly', () => {
     const expected = 'CorrectPascalCasedString';
     expect(sut.withValue(expected).build())
-    .toSatisfy( ({value}: PascalCaseString) => value === expected);
+    .toSatisfy( ({pascalValue}: PascalCaseString) => pascalValue === expected);
   });
 
-  it('should throw a RangeError if Pascal String is empty', () => {
-    expect(() => sut.withValue('').build()).toThrow(RangeError);
+  it('should throw a SyntaxError if Pascal String is empty', () => {
+    expect(() => sut.withValue('').build()).toThrow(SyntaxError);
   })
 
-  it('should throw a RangeError if Pascal String is set incorrectly', () => {
-    expect(() => sut.withValue('whatever').build()).toThrow(RangeError);
+  it('should throw a SyntaxError if Pascal String is set incorrectly', () => {
+    expect(() => sut.withValue('whatever').build()).toThrow(SyntaxError);
   })
 
   it('should throw a SyntaxError if Pascal String is built without initialization', () => {

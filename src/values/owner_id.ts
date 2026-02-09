@@ -1,9 +1,11 @@
+import {isValidUuid} from "./guid";
+
 /**
  * Represents a string that adheres to the OwnerId naming convention.
  * This convention capitalizes the first letter of each concatenated word without any spaces, dashes, or underscores.
  */
 export type OwnerId = {
-  value: string;
+  ownerIdValue: string;
 };
 
 /**
@@ -36,35 +38,30 @@ export type OwnerIdBuilder = {
 /**
  * A constant variable representing the default owner ID.
  *
- * This variable is used as a placeholder or default value
- * for the owner identifier in contexts where an explicit
- * owner ID is not provided. It is an immutable constant
- * meant to ensure consistency in scenarios requiring a
- * reference to a default owner.
- *
- * The `value` property within this object is initialized
- * to an empty string, implying no specific owner is set.
+ * This variable is declared as a constant to prevent modification
+ * and is designed to not pass validation checks.
  */
 export const DEFAULT_OWNER_ID: OwnerId = {
-  value: '',
+  ownerIdValue: '',
 } as const;
 
 /**
- * Determines whether the provided value is a valid owner ID.
+ * Validates whether the given string value is a valid UUID.
  *
- * This function checks if the given string matches the standard format
- * of a UUID (Universally Unique Identifier) version 4. A valid owner ID
- * is expected to follow the pattern "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
- * where "x" represents a hexadecimal digit.
+ * This function checks if the provided `value` conforms to the UUID format.
+ * If the validation fails, an array containing an error message will be returned.
+ * If the validation passes, an empty array is returned.
  *
- * @param {string} value - The string to be validated as a UUID.
- * @returns {boolean} Returns true if the string matches the UUID format; otherwise, false.
+ * @param {string} value - The string value to be validated.
+ * @returns {string[]} An array containing error messages if invalid, or an empty array if valid.
  */
-export const isValidOwnerId = (value: string) => {
-  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
-    value,
-  );
-};
+export const isValidOwnerId = (value: OwnerId): string[] => {
+  if (!value || !value.ownerIdValue) {
+    return ['Value must be a non-empty string'];
+  }
+
+  return isValidUuid(value.ownerIdValue);
+}
 
 /**
  * Creates a builder for constructing a OwnerId object. The builder enforces uuid case formatting and ensures
@@ -76,32 +73,35 @@ export const isValidOwnerId = (value: string) => {
  * - `reset(): void` – Resets the builder to its default state, clearing the current value.
  * - `build(): OwnerId` – Constructs and returns a OwnerId object based on the current state. Throws a `SyntaxError` if no value has been set before building.
  */
-export const getOwnerIdBuilder = (): OwnerIdBuilder => {
+const getOwnerIdBuilder = (): OwnerIdBuilder => {
   const internalState: OwnerId = {
     ...DEFAULT_OWNER_ID,
   };
 
   const builder = {
     withValue: (value: string) => {
-      if (!isValidOwnerId(value)) {
-        throw new RangeError('Value must be a uuid');
-      }
-      internalState.value = value;
+      internalState.ownerIdValue = value;
       return builder;
     },
     reset: () => {
-      internalState.value = DEFAULT_OWNER_ID.value;
+      internalState.ownerIdValue = DEFAULT_OWNER_ID.ownerIdValue;
       return builder;
     },
     build: (): OwnerId => {
-      if (internalState.value === DEFAULT_OWNER_ID.value) {
-        throw new SyntaxError('OwnerId must be initialized');
+      const validationErrors = isValidOwnerId(internalState);
+      if (validationErrors.length > 0) {
+        throw new SyntaxError(validationErrors.join('\n'));
       }
+
       return {
         ...internalState,
-      } as const;
+      };
     },
   };
 
   return builder;
 };
+
+export namespace OwnerId {
+  export const getBuilder = getOwnerIdBuilder;
+}

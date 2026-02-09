@@ -1,19 +1,20 @@
 /**
- * Represents the various service delivery models available for a system or application.
- * This enum can be used to categorize or define the method of service delivery based
- * on the specific functionalities or domains.
+ * Enumeration representing various infrastructure domains.
+ * These domains categorize components or services
+ * within an infrastructure system.
  *
  * @enum {string}
- * @readonly
- * @property {string} ApiManagement - Represents a delivery model related to API management services.
- * @property {string} CustomWorkloads - Represents a custom workload-based delivery model.
- * @property {string} Messaging - Represents a delivery model focused on messaging capabilities.
- * @property {string} Storage - Represents a delivery model related to storage solutions.
- * @property {string} Observability - Represents a delivery model focused on monitoring and observability.
- * @property {string} Security - Represents a delivery model related to security and protection measures.
+ * @property {string} ApiManagement - Represents API management-related components.
+ * @property {string} NetworkAndCompute - Represents network and compute components.
+ * @property {string} CustomWorkloads - Represents custom workload components.
+ * @property {string} Messaging - Represents messaging and communication components.
+ * @property {string} Storage - Represents data storage components.
+ * @property {string} Observability - Represents observability tools and monitoring components.
+ * @property {string} Security - Represents security-focused components.
  */
-export enum ServiceDeliveryModel {
+export enum InfrastructureDomain {
   ApiManagement = 'APIManagement',
+  NetworkAndCompute = 'NetworkAndCompute',
   CustomWorkloads = 'CustomWorkloads',
   Messaging = 'Messaging',
   Storage = 'Storage',

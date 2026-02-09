@@ -4,7 +4,7 @@
  * Commonly used in naming conventions for programming constructs such as types, classes, or enums.
  */
 export type PascalCaseString = {
-  value: string;
+  pascalValue: string;
 };
 
 /**
@@ -35,26 +35,31 @@ export type PascalCaseStringBuilder = {
 };
 
 /**
- * Checks whether a given string is in valid PascalCase format.
+ * Validates whether a given string is in PascalCase format.
+ * A PascalCase string must start with an uppercase letter and contain
+ * only alphabetic characters.
  *
- * A valid PascalCase string starts with an uppercase letter, followed by
- * zero or more alphabetic characters (uppercase or lowercase). It must
- * not contain any numbers, spaces, or special characters.
- *
- * @param {string} value - The string to validate as PascalCase.
- * @returns {boolean} - Returns true if the string is in valid PascalCase format; otherwise, false.
+ * @param {string} value - The string to validate.
+ * @returns {string[]} An array containing an error message if the string
+ *                     does not conform to PascalCase, or an empty array
+ *                     if the string is valid.
  */
-export const isValidPascalCaseString = (value: string) => {
-  return /^[A-Z][a-zA-Z]*$/.test(value);
+export const isValidPascalCaseString = (value: string): string[] => {
+  const isValid = /^[A-Z][a-zA-Z]*$/.test(value);
+  if (!isValid) {
+    return [`Value '${value}' must be in PascalCase`];
+  }
+  return [] as const;
 };
 
 /**
  * A constant object representing a default PascalCase formatted string.
- * It provides an initial empty value that adheres to the PascalCase naming convention.
- * This object is immutable and is intended for use in scenarios requiring strict PascalCase string formatting.
+ *
+ * This variable is declared as a constant to prevent modification
+ * and is designed to not pass validation checks.
  */
 export const DEFAULT_PASCAL_CASE_STRING: PascalCaseString = {
-  value: '',
+  pascalValue: '',
 } as const;
 
 /**
@@ -74,25 +79,28 @@ export const getPascalCaseStringBuilder = (): PascalCaseStringBuilder => {
 
   const builder = {
     withValue: (value: string) => {
-      if (!isValidPascalCaseString(value)) {
-        throw new RangeError('Value must be in Pascal case');
-      }
-      internalState.value = value;
+      internalState.pascalValue = value;
       return builder;
     },
     reset: () => {
-      internalState.value = DEFAULT_PASCAL_CASE_STRING.value;
+      internalState.pascalValue = DEFAULT_PASCAL_CASE_STRING.pascalValue;
       return builder;
     },
     build: (): PascalCaseString => {
-      if (internalState.value === DEFAULT_PASCAL_CASE_STRING.value) {
-        throw new SyntaxError('Pascal Case String must be initialized');
+      const validationErrors = isValidPascalCaseString(internalState.pascalValue);
+      if (validationErrors.length > 0) {
+        throw new SyntaxError(validationErrors.join('\n'));
       }
+
       return {
         ...internalState,
-      } as const;
+      };
     },
   };
 
   return builder;
 };
+
+export namespace PascalCaseString {
+  export const getBuilder = getPascalCaseStringBuilder;
+}

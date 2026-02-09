@@ -10,19 +10,15 @@ export type Version = {
   major: number;
   minor: number;
   patch: number;
+  equals: (other: Version) => boolean;
+  toString: () => string;
 };
 
-/**
- * Determines whether two version objects are equivalent by comparing their
- * major, minor, and patch versions.
- *
- * @param {Version} a - The first version object to compare.
- * @param {Version} b - The second version object to compare.
- * @returns {boolean} - Returns `true` if the major, minor, and patch values
- * of both version objects are equal, otherwise `false`.
- */
-export const areVersionsEquivalent = (a: Version, b: Version): boolean =>
+const equals = (a: Version, b: Version): boolean =>
   a.major === b.major && a.minor === b.minor && a.patch === b.patch;
+
+const toString = (version: Version): string =>
+  `v${version.major}.${version.minor}.${version.patch}`;
 
 /**
  * Builder interface for constructing version objects.
@@ -66,24 +62,31 @@ export type VersionBuilder = {
 
 /**
  * Represents the default version for an application or library.
- * The version follows the Semantic Versioning (SemVer) format,
- * consisting of three components: major, minor, and patch versions.
  *
- * Default values:
- * - `major`: 0
- * - `minor`: 0
- * - `patch`: 0
- *
- * This constant is immutable and serves as a baseline or fallback version.
+ * This variable is declared as a constant to prevent modification
+ * and is designed to not pass validation checks.
  */
 export const DEFAULT_VERSION: Version = {
   major: 0,
   minor: 0,
   patch: 0,
+  equals: (other: Version) =>
+    equals(DEFAULT_VERSION, other),
 } as const;
 
-export const isValidVersion = (version: Version): boolean =>
-  !areVersionsEquivalent(version, DEFAULT_VERSION);
+/**
+ * Validates if the provided version object is properly initialized or equivalent to the default version.
+ *
+ * @param {Version} version - The version object to be validated.
+ * @returns {string[]} An array of error messages. If the version is equivalent to the default version, it returns
+ *                     an array containing one error message. Otherwise, it returns an empty array.
+ */
+export const isValidVersion = (version: Version): string[] => {
+  if (equals(version, DEFAULT_VERSION)) {
+    return ['Version must be initialized'];
+  }
+  return [] as const;
+};
 
 /**
  * Creates a builder object for constructing and managing version objects.
@@ -144,15 +147,23 @@ export const getVersionBuilder = (): VersionBuilder => {
       return builder;
     },
     build: (): Version => {
-      if (!isValidVersion(internalState)) {
-        throw new SyntaxError('Version must be initialized');
+      const validationErrors = isValidVersion(internalState);
+      if (validationErrors.length > 0) {
+        throw new SyntaxError(validationErrors.join('\n'));
       }
-
-      return {
+      const builtVersion: Version = {
         ...internalState,
-      } as const;
+        equals: (other: Version) => equals(builtVersion, other),
+        toString: () => toString(builtVersion),
+      };
+
+      return builtVersion;
     },
   };
 
   return builder;
 };
+
+export namespace Version {
+  export const getBuilder = getVersionBuilder;
+}
