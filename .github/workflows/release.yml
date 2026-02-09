@@ -19,7 +19,7 @@ jobs:
           git config --global user.email "hello@fractal.cloud"
           git config --global user.name "HAL9000"
       - run: npm ci
-      - run: npm build
+      - run: npm run build
       - run: npm version ${{ github.event.release.tag_name }}
       - run: npm publish --provenance --access public
         env:
