@@ -96,9 +96,7 @@ export type ComponentTypeBuilder = {
 export const isValidComponentType = (type: ComponentType): string[] => {
   const nameError = isValidPascalCaseString(type.name.value);
   if (nameError.length > 0) {
-    return nameError.map(
-      x => `[Component Type: ${type.name.value}] Name error: ${x}`,
-    );
+    return nameError.map(x => `[Component Type: ${type.name.value}][Name]${x}`);
   }
   return [] as const;
 };

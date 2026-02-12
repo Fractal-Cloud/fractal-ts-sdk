@@ -7,7 +7,8 @@ import {Fractal} from '../fractal';
 import {Component} from '../component';
 import {getParametersInstance} from '../values/generic_parameters';
 import {LiveSystemService} from './service';
-import {DEFAULT_ENVIRONMENT} from '../environment/entity';
+import {DEFAULT_ENVIRONMENT, isValidEnvironment} from '../environment/entity';
+import {Environment} from '../index';
 
 const DEFAULT_LIVE_SYSTEM: LiveSystem = {
   id: DEFAULT_LIVE_SYSTEM_ID,
@@ -38,18 +39,42 @@ const DEFAULT_LIVE_SYSTEM: LiveSystem = {
  * @returns {string[]} An array of error messages. If validation passes, this array will be empty.
  */
 export const isValidLiveSystem = (liveSystem: LiveSystem): string[] => {
-  const idErrors = isValidLiveSystemId(liveSystem.id);
-  const fractalIdErrors = isValidFractalId(liveSystem.fractalId);
-  const componentsErrors =
+  const idErrors = addContextToErrors(
+    liveSystem.id,
+    isValidLiveSystemId(liveSystem.id),
+  );
+  const fractalIdErrors = addContextToErrors(
+    liveSystem.id,
+    isValidFractalId(liveSystem.fractalId),
+  );
+  const environmentErrors = addContextToErrors(
+    liveSystem.id,
+    isValidEnvironment(liveSystem.environment),
+  );
+  const componentsErrors = addContextToErrors(
+    liveSystem.id,
     !liveSystem.components || liveSystem.components.length === 0
-      ? [
-          `[Live System: ${liveSystem.id.toString()}]: components must not be empty`,
-        ]
+      ? ['[Components] Components must not be empty']
       : liveSystem.components.reduce((acc, x) => {
           acc.push(...isValidLiveSystemComponent(x));
           return acc;
-        }, [] as string[]);
-  return [...idErrors, ...fractalIdErrors, ...componentsErrors];
+        }, [] as string[]),
+  );
+  return [
+    ...idErrors,
+    ...fractalIdErrors,
+    ...componentsErrors,
+    ...environmentErrors,
+  ];
+};
+
+const addContextToErrors = (
+  liveSystemId: LiveSystemId,
+  errors: string[],
+): string[] => {
+  return errors.map(
+    error => `[Live System: ${liveSystemId.toString()}]${error}`,
+  );
 };
 
 /**
@@ -113,6 +138,14 @@ export type LiveSystemBuilder = {
    * @returns {ComponentBuilder} The builder instance for method chaining.
    */
   withParameters: (parameters: Component.Parameters) => LiveSystemBuilder;
+
+  /**
+   * Configures the LiveSystemBuilder instance with the specified environment.
+   *
+   * @param {Environment} environment - The environment configuration to be applied.
+   * @returns {LiveSystemBuilder} The updated LiveSystemBuilder instance configured with the provided environment.
+   */
+  withEnvironment: (environment: Environment) => LiveSystemBuilder;
 
   /**
    * Resets the current state of the LiveSystemBuilder to its initial configuration.
@@ -208,6 +241,10 @@ export const getLiveSystemBuilder = (): LiveSystemBuilder => {
       internalState.parameters = parameters;
       return builder;
     },
+    withEnvironment: (environment: Environment) => {
+      internalState.environment = environment;
+      return builder;
+    },
     reset: (): LiveSystemBuilder => {
       internalState.id = DEFAULT_LIVE_SYSTEM.id;
       internalState.requesterId = DEFAULT_LIVE_SYSTEM.requesterId;
@@ -217,6 +254,7 @@ export const getLiveSystemBuilder = (): LiveSystemBuilder => {
       internalState.statusMessage = DEFAULT_LIVE_SYSTEM.statusMessage;
       internalState.components = DEFAULT_LIVE_SYSTEM.components;
       internalState.genericProvider = DEFAULT_LIVE_SYSTEM.genericProvider;
+      internalState.environment = DEFAULT_LIVE_SYSTEM.environment;
       internalState.createdAt = DEFAULT_LIVE_SYSTEM.createdAt;
       internalState.updatedAt = DEFAULT_LIVE_SYSTEM.updatedAt;
       return builder;

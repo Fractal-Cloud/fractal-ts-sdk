@@ -30,7 +30,7 @@ export type BoundedContextId = {
 
 const equals = (a: BoundedContextId, b: BoundedContextId): boolean =>
   a.ownerType === b.ownerType &&
-  a.ownerId.ownerIdValue === b.ownerId.ownerIdValue &&
+  a.ownerId.value === b.ownerId.value &&
   a.name.value === b.name.value;
 
 /**
@@ -59,22 +59,28 @@ export const DEFAULT_BOUNDED_CONTEXT_ID: BoundedContextId = {
  *   the `isValidKebabCaseString` function.
  */
 export const isValidBoundedContextId = (value: BoundedContextId): string[] => {
-  const ownerIdErrors = isValidOwnerId(value.ownerId);
-  const nameErrors = isValidKebabCaseString(value.name.value);
-  return [
-    ...ownerIdErrors.map(
-      x =>
-        `[Bounded Context Id: ${boundedContextIdToString(value)}] Owner Id error: ${x}`,
-    ),
-    ...nameErrors.map(
-      x =>
-        `[Bounded Context Id: ${boundedContextIdToString(value)}] Name error: ${x}`,
-    ),
-  ];
+  const ownerIdErrors = addContextToErrors(
+    value,
+    isValidOwnerId(value.ownerId),
+  );
+  const nameErrors = addContextToErrors(
+    value,
+    isValidKebabCaseString(value.name.value),
+  );
+  return [...ownerIdErrors, ...nameErrors];
+};
+
+const addContextToErrors = (
+  bcId: BoundedContextId,
+  errors: string[],
+): string[] => {
+  return errors.map(
+    error => `[Bounded Context Id: ${bcId.toString()}]${error}`,
+  );
 };
 
 const boundedContextIdToString = (id: BoundedContextId) =>
-  `${id.ownerType.toString()}/${id.ownerId.ownerIdValue}/${id.name.value}`;
+  `${id.ownerType.toString()}/${id.ownerId.value}/${id.name.value}`;
 
 /**
  * Builder interface for constructing Id objects.

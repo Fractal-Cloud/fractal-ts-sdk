@@ -33,7 +33,7 @@ export type EnvironmentId = {
 
 const equals = (a: EnvironmentId, b: EnvironmentId): boolean =>
   a.ownerType === b.ownerType &&
-  a.ownerId.ownerIdValue === b.ownerId.ownerIdValue &&
+  a.ownerId.value === b.ownerId.value &&
   a.name.value === b.name.value;
 
 /**
@@ -67,21 +67,28 @@ export const DEFAULT_ENVIRONMENT_ID: EnvironmentId = {
  *                     for either the owner ID or the name. If no errors are present, the array is empty.
  */
 export const isValidEnvironmentId = (value: EnvironmentId): string[] => {
-  const ownerIdErrors = isValidOwnerId(value.ownerId);
-  const nameErrors = isValidKebabCaseString(value.name.value);
-  return [
-    ...ownerIdErrors.map(
-      x =>
-        `[Environment Id: ${environmentIdToString(value)}] Owner Id error: ${x}`,
-    ),
-    ...nameErrors.map(
-      x => `[Environment Id: ${environmentIdToString(value)}] Name error: ${x}`,
-    ),
-  ];
+  const ownerIdErrors = addContextToErrors(
+    value,
+    isValidOwnerId(value.ownerId),
+  );
+  const nameErrors = addContextToErrors(
+    value,
+    isValidKebabCaseString(value.name.toString()),
+  );
+  return [...ownerIdErrors, ...nameErrors];
+};
+
+const addContextToErrors = (
+  value: EnvironmentId,
+  errors: string[],
+): string[] => {
+  return errors.map(
+    error => `[Environment Id: ${environmentIdToString(value)}]${error}`,
+  );
 };
 
 const environmentIdToString = (id: EnvironmentId) =>
-  `${id.ownerType.toString()}/${id.ownerId.ownerIdValue}/${id.name.value}`;
+  `${id.ownerType.toString()}/${id.ownerId.value}/${id.name.value}`;
 
 /**
  * A builder utility to construct an EnvironmentId with various parameters.

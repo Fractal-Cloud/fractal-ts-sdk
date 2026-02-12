@@ -75,7 +75,7 @@ export const DEFAULT_KEBAB_CASE_STRING: KebabCaseString = {
 export const isValidKebabCaseString = (value: string): string[] => {
   const isValid = /^[a-z][a-z0-9]*(-[a-z][a-z0-9]*)*$/.test(value);
   if (!isValid) {
-    return ['Value must be in kebab-case'];
+    return [` Value '${value}' must be in kebab-case`];
   }
   return [] as const;
 };

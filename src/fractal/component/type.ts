@@ -24,6 +24,7 @@ import {
  */
 export type BlueprintComponentType = Component.Type & {
   serviceDeliveryModel: ServiceDeliveryModel;
+  toString: () => string;
 };
 
 /**
@@ -166,6 +167,8 @@ export const getBlueprintComponentTypeBuilder =
 
         return {
           ...internalState,
+          toString: () =>
+            `${internalState.domain}.${internalState.serviceDeliveryModel}.${internalState.name}`,
         };
       },
     };

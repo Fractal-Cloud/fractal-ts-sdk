@@ -42,15 +42,21 @@ export const DEFAULT_FRACTAL: Fractal = {
  * @returns {string[]} An array of error messages describing any validation issues with the fractal.
  */
 export const isValidFractal = (fractal: Fractal): string[] => {
-  const idErrors = isValidFractalId(fractal.id);
-  const componentsErrors =
+  const idErrors = addContextToErrors(fractal.id, isValidFractalId(fractal.id));
+  const componentsErrors = addContextToErrors(
+    fractal.id,
     !fractal.components || fractal.components.length === 0
-      ? [`[Fractal: ${fractal.id.toString()}]: components must not be empty`]
+      ? ['[Components] Components must not be empty']
       : fractal.components.reduce((acc, x) => {
           acc.push(...isValidBlueprintComponent(x));
           return acc;
-        }, [] as string[]);
+        }, [] as string[]),
+  );
   return [...idErrors, ...componentsErrors];
+};
+
+const addContextToErrors = (value: FractalId, errors: string[]): string[] => {
+  return errors.map(error => `[Fractal: ${value.toString()}]${error}`);
 };
 
 /**

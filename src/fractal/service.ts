@@ -10,10 +10,19 @@ const deployFractal = async (
   credentials: ServiceAccountCredentials,
   fractal: Fractal,
 ) => {
-  await superagent
-    .post(
-      `${FRACTAL_API_URL}/blueprints/${fractal.id.toString().replace(':', '/')}`,
-    )
+  const fractalUrl = `${FRACTAL_API_URL}/blueprints/${fractal.id.toString().replace(':', '/')}`;
+  const getFractalResponse = await superagent
+    .get(fractalUrl)
+    .set(CLIENT_ID_HEADER, credentials.id.serviceAccountIdValue)
+    .set(CLIENT_SECRET_HEADER, credentials.secret)
+    .send();
+
+  const request =
+    getFractalResponse.status === 200
+      ? superagent.put(fractalUrl)
+      : superagent.post(fractalUrl);
+
+  request
     .set(CLIENT_ID_HEADER, credentials.id.serviceAccountIdValue)
     .set(CLIENT_SECRET_HEADER, credentials.secret)
     .send({

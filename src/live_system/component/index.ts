@@ -7,14 +7,12 @@ import {
 export namespace LiveSystemComponent {
   export type Status =
     | 'Unknown'
-    | 'Mutating'
+    | 'Instantiating'
     | 'Active'
-    | 'FailedMutation'
-    | 'Error'
-    | 'Processing'
-    | 'Ready'
+    | 'Failed'
+    | 'Mutating'
     | 'Deleting'
-    | 'Stale';
+    | 'Cancelled';
   export type Provider =
     | 'Unknown'
     | 'AWS'

@@ -1,16 +1,16 @@
 import {
-  BoundedContextIdBuilder,
-  getBoundedContextIdBuilder,
-} from '../bounded_context/id';
-import {EnvironmentId} from './id';
+  EnvironmentId,
+  EnvironmentIdBuilder,
+  getEnvironmentIdBuilder,
+} from './id';
 import {GenericParameters} from '../values/generic_parameters';
 import {EnvironmentBuilder, getEnvironmentBuilder} from './entity';
 
 export namespace Environment {
   export type Id = EnvironmentId;
   export namespace Id {
-    export type Builder = BoundedContextIdBuilder;
-    export const getBuilder = getBoundedContextIdBuilder;
+    export type Builder = EnvironmentIdBuilder;
+    export const getBuilder = getEnvironmentIdBuilder;
   }
 
   export type Parameters = GenericParameters;

@@ -45,18 +45,20 @@ const toString = (id: FractalId): string =>
  * @returns {string[]} An array of error messages. Each error message indicates the specific issue with the bounded context ID, name, or version of the Fractal ID.
  */
 export const isValidFractalId = (id: FractalId): string[] => {
-  const boundedContextIdErrors = isValidBoundedContextId(id.boundedContextId);
-  const nameErrors = isValidKebabCaseString(id.name.value);
-  const versionErrors = isValidVersion(id.version);
-  return [
-    ...boundedContextIdErrors.map(
-      x => `[Fractal Id: ${id.toString()}] Bounded Context Id error: ${x}`,
-    ),
-    ...nameErrors.map(x => `[Fractal Id: ${id.toString()}] Name errors: ${x}`),
-    ...versionErrors.map(
-      x => `[Fractal Id: ${id.toString()}] Version error: ${x}`,
-    ),
-  ];
+  const boundedContextIdErrors = addContextToErrors(
+    id,
+    isValidBoundedContextId(id.boundedContextId),
+  );
+  const nameErrors = addContextToErrors(
+    id,
+    isValidKebabCaseString(id.name.value),
+  );
+  const versionErrors = addContextToErrors(id, isValidVersion(id.version));
+  return [...boundedContextIdErrors, ...nameErrors, ...versionErrors];
+};
+
+const addContextToErrors = (value: FractalId, errors: string[]): string[] => {
+  return errors.map(error => `[Fractal Id: ${toString(value)}]${error}`);
 };
 
 /**

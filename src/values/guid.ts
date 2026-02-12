@@ -4,7 +4,7 @@ export const isValidUuid = (value: string): string[] => {
       value,
     );
   if (!isValidUuid) {
-    return [`Value '${value}' must be a valid uuid`];
+    return [` Value '${value}' must be a valid uuid`];
   }
   return [] as const;
 };

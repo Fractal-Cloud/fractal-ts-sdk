@@ -1,5 +1,9 @@
 import {Environment} from './index';
-import {DEFAULT_ENVIRONMENT_ID, isValidEnvironmentId} from './id';
+import {
+  DEFAULT_ENVIRONMENT_ID,
+  EnvironmentId,
+  isValidEnvironmentId,
+} from './id';
 import {getParametersInstance} from '../values/generic_parameters';
 import {Component} from '../component';
 
@@ -9,7 +13,16 @@ export const DEFAULT_ENVIRONMENT: Environment = {
 };
 
 export const isValidEnvironment = (environment: Environment): string[] =>
-  isValidEnvironmentId(environment.id);
+  addContextToErrors(environment.id, isValidEnvironmentId(environment.id));
+
+const addContextToErrors = (
+  environmentId: EnvironmentId,
+  errors: string[],
+): string[] => {
+  return errors.map(
+    error => `[Environment: ${environmentId.toString()}]${error}`,
+  );
+};
 
 export type EnvironmentBuilder = {
   withId: (id: Environment.Id) => EnvironmentBuilder;

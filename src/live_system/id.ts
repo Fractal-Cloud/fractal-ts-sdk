@@ -42,9 +42,11 @@ export const isValidLiveSystemId = (id: LiveSystemId): string[] => {
   const nameErrors = isValidKebabCaseString(id.name.value);
   return [
     ...boundedContextIdErrors.map(
-      x => `[Fractal Id: ${id.toString()}] Bounded Context Id error: ${x}`,
+      x => `[Live System Id: ${id.toString()}] Bounded Context Id error: ${x}`,
     ),
-    ...nameErrors.map(x => `[Fractal Id: ${id.toString()}] Name errors: ${x}`),
+    ...nameErrors.map(
+      x => `[Live System Id: ${id.toString()}] Name errors: ${x}`,
+    ),
   ];
 };
 

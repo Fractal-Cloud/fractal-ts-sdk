@@ -12,7 +12,7 @@ import {BlueprintComponentType} from '../../fractal/component/type';
 
 const DEFAULT_LIVE_SYSTEM_COMPONENT: LiveSystemComponent = {
   ...DEFAULT_BLUEPRINT_COMPONENT,
-  status: 'Unknown',
+  status: 'Instantiating',
   lastUpdated: new Date(0),
   lastOperationRetried: -1,
   provider: 'Unknown',

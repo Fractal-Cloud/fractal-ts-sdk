@@ -26,7 +26,7 @@ export type ComponentId = {
  */
 export const isValidId = (id: ComponentId): string[] => {
   return isValidKebabCaseString(id.value.toString()).map(
-    x => `[Component Id: ${id.value.toString()}] Id error: ${x}`,
+    x => `[Component Id: ${id.value.toString()}]${x}`,
   );
 };
 
