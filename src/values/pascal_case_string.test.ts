@@ -9,7 +9,7 @@ describe('Pascal Case String Builder', () => {
   it('should return a valid Pascal String when set correctly', () => {
     const expected = 'CorrectPascalCasedString';
     expect(sut.withValue(expected).build())
-    .toSatisfy( ({pascalValue}: PascalCaseString) => pascalValue === expected);
+    .toSatisfy( ({value}: PascalCaseString) => value === expected);
   });
 
   it('should throw a SyntaxError if Pascal String is empty', () => {

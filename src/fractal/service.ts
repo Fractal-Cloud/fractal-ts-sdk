@@ -22,12 +22,12 @@ const deployFractal = async (
       components: fractal.components.map(c => ({
         ...c,
         type: c.type.toString(),
-        id: c.id.value.kebabValue,
+        id: c.id.value.toString(),
         version: c.version.toString(),
         parameters: c.parameters.toMap(),
-        dependencies: c.dependencies.map(d => d.id.value.kebabValue),
+        dependencies: c.dependencies.map(d => d.id.value.toString()),
         links: c.links.map(l => ({
-          componentId: l.id.value.kebabValue,
+          componentId: l.id.value.toString(),
           settings: l.parameters.toMap(),
         })),
         outputFields: Object.keys(c.outputFields.value),

@@ -15,6 +15,7 @@ import {
 export type ComponentId = {
   value: KebabCaseString;
   equals: (other: ComponentId) => boolean;
+  toString: () => string;
 };
 
 /**
@@ -24,8 +25,8 @@ export type ComponentId = {
  * @returns {boolean} - Returns true if the identifier is in a valid kebab-case format, false otherwise.
  */
 export const isValidId = (id: ComponentId): string[] => {
-  return isValidKebabCaseString(id.value.kebabValue).map(
-    x => `[Component Id: ${id.value.kebabValue}] Id error: ${x}`,
+  return isValidKebabCaseString(id.value.toString()).map(
+    x => `[Component Id: ${id.value.toString()}] Id error: ${x}`,
   );
 };
 
@@ -38,6 +39,7 @@ const equals = (a: ComponentId, b: ComponentId): boolean => a.value === b.value;
 export const DEFAULT_COMPONENT_ID: ComponentId = {
   value: DEFAULT_KEBAB_CASE_STRING,
   equals: (other: ComponentId) => equals(DEFAULT_COMPONENT_ID, other),
+  toString: () => '',
 };
 
 /**
@@ -112,6 +114,7 @@ export const getComponentIdBuilder = (): ComponentIdBuilder => {
       const builtId: ComponentId = {
         ...internalState,
         equals: (other: ComponentId) => equals(builtId, other),
+        toString: () => builtId.value.toString(),
       };
 
       return builtId;

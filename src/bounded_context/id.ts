@@ -20,6 +20,7 @@ import {
  * @property {KebabCaseString} name - The name of the bounded context, formatted as a kebab-case string.
  */
 export type BoundedContextId = {
+  _type: 'bounded_context';
   ownerType: OwnerType;
   ownerId: OwnerId;
   name: KebabCaseString;
@@ -30,19 +31,19 @@ export type BoundedContextId = {
 const equals = (a: BoundedContextId, b: BoundedContextId): boolean =>
   a.ownerType === b.ownerType &&
   a.ownerId.ownerIdValue === b.ownerId.ownerIdValue &&
-  a.name.kebabValue === b.name.kebabValue;
+  a.name.value === b.name.value;
 
 /**
  * A default value for the bounded context identifier used in the system.
  * It contains values that will not pass validation checks.
  */
 export const DEFAULT_BOUNDED_CONTEXT_ID: BoundedContextId = {
+  _type: 'bounded_context',
   ownerType: OwnerType.Personal,
   ownerId: DEFAULT_OWNER_ID,
   name: DEFAULT_KEBAB_CASE_STRING,
-  equals: (other: BoundedContextId) =>
-    equals(DEFAULT_BOUNDED_CONTEXT_ID, other),
-  toString: () => boundedContextIdToString(DEFAULT_BOUNDED_CONTEXT_ID),
+  equals: () => false,
+  toString: () => '',
 } as const;
 
 /**
@@ -59,7 +60,7 @@ export const DEFAULT_BOUNDED_CONTEXT_ID: BoundedContextId = {
  */
 export const isValidBoundedContextId = (value: BoundedContextId): string[] => {
   const ownerIdErrors = isValidOwnerId(value.ownerId);
-  const nameErrors = isValidKebabCaseString(value.name.kebabValue);
+  const nameErrors = isValidKebabCaseString(value.name.value);
   return [
     ...ownerIdErrors.map(
       x =>
@@ -73,7 +74,7 @@ export const isValidBoundedContextId = (value: BoundedContextId): string[] => {
 };
 
 const boundedContextIdToString = (id: BoundedContextId) =>
-  `${id.ownerType.toString()}/${id.ownerId.ownerIdValue}/${id.name.kebabValue}`;
+  `${id.ownerType.toString()}/${id.ownerId.ownerIdValue}/${id.name.value}`;
 
 /**
  * Builder interface for constructing Id objects.

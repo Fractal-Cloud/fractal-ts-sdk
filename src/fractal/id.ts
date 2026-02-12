@@ -25,11 +25,17 @@ export type FractalId = {
   boundedContextId: BoundedContext.Id;
   name: KebabCaseString;
   version: Version;
+  equals: (other: FractalId) => boolean;
   toString: () => string;
 };
 
+const equals = (a: FractalId, b: FractalId): boolean =>
+  a.boundedContextId.equals(b.boundedContextId) &&
+  a.name.equals(b.name) &&
+  a.version.equals(b.version);
+
 const toString = (id: FractalId): string =>
-  `${id.boundedContextId.toString()}/${id.name.kebabValue}:${id.version.toString()}`;
+  `${id.boundedContextId.toString()}/${id.name.toString()}:${id.version.toString()}`;
 
 /**
  * Validates a given Fractal ID and returns a list of error messages if any validation fails.
@@ -40,7 +46,7 @@ const toString = (id: FractalId): string =>
  */
 export const isValidFractalId = (id: FractalId): string[] => {
   const boundedContextIdErrors = isValidBoundedContextId(id.boundedContextId);
-  const nameErrors = isValidKebabCaseString(id.name.kebabValue);
+  const nameErrors = isValidKebabCaseString(id.name.value);
   const versionErrors = isValidVersion(id.version);
   return [
     ...boundedContextIdErrors.map(
@@ -73,6 +79,8 @@ export const DEFAULT_FRACTAL_ID: FractalId = {
   boundedContextId: DEFAULT_BOUNDED_CONTEXT_ID,
   name: DEFAULT_KEBAB_CASE_STRING,
   version: DEFAULT_VERSION,
+  equals: () => false,
+  toString: () => '',
 };
 
 /**
@@ -173,6 +181,7 @@ export const getFractalIdBuilder = (): FractalIdBuilder => {
 
       const builtId: FractalId = {
         ...internalState,
+        equals: (other: FractalId) => equals(builtId, other),
         toString: () => toString(builtId),
       };
 

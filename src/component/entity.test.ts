@@ -22,11 +22,11 @@ const areParametersEquivalent = (actual: Component.Parameters, expected: Compone
 
 const areLinksEquivalent = (actual: Component.Link[], expected: Component.Link[]): boolean => {
   var actualLinksByComponentId = actual.reduce((acc, curr) => {
-    acc[curr.id.value.kebabValue] = curr;
+    acc[curr.id.value.toString()] = curr;
     return acc;
   }, {} as Record<string, Component.Link>);
   return actual.length === expected.length
-    && expected.every(link => deepEqual(actualLinksByComponentId[link.id.value.kebabValue], link));
+    && expected.every(link => deepEqual(actualLinksByComponentId[link.id.value.toString()], link));
 }
 
 const areDependenciesEquivalent = (actual: Component.Dependency[], expected: Component.Dependency[]): boolean => {

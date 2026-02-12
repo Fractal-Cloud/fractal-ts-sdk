@@ -94,10 +94,10 @@ export type ComponentTypeBuilder = {
  * @returns {string[]} An array of error messages if validation fails; an empty array if the name is valid.
  */
 export const isValidComponentType = (type: ComponentType): string[] => {
-  const nameError = isValidPascalCaseString(type.name.pascalValue);
+  const nameError = isValidPascalCaseString(type.name.value);
   if (nameError.length > 0) {
     return nameError.map(
-      x => `[Component Type: ${type.name.pascalValue}] Name error: ${x}`,
+      x => `[Component Type: ${type.name.value}] Name error: ${x}`,
     );
   }
   return [] as const;

@@ -68,7 +68,7 @@ export const aVersion = (): Version => getVersionBuilder()
 export const aMap = () => {
   const accumulator: Record<string, object> = {};
   for (let i = 0; i < MAX_ITERATIONS; i++) {
-    accumulator[`key_${aPositiveInteger()}`] = {[`value_${aPositiveInteger()}`]: aKebabCaseString().kebabValue};
+    accumulator[`key_${aPositiveInteger()}`] = {[`value_${aPositiveInteger()}`]: aKebabCaseString().value};
   }
   return accumulator;
 }

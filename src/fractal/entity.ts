@@ -53,16 +53,91 @@ export const isValidFractal = (fractal: Fractal): string[] => {
   return [...idErrors, ...componentsErrors];
 };
 
+/**
+ * Represents a builder for creating and configuring Fractal objects.
+ */
 export type FractalBuilder = {
+  /**
+   * Sets the identifier for the fractal using the provided value.
+   *
+   * @param {FractalId} value - The unique identifier to assign to the fractal.
+   * @returns {FractalBuilder} The instance of the FractalBuilder for method chaining.
+   */
   withId: (value: FractalId) => FractalBuilder;
+
+  /**
+   * Sets the privacy flag for the FractalBuilder.
+   *
+   * @param {boolean} value - Indicates whether the entity should be marked as private.
+   * @returns {FractalBuilder} The updated instance of the FractalBuilder.
+   */
   withIsPrivate: (value: boolean) => FractalBuilder;
+
+  /**
+   * Assigns a description to the fractal being built.
+   *
+   * @param {string} value - The description to associate with the fractal.
+   * @returns {FractalBuilder} The instance of the FractalBuilder to allow method chaining.
+   */
   withDescription: (value: string) => FractalBuilder;
+
+  /**
+   * A method used to associate a set of components with a FractalBuilder instance.
+   *
+   * @param {BlueprintComponent[]} value - An array of BlueprintComponent objects to be linked to the FractalBuilder.
+   * @returns {FractalBuilder} The FractalBuilder instance with the specified components applied.
+   */
   withComponents: (value: BlueprintComponent[]) => FractalBuilder;
+
+  /**
+   * Assigns a specified BlueprintComponent to the current FractalBuilder instance.
+   *
+   * @param {BlueprintComponent} value - The component to be added to the FractalBuilder.
+   * @returns {FractalBuilder} The updated instance of FractalBuilder for chaining further configurations.
+   */
   withComponent: (value: BlueprintComponent) => FractalBuilder;
+
+  /**
+   * Resets the current state of the FractalBuilder to its initial configuration.
+   *
+   * @function
+   * @returns {FractalBuilder} Returns the updated FractalBuilder instance after resetting.
+   */
   reset: () => FractalBuilder;
+
+  /**
+   * A function that generates and returns a new instance of a Fractal object.
+   *
+   * This function is typically used to construct complex structures or data
+   * representations that follow a fractal pattern. The returned Fractal object
+   * encapsulates the properties and behaviors associated with the fractal design.
+   *
+   * @function
+   * @returns {Fractal} A newly created instance of a Fractal object.
+   */
   build: () => Fractal;
 };
 
+/**
+ * Creates and returns a builder object for constructing Fractal objects.
+ *
+ * This builder provides a fluent interface for setting various properties of a Fractal
+ * and includes methods for validation, resetting to defaults, and final construction.
+ *
+ * @returns {FractalBuilder} A builder object for incrementally building a Fractal.
+ *
+ * The builder object supports the following methods:
+ * - `withId(value: FractalId): FractalBuilder` - Sets the ID of the Fractal.
+ * - `withIsPrivate(value: boolean): FractalBuilder` - Sets the privacy status of the Fractal.
+ * - `withDescription(value: string): FractalBuilder` - Sets the description of the Fractal.
+ * - `withComponents(value: BlueprintComponent[]): FractalBuilder` - Appends a list of components to the Fractal.
+ * - `withComponent(value: BlueprintComponent): FractalBuilder` - Appends a single component to the Fractal.
+ * - `reset(): FractalBuilder` - Resets the builder’s state to the default Fractal properties.
+ * - `build(): Fractal` - Validates and constructs a Fractal object.
+ *
+ * Throws:
+ * - `SyntaxError` - If the constructed Fractal object is invalid during the build process.
+ */
 export const getFractalBuilder = (): FractalBuilder => {
   const internalState: Fractal = {
     ...DEFAULT_FRACTAL,
