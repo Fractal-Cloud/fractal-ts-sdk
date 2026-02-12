@@ -22,18 +22,24 @@ const DEFAULT: BoundedContextT = {
  * @returns {boolean} Returns true if the bounded context is valid; otherwise, returns false.
  */
 const isValidBoundedContext = (value: BoundedContextT): string[] => {
-  const idErrors = isValidBoundedContextId(value.id);
-  const displayNameErrors = isNonEmptyString(value.displayName)
-    ? []
-    : ['Display name must be a non-empty string'];
-  return [
-    ...idErrors.map(
-      x => `[Bounded Context: ${value.id.toString()}] Id error: ${x}`,
-    ),
-    ...displayNameErrors.map(
-      x => `[Bounded Context: ${value.id.toString()}] Display Name error: ${x}`,
-    ),
-  ];
+  const idErrors = addContextToErrors(
+    value.id,
+    isValidBoundedContextId(value.id),
+  );
+  const displayNameErrors = addContextToErrors(
+    value.id,
+    isNonEmptyString(value.displayName)
+      ? []
+      : ['Display name must be a non-empty string'],
+  );
+  return [...idErrors, ...displayNameErrors];
+};
+
+const addContextToErrors = (
+  bcId: BoundedContextId,
+  errors: string[],
+): string[] => {
+  return errors.map(error => `[Bounded Context: ${bcId.toString()}]${error}`);
 };
 
 /**

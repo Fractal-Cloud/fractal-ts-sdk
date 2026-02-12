@@ -22,8 +22,9 @@ import {
  * - Adds a `serviceDeliveryModel` property to specify how the service is delivered.
  * - Reimplements the `equals` method for comparing two blueprint component types.
  */
-export type BlueprintComponentType = Omit<Component.Type, 'equals'> & {
+export type BlueprintComponentType = Component.Type & {
   serviceDeliveryModel: ServiceDeliveryModel;
+  toString: () => string;
 };
 
 /**
@@ -166,6 +167,8 @@ export const getBlueprintComponentTypeBuilder =
 
         return {
           ...internalState,
+          toString: () =>
+            `${internalState.domain}.${internalState.serviceDeliveryModel}.${internalState.name}`,
         };
       },
     };

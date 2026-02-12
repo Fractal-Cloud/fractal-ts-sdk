@@ -10,7 +10,7 @@ describe('Owner Id Builder', () => {
   it('should return a valid Owner Id when set correctly', () => {
     const expected = aUuid();
     expect(sut.withValue(expected).build())
-    .toSatisfy( ({ownerIdValue}: OwnerId) => ownerIdValue === expected);
+    .toSatisfy( ({value}: OwnerId) => value === expected);
   });
 
   it('should throw a SyntaxError if Owner Id is empty', () => {

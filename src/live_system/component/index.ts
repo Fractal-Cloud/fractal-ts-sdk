@@ -1,16 +1,18 @@
 import {BlueprintComponent} from '../../fractal/component';
+import {
+  getLiveSystemComponentBuilder,
+  LiveSystemComponentBuilder,
+} from './entity';
 
 export namespace LiveSystemComponent {
   export type Status =
     | 'Unknown'
-    | 'Mutating'
+    | 'Instantiating'
     | 'Active'
-    | 'FailedMutation'
-    | 'Error'
-    | 'Processing'
-    | 'Ready'
+    | 'Failed'
+    | 'Mutating'
     | 'Deleting'
-    | 'Stale';
+    | 'Cancelled';
   export type Provider =
     | 'Unknown'
     | 'AWS'
@@ -21,8 +23,8 @@ export namespace LiveSystemComponent {
     | 'CaaS'
     | 'SaaS';
 
-  // export type Builder = LiveSystemComponentBuilder;
-  // export const getBuilder = getLiveSystemComponentBuilder;
+  export type Builder = LiveSystemComponentBuilder;
+  export const getBuilder = getLiveSystemComponentBuilder;
 }
 
 export type LiveSystemComponent = BlueprintComponent & {
@@ -31,7 +33,5 @@ export type LiveSystemComponent = BlueprintComponent & {
   lastOperationRetried: number;
   provider: LiveSystemComponent.Provider;
   lastOperationStatusMessage: string;
-  checksum: string;
-  //  systemMutationId: LiveSystemMutation.Id;
   errorCode: string;
 };

@@ -5,7 +5,9 @@ import {isValidUuid} from './guid';
  * This convention capitalizes the first letter of each concatenated word without any spaces, dashes, or underscores.
  */
 export type OwnerId = {
-  ownerIdValue: string;
+  _type: 'ownerId';
+  value: string;
+  toString: () => string;
 };
 
 /**
@@ -42,7 +44,9 @@ export type OwnerIdBuilder = {
  * and is designed to not pass validation checks.
  */
 export const DEFAULT_OWNER_ID: OwnerId = {
-  ownerIdValue: '',
+  _type: 'ownerId',
+  value: '',
+  toString: () => '',
 } as const;
 
 /**
@@ -56,11 +60,15 @@ export const DEFAULT_OWNER_ID: OwnerId = {
  * @returns {string[]} An array containing error messages if invalid, or an empty array if valid.
  */
 export const isValidOwnerId = (value: OwnerId): string[] => {
-  if (!value || !value.ownerIdValue) {
-    return ['Value must be a non-empty string'];
+  if (!value || !value.value) {
+    return ['[Owner Id] Value must be a non-empty string'];
   }
 
-  return isValidUuid(value.ownerIdValue);
+  return addContextToErrors(value, isValidUuid(value.value));
+};
+
+const addContextToErrors = (value: OwnerId, errors: string[]): string[] => {
+  return errors.map(error => `[Owner Id: ${value.toString()}]${error}`);
 };
 
 /**
@@ -80,11 +88,11 @@ const getOwnerIdBuilder = (): OwnerIdBuilder => {
 
   const builder = {
     withValue: (value: string) => {
-      internalState.ownerIdValue = value;
+      internalState.value = value;
       return builder;
     },
     reset: () => {
-      internalState.ownerIdValue = DEFAULT_OWNER_ID.ownerIdValue;
+      internalState.value = DEFAULT_OWNER_ID.value;
       return builder;
     },
     build: (): OwnerId => {
@@ -95,6 +103,7 @@ const getOwnerIdBuilder = (): OwnerIdBuilder => {
 
       return {
         ...internalState,
+        toString: () => internalState.value,
       };
     },
   };

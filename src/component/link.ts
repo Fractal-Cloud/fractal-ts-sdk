@@ -4,10 +4,8 @@ import {
   isValidComponentType,
 } from './type';
 import {ComponentId, DEFAULT_COMPONENT_ID, isValidId} from './id';
-import {
-  GenericParameters,
-  getParametersInstance,
-} from '../values/generic_parameters';
+import {getParametersInstance} from '../values/generic_parameters';
+import {Component} from './index';
 
 /**
  * Represents a link object with an identifier, type, and associated parameters.
@@ -15,13 +13,13 @@ import {
  * @typedef {Object} ComponentLink
  * @property {ComponentId} id - The unique identifier for the link.
  * @property {ComponentType} type - The type of the link, indicating its category or purpose.
- * @property {GenericParameters} parameters - A dictionary of configuration parameters,
+ * @property {Link.Parameters} parameters - A dictionary of configuration parameters,
  * where keys are setting names and values are their corresponding configuration objects.
  */
 export type ComponentLink = {
   id: ComponentId;
   type: ComponentType;
-  parameters: GenericParameters;
+  parameters: Component.Link.Parameters;
 };
 
 /**
@@ -77,10 +75,10 @@ export type LinkBuilder = {
   /**
    * Sets the parameters for the link being built.
    *
-   * @param {GenericParameters} parameters - The configuration parameters to associate with the link.
+   * @param {Link.Parameters} parameters - The configuration parameters to associate with the link.
    * @returns {LinkBuilder} The builder instance for method chaining.
    */
-  withParameters: (parameters: GenericParameters) => LinkBuilder;
+  withParameters: (parameters: Component.Link.Parameters) => LinkBuilder;
 
   /**
    * Resets the builder's internal state to default values.
@@ -140,7 +138,7 @@ export const getLinkBuilder = (): LinkBuilder => {
       internalState.type = type;
       return builder;
     },
-    withParameters: (parameters: GenericParameters) => {
+    withParameters: (parameters: Component.Link.Parameters) => {
       internalState.parameters = parameters;
       return builder;
     },

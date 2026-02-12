@@ -3,7 +3,6 @@ import {DEFAULT_COMPONENT, isValidComponent} from '../../component/entity';
 import {BlueprintComponentType, DEFAULT_BLUEPRINT_COMPONENT_TYPE} from './type';
 import {Component} from '../../component';
 import {Version} from '../../values/version';
-import {GenericParameters} from '../../values/generic_parameters';
 import {BlueprintComponentDependency} from './dependency';
 import {ComponentId} from '../../component/id';
 import {ComponentLink} from '../../component/link';
@@ -27,6 +26,12 @@ export const isValidBlueprintComponent = (
 };
 
 /**
+ * A type representing a builder for constructing a blueprint component.
+ * The builder pattern allows for configuring and constructing complex
+ * instances of blueprint components with a fluent API. Each method in
+ * this builder performs a configuration step, returning the builder instance
+ * to enable method chaining. Once fully configured, the `build` method finalizes
+ * the construction process and returns an immutable component instance.
  */
 export type BlueprintComponentBuilder = {
   /**
@@ -72,10 +77,12 @@ export type BlueprintComponentBuilder = {
   /**
    * Sets the parameters for the component being built.
    *
-   * @param {GenericParameters} parameters - The parameters to associate with the component.
+   * @param {Component.Parameters} parameters - The parameters to associate with the component.
    * @returns {BlueprintComponentBuilder} The builder instance for method chaining.
    */
-  withParameters: (parameters: GenericParameters) => BlueprintComponentBuilder;
+  withParameters: (
+    parameters: Component.Parameters,
+  ) => BlueprintComponentBuilder;
 
   /**
    * Sets the links for the component being built.
@@ -159,7 +166,7 @@ export type BlueprintComponentBuilder = {
  * - `withVersion(version: Version)`: Sets the version of the component.
  * - `withDisplayName(displayName: string)`: Sets the display name for the component.
  * - `withDescription(description: string)`: Sets a description for the component.
- * - `withParameters(parameters: GenericParameters)`: Sets the parameters associated with the component.
+ * - `withParameters(parameters: Component.Parameters)`: Sets the parameters associated with the component.
  * - `withLinks(links: ComponentLink[])`: Sets the links associated with the component.
  * - `withDependencies(dependencies: BlueprintComponentDependency[])`: Sets the dependencies of the component.
  * - `reset()`: Resets all properties of the component to their default values based on `DEFAULT_BLUEPRINT_COMPONENT`.
@@ -199,7 +206,7 @@ export const getBlueprintComponentBuilder = (): BlueprintComponentBuilder => {
       internalState.description = description;
       return builder;
     },
-    withParameters: (parameters: GenericParameters) => {
+    withParameters: (parameters: Component.Parameters) => {
       internalState.parameters = parameters;
       return builder;
     },

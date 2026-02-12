@@ -82,7 +82,7 @@ export const DEFAULT_VERSION: Version = {
  */
 export const isValidVersion = (version: Version): string[] => {
   if (equals(version, DEFAULT_VERSION)) {
-    return ['Version must be initialized'];
+    return [' Version must be initialized'];
   }
   return [] as const;
 };

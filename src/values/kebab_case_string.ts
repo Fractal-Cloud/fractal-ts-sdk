@@ -9,7 +9,10 @@
  * where consistent, hyphen-delimited identifiers are required.
  */
 export type KebabCaseString = {
-  kebabValue: string;
+  _type: 'kebab';
+  value: string;
+  equals: (other: KebabCaseString) => boolean;
+  toString: () => string;
 };
 
 /**
@@ -51,7 +54,10 @@ export type KebabCaseStringBuilder = {
  * @type {KebabCaseString}
  */
 export const DEFAULT_KEBAB_CASE_STRING: KebabCaseString = {
-  kebabValue: '',
+  _type: 'kebab',
+  value: '',
+  equals: () => false,
+  toString: () => '',
 } as const;
 
 /**
@@ -69,7 +75,7 @@ export const DEFAULT_KEBAB_CASE_STRING: KebabCaseString = {
 export const isValidKebabCaseString = (value: string): string[] => {
   const isValid = /^[a-z][a-z0-9]*(-[a-z][a-z0-9]*)*$/.test(value);
   if (!isValid) {
-    return ['Value must be in kebab-case'];
+    return [` Value '${value}' must be in kebab-case`];
   }
   return [] as const;
 };
@@ -91,20 +97,22 @@ export const getKebabCaseStringBuilder = (): KebabCaseStringBuilder => {
 
   const builder = {
     withValue: (value: string) => {
-      internalState.kebabValue = value;
+      internalState.value = value;
       return builder;
     },
     reset: () => {
-      internalState.kebabValue = DEFAULT_KEBAB_CASE_STRING.kebabValue;
+      internalState.value = DEFAULT_KEBAB_CASE_STRING.value;
       return builder;
     },
     build: (): KebabCaseString => {
-      const validationErrors = isValidKebabCaseString(internalState.kebabValue);
+      const validationErrors = isValidKebabCaseString(internalState.value);
       if (validationErrors.length > 0) {
         throw new SyntaxError(validationErrors.join('\n'));
       }
       return {
         ...internalState,
+        equals: (other: KebabCaseString) => internalState.value === other.value,
+        toString: () => internalState.value,
       };
     },
   };

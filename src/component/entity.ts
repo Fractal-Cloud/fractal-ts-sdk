@@ -5,10 +5,7 @@ import {
   isValidComponentType,
 } from './type';
 import {DEFAULT_VERSION, isValidVersion, Version} from '../values/version';
-import {
-  GenericParameters,
-  getParametersInstance,
-} from '../values/generic_parameters';
+import {getParametersInstance} from '../values/generic_parameters';
 import {ComponentId, DEFAULT_COMPONENT_ID, isValidId} from './id';
 import {isNonEmptyString} from '../values/helpers';
 import {ComponentLink} from './link';
@@ -71,27 +68,35 @@ export const DEFAULT_COMPONENT: Component = {
  * @returns {string[]} An array of error messages, each describing a specific validation failure. If no errors are found, the array will be empty.
  */
 export const isValidComponent = (component: Component): string[] => {
-  const idErrors = isValidId(component.id);
-  const typeErrors = isValidComponentType(component.type);
-  const versionErrors = isValidVersion(component.version);
-  const displayNameErrors = isNonEmptyString(component.displayName)
-    ? []
-    : ['Display name must be a non-empty string'];
+  const idErrors = addContextToErrors(component.id, isValidId(component.id));
+  const typeErrors = addContextToErrors(
+    component.id,
+    isValidComponentType(component.type),
+  );
+  const versionErrors = addContextToErrors(
+    component.id,
+    isValidVersion(component.version),
+  );
+  const displayNameErrors = addContextToErrors(
+    component.id,
+    isNonEmptyString(component.displayName)
+      ? []
+      : ['Display name must be a non-empty string'],
+  );
   return [
-    ...idErrors.map(x => `[Component: ${component.id.value}] Id error: ${x}`),
-    ...typeErrors.map(
-      x => `[Component: ${component.id.value}] Type error: ${x}`,
-    ),
-    ...versionErrors.map(
-      x => `[Component: ${component.id.value}] Version error: ${x}`,
-    ),
-    ...typeErrors.map(
-      x => `[Component: ${component.id.value}] Type error: ${x}`,
-    ),
-    ...displayNameErrors.map(
-      x => `[Component: ${component.id.value}] Display Name error: ${x}`,
-    ),
+    ...idErrors,
+    ...typeErrors,
+    ...versionErrors,
+    ...typeErrors,
+    ...displayNameErrors,
   ];
+};
+
+const addContextToErrors = (
+  componentId: ComponentId,
+  errors: string[],
+): string[] => {
+  return errors.map(error => `[Component: ${componentId.toString()}]${error}`);
 };
 
 /**
@@ -147,10 +152,10 @@ export type ComponentBuilder = {
   /**
    * Sets the parameters for the component being built.
    *
-   * @param {GenericParameters} parameters - The parameters to associate with the component.
+   * @param {Component.Parameters} parameters - The parameters to associate with the component.
    * @returns {ComponentBuilder} The builder instance for method chaining.
    */
-  withParameters: (parameters: GenericParameters) => ComponentBuilder;
+  withParameters: (parameters: Component.Parameters) => ComponentBuilder;
 
   /**
    * Sets the links for the component being built.
@@ -243,7 +248,7 @@ export const getComponentBuilder = (): ComponentBuilder => {
       internalState.description = description;
       return builder;
     },
-    withParameters: (parameters: GenericParameters) => {
+    withParameters: (parameters: Component.Parameters) => {
       internalState.parameters = parameters;
       return builder;
     },

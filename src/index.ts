@@ -9,6 +9,8 @@ import * as ServiceAccountCredentialsInternal from './values/service_account_cre
 import * as ServiceAccountIdInternal from './values/service_account_id';
 import * as ServiceDeliveryModelInternal from './values/service_delivery_model';
 import * as VersionInternal from './values/version';
+import * as EnvironmentInternal from './environment';
+import * as LiveSystemInternal from './live_system';
 
 export const BoundedContext = BoundedContextInternal.BoundedContext;
 export type BoundedContext = BoundedContextInternal.BoundedContext;
@@ -48,3 +50,9 @@ export type ServiceDeliveryModel =
 
 export const Version = VersionInternal.Version;
 export type Version = VersionInternal.Version;
+
+export const Environment = EnvironmentInternal.Environment;
+export type Environment = EnvironmentInternal.Environment;
+
+export const LiveSystem = LiveSystemInternal.LiveSystem;
+export type LiveSystem = LiveSystemInternal.LiveSystem;
