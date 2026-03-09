@@ -48,7 +48,13 @@ export const isValidFractal = (fractal: Fractal): string[] => {
     !fractal.components || fractal.components.length === 0
       ? ['[Components] Components must not be empty']
       : fractal.components.reduce((acc, x) => {
-          acc.push(...isValidBlueprintComponent(x));
+          if ('provider' in x) {
+            acc.push(
+              `[Component: ${x.id.toString()}] Live system components cannot be added to a Fractal blueprint. Use LiveSystem.withComponent() instead.`,
+            );
+          } else {
+            acc.push(...isValidBlueprintComponent(x));
+          }
           return acc;
         }, [] as string[]),
   );
