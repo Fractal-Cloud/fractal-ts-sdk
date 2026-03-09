@@ -1,9 +1,7 @@
-name: Deploy to test
+name: Publish Coverage
 
 on:
-  pull_request:
-    types:
-      - closed
+  push:
     branches:
       - main
 
@@ -16,15 +14,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '25.x'
-      - name: Install dependencies for Fractal Cloud SDK
-        run: |
-          npm install
-      - name: Run Unit Tests for Fractal Cloud SDK
-        run: |
-          npm run test
-      - name: Upload coverage reports to Codecov
+      - name: Install dependencies
+        run: npm install
+      - name: Run tests with coverage
+        run: npm run test
+      - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: Fractal-Cloud/fractal-ts-sdk
-          override_branch: main
+          files: ./coverage/lcov.info
