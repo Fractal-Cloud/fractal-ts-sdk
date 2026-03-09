@@ -48,7 +48,7 @@ export type PascalCaseStringBuilder = {
  *                     if the string is valid.
  */
 export const isValidPascalCaseString = (value: string): string[] => {
-  const isValid = /^[A-Z][a-zA-Z]*$/.test(value);
+  const isValid = /^[A-Z][a-zA-Z0-9]*$/.test(value);
   if (!isValid) {
     return [` Value '${value}' must be in PascalCase`];
   }

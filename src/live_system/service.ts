@@ -48,6 +48,7 @@ const deployLiveSystem = async (
   const liveSystemUrl = `${FRACTAL_API_URL}/livesystems/${liveSystem.id.toString()}`;
   const getLiveSystemResponse = await superagent
     .get(liveSystemUrl)
+    .ok(res => res.status === 200 || res.status === 404)
     .set(CLIENT_ID_HEADER, credentials.id.serviceAccountIdValue)
     .set(CLIENT_SECRET_HEADER, credentials.secret)
     .send();

@@ -13,6 +13,7 @@ const deployFractal = async (
   const fractalUrl = `${FRACTAL_API_URL}/blueprints/${fractal.id.toString().replace(':', '/')}`;
   const getFractalResponse = await superagent
     .get(fractalUrl)
+    .ok(res => res.status === 200 || res.status === 404)
     .set(CLIENT_ID_HEADER, credentials.id.serviceAccountIdValue)
     .set(CLIENT_SECRET_HEADER, credentials.secret)
     .send();
