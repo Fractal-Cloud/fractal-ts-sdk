@@ -45,9 +45,7 @@ function buildHetznerServerType(): BlueprintComponentType {
     .withInfrastructureDomain(InfrastructureDomain.NetworkAndCompute)
     .withServiceDeliveryModel(ServiceDeliveryModel.IaaS)
     .withName(
-      PascalCaseString.getBuilder()
-        .withValue(HETZNER_SERVER_TYPE_NAME)
-        .build(),
+      PascalCaseString.getBuilder().withValue(HETZNER_SERVER_TYPE_NAME).build(),
     )
     .build();
 }

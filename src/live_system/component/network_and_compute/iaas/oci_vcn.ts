@@ -41,7 +41,9 @@ function buildOciVcnType(): BlueprintComponentType {
   return getBlueprintComponentTypeBuilder()
     .withInfrastructureDomain(InfrastructureDomain.NetworkAndCompute)
     .withServiceDeliveryModel(ServiceDeliveryModel.IaaS)
-    .withName(PascalCaseString.getBuilder().withValue(OCI_VCN_TYPE_NAME).build())
+    .withName(
+      PascalCaseString.getBuilder().withValue(OCI_VCN_TYPE_NAME).build(),
+    )
     .build();
 }
 

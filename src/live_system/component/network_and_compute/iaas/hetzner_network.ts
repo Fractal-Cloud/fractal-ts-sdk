@@ -157,9 +157,7 @@ export namespace HetznerNetwork {
     return satisfiedBuilder;
   };
 
-  export const create = (
-    config: HetznerNetworkConfig,
-  ): LiveSystemComponent => {
+  export const create = (config: HetznerNetworkConfig): LiveSystemComponent => {
     const b = getBuilder()
       .withId(config.id)
       .withVersion(

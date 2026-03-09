@@ -78,11 +78,7 @@ export type SatisfiedAzureNsgBuilder = {
 
 export type AzureNsgBuilder = {
   withId: (id: string) => AzureNsgBuilder;
-  withVersion: (
-    major: number,
-    minor: number,
-    patch: number,
-  ) => AzureNsgBuilder;
+  withVersion: (major: number, minor: number, patch: number) => AzureNsgBuilder;
   withDisplayName: (displayName: string) => AzureNsgBuilder;
   withDescription: (description: string) => AzureNsgBuilder;
   withIngressRules: (rules: IngressRule[]) => AzureNsgBuilder;

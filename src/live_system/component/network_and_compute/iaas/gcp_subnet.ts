@@ -65,9 +65,7 @@ function pushParam(
  */
 export type SatisfiedGcpSubnetBuilder = {
   withRegion: (region: string) => SatisfiedGcpSubnetBuilder;
-  withPrivateIpGoogleAccess: (
-    enabled: boolean,
-  ) => SatisfiedGcpSubnetBuilder;
+  withPrivateIpGoogleAccess: (enabled: boolean) => SatisfiedGcpSubnetBuilder;
   build: () => LiveSystemComponent;
 };
 
