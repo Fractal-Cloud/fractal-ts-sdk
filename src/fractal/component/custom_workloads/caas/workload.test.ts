@@ -7,6 +7,7 @@ import {
   MEMORY_PARAM,
   DESIRED_COUNT_PARAM,
 } from './workload';
+import {SecurityGroup} from '../../network_and_compute/iaas/security_group';
 
 const BASE_CONFIG = {
   id: 'my-workload',
@@ -64,62 +65,68 @@ describe('Workload', () => {
     });
   });
 
-  describe('withLinks()', () => {
+  describe('linkToWorkload()', () => {
     it('should add port links to the component', () => {
-      const apiNode = Workload.create({
+      const api = Workload.create({
         id: 'api-workload',
         version: {major: 1, minor: 0, patch: 0},
         displayName: 'API',
         containerImage: 'api:latest',
       });
-      const webNode = Workload.create({
+      const web = Workload.create({
         id: 'web-workload',
         version: {major: 1, minor: 0, patch: 0},
         displayName: 'Web',
         containerImage: 'nginx:latest',
-      }).withLinks([{target: apiNode, fromPort: 8080, protocol: 'tcp'}]);
+      }).linkToWorkload([{target: api, fromPort: 8080, protocol: 'tcp'}]);
 
-      expect(webNode.component.links).toHaveLength(1);
-      expect(webNode.component.links[0].id.toString()).toBe('api-workload');
+      expect(web.component.links).toHaveLength(1);
+      expect(web.component.links[0].id.toString()).toBe('api-workload');
       expect(
-        webNode.component.links[0].parameters.getOptionalFieldByName(
-          'fromPort',
-        ),
+        web.component.links[0].parameters.getOptionalFieldByName('fromPort'),
       ).toBe(8080);
       expect(
-        webNode.component.links[0].parameters.getOptionalFieldByName(
-          'protocol',
-        ),
+        web.component.links[0].parameters.getOptionalFieldByName('protocol'),
       ).toBe('tcp');
     });
 
-    it('should be immutable — withLinks returns a new node', () => {
-      const apiNode = Workload.create({
+    it('should be immutable — linkToWorkload returns a new node', () => {
+      const api = Workload.create({
         id: 'api-workload',
         version: {major: 1, minor: 0, patch: 0},
         displayName: 'API',
         containerImage: 'api:latest',
       });
       const original = Workload.create(BASE_CONFIG);
-      const linked = original.withLinks([{target: apiNode, fromPort: 80}]);
+      const linked = original.linkToWorkload([{target: api, fromPort: 80}]);
       expect(original.component.links).toHaveLength(0);
       expect(linked.component.links).toHaveLength(1);
     });
   });
 
-  describe('withSecurityGroups()', () => {
-    it('should add SG membership links', () => {
-      const sgNode = Workload.create({
+  describe('linkToSecurityGroup()', () => {
+    it('should add a no-settings SG membership link', () => {
+      const sg = SecurityGroup.create({
         id: 'app-sg',
         version: {major: 1, minor: 0, patch: 0},
         displayName: 'App SG',
-        containerImage: 'placeholder:latest',
+        description: 'Application security group',
       });
-      const workload = Workload.create(BASE_CONFIG).withSecurityGroups([
-        sgNode.component,
-      ]);
+      const workload = Workload.create(BASE_CONFIG).linkToSecurityGroup([sg]);
       expect(workload.component.links).toHaveLength(1);
       expect(workload.component.links[0].id.toString()).toBe('app-sg');
+      expect(workload.component.links[0].parameters.toMap()).toEqual({});
+    });
+
+    it('should not add a dependency on the SG', () => {
+      const sg = SecurityGroup.create({
+        id: 'app-sg',
+        version: {major: 1, minor: 0, patch: 0},
+        displayName: 'App SG',
+        description: 'Application security group',
+      });
+      const workload = Workload.create(BASE_CONFIG).linkToSecurityGroup([sg]);
+      expect(workload.component.dependencies).toHaveLength(0);
     });
   });
 });

@@ -15,6 +15,7 @@ import {KebabCaseString} from '../../../../values/kebab_case_string';
 import {getVersionBuilder, Version} from '../../../../values/version';
 import {LiveSystemComponent} from '../../index';
 import {BlueprintComponent} from '../../../../fractal/component/index';
+import {BlueprintComponentDependency} from '../../../../fractal/component/dependency';
 import {DESIRED_COUNT_PARAM} from '../../../../fractal/component/custom_workloads/caas/workload';
 
 // Agent constant: ECS_SERVICE_COMPONENT_NAME = "ECSService"
@@ -61,11 +62,19 @@ function pushParam(
 /**
  * Returned by satisfy() — all structural properties (dependencies, links,
  * desiredCount) are locked from the blueprint. Only AWS-specific launch
- * parameters are set here.
+ * parameters and live-system sub-component dependencies are set here.
  */
 export type SatisfiedAwsEcsServiceBuilder = {
   withLaunchType: (type: string) => SatisfiedAwsEcsServiceBuilder;
   withAssignPublicIp: (assign: boolean) => SatisfiedAwsEcsServiceBuilder;
+  /**
+   * Declares a live-system-only dependency on the ECS Task Definition that
+   * this service will run. This has no blueprint equivalent — it is an
+   * AWS-specific sub-component relationship.
+   */
+  withTaskDefinition: (
+    taskDef: LiveSystemComponent,
+  ) => SatisfiedAwsEcsServiceBuilder;
   build: () => LiveSystemComponent;
 };
 
@@ -143,10 +152,18 @@ export namespace AwsEcsService {
    * (traffic rules, SG membership), and desiredCount — are carried from
    * the blueprint unchanged. Only AWS-specific launch parameters are added here.
    */
+  /**
+   * Satisfies a blueprint Workload component as an AWS ECS Service.
+   * All structural properties — dependencies (subnet, cluster), links
+   * (traffic rules, SG membership), and desiredCount — are carried from
+   * the blueprint unchanged. Only AWS-specific launch parameters are added here.
+   */
   export const satisfy = (
     workload: BlueprintComponent,
   ): SatisfiedAwsEcsServiceBuilder => {
     const params = getParametersInstance();
+    // Mutable list — starts with blueprint deps, extended by withTaskDefinition()
+    const deps: BlueprintComponentDependency[] = [...workload.dependencies];
 
     const inner = getLiveSystemComponentBuilder()
       .withType(buildAwsEcsServiceType())
@@ -161,7 +178,7 @@ export namespace AwsEcsService {
         ),
       )
       .withDisplayName(workload.displayName)
-      .withDependencies(workload.dependencies)
+      .withDependencies(deps)
       .withLinks(workload.links);
 
     if (workload.description) inner.withDescription(workload.description);
@@ -179,6 +196,11 @@ export namespace AwsEcsService {
       },
       withAssignPublicIp: assign => {
         pushParam(params, ASSIGN_PUBLIC_IP_PARAM, assign);
+        return satisfiedBuilder;
+      },
+      withTaskDefinition: taskDef => {
+        deps.push({id: taskDef.id});
+        inner.withDependencies(deps);
         return satisfiedBuilder;
       },
       build: () => inner.build(),

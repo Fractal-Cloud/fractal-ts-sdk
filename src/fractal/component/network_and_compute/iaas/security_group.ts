@@ -75,7 +75,7 @@ export type SecurityGroupBuilder = {
   withDescription: (description: string) => SecurityGroupBuilder;
   withIngressRules: (rules: IngressRule[]) => SecurityGroupBuilder;
   withLinks: (links: ComponentLink[]) => SecurityGroupBuilder;
-  build: () => BlueprintComponent;
+  build: () => SecurityGroupComponent;
 };
 
 export type SecurityGroupConfig = {
@@ -84,6 +84,11 @@ export type SecurityGroupConfig = {
   displayName: string;
   description: string;
   ingressRules?: IngressRule[];
+};
+
+/** A BlueprintComponent that is guaranteed to be a SecurityGroup. */
+export type SecurityGroupComponent = BlueprintComponent & {
+  readonly _brand: 'SecurityGroup';
 };
 
 export namespace SecurityGroup {
@@ -119,13 +124,15 @@ export namespace SecurityGroup {
         inner.withLinks(links);
         return builder;
       },
-      build: () => inner.build(),
+      build: () => inner.build() as SecurityGroupComponent,
     };
 
     return builder;
   };
 
-  export const create = (config: SecurityGroupConfig): BlueprintComponent => {
+  export const create = (
+    config: SecurityGroupConfig,
+  ): SecurityGroupComponent => {
     const b = getBuilder()
       .withId(config.id)
       .withVersion(

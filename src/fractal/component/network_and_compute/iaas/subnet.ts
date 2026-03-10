@@ -16,8 +16,8 @@ import {getVersionBuilder, Version} from '../../../../values/version';
 import {BlueprintComponent} from '../../index';
 import {BlueprintComponentDependency} from '../../dependency';
 import {ComponentLink} from '../../../../component/link';
-import {VirtualMachineBuilder, VirtualMachineNode} from './vm';
-import {WorkloadNode} from '../../custom_workloads/caas/workload';
+import {VirtualMachineBuilder, VirtualMachineComponent} from './vm';
+import {WorkloadComponent} from '../../custom_workloads/caas/workload';
 
 export const SUBNET_TYPE_NAME = 'Subnet';
 export const CIDR_BLOCK_PARAM = 'cidrBlock';
@@ -56,13 +56,15 @@ function pushParam(
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-export type SubnetNode = {
+export type SubnetComponent = {
   readonly subnet: BlueprintComponent;
   readonly virtualMachines: ReadonlyArray<BlueprintComponent>;
   readonly workloads: ReadonlyArray<BlueprintComponent>;
   readonly components: ReadonlyArray<BlueprintComponent>;
-  withVirtualMachines: (vms: VirtualMachineNode[]) => SubnetNode;
-  withWorkloads: (workloads: ReadonlyArray<WorkloadNode>) => SubnetNode;
+  withVirtualMachines: (vms: VirtualMachineComponent[]) => SubnetComponent;
+  withWorkloads: (
+    workloads: ReadonlyArray<WorkloadComponent>,
+  ) => SubnetComponent;
 };
 
 export type SubnetResult = {
@@ -90,11 +92,11 @@ export type SubnetConfig = {
   cidrBlock?: string;
 };
 
-function makeSubnetNode(
+function makeSubnetComponent(
   subnet: BlueprintComponent,
-  vms: VirtualMachineNode[],
-  workloadNodes: ReadonlyArray<WorkloadNode>,
-): SubnetNode {
+  vms: VirtualMachineComponent[],
+  workloadNodes: ReadonlyArray<WorkloadComponent>,
+): SubnetComponent {
   const subnetDep: BlueprintComponentDependency = {id: subnet.id};
   const wiredVMs = vms.map(n => ({
     ...n.component,
@@ -110,8 +112,9 @@ function makeSubnetNode(
     workloads: wiredWorkloads,
     components: [subnet, ...wiredVMs, ...wiredWorkloads],
     withVirtualMachines: newVMs =>
-      makeSubnetNode(subnet, newVMs, workloadNodes),
-    withWorkloads: newWorkloads => makeSubnetNode(subnet, vms, newWorkloads),
+      makeSubnetComponent(subnet, newVMs, workloadNodes),
+    withWorkloads: newWorkloads =>
+      makeSubnetComponent(subnet, vms, newWorkloads),
   };
 }
 
@@ -171,7 +174,7 @@ export namespace Subnet {
     return builder;
   };
 
-  export const create = (config: SubnetConfig): SubnetNode => {
+  export const create = (config: SubnetConfig): SubnetComponent => {
     const b = getBuilder()
       .withId(config.id)
       .withVersion(
@@ -184,6 +187,6 @@ export namespace Subnet {
     if (config.cidrBlock) b.withCidrBlock(config.cidrBlock);
     if (config.description) b.withDescription(config.description);
 
-    return makeSubnetNode(b.build().subnet, [], []);
+    return makeSubnetComponent(b.build().subnet, [], []);
   };
 }

@@ -106,7 +106,7 @@ describe('AwsVpc', () => {
         id: 'source-vm',
         version: {major: 1, minor: 0, patch: 0},
         displayName: 'Source VM',
-      }).withLinks([{target: targetVm, fromPort: 8080}]);
+      }).linkToVirtualMachine([{target: targetVm, fromPort: 8080}]);
 
       // Simulate a blueprint component that has a link
       const c = AwsVpc.satisfy(sourceVm.component).build();

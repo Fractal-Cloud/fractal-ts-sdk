@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {VirtualMachine} from './vm';
+import {SecurityGroup} from './security_group';
 
 const BASE_CONFIG = {
   id: 'my-vm',
@@ -31,18 +32,42 @@ describe('VirtualMachine (blueprint)', () => {
       expect(component.description).toBeFalsy();
     });
 
-    it('withLinks() should add port links to the component', () => {
+    it('linkToVirtualMachine() should add port links to the component', () => {
       const targetVm = VirtualMachine.create({
         id: 'target-vm',
         version: {major: 1, minor: 0, patch: 0},
         displayName: 'Target VM',
       });
-      const node = VirtualMachine.create(BASE_CONFIG).withLinks([
+      const node = VirtualMachine.create(BASE_CONFIG).linkToVirtualMachine([
         {target: targetVm, fromPort: 8080, toPort: 8080, protocol: 'tcp'},
       ]);
       expect(node.component.links).toHaveLength(1);
       expect(node.component.links[0].id.toString()).toBe('target-vm');
       expect(node.component.links[0].parameters.getOptionalFieldByName('fromPort')).toBe(8080);
+    });
+
+    it('linkToSecurityGroup() should add a no-settings link to the SG', () => {
+      const sg = SecurityGroup.create({
+        id: 'web-sg',
+        version: {major: 1, minor: 0, patch: 0},
+        displayName: 'Web SG',
+        description: 'Web security group',
+      });
+      const node = VirtualMachine.create(BASE_CONFIG).linkToSecurityGroup([sg]);
+      expect(node.component.links).toHaveLength(1);
+      expect(node.component.links[0].id.toString()).toBe('web-sg');
+      expect(node.component.links[0].parameters.toMap()).toEqual({});
+    });
+
+    it('linkToSecurityGroup() should not add a dependency', () => {
+      const sg = SecurityGroup.create({
+        id: 'web-sg',
+        version: {major: 1, minor: 0, patch: 0},
+        displayName: 'Web SG',
+        description: 'Web security group',
+      });
+      const node = VirtualMachine.create(BASE_CONFIG).linkToSecurityGroup([sg]);
+      expect(node.component.dependencies).toHaveLength(0);
     });
   });
 

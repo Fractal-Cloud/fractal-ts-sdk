@@ -123,7 +123,7 @@ describe('Ec2Instance', () => {
         id: 'web-server',
         version: {major: 1, minor: 0, patch: 0},
         displayName: 'Web Server',
-      }).withLinks([{target: apiServer, fromPort: 8080, protocol: 'tcp'}]);
+      }).linkToVirtualMachine([{target: apiServer, fromPort: 8080, protocol: 'tcp'}]);
 
       const c = Ec2Instance.satisfy(webServer.component)
         .withAmiId('ami-abc')
@@ -147,7 +147,7 @@ describe('Ec2Instance', () => {
         .withVersion(1, 0, 0)
         .withDisplayName('Dep VM')
         .build();
-      // Manually add a dependency as the SubnetNode would
+      // Manually add a dependency as the SubnetComponent would
       const vmWithDep = {
         ...rawVm,
         dependencies: [{id: rawVm.id}],

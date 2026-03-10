@@ -58,13 +58,13 @@ describe('VirtualNetwork', () => {
         version: {major: 1, minor: 0, patch: 0},
         displayName: 'My VM',
       });
-      const subnetNode = Subnet.create({
+      const subnet = Subnet.create({
         id: 'my-subnet',
         version: {major: 1, minor: 0, patch: 0},
         displayName: 'My Subnet',
       }).withVirtualMachines([vm]);
 
-      const node = VirtualNetwork.create(BASE_CONFIG).withSubnets([subnetNode]);
+      const node = VirtualNetwork.create(BASE_CONFIG).withSubnets([subnet]);
       expect(node.subnets).toHaveLength(1);
       expect(node.subnets[0].dependencies[0].id.toString()).toBe(
         vpc.id.toString()
