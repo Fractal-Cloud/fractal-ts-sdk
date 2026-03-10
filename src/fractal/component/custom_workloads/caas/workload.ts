@@ -15,6 +15,7 @@ import {KebabCaseString} from '../../../../values/kebab_case_string';
 import {getVersionBuilder, Version} from '../../../../values/version';
 import {BlueprintComponent} from '../../index';
 import {getLinkBuilder} from '../../../../component/link';
+import {SecurityGroupComponent} from '../../network_and_compute/iaas/security_group';
 
 export const WORKLOAD_TYPE_NAME = 'Workload';
 export const CONTAINER_IMAGE_PARAM = 'containerImage';
@@ -79,17 +80,19 @@ function buildLinkParams(
  * The agent derives managed SG egress/ingress rules from these.
  */
 export type WorkloadPortLink = {
-  target: WorkloadNode;
+  target: WorkloadComponent;
   fromPort: number;
   toPort?: number;
   protocol?: string;
 };
 
-export type WorkloadNode = {
+export type WorkloadComponent = {
   readonly component: BlueprintComponent;
   readonly components: ReadonlyArray<BlueprintComponent>;
-  withLinks: (links: WorkloadPortLink[]) => WorkloadNode;
-  withSecurityGroups: (sgs: BlueprintComponent[]) => WorkloadNode;
+  /** Declares a traffic rule from this workload to another. The agent derives managed SG egress/ingress rules. */
+  linkToWorkload: (links: WorkloadPortLink[]) => WorkloadComponent;
+  /** Declares SG membership. The agent assigns the workload to the given security group at launch. No settings required. */
+  linkToSecurityGroup: (sgs: SecurityGroupComponent[]) => WorkloadComponent;
 };
 
 export type WorkloadBuilder = {
@@ -119,11 +122,13 @@ export type WorkloadConfig = {
   desiredCount?: number;
 };
 
-function makeWorkloadNode(component: BlueprintComponent): WorkloadNode {
+function makeWorkloadComponent(
+  component: BlueprintComponent,
+): WorkloadComponent {
   return {
     component,
     components: [component],
-    withLinks: (links: WorkloadPortLink[]) => {
+    linkToWorkload: (links: WorkloadPortLink[]) => {
       const portLinks = links.map(l =>
         getLinkBuilder()
           .withId(l.target.component.id)
@@ -131,12 +136,12 @@ function makeWorkloadNode(component: BlueprintComponent): WorkloadNode {
           .withParameters(buildLinkParams(l.fromPort, l.toPort, l.protocol))
           .build(),
       );
-      return makeWorkloadNode({
+      return makeWorkloadComponent({
         ...component,
         links: [...component.links, ...portLinks],
       });
     },
-    withSecurityGroups: (sgs: BlueprintComponent[]) => {
+    linkToSecurityGroup: (sgs: SecurityGroupComponent[]) => {
       const sgLinks = sgs.map(sg =>
         getLinkBuilder()
           .withId(sg.id)
@@ -144,7 +149,7 @@ function makeWorkloadNode(component: BlueprintComponent): WorkloadNode {
           .withParameters(getParametersInstance())
           .build(),
       );
-      return makeWorkloadNode({
+      return makeWorkloadComponent({
         ...component,
         links: [...component.links, ...sgLinks],
       });
@@ -206,7 +211,7 @@ export namespace Workload {
     return builder;
   };
 
-  export const create = (config: WorkloadConfig): WorkloadNode => {
+  export const create = (config: WorkloadConfig): WorkloadComponent => {
     const b = getBuilder()
       .withId(config.id)
       .withVersion(
@@ -226,6 +231,6 @@ export namespace Workload {
     if (config.desiredCount !== undefined)
       b.withDesiredCount(config.desiredCount);
 
-    return makeWorkloadNode(b.build());
+    return makeWorkloadComponent(b.build());
   };
 }

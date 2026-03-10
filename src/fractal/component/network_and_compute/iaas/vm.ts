@@ -15,6 +15,7 @@ import {KebabCaseString} from '../../../../values/kebab_case_string';
 import {getVersionBuilder, Version} from '../../../../values/version';
 import {BlueprintComponent} from '../../index';
 import {ComponentLink, getLinkBuilder} from '../../../../component/link';
+import {SecurityGroupComponent} from './security_group';
 
 export const VIRTUAL_MACHINE_TYPE_NAME = 'VirtualMachine';
 
@@ -49,16 +50,21 @@ function buildVirtualMachineType(): BlueprintComponentType {
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export type VmPortLink = {
-  target: VirtualMachineNode;
+  target: VirtualMachineComponent;
   fromPort: number;
   toPort?: number;
   protocol?: string;
 };
 
-export type VirtualMachineNode = {
+export type VirtualMachineComponent = {
   readonly component: BlueprintComponent;
   readonly components: ReadonlyArray<BlueprintComponent>;
-  withLinks: (links: VmPortLink[]) => VirtualMachineNode;
+  /** Declares a traffic rule from this VM to another. The agent derives managed SG egress/ingress rules. */
+  linkToVirtualMachine: (links: VmPortLink[]) => VirtualMachineComponent;
+  /** Declares SG membership. The agent assigns the VM to the given security group at launch. No settings required. */
+  linkToSecurityGroup: (
+    sgs: SecurityGroupComponent[],
+  ) => VirtualMachineComponent;
 };
 
 function buildLinkParams(link: VmPortLink): GenericParameters {
@@ -73,13 +79,13 @@ function buildLinkParams(link: VmPortLink): GenericParameters {
   return params;
 }
 
-function makeVirtualMachineNode(
+function makeVirtualMachineComponent(
   component: BlueprintComponent,
-): VirtualMachineNode {
+): VirtualMachineComponent {
   return {
     component,
     components: [component],
-    withLinks: (links: VmPortLink[]) => {
+    linkToVirtualMachine: (links: VmPortLink[]) => {
       const componentLinks: ComponentLink[] = links.map(l =>
         getLinkBuilder()
           .withId(l.target.component.id)
@@ -87,9 +93,22 @@ function makeVirtualMachineNode(
           .withParameters(buildLinkParams(l))
           .build(),
       );
-      return makeVirtualMachineNode({
+      return makeVirtualMachineComponent({
         ...component,
         links: [...component.links, ...componentLinks],
+      });
+    },
+    linkToSecurityGroup: (sgs: SecurityGroupComponent[]) => {
+      const sgLinks: ComponentLink[] = sgs.map(sg =>
+        getLinkBuilder()
+          .withId(sg.id)
+          .withType(sg.type)
+          .withParameters(getParametersInstance())
+          .build(),
+      );
+      return makeVirtualMachineComponent({
+        ...component,
+        links: [...component.links, ...sgLinks],
       });
     },
   };
@@ -148,7 +167,9 @@ export namespace VirtualMachine {
     return builder;
   };
 
-  export const create = (config: VirtualMachineConfig): VirtualMachineNode => {
+  export const create = (
+    config: VirtualMachineConfig,
+  ): VirtualMachineComponent => {
     const b = getBuilder()
       .withId(config.id)
       .withVersion(
@@ -160,6 +181,6 @@ export namespace VirtualMachine {
 
     if (config.description) b.withDescription(config.description);
 
-    return makeVirtualMachineNode(b.build());
+    return makeVirtualMachineComponent(b.build());
   };
 }

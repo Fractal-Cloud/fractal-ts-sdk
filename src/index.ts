@@ -62,7 +62,7 @@ export {VirtualNetwork} from './fractal/component/network_and_compute/iaas/virtu
 export type {
   VirtualNetworkBuilder,
   VirtualNetworkConfig,
-  VirtualNetworkNode,
+  VirtualNetworkComponent,
   VirtualNetworkResult,
 } from './fractal/component/network_and_compute/iaas/virtual_network';
 
@@ -70,7 +70,7 @@ export {Subnet} from './fractal/component/network_and_compute/iaas/subnet';
 export type {
   SubnetBuilder,
   SubnetConfig,
-  SubnetNode,
+  SubnetComponent,
   SubnetResult,
 } from './fractal/component/network_and_compute/iaas/subnet';
 
@@ -78,6 +78,7 @@ export {SecurityGroup} from './fractal/component/network_and_compute/iaas/securi
 export type {
   SecurityGroupBuilder,
   SecurityGroupConfig,
+  SecurityGroupComponent,
   IngressRule,
 } from './fractal/component/network_and_compute/iaas/security_group';
 
@@ -85,7 +86,7 @@ export {VirtualMachine} from './fractal/component/network_and_compute/iaas/vm';
 export type {
   VirtualMachineBuilder,
   VirtualMachineConfig,
-  VirtualMachineNode,
+  VirtualMachineComponent,
   VmPortLink,
 } from './fractal/component/network_and_compute/iaas/vm';
 
@@ -239,7 +240,7 @@ export {ContainerPlatform} from './fractal/component/network_and_compute/paas/co
 export type {
   ContainerPlatformBuilder,
   ContainerPlatformConfig,
-  ContainerPlatformNode,
+  ContainerPlatformComponent,
 } from './fractal/component/network_and_compute/paas/container_platform';
 
 // Blueprint component helpers — CaaS
@@ -247,7 +248,7 @@ export {Workload} from './fractal/component/custom_workloads/caas/workload';
 export type {
   WorkloadBuilder,
   WorkloadConfig,
-  WorkloadNode,
+  WorkloadComponent,
   WorkloadPortLink,
 } from './fractal/component/custom_workloads/caas/workload';
 

@@ -16,7 +16,7 @@ import {getVersionBuilder, Version} from '../../../../values/version';
 import {BlueprintComponent} from '../../index';
 import {BlueprintComponentDependency} from '../../dependency';
 import {ComponentLink} from '../../../../component/link';
-import {SubnetBuilder, SubnetNode} from './subnet';
+import {SubnetBuilder, SubnetComponent} from './subnet';
 import {SecurityGroupBuilder} from './security_group';
 
 export const VIRTUAL_NETWORK_TYPE_NAME = 'VirtualNetwork';
@@ -60,15 +60,15 @@ function pushParam(
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-export type VirtualNetworkNode = {
+export type VirtualNetworkComponent = {
   readonly vpc: BlueprintComponent;
   readonly subnets: ReadonlyArray<BlueprintComponent>;
   readonly securityGroups: ReadonlyArray<BlueprintComponent>;
   readonly virtualMachines: ReadonlyArray<BlueprintComponent>;
   readonly workloads: ReadonlyArray<BlueprintComponent>;
   readonly components: ReadonlyArray<BlueprintComponent>;
-  withSubnets: (subnets: SubnetNode[]) => VirtualNetworkNode;
-  withSecurityGroups: (sgs: BlueprintComponent[]) => VirtualNetworkNode;
+  withSubnets: (subnets: SubnetComponent[]) => VirtualNetworkComponent;
+  withSecurityGroups: (sgs: BlueprintComponent[]) => VirtualNetworkComponent;
 };
 
 export type VirtualNetworkResult = {
@@ -80,11 +80,11 @@ export type VirtualNetworkResult = {
   readonly components: ReadonlyArray<BlueprintComponent>;
 };
 
-function makeVirtualNetworkNode(
+function makeVirtualNetworkComponent(
   vpc: BlueprintComponent,
-  subnetNodes: SubnetNode[],
+  subnetNodes: SubnetComponent[],
   sgs: BlueprintComponent[],
-): VirtualNetworkNode {
+): VirtualNetworkComponent {
   const vpcDep: BlueprintComponentDependency = {id: vpc.id};
   const wiredSubnets = subnetNodes.map(n => ({
     ...n.subnet,
@@ -100,9 +100,10 @@ function makeVirtualNetworkNode(
     virtualMachines: allVMs,
     workloads: allEcsSvcs,
     components: [vpc, ...wiredSubnets, ...wiredSgs, ...allVMs, ...allEcsSvcs],
-    withSubnets: newSubnets => makeVirtualNetworkNode(vpc, newSubnets, sgs),
+    withSubnets: newSubnets =>
+      makeVirtualNetworkComponent(vpc, newSubnets, sgs),
     withSecurityGroups: newSgs =>
-      makeVirtualNetworkNode(vpc, subnetNodes, newSgs),
+      makeVirtualNetworkComponent(vpc, subnetNodes, newSgs),
   };
 }
 
@@ -202,7 +203,9 @@ export namespace VirtualNetwork {
     return builder;
   };
 
-  export const create = (config: VirtualNetworkConfig): VirtualNetworkNode => {
+  export const create = (
+    config: VirtualNetworkConfig,
+  ): VirtualNetworkComponent => {
     const b = getBuilder()
       .withId(config.id)
       .withVersion(
@@ -215,6 +218,6 @@ export namespace VirtualNetwork {
     if (config.cidrBlock) b.withCidrBlock(config.cidrBlock);
     if (config.description) b.withDescription(config.description);
 
-    return makeVirtualNetworkNode(b.build().vpc, [], []);
+    return makeVirtualNetworkComponent(b.build().vpc, [], []);
   };
 }

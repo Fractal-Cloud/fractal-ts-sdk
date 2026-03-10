@@ -21,8 +21,8 @@ import {
   IngressRule,
 } from '../../../../fractal/component/network_and_compute/iaas/security_group';
 
-// Agent constant: SEC_GROUP_COMPONENT_NAME = "AwsSecurityGroup"
-const AWS_SG_TYPE_NAME = 'AwsSecurityGroup';
+// Agent constant: SEC_GROUP_COMPONENT_NAME = "SecurityGroup"
+const AWS_SG_TYPE_NAME = 'SecurityGroup';
 
 // ── internal helpers ──────────────────────────────────────────────────────────
 
@@ -159,7 +159,11 @@ export namespace AwsSecurityGroup {
     const ingressRules =
       blueprint.parameters.getOptionalFieldByName(INGRESS_RULES_PARAM);
     if (ingressRules !== null)
-      pushParam(params, INGRESS_RULES_PARAM, ingressRules as IngressRule[]);
+      pushParam(
+        params,
+        INGRESS_RULES_PARAM,
+        ingressRules as unknown as IngressRule[],
+      );
 
     const satisfiedBuilder: SatisfiedAwsSecurityGroupBuilder = {
       build: () => inner.build(),

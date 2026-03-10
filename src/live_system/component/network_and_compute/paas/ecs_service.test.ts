@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {AwsEcsService} from './ecs_service';
+import {AwsEcsTaskDefinition} from './ecs_task_definition';
 import {Workload} from '../../../../fractal/component/custom_workloads/caas/workload';
 import {ContainerPlatform} from '../../../../fractal/component/network_and_compute/paas/container_platform';
 import {DESIRED_COUNT_PARAM} from '../../../../fractal/component/custom_workloads/caas/workload';
@@ -90,7 +91,7 @@ describe('AwsEcsService', () => {
         version: {major: 1, minor: 0, patch: 0},
         displayName: 'Web',
         containerImage: 'nginx:latest',
-      }).withLinks([{target: apiWorkload, fromPort: 8080}]);
+      }).linkToWorkload([{target: apiWorkload, fromPort: 8080}]);
 
       const c = AwsEcsService.satisfy(webWorkload.component).build();
 
@@ -101,7 +102,30 @@ describe('AwsEcsService', () => {
       );
     });
 
-    it('should carry blueprint dependencies (subnet + cluster) unchanged', () => {
+    it('withTaskDefinition() should add the task def as an extra dependency', () => {
+      const workload = Workload.create({
+        id: 'web-workload',
+        version: {major: 1, minor: 0, patch: 0},
+        displayName: 'Web',
+        containerImage: 'nginx:latest',
+      });
+
+      const taskDef = AwsEcsTaskDefinition.create({
+        id: 'web-workload-task',
+        version: {major: 1, minor: 0, patch: 0},
+        displayName: 'Web Task',
+        containerImage: 'nginx:latest',
+      });
+
+      const svc = AwsEcsService.satisfy(workload.component)
+        .withTaskDefinition(taskDef)
+        .build();
+
+      const depIds = svc.dependencies.map(d => d.id.toString());
+      expect(depIds).toContain('web-workload-task');
+    });
+
+    it('withTaskDefinition() should not remove blueprint dependencies', () => {
       const workload = Workload.create({
         id: 'web-workload',
         version: {major: 1, minor: 0, patch: 0},
@@ -117,7 +141,7 @@ describe('AwsEcsService', () => {
       });
       const wiredByCluster = platform.withWorkloads([workload]).workloads[0];
 
-      // Simulate subnet dep stacked on top (as SubnetNode.withWorkloads does)
+      // Simulate subnet dep stacked on top (as SubnetComponent.withWorkloads does)
       const fullyWiredComponent = {
         ...wiredByCluster.component,
         dependencies: [

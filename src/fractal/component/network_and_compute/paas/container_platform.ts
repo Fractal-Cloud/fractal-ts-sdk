@@ -12,7 +12,7 @@ import {KebabCaseString} from '../../../../values/kebab_case_string';
 import {getVersionBuilder, Version} from '../../../../values/version';
 import {BlueprintComponent} from '../../index';
 import {BlueprintComponentDependency} from '../../dependency';
-import {WorkloadNode} from '../../custom_workloads/caas/workload';
+import {WorkloadComponent} from '../../custom_workloads/caas/workload';
 
 export const CONTAINER_PLATFORM_TYPE_NAME = 'ContainerPlatform';
 
@@ -46,14 +46,14 @@ function buildContainerPlatformType(): BlueprintComponentType {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-export type ContainerPlatformNode = {
+export type ContainerPlatformComponent = {
   readonly platform: BlueprintComponent;
   /**
    * Workload nodes with the platform dependency auto-wired into each component.
    * Pass these to Subnet.withWorkloads() so the subnet dep is stacked on top.
    */
-  readonly workloads: ReadonlyArray<WorkloadNode>;
-  withWorkloads: (workloads: WorkloadNode[]) => ContainerPlatformNode;
+  readonly workloads: ReadonlyArray<WorkloadComponent>;
+  withWorkloads: (workloads: WorkloadComponent[]) => ContainerPlatformComponent;
 };
 
 export type ContainerPlatformBuilder = {
@@ -75,10 +75,10 @@ export type ContainerPlatformConfig = {
   description?: string;
 };
 
-function makeContainerPlatformNode(
+function makeContainerPlatformComponent(
   platform: BlueprintComponent,
-  workloadNodes: WorkloadNode[],
-): ContainerPlatformNode {
+  workloadNodes: WorkloadComponent[],
+): ContainerPlatformComponent {
   const platformDep: BlueprintComponentDependency = {id: platform.id};
   const wiredWorkloads = workloadNodes.map(w => ({
     ...w,
@@ -91,7 +91,7 @@ function makeContainerPlatformNode(
     platform,
     workloads: wiredWorkloads,
     withWorkloads: newWorkloads =>
-      makeContainerPlatformNode(platform, newWorkloads),
+      makeContainerPlatformComponent(platform, newWorkloads),
   };
 }
 
@@ -127,7 +127,7 @@ export namespace ContainerPlatform {
 
   export const create = (
     config: ContainerPlatformConfig,
-  ): ContainerPlatformNode => {
+  ): ContainerPlatformComponent => {
     const b = getBuilder()
       .withId(config.id)
       .withVersion(
@@ -139,6 +139,6 @@ export namespace ContainerPlatform {
 
     if (config.description) b.withDescription(config.description);
 
-    return makeContainerPlatformNode(b.build(), []);
+    return makeContainerPlatformComponent(b.build(), []);
   };
 }

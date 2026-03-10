@@ -17,7 +17,7 @@ describe('AwsSecurityGroup', () => {
   describe('create()', () => {
     it('should build a component with the correct type string', () => {
       const c = AwsSecurityGroup.create(BASE_CONFIG);
-      expect(c.type.toString()).toBe('NetworkAndCompute.IaaS.AwsSecurityGroup');
+      expect(c.type.toString()).toBe('NetworkAndCompute.IaaS.SecurityGroup');
     });
 
     it('should set provider to AWS', () => {

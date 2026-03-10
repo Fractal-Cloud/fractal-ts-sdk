@@ -267,8 +267,8 @@ export const getLiveSystemBuilder = (): LiveSystemBuilder => {
 
       return {
         ...internalState,
-        deploy: credentials =>
-          LiveSystemService.deploy(credentials, internalState),
+        deploy: (credentials, options) =>
+          LiveSystemService.deploy(credentials, internalState, options),
         destroy: credentials =>
           LiveSystemService.destroy(credentials, internalState.id),
       };

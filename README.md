@@ -178,6 +178,39 @@ await getLiveSystem().deploy(credentials);
 
 The blueprint is registered with Fractal Cloud. The Automation Engine reconciles cloud resources to match the Live System definition.
 
+## Deployment modes
+
+`liveSystem.deploy()` supports two modes via an optional `DeployOptions` argument.
+
+### Fire and forget (default)
+
+Submits the live system to Fractal Cloud and returns immediately. Provisioning happens asynchronously. Errors are logged but not thrown. This is the default when no options are passed.
+
+```typescript
+// Equivalent — both are fire-and-forget
+await liveSystem.deploy(credentials);
+await liveSystem.deploy(credentials, {mode: 'fire-and-forget'});
+```
+
+Best for: **applications, CLIs, scripts** where infrastructure deployment is a background concern.
+
+### Wait for Active
+
+Submits the live system, then polls until all components reach `Active` status. Throws if deployment fails (`FailedMutation`, `Error`) or if the timeout is exceeded.
+
+```typescript
+await liveSystem.deploy(credentials, {
+  mode: 'wait',
+  pollIntervalMs: 10_000, // check every 10 s  (default: 5 s)
+  timeoutMs: 900_000,     // give up after 15 min (default: 10 min)
+});
+// reaches here only when the live system is fully Active
+```
+
+Best for: **CI/CD pipelines** where the pipeline must not advance until infrastructure is fully provisioned.
+
+---
+
 ## Multi-provider support
 
 The same blueprint can be deployed on any supported provider. Live system files are short and only contain vendor-specific parameters — all structural decisions (dependencies, traffic rules, security rules) stay in the blueprint.
