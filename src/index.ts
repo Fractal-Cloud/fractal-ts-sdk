@@ -253,6 +253,13 @@ export type {
 } from './fractal/component/custom_workloads/caas/workload';
 
 // Live system component helpers — AWS PaaS
+export {AwsEksCluster} from './live_system/component/network_and_compute/paas/eks_cluster';
+export type {
+  AwsEksClusterBuilder,
+  AwsEksClusterConfig,
+  SatisfiedAwsEksClusterBuilder,
+} from './live_system/component/network_and_compute/paas/eks_cluster';
+
 export {AwsEcsCluster} from './live_system/component/network_and_compute/paas/ecs_cluster';
 export type {
   AwsEcsClusterBuilder,
@@ -273,3 +280,55 @@ export type {
   AwsEcsServiceConfig,
   SatisfiedAwsEcsServiceBuilder,
 } from './live_system/component/network_and_compute/paas/ecs_service';
+
+// Live system component helpers — Azure PaaS
+export {AzureAksCluster} from './live_system/component/network_and_compute/paas/azure_aks';
+export type {
+  AzureAksClusterBuilder,
+  AzureAksClusterConfig,
+  SatisfiedAzureAksClusterBuilder,
+} from './live_system/component/network_and_compute/paas/azure_aks';
+
+export {AzureContainerAppsEnvironment} from './live_system/component/network_and_compute/paas/azure_container_apps_environment';
+export type {
+  AzureContainerAppsEnvironmentBuilder,
+  AzureContainerAppsEnvironmentConfig,
+  SatisfiedAzureContainerAppsEnvironmentBuilder,
+} from './live_system/component/network_and_compute/paas/azure_container_apps_environment';
+
+export {AzureContainerInstance} from './live_system/component/network_and_compute/paas/azure_container_instance';
+export type {
+  AzureContainerInstanceBuilder,
+  AzureContainerInstanceConfig,
+  SatisfiedAzureContainerInstanceBuilder,
+} from './live_system/component/network_and_compute/paas/azure_container_instance';
+
+export {AzureContainerApp} from './live_system/component/network_and_compute/paas/azure_container_app';
+export type {
+  AzureContainerAppBuilder,
+  AzureContainerAppConfig,
+  SatisfiedAzureContainerAppBuilder,
+} from './live_system/component/network_and_compute/paas/azure_container_app';
+
+// Live system component helpers — GCP PaaS
+export {GcpGkeCluster} from './live_system/component/network_and_compute/paas/gcp_gke';
+export type {
+  GcpGkeClusterBuilder,
+  GcpGkeClusterConfig,
+  SatisfiedGcpGkeClusterBuilder,
+} from './live_system/component/network_and_compute/paas/gcp_gke';
+
+export {GcpCloudRunService} from './live_system/component/network_and_compute/paas/gcp_cloud_run_service';
+export type {
+  GcpCloudRunServiceBuilder,
+  GcpCloudRunServiceConfig,
+  SatisfiedGcpCloudRunServiceBuilder,
+} from './live_system/component/network_and_compute/paas/gcp_cloud_run_service';
+
+// Live system component helpers — OCI PaaS
+export {OciContainerInstance} from './live_system/component/network_and_compute/paas/oci_container_instance';
+export type {
+  OciContainerInstanceBuilder,
+  OciContainerInstanceConfig,
+  SatisfiedOciContainerInstanceBuilder,
+} from './live_system/component/network_and_compute/paas/oci_container_instance';
