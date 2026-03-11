@@ -247,6 +247,7 @@ export const getLiveSystemBuilder = (): LiveSystemBuilder => {
     },
     reset: (): LiveSystemBuilder => {
       internalState.id = DEFAULT_LIVE_SYSTEM.id;
+      internalState.parameters = DEFAULT_LIVE_SYSTEM.parameters;
       internalState.requesterId = DEFAULT_LIVE_SYSTEM.requesterId;
       internalState.fractalId = DEFAULT_LIVE_SYSTEM.fractalId;
       internalState.description = DEFAULT_LIVE_SYSTEM.description;

@@ -270,6 +270,7 @@ export type {
 export {AwsEcsTaskDefinition} from './live_system/component/network_and_compute/paas/ecs_task_definition';
 export type {
   AwsEcsTaskDefinitionBuilder,
+  AwsEcsTaskDefinitionComponent,
   AwsEcsTaskDefinitionConfig,
   SatisfiedAwsEcsTaskDefinitionBuilder,
 } from './live_system/component/network_and_compute/paas/ecs_task_definition';

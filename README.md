@@ -253,6 +253,26 @@ src/
       network_and_compute/paas/   # AWS (ECS, EKS), Azure (AKS, Container Apps, Container Instance), GCP (GKE, Cloud Run), OCI (Container Instance)
 ```
 
+## Debug logging
+
+Set `FRACTAL_DEBUG=true` to log every outbound HTTP request and every inbound response to stdout. This covers all API calls made by `fractal.deploy()`, `liveSystem.deploy()`, `fractal.destroy()`, and `liveSystem.destroy()`.
+
+```
+[2026-03-11T14:23:00Z] DEBUG → GET https://api.fractal.cloud/livesystems/my-ls
+[2026-03-11T14:23:00Z] DEBUG ← 404 GET https://api.fractal.cloud/livesystems/my-ls  body=null
+[2026-03-11T14:23:00Z] DEBUG → POST https://api.fractal.cloud/livesystems  body={"liveSystemId":"..."}
+[2026-03-11T14:23:00Z] DEBUG ← 201 POST https://api.fractal.cloud/livesystems  body=null
+```
+
+- Authentication headers (`X-ClientID`, `X-ClientSecret`) are never logged.
+- Request and response bodies are truncated to 2 000 characters.
+- Both success and error responses are logged.
+- Works in all deploy modes (`fire-and-forget` and `wait`).
+
+```bash
+FRACTAL_DEBUG=true node build/src/index.js
+```
+
 ## Contributing and feedback
 
 Contributions and feedback are welcome.
