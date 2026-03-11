@@ -1,6 +1,7 @@
 import {ServiceAccountCredentials} from '../values/service_account_credentials';
 import superagent from 'superagent';
 import {LiveSystem} from './index';
+import {debugRequest, debugResponse} from '../debug';
 
 const CLIENT_ID_HEADER = 'X-ClientID';
 const CLIENT_SECRET_HEADER = 'X-ClientSecret';
@@ -74,10 +75,12 @@ const buildBody = (liveSystem: LiveSystem) => ({
   blueprintMap: liveSystem.components.reduce(
     (acc, c) => {
       acc[c.id.value.toString()] = {
-        ...c,
         type: c.type.toString(),
         id: c.id.value.toString(),
         version: c.version.toString(),
+        displayName: c.displayName,
+        description: c.description,
+        provider: c.provider,
         parameters: c.parameters.toMap(),
         dependencies: c.dependencies.map(d => d.id.value.toString()),
         links: c.links.map(l => ({
@@ -85,6 +88,8 @@ const buildBody = (liveSystem: LiveSystem) => ({
           settings: l.parameters.toMap(),
         })),
         outputFields: c.outputFields.value,
+        isLocked: c.isLocked,
+        recreateOnFailure: c.recreateOnFailure,
       };
       return acc;
     },
@@ -109,24 +114,50 @@ const submitDeploy = async (
   const liveSystemUrl = `${FRACTAL_API_URL}/livesystems/${target}`;
 
   let getResponse;
+  debugRequest('GET', liveSystemUrl, undefined, 'existence check');
   try {
     getResponse = await superagent
       .get(liveSystemUrl)
       .ok(res => res.status === 200 || res.status === 404)
       .set(authHeaders(credentials))
       .send();
+    debugResponse(
+      'GET',
+      liveSystemUrl,
+      getResponse.status,
+      getResponse.body,
+      'existence check',
+    );
   } catch (err) {
+    const e = err as {status?: number; response?: {body?: unknown}};
+    debugResponse(
+      'GET',
+      liveSystemUrl,
+      e.status ?? 0,
+      e.response?.body,
+      'existence check',
+    );
     throw toApiError('check live system existence', target, err);
   }
 
+  const method = getResponse.status === 200 ? 'PUT' : 'POST';
+  const submitUrl =
+    getResponse.status === 200
+      ? liveSystemUrl
+      : `${FRACTAL_API_URL}/livesystems`;
   const request =
     getResponse.status === 200
       ? superagent.put(liveSystemUrl)
       : superagent.post(`${FRACTAL_API_URL}/livesystems`);
 
+  const body = buildBody(liveSystem);
+  debugRequest(method, submitUrl, body);
   try {
-    await request.set(authHeaders(credentials)).send(buildBody(liveSystem));
+    const response = await request.set(authHeaders(credentials)).send(body);
+    debugResponse(method, submitUrl, response.status, response.body);
   } catch (err) {
+    const e = err as {status?: number; response?: {body?: unknown}};
+    debugResponse(method, submitUrl, e.status ?? 0, e.response?.body);
     const op =
       getResponse.status === 200 ? 'update live system' : 'create live system';
     throw toApiError(op, target, err);
@@ -137,13 +168,18 @@ const getLiveSystemStatus = async (
   credentials: ServiceAccountCredentials,
   id: LiveSystem.Id,
 ): Promise<LiveSystem.Status> => {
+  const url = `${FRACTAL_API_URL}/livesystems/${id.toString()}`;
+  debugRequest('GET', url, undefined, 'status poll');
   try {
     const response = await superagent
-      .get(`${FRACTAL_API_URL}/livesystems/${id.toString()}`)
+      .get(url)
       .set(authHeaders(credentials))
       .send();
+    debugResponse('GET', url, response.status, response.body, 'status poll');
     return response.body.status as LiveSystem.Status;
   } catch (err) {
+    const e = err as {status?: number; response?: {body?: unknown}};
+    debugResponse('GET', url, e.status ?? 0, e.response?.body, 'status poll');
     throw toApiError('get live system status', id.toString(), err);
   }
 };
@@ -258,11 +294,14 @@ const destroyLiveSystem = async (
   credentials: ServiceAccountCredentials,
   id: LiveSystem.Id,
 ): Promise<void> => {
+  const url = `${FRACTAL_API_URL}/livesystems/${id.toString()}`;
+  debugRequest('DELETE', url);
   try {
-    await superagent
-      .delete(`${FRACTAL_API_URL}/livesystems/${id.toString()}`)
-      .set(authHeaders(credentials));
+    const response = await superagent.delete(url).set(authHeaders(credentials));
+    debugResponse('DELETE', url, response.status, response.body);
   } catch (err) {
+    const e = err as {status?: number; response?: {body?: unknown}};
+    debugResponse('DELETE', url, e.status ?? 0, e.response?.body);
     throw toApiError('destroy live system', id.toString(), err);
   }
 };

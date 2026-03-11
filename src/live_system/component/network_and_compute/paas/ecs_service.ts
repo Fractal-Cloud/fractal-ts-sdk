@@ -17,6 +17,7 @@ import {LiveSystemComponent} from '../../index';
 import {BlueprintComponent} from '../../../../fractal/component/index';
 import {BlueprintComponentDependency} from '../../../../fractal/component/dependency';
 import {DESIRED_COUNT_PARAM} from '../../../../fractal/component/custom_workloads/caas/workload';
+import {AwsEcsTaskDefinitionComponent} from './ecs_task_definition';
 
 // Agent constant: ECS_SERVICE_COMPONENT_NAME = "ECSService"
 const ECS_SERVICE_TYPE_NAME = 'ECSService';
@@ -71,9 +72,12 @@ export type SatisfiedAwsEcsServiceBuilder = {
    * Declares a live-system-only dependency on the ECS Task Definition that
    * this service will run. This has no blueprint equivalent — it is an
    * AWS-specific sub-component relationship.
+   *
+   * Only accepts an AwsEcsTaskDefinitionComponent produced by
+   * AwsEcsTaskDefinition.satisfy() or AwsEcsTaskDefinition.create().
    */
   withTaskDefinition: (
-    taskDef: LiveSystemComponent,
+    taskDef: AwsEcsTaskDefinitionComponent,
   ) => SatisfiedAwsEcsServiceBuilder;
   build: () => LiveSystemComponent;
 };

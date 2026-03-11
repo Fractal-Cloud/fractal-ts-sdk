@@ -66,6 +66,16 @@ function pushParam(
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
+ * Branded live-system component produced by AwsEcsTaskDefinition builders.
+ * The brand prevents passing an arbitrary LiveSystemComponent to
+ * AwsEcsService.withTaskDefinition() — only a value produced by
+ * AwsEcsTaskDefinition.satisfy() or AwsEcsTaskDefinition.create() is accepted.
+ */
+export type AwsEcsTaskDefinitionComponent = LiveSystemComponent & {
+  readonly _brand: 'AwsEcsTaskDefinition';
+};
+
+/**
  * Returned by satisfy() — blueprint params (image, port, cpu, memory) are
  * locked. Only IAM role ARNs and network mode can be added here.
  *
@@ -76,7 +86,7 @@ export type SatisfiedAwsEcsTaskDefinitionBuilder = {
   withNetworkMode: (mode: string) => SatisfiedAwsEcsTaskDefinitionBuilder;
   withExecutionRoleArn: (arn: string) => SatisfiedAwsEcsTaskDefinitionBuilder;
   withTaskRoleArn: (arn: string) => SatisfiedAwsEcsTaskDefinitionBuilder;
-  build: () => LiveSystemComponent;
+  build: () => AwsEcsTaskDefinitionComponent;
 };
 
 export type AwsEcsTaskDefinitionBuilder = {
@@ -96,7 +106,7 @@ export type AwsEcsTaskDefinitionBuilder = {
   withNetworkMode: (mode: string) => AwsEcsTaskDefinitionBuilder;
   withExecutionRoleArn: (arn: string) => AwsEcsTaskDefinitionBuilder;
   withTaskRoleArn: (arn: string) => AwsEcsTaskDefinitionBuilder;
-  build: () => LiveSystemComponent;
+  build: () => AwsEcsTaskDefinitionComponent;
 };
 
 export type AwsEcsTaskDefinitionConfig = {
@@ -171,7 +181,7 @@ export namespace AwsEcsTaskDefinition {
         pushParam(params, TASK_ROLE_ARN_PARAM, arn);
         return builder;
       },
-      build: () => inner.build(),
+      build: () => inner.build() as AwsEcsTaskDefinitionComponent,
     };
 
     return builder;
@@ -228,7 +238,7 @@ export namespace AwsEcsTaskDefinition {
         pushParam(params, TASK_ROLE_ARN_PARAM, arn);
         return satisfiedBuilder;
       },
-      build: () => inner.build(),
+      build: () => inner.build() as AwsEcsTaskDefinitionComponent,
     };
 
     return satisfiedBuilder;
@@ -236,7 +246,7 @@ export namespace AwsEcsTaskDefinition {
 
   export const create = (
     config: AwsEcsTaskDefinitionConfig,
-  ): LiveSystemComponent => {
+  ): AwsEcsTaskDefinitionComponent => {
     const b = getBuilder()
       .withId(config.id)
       .withVersion(
@@ -258,6 +268,6 @@ export namespace AwsEcsTaskDefinition {
       b.withExecutionRoleArn(config.executionRoleArn);
     if (config.taskRoleArn) b.withTaskRoleArn(config.taskRoleArn);
 
-    return b.build();
+    return b.build() as AwsEcsTaskDefinitionComponent;
   };
 }
