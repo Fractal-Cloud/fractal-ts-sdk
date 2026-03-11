@@ -42,7 +42,7 @@ A Live System is a running instance of a Fractal. It maps each abstract blueprin
 - Deployment of Live Systems to any Fractal Cloud Environment
 - Personal and organisation-owned accounts
 - **IaaS helpers** for AWS, Azure, GCP, OCI, and Hetzner
-- **PaaS helpers** for AWS ECS (cluster, task definition, service)
+- **PaaS helpers** for AWS (ECS, EKS), Azure (AKS, Container Apps Environment, Container Instance, Container App), GCP (GKE, Cloud Run), and OCI (Container Instance)
 
 ## Installation
 
@@ -222,7 +222,12 @@ The same blueprint can be deployed on any supported provider. Live system files 
 | `SecurityGroup` | `AwsSecurityGroup` | `AzureNsg` | `GcpFirewall` | `OciSecurityList` | `HetznerFirewall` |
 | `VirtualMachine` | `Ec2Instance` | `AzureVm` | `GcpVm` | `OciInstance` | `HetznerServer` |
 
-PaaS and CaaS helpers are also available for AWS ECS (cluster, task definition, service) and the agnostic `ContainerPlatform` / `Workload` blueprint types.
+PaaS and CaaS helpers are also available for the agnostic `ContainerPlatform` / `Workload` blueprint types, with provider-specific satisfiers across AWS, Azure, GCP, and OCI:
+
+| Blueprint component | AWS | Azure | GCP | OCI |
+|---------------------|-----|-------|-----|-----|
+| `ContainerPlatform` | `AwsEcsCluster` · `AwsEksCluster` | `AzureAksCluster` · `AzureContainerAppsEnvironment` | `GcpGkeCluster` | — |
+| `Workload` | `AwsEcsTaskDefinition` + `AwsEcsService` | `AzureContainerInstance` · `AzureContainerApp` | `GcpCloudRunService` | `OciContainerInstance` |
 
 ## Samples
 
@@ -231,7 +236,7 @@ The [sample repository](https://github.com/Fractal-Cloud/fractal-ts-sdk-samples)
 | Sample | Description |
 |--------|-------------|
 | `basic_iaas` | VPC + Subnet + Security Group + two VMs — deploys on AWS, Azure, GCP, OCI, or Hetzner via `CLOUD_PROVIDER` env var |
-| `basic_container_platform` | ECS Fargate — VPC + Subnet + Security Group + ECS Cluster + two workloads |
+| `basic_container_platform` | VPC + Subnet + Security Group + container platform + two workloads — deploys on AWS (ECS Fargate), Azure (Container Apps), or GCP (Cloud Run) via `CLOUD_PROVIDER` env var |
 
 ## Architecture
 
@@ -245,7 +250,7 @@ src/
   live_system/       # Provider-specific helpers
     component/
       network_and_compute/iaas/   # AWS, Azure, GCP, OCI, Hetzner components
-      network_and_compute/paas/   # AwsEcsCluster, AwsEcsTaskDefinition, AwsEcsService
+      network_and_compute/paas/   # AWS (ECS, EKS), Azure (AKS, Container Apps, Container Instance), GCP (GKE, Cloud Run), OCI (Container Instance)
 ```
 
 ## Contributing and feedback
