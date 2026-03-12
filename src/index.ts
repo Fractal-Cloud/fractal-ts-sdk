@@ -333,3 +333,269 @@ export type {
   OciContainerInstanceConfig,
   SatisfiedOciContainerInstanceBuilder,
 } from './live_system/component/network_and_compute/paas/oci_container_instance';
+
+// ── Storage domain — Blueprint component helpers ─────────────────────────────
+
+// Storage PaaS — Leaf nodes
+export {FilesAndBlobs} from './fractal/component/storage/paas/files_and_blobs';
+export type {
+  FilesAndBlobsBuilder,
+  FilesAndBlobsConfig,
+  FilesAndBlobsComponent,
+} from './fractal/component/storage/paas/files_and_blobs';
+
+export {RelationalDatabase} from './fractal/component/storage/paas/relational_database';
+export type {
+  RelationalDatabaseBuilder,
+  RelationalDatabaseConfig,
+  RelationalDatabaseComponent,
+} from './fractal/component/storage/paas/relational_database';
+
+export {DocumentDatabase} from './fractal/component/storage/paas/document_database';
+export type {
+  DocumentDatabaseBuilder,
+  DocumentDatabaseConfig,
+  DocumentDatabaseComponent,
+} from './fractal/component/storage/paas/document_database';
+
+export {ColumnOrientedEntity} from './fractal/component/storage/paas/column_oriented_entity';
+export type {
+  ColumnOrientedEntityBuilder,
+  ColumnOrientedEntityConfig,
+  ColumnOrientedEntityComponent,
+} from './fractal/component/storage/paas/column_oriented_entity';
+
+export {KeyValueEntity} from './fractal/component/storage/paas/key_value_entity';
+export type {
+  KeyValueEntityBuilder,
+  KeyValueEntityConfig,
+  KeyValueEntityComponent,
+} from './fractal/component/storage/paas/key_value_entity';
+
+export {GraphDatabase} from './fractal/component/storage/paas/graph_database';
+export type {
+  GraphDatabaseBuilder,
+  GraphDatabaseConfig,
+  GraphDatabaseComponent,
+} from './fractal/component/storage/paas/graph_database';
+
+// Storage CaaS — Leaf nodes
+export {SearchEntity} from './fractal/component/storage/caas/search_entity';
+export type {
+  SearchEntityBuilder,
+  SearchEntityConfig,
+  SearchEntityComponent,
+} from './fractal/component/storage/caas/search_entity';
+
+// Storage SaaS — Leaf nodes
+export {Unmanaged} from './fractal/component/storage/saas/unmanaged';
+export type {
+  UnmanagedBuilder,
+  UnmanagedConfig,
+  UnmanagedComponent,
+} from './fractal/component/storage/saas/unmanaged';
+
+// Storage PaaS — Container nodes
+export {RelationalDbms} from './fractal/component/storage/paas/relational_dbms';
+export type {
+  RelationalDbmsBuilder,
+  RelationalDbmsConfig,
+  RelationalDbmsComponent,
+} from './fractal/component/storage/paas/relational_dbms';
+
+export {DocumentDbms} from './fractal/component/storage/paas/document_dbms';
+export type {
+  DocumentDbmsBuilder,
+  DocumentDbmsConfig,
+  DocumentDbmsComponent,
+} from './fractal/component/storage/paas/document_dbms';
+
+export {ColumnOrientedDbms} from './fractal/component/storage/paas/column_oriented_dbms';
+export type {
+  ColumnOrientedDbmsBuilder,
+  ColumnOrientedDbmsConfig,
+  ColumnOrientedDbmsComponent,
+} from './fractal/component/storage/paas/column_oriented_dbms';
+
+export {KeyValueDbms} from './fractal/component/storage/paas/key_value_dbms';
+export type {
+  KeyValueDbmsBuilder,
+  KeyValueDbmsConfig,
+  KeyValueDbmsComponent,
+} from './fractal/component/storage/paas/key_value_dbms';
+
+export {GraphDbms} from './fractal/component/storage/paas/graph_dbms';
+export type {
+  GraphDbmsBuilder,
+  GraphDbmsConfig,
+  GraphDbmsComponent,
+} from './fractal/component/storage/paas/graph_dbms';
+
+// Storage CaaS — Container nodes
+export {Search} from './fractal/component/storage/caas/search';
+export type {
+  SearchBuilder,
+  SearchConfig,
+  SearchComponent,
+} from './fractal/component/storage/caas/search';
+
+// ── Storage domain — Live system component helpers ───────────────────────────
+
+// Live system — AWS Storage
+export {AwsS3} from './live_system/component/storage/paas/aws_s3';
+export type {
+  AwsS3Builder,
+  AwsS3Config,
+  SatisfiedAwsS3Builder,
+} from './live_system/component/storage/paas/aws_s3';
+
+// Live system — Azure Storage
+export {AzureStorageAccount} from './live_system/component/storage/paas/azure_storage_account';
+export type {
+  AzureStorageAccountBuilder,
+  AzureStorageAccountConfig,
+  SatisfiedAzureStorageAccountBuilder,
+} from './live_system/component/storage/paas/azure_storage_account';
+
+export {AzureBlobContainer} from './live_system/component/storage/paas/azure_blob_container';
+export type {
+  AzureBlobContainerBuilder,
+  AzureBlobContainerConfig,
+  SatisfiedAzureBlobContainerBuilder,
+} from './live_system/component/storage/paas/azure_blob_container';
+
+export {AzureFileStorage} from './live_system/component/storage/paas/azure_file_storage';
+export type {
+  AzureFileStorageBuilder,
+  AzureFileStorageConfig,
+  SatisfiedAzureFileStorageBuilder,
+} from './live_system/component/storage/paas/azure_file_storage';
+
+export {AzurePostgreSqlDbms} from './live_system/component/storage/paas/azure_postgresql_dbms';
+export type {
+  AzurePostgreSqlDbmsBuilder,
+  AzurePostgreSqlDbmsConfig,
+  SatisfiedAzurePostgreSqlDbmsBuilder,
+} from './live_system/component/storage/paas/azure_postgresql_dbms';
+
+export {AzurePostgreSqlDatabase} from './live_system/component/storage/paas/azure_postgresql_database';
+export type {
+  AzurePostgreSqlDatabaseBuilder,
+  AzurePostgreSqlDatabaseConfig,
+  SatisfiedAzurePostgreSqlDatabaseBuilder,
+} from './live_system/component/storage/paas/azure_postgresql_database';
+
+export {AzureCosmosDbAccount} from './live_system/component/storage/paas/azure_cosmosdb_account';
+export type {
+  AzureCosmosDbAccountBuilder,
+  AzureCosmosDbAccountConfig,
+  SatisfiedAzureCosmosDbAccountBuilder,
+} from './live_system/component/storage/paas/azure_cosmosdb_account';
+
+export {AzureCosmosDbMongoDatabase} from './live_system/component/storage/paas/azure_cosmosdb_mongo_database';
+export type {
+  AzureCosmosDbMongoDatabaseBuilder,
+  AzureCosmosDbMongoDatabaseConfig,
+  SatisfiedAzureCosmosDbMongoDatabaseBuilder,
+} from './live_system/component/storage/paas/azure_cosmosdb_mongo_database';
+
+export {AzureCosmosDbPostgreSqlDatabase} from './live_system/component/storage/paas/azure_cosmosdb_postgresql_database';
+export type {
+  AzureCosmosDbPostgreSqlDatabaseBuilder,
+  AzureCosmosDbPostgreSqlDatabaseConfig,
+  SatisfiedAzureCosmosDbPostgreSqlDatabaseBuilder,
+} from './live_system/component/storage/paas/azure_cosmosdb_postgresql_database';
+
+export {AzureCosmosDbCassandra} from './live_system/component/storage/paas/azure_cosmosdb_cassandra';
+export type {
+  AzureCosmosDbCassandraBuilder,
+  AzureCosmosDbCassandraConfig,
+  SatisfiedAzureCosmosDbCassandraBuilder,
+} from './live_system/component/storage/paas/azure_cosmosdb_cassandra';
+
+export {AzureCosmosDbTable} from './live_system/component/storage/paas/azure_cosmosdb_table';
+export type {
+  AzureCosmosDbTableBuilder,
+  AzureCosmosDbTableConfig,
+  SatisfiedAzureCosmosDbTableBuilder,
+} from './live_system/component/storage/paas/azure_cosmosdb_table';
+
+export {AzureCosmosDbGremlinDatabase} from './live_system/component/storage/paas/azure_cosmosdb_gremlin';
+export type {
+  AzureCosmosDbGremlinDatabaseBuilder,
+  AzureCosmosDbGremlinDatabaseConfig,
+  SatisfiedAzureCosmosDbGremlinDatabaseBuilder,
+} from './live_system/component/storage/paas/azure_cosmosdb_gremlin';
+
+// Live system — GCP Storage
+export {GcpCloudStorage} from './live_system/component/storage/paas/gcp_cloud_storage';
+export type {
+  GcpCloudStorageBuilder,
+  GcpCloudStorageConfig,
+  SatisfiedGcpCloudStorageBuilder,
+} from './live_system/component/storage/paas/gcp_cloud_storage';
+
+export {GcpPostgreSqlDbms} from './live_system/component/storage/paas/gcp_postgresql_dbms';
+export type {
+  GcpPostgreSqlDbmsBuilder,
+  GcpPostgreSqlDbmsConfig,
+  SatisfiedGcpPostgreSqlDbmsBuilder,
+} from './live_system/component/storage/paas/gcp_postgresql_dbms';
+
+export {GcpPostgreSqlDatabase} from './live_system/component/storage/paas/gcp_postgresql_database';
+export type {
+  GcpPostgreSqlDatabaseBuilder,
+  GcpPostgreSqlDatabaseConfig,
+  SatisfiedGcpPostgreSqlDatabaseBuilder,
+} from './live_system/component/storage/paas/gcp_postgresql_database';
+
+export {GcpFirestore} from './live_system/component/storage/paas/gcp_firestore';
+export type {
+  GcpFirestoreBuilder,
+  GcpFirestoreConfig,
+  SatisfiedGcpFirestoreBuilder,
+} from './live_system/component/storage/paas/gcp_firestore';
+
+export {GcpFirestoreCollection} from './live_system/component/storage/paas/gcp_firestore_collection';
+export type {
+  GcpFirestoreCollectionBuilder,
+  GcpFirestoreCollectionConfig,
+  SatisfiedGcpFirestoreCollectionBuilder,
+} from './live_system/component/storage/paas/gcp_firestore_collection';
+
+export {GcpBigTable} from './live_system/component/storage/paas/gcp_bigtable';
+export type {
+  GcpBigTableBuilder,
+  GcpBigTableConfig,
+  SatisfiedGcpBigTableBuilder,
+} from './live_system/component/storage/paas/gcp_bigtable';
+
+export {GcpBigTableTable} from './live_system/component/storage/paas/gcp_bigtable_table';
+export type {
+  GcpBigTableTableBuilder,
+  GcpBigTableTableConfig,
+  SatisfiedGcpBigTableTableBuilder,
+} from './live_system/component/storage/paas/gcp_bigtable_table';
+
+// Live system — CaaS Storage
+export {Elastic} from './live_system/component/storage/caas/elastic';
+export type {
+  ElasticBuilder,
+  ElasticConfig,
+  SatisfiedElasticBuilder,
+} from './live_system/component/storage/caas/elastic';
+
+export {IndexPattern} from './live_system/component/storage/caas/index_pattern';
+export type {
+  IndexPatternBuilder,
+  IndexPatternConfig,
+  SatisfiedIndexPatternBuilder,
+} from './live_system/component/storage/caas/index_pattern';
+
+// Live system — SaaS Storage
+export {SaaSUnmanaged} from './live_system/component/storage/saas/unmanaged';
+export type {
+  SaaSUnmanagedBuilder,
+  SaaSUnmanagedConfig,
+  SatisfiedSaaSUnmanagedBuilder,
+} from './live_system/component/storage/saas/unmanaged';
