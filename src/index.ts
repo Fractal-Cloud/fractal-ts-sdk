@@ -599,3 +599,133 @@ export type {
   SaaSUnmanagedConfig,
   SatisfiedSaaSUnmanagedBuilder,
 } from './live_system/component/storage/saas/unmanaged';
+
+// ── Messaging domain — Blueprint component helpers ───────────────────────────
+
+// Messaging PaaS
+export {MessagingEntity} from './fractal/component/messaging/paas/entity';
+export type {
+  MessagingEntityBuilder,
+  MessagingEntityConfig,
+  MessagingEntityComponent,
+} from './fractal/component/messaging/paas/entity';
+
+export {Broker} from './fractal/component/messaging/paas/broker';
+export type {
+  BrokerBuilder,
+  BrokerConfig,
+  BrokerComponent,
+} from './fractal/component/messaging/paas/broker';
+
+// Messaging CaaS
+export {CaaSMessagingEntity} from './fractal/component/messaging/caas/entity';
+export type {
+  CaaSMessagingEntityBuilder,
+  CaaSMessagingEntityConfig,
+  CaaSMessagingEntityComponent,
+} from './fractal/component/messaging/caas/entity';
+
+export {CaaSBroker} from './fractal/component/messaging/caas/broker';
+export type {
+  CaaSBrokerBuilder,
+  CaaSBrokerConfig,
+  CaaSBrokerComponent,
+} from './fractal/component/messaging/caas/broker';
+
+// Messaging SaaS
+export {MessagingUnmanaged} from './fractal/component/messaging/saas/unmanaged';
+export type {
+  MessagingUnmanagedBuilder,
+  MessagingUnmanagedConfig,
+  MessagingUnmanagedComponent,
+} from './fractal/component/messaging/saas/unmanaged';
+
+// ── Messaging domain — Live system component helpers ─────────────────────────
+
+// Live system — Azure Messaging
+export {AzureServiceBus} from './live_system/component/messaging/paas/azure_service_bus';
+export type {
+  AzureServiceBusBuilder,
+  AzureServiceBusConfig,
+  SatisfiedAzureServiceBusBuilder,
+} from './live_system/component/messaging/paas/azure_service_bus';
+
+export {AzureServiceBusTopic} from './live_system/component/messaging/paas/azure_service_bus_topic';
+export type {
+  AzureServiceBusTopicBuilder,
+  AzureServiceBusTopicConfig,
+  SatisfiedAzureServiceBusTopicBuilder,
+} from './live_system/component/messaging/paas/azure_service_bus_topic';
+
+export {AzureServiceBusQueue} from './live_system/component/messaging/paas/azure_service_bus_queue';
+export type {
+  AzureServiceBusQueueBuilder,
+  AzureServiceBusQueueConfig,
+  SatisfiedAzureServiceBusQueueBuilder,
+} from './live_system/component/messaging/paas/azure_service_bus_queue';
+
+export {AzureRelay} from './live_system/component/messaging/paas/azure_relay';
+export type {
+  AzureRelayBuilder,
+  AzureRelayConfig,
+  SatisfiedAzureRelayBuilder,
+} from './live_system/component/messaging/paas/azure_relay';
+
+export {AzureEventHubNamespace} from './live_system/component/messaging/paas/azure_eventhub_namespace';
+export type {
+  AzureEventHubNamespaceBuilder,
+  AzureEventHubNamespaceConfig,
+  SatisfiedAzureEventHubNamespaceBuilder,
+} from './live_system/component/messaging/paas/azure_eventhub_namespace';
+
+export {AzureEventHub} from './live_system/component/messaging/paas/azure_eventhub';
+export type {
+  AzureEventHubBuilder,
+  AzureEventHubConfig,
+  SatisfiedAzureEventHubBuilder,
+} from './live_system/component/messaging/paas/azure_eventhub';
+
+// Live system — GCP Messaging
+export {GcpPubSub} from './live_system/component/messaging/paas/gcp_pubsub';
+export type {
+  GcpPubSubBuilder,
+  GcpPubSubConfig,
+  SatisfiedGcpPubSubBuilder,
+} from './live_system/component/messaging/paas/gcp_pubsub';
+
+export {GcpPubSubTopic} from './live_system/component/messaging/paas/gcp_pubsub_topic';
+export type {
+  GcpPubSubTopicBuilder,
+  GcpPubSubTopicConfig,
+  SatisfiedGcpPubSubTopicBuilder,
+} from './live_system/component/messaging/paas/gcp_pubsub_topic';
+
+export {GcpPubSubSubscription} from './live_system/component/messaging/paas/gcp_pubsub_subscription';
+export type {
+  GcpPubSubSubscriptionBuilder,
+  GcpPubSubSubscriptionConfig,
+  SatisfiedGcpPubSubSubscriptionBuilder,
+} from './live_system/component/messaging/paas/gcp_pubsub_subscription';
+
+// Live system — CaaS Messaging
+export {Kafka} from './live_system/component/messaging/caas/kafka';
+export type {
+  KafkaBuilder,
+  KafkaConfig,
+  SatisfiedKafkaBuilder,
+} from './live_system/component/messaging/caas/kafka';
+
+export {KafkaTopic} from './live_system/component/messaging/caas/kafka_topic';
+export type {
+  KafkaTopicBuilder,
+  KafkaTopicConfig,
+  SatisfiedKafkaTopicBuilder,
+} from './live_system/component/messaging/caas/kafka_topic';
+
+// Live system — SaaS Messaging
+export {MessagingSaaSUnmanaged} from './live_system/component/messaging/saas/unmanaged';
+export type {
+  MessagingSaaSUnmanagedBuilder,
+  MessagingSaaSUnmanagedConfig,
+  SatisfiedMessagingSaaSUnmanagedBuilder,
+} from './live_system/component/messaging/saas/unmanaged';
