@@ -36,6 +36,16 @@ describe('ContainerPlatform', () => {
       expect(node.platform.description).toBe('Hosts all container workloads');
     });
 
+    it('should set nodePools parameter', () => {
+      const node = ContainerPlatform.create({
+        ...BASE_CONFIG,
+        nodePools: [{name: 'default', minNodeCount: 1, maxNodeCount: 3}],
+      });
+      expect(
+        node.platform.parameters.getOptionalFieldByName('nodePools'),
+      ).toEqual([{name: 'default', minNodeCount: 1, maxNodeCount: 3}]);
+    });
+
     it('should start with no workloads', () => {
       const node = ContainerPlatform.create(BASE_CONFIG);
       expect(node.workloads).toHaveLength(0);

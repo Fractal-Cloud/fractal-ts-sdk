@@ -19,7 +19,7 @@ import {BlueprintComponentDependency} from '../../../../fractal/component/depend
 import {DESIRED_COUNT_PARAM} from '../../../../fractal/component/custom_workloads/caas/workload';
 import {AwsEcsTaskDefinitionComponent} from './ecs_task_definition';
 
-// Agent constant: ECS_SERVICE_COMPONENT_NAME = "ECSService"
+// BFF offer id: NetworkAndCompute.CaaS.ECSService
 const ECS_SERVICE_TYPE_NAME = 'ECSService';
 const LAUNCH_TYPE_PARAM = 'launchType';
 const ASSIGN_PUBLIC_IP_PARAM = 'assignPublicIp';
@@ -43,7 +43,7 @@ function buildVersion(major: number, minor: number, patch: number): Version {
 function buildAwsEcsServiceType(): BlueprintComponentType {
   return getBlueprintComponentTypeBuilder()
     .withInfrastructureDomain(InfrastructureDomain.NetworkAndCompute)
-    .withServiceDeliveryModel(ServiceDeliveryModel.PaaS)
+    .withServiceDeliveryModel(ServiceDeliveryModel.CaaS)
     .withName(
       PascalCaseString.getBuilder().withValue(ECS_SERVICE_TYPE_NAME).build(),
     )

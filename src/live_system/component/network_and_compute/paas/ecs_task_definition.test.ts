@@ -23,7 +23,7 @@ describe('AwsEcsTaskDefinition', () => {
     it('should build a component with the correct type string', () => {
       const c = AwsEcsTaskDefinition.create(BASE_CONFIG);
       expect(c.type.toString()).toBe(
-        'NetworkAndCompute.PaaS.ECSTaskDefinition',
+        'NetworkAndCompute.CaaS.ECSTaskDefinition',
       );
     });
 

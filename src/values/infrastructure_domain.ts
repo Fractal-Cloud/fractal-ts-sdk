@@ -11,9 +11,11 @@
  * @property {string} Storage - Represents data storage components.
  * @property {string} Observability - Represents observability tools and monitoring components.
  * @property {string} Security - Represents security-focused components.
+ * @property {string} BigData - Represents big data processing components.
  */
 export enum InfrastructureDomain {
   ApiManagement = 'APIManagement',
+  BigData = 'BigData',
   NetworkAndCompute = 'NetworkAndCompute',
   CustomWorkloads = 'CustomWorkloads',
   Messaging = 'Messaging',

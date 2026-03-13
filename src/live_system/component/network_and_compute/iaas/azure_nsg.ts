@@ -21,8 +21,8 @@ import {
   IngressRule,
 } from '../../../../fractal/component/network_and_compute/iaas/security_group';
 
-// Agent constant: AZURE_NSG_COMPONENT_NAME = "AzureNsg"
-const AZURE_NSG_TYPE_NAME = 'AzureNsg';
+// BFF offer id: NetworkAndCompute.IaaS.SecurityGroup (shared across providers)
+const AZURE_NSG_TYPE_NAME = 'SecurityGroup';
 const LOCATION_PARAM = 'location';
 const RESOURCE_GROUP_PARAM = 'resourceGroup';
 

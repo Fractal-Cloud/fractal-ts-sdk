@@ -41,8 +41,19 @@ A Live System is a running instance of a Fractal. It maps each abstract blueprin
 - Definition of Live Systems with typed, provider-specific helpers
 - Deployment of Live Systems to any Fractal Cloud Environment
 - Personal and organisation-owned accounts
-- **IaaS helpers** for AWS, Azure, GCP, OCI, and Hetzner
-- **PaaS helpers** for AWS (ECS, EKS), Azure (AKS, Container Apps Environment, Container Instance, Container App), GCP (GKE, Cloud Run), and OCI (Container Instance)
+
+### Infrastructure domains
+
+| Domain | Blueprint types | Live system offers | Providers |
+|--------|----------------|-------------------|-----------|
+| **NetworkAndCompute** | VirtualNetwork, Subnet, SecurityGroup, VirtualMachine, ContainerPlatform | 24 offers | AWS, Azure, GCP, OCI, Hetzner |
+| **CustomWorkloads** | Workload | Satisfied by PaaS offers (ECS, Container Apps, Cloud Run, etc.) | AWS, Azure, GCP, OCI |
+| **Storage** | FilesAndBlobs, RelationalDbms, RelationalDatabase, DocumentDbms, DocumentDatabase, ColumnOrientedDbms, ColumnOrientedEntity, KeyValueDbms, KeyValueEntity, GraphDbms, GraphDatabase, Search, SearchEntity, Unmanaged | 22 offers | AWS, Azure, GCP, CaaS, SaaS |
+| **Messaging** | Broker, Entity (PaaS + CaaS), Unmanaged | 12 offers | Azure, GCP, CaaS |
+| **BigData** | DistributedDataProcessing, ComputeCluster, DataProcessingJob, MlExperiment, Datalake, Unmanaged | 16 offers | AWS, Azure, GCP |
+| **APIManagement** | PaaS ApiGateway, CaaS ApiGateway, Unmanaged | 6 offers | AWS, Azure, GCP, CaaS |
+| **Observability** | Monitoring, Tracing, Logging, Unmanaged | 4 offers | CaaS |
+| **Security** | ServiceMesh, Unmanaged | 2 offers | CaaS |
 
 ## Installation
 
@@ -215,6 +226,8 @@ Best for: **CI/CD pipelines** where the pipeline must not advance until infrastr
 
 The same blueprint can be deployed on any supported provider. Live system files are short and only contain vendor-specific parameters — all structural decisions (dependencies, traffic rules, security rules) stay in the blueprint.
 
+### IaaS
+
 | Blueprint component | AWS | Azure | GCP | OCI | Hetzner |
 |---------------------|-----|-------|-----|-----|---------|
 | `VirtualNetwork` | `AwsVpc` | `AzureVnet` | `GcpVpc` | `OciVcn` | `HetznerNetwork` |
@@ -222,21 +235,49 @@ The same blueprint can be deployed on any supported provider. Live system files 
 | `SecurityGroup` | `AwsSecurityGroup` | `AzureNsg` | `GcpFirewall` | `OciSecurityList` | `HetznerFirewall` |
 | `VirtualMachine` | `Ec2Instance` | `AzureVm` | `GcpVm` | `OciInstance` | `HetznerServer` |
 
-PaaS and CaaS helpers are also available for the agnostic `ContainerPlatform` / `Workload` blueprint types, with provider-specific satisfiers across AWS, Azure, GCP, and OCI:
+### PaaS / CaaS
 
 | Blueprint component | AWS | Azure | GCP | OCI |
 |---------------------|-----|-------|-----|-----|
 | `ContainerPlatform` | `AwsEcsCluster` · `AwsEksCluster` | `AzureAksCluster` · `AzureContainerAppsEnvironment` | `GcpGkeCluster` | — |
 | `Workload` | `AwsEcsTaskDefinition` + `AwsEcsService` | `AzureContainerInstance` · `AzureContainerApp` | `GcpCloudRunService` | `OciContainerInstance` |
 
+### Storage
+
+| Blueprint component | AWS | Azure | GCP | CaaS |
+|---------------------|-----|-------|-----|------|
+| `FilesAndBlobs` | `AwsS3` | `AzureStorageAccount` · `AzureBlobContainer` · `AzureFileStorage` | `GcpCloudStorage` | — |
+| `RelationalDbms` | — | `AzurePostgreSqlDbms` · `AzureCosmosDbAccount` | `GcpPostgreSqlDbms` | — |
+| `RelationalDatabase` | — | `AzurePostgreSqlDatabase` · `AzureCosmosDbPostgreSqlDatabase` | `GcpPostgreSqlDatabase` | — |
+| `DocumentDbms` | — | `AzureCosmosDbAccount` | `GcpFirestore` | — |
+| `ColumnOrientedDbms` | — | `AzureCosmosDbCassandra` | `GcpBigTable` | — |
+| `Search` | — | — | — | `Elastic` |
+
+### BigData
+
+| Blueprint component | AWS | Azure | GCP |
+|---------------------|-----|-------|-----|
+| `DistributedDataProcessing` | `AwsDatabricks` | `AzureDatabricks` | `GcpDatabricks` |
+| `ComputeCluster` | `AwsDatabricksCluster` | `AzureDatabricksCluster` | `GcpDatabricksCluster` |
+| `DataProcessingJob` | `AwsDatabricksJob` | `AzureDatabricksJob` | `GcpDatabricksJob` |
+| `MlExperiment` | `AwsDatabricksMlflow` | `AzureDatabricksMlflow` | `GcpDatabricksMlflow` |
+| `Datalake` | `AwsS3Datalake` | `AzureDatalake` | `GcpDatalake` |
+
 ## Samples
 
 The [sample repository](https://github.com/Fractal-Cloud/fractal-ts-sdk-samples) contains ready-to-run examples:
 
-| Sample | Description |
-|--------|-------------|
-| `basic_iaas` | VPC + Subnet + Security Group + two VMs — deploys on AWS, Azure, GCP, OCI, or Hetzner via `CLOUD_PROVIDER` env var |
-| `basic_container_platform` | VPC + Subnet + Security Group + container platform + two workloads — deploys on AWS (ECS Fargate), Azure (Container Apps), or GCP (Cloud Run) via `CLOUD_PROVIDER` env var |
+| Sample | Providers | Description |
+|--------|-----------|-------------|
+| `basic_iaas` | AWS · Azure · GCP · OCI · Hetzner | VPC + Subnet + Security Group + two VMs |
+| `basic_container_platform` | AWS · Azure · GCP | VPC + Subnet + SG + container platform + two workloads |
+| `basic_cicd` | AWS | CI/CD pipeline deployment with wait mode |
+| `basic_storage` | AWS · Azure · GCP | PostgreSQL DBMS + Database + object storage |
+| `basic_messaging` | Azure · GCP | Message broker + two topics |
+| `basic_big_data` | AWS · Azure · GCP | Databricks workspace + cluster + job + MLflow |
+| `basic_api_management` | AWS · Azure · GCP | API Gateway |
+| `basic_observability` | CaaS | Monitoring + tracing + logging (Prometheus, Jaeger, Elastic) |
+| `basic_security` | CaaS | Service mesh (Ocelot) |
 
 ## Architecture
 
@@ -244,13 +285,23 @@ The [sample repository](https://github.com/Fractal-Cloud/fractal-ts-sdk-samples)
 src/
   fractal/           # Cloud-agnostic blueprint helpers
     component/
-      network_and_compute/iaas/   # VirtualNetwork, Subnet, SecurityGroup, VirtualMachine
-      network_and_compute/paas/   # ContainerPlatform
-      custom_workloads/caas/      # Workload
+      network_and_compute/   # VirtualNetwork, Subnet, SecurityGroup, VirtualMachine, ContainerPlatform
+      custom_workloads/      # Workload
+      storage/               # FilesAndBlobs, RelationalDbms, DocumentDbms, Search, etc.
+      messaging/             # Broker, Entity
+      big_data/              # DistributedDataProcessing, ComputeCluster, DataProcessingJob, etc.
+      api_management/        # ApiGateway
+      observability/         # Monitoring, Tracing, Logging
+      security/              # ServiceMesh
   live_system/       # Provider-specific helpers
     component/
-      network_and_compute/iaas/   # AWS, Azure, GCP, OCI, Hetzner components
-      network_and_compute/paas/   # AWS (ECS, EKS), Azure (AKS, Container Apps, Container Instance), GCP (GKE, Cloud Run), OCI (Container Instance)
+      network_and_compute/   # AWS, Azure, GCP, OCI, Hetzner (IaaS + PaaS)
+      storage/               # AWS S3, Azure Storage/CosmosDB/PostgreSQL, GCP Storage/Firestore/BigTable
+      messaging/             # Azure ServiceBus/EventHub, GCP PubSub, CaaS Kafka
+      big_data/              # AWS/Azure/GCP Databricks + Datalake
+      api_management/        # AWS CloudFront, Azure API Management, GCP API Gateway, CaaS Ambassador/Traefik
+      observability/         # CaaS Prometheus, Jaeger, Elastic
+      security/              # CaaS Ocelot
 ```
 
 ## Debug logging

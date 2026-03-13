@@ -17,8 +17,8 @@ import {LiveSystemComponent} from '../../index';
 import {BlueprintComponent} from '../../../../fractal/component/index';
 import {CIDR_BLOCK_PARAM} from '../../../../fractal/component/network_and_compute/iaas/virtual_network';
 
-// Agent constant: AZURE_VNET_COMPONENT_NAME = "AzureVnet"
-const AZURE_VNET_TYPE_NAME = 'AzureVnet';
+// BFF offer id: NetworkAndCompute.IaaS.VNet
+const AZURE_VNET_TYPE_NAME = 'VNet';
 const LOCATION_PARAM = 'location';
 const RESOURCE_GROUP_PARAM = 'resourceGroup';
 

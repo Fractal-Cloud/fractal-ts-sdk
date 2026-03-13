@@ -16,8 +16,8 @@ import {getVersionBuilder, Version} from '../../../../values/version';
 import {LiveSystemComponent} from '../../index';
 import {BlueprintComponent} from '../../../../fractal/component/index';
 
-// Agent constant: GCP_VM_COMPONENT_NAME = "GcpVm"
-const GCP_VM_TYPE_NAME = 'GcpVm';
+// BFF offer id: NetworkAndCompute.IaaS.VirtualMachine (shared across providers)
+const GCP_VM_TYPE_NAME = 'VirtualMachine';
 const MACHINE_TYPE_PARAM = 'machineType';
 const ZONE_PARAM = 'zone';
 const IMAGE_PROJECT_PARAM = 'imageProject';

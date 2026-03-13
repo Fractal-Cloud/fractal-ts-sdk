@@ -15,7 +15,7 @@ describe('AwsEcsService', () => {
   describe('create()', () => {
     it('should build a component with the correct type string', () => {
       const c = AwsEcsService.create(BASE_CONFIG);
-      expect(c.type.toString()).toBe('NetworkAndCompute.PaaS.ECSService');
+      expect(c.type.toString()).toBe('NetworkAndCompute.CaaS.ECSService');
     });
 
     it('should set provider to AWS', () => {

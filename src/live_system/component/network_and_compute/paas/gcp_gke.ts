@@ -16,8 +16,8 @@ import {getVersionBuilder, Version} from '../../../../values/version';
 import {LiveSystemComponent} from '../../index';
 import {BlueprintComponent} from '../../../../fractal/component/index';
 
-// Agent constant: GKE_COMPONENT_NAME = "GKE"
-const GKE_CLUSTER_TYPE_NAME = 'GKE';
+// BFF offer id: NetworkAndCompute.PaaS.Kubernetes (shared across providers)
+const GKE_CLUSTER_TYPE_NAME = 'Kubernetes';
 
 // ── internal helpers ──────────────────────────────────────────────────────────
 
