@@ -16,13 +16,12 @@ import {getVersionBuilder, Version} from '../../../../values/version';
 import {LiveSystemComponent} from '../../index';
 import {BlueprintComponent} from '../../../../fractal/component/index';
 
-// BFF offer id: NetworkAndCompute.IaaS.VirtualMachine (shared across providers)
-const GCP_VM_TYPE_NAME = 'VirtualMachine';
-const MACHINE_TYPE_PARAM = 'machineType';
-const ZONE_PARAM = 'zone';
-const IMAGE_PROJECT_PARAM = 'imageProject';
-const IMAGE_FAMILY_PARAM = 'imageFamily';
-const SERVICE_ACCOUNT_EMAIL_PARAM = 'serviceAccountEmail';
+// BFF offer id: NetworkAndCompute.IaaS.LoadBalancer (shared across providers)
+const TYPE_NAME = 'LoadBalancer';
+const AZURE_REGION_PARAM = 'azureRegion';
+const RESOURCE_GROUP_NAME_PARAM = 'resourceGroupName';
+const SKU_PARAM = 'sku';
+const FRONTEND_IP_CONFIGURATION_PARAM = 'frontendIpConfiguration';
 
 // ── internal helpers ──────────────────────────────────────────────────────────
 
@@ -40,11 +39,11 @@ function buildVersion(major: number, minor: number, patch: number): Version {
     .build();
 }
 
-function buildGcpVmType(): BlueprintComponentType {
+function buildAzureLbType(): BlueprintComponentType {
   return getBlueprintComponentTypeBuilder()
     .withInfrastructureDomain(InfrastructureDomain.NetworkAndCompute)
     .withServiceDeliveryModel(ServiceDeliveryModel.IaaS)
-    .withName(PascalCaseString.getBuilder().withValue(GCP_VM_TYPE_NAME).build())
+    .withName(PascalCaseString.getBuilder().withValue(TYPE_NAME).build())
     .build();
 }
 
@@ -56,56 +55,65 @@ function pushParam(
   params.push(key, value as Record<string, object>);
 }
 
+// ── Public types ──────────────────────────────────────────────────────────────
+
+export type FrontendIpConfiguration = {
+  name: string;
+  subnetId: string;
+  privateIpAddressAllocation: 'Dynamic' | 'Static';
+};
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
  * Returned by satisfy() — only exposes vendor-specific parameters.
- * Structural properties (id, version, displayName, description, dependencies,
- * links) are locked to the blueprint and cannot be overridden.
+ * Structural properties (id, version, displayName, description,
+ * dependencies, links) are locked to the blueprint and cannot be overridden.
  */
-export type SatisfiedGcpVmBuilder = {
-  withMachineType: (machineType: string) => SatisfiedGcpVmBuilder;
-  withZone: (zone: string) => SatisfiedGcpVmBuilder;
-  withImageProject: (project: string) => SatisfiedGcpVmBuilder;
-  withImageFamily: (family: string) => SatisfiedGcpVmBuilder;
-  withServiceAccountEmail: (email: string) => SatisfiedGcpVmBuilder;
+export type SatisfiedAzureLbBuilder = {
+  withAzureRegion: (azureRegion: string) => SatisfiedAzureLbBuilder;
+  withResourceGroupName: (resourceGroupName: string) => SatisfiedAzureLbBuilder;
+  withSku: (sku: 'Basic' | 'Standard') => SatisfiedAzureLbBuilder;
+  withFrontendIpConfiguration: (
+    frontendIpConfiguration: FrontendIpConfiguration[],
+  ) => SatisfiedAzureLbBuilder;
   build: () => LiveSystemComponent;
 };
 
-export type GcpVmBuilder = {
-  withId: (id: string) => GcpVmBuilder;
-  withVersion: (major: number, minor: number, patch: number) => GcpVmBuilder;
-  withDisplayName: (displayName: string) => GcpVmBuilder;
-  withDescription: (description: string) => GcpVmBuilder;
-  withMachineType: (machineType: string) => GcpVmBuilder;
-  withZone: (zone: string) => GcpVmBuilder;
-  withImageProject: (project: string) => GcpVmBuilder;
-  withImageFamily: (family: string) => GcpVmBuilder;
-  withServiceAccountEmail: (email: string) => GcpVmBuilder;
+export type AzureLbBuilder = {
+  withId: (id: string) => AzureLbBuilder;
+  withVersion: (major: number, minor: number, patch: number) => AzureLbBuilder;
+  withDisplayName: (displayName: string) => AzureLbBuilder;
+  withDescription: (description: string) => AzureLbBuilder;
+  withAzureRegion: (azureRegion: string) => AzureLbBuilder;
+  withResourceGroupName: (resourceGroupName: string) => AzureLbBuilder;
+  withSku: (sku: 'Basic' | 'Standard') => AzureLbBuilder;
+  withFrontendIpConfiguration: (
+    frontendIpConfiguration: FrontendIpConfiguration[],
+  ) => AzureLbBuilder;
   build: () => LiveSystemComponent;
 };
 
-export type GcpVmConfig = {
+export type AzureLbConfig = {
   id: string;
   version: {major: number; minor: number; patch: number};
   displayName: string;
   description?: string;
-  machineType: string;
-  zone: string;
-  imageProject: string;
-  imageFamily?: string;
-  serviceAccountEmail?: string;
+  azureRegion?: string;
+  resourceGroupName?: string;
+  sku?: 'Basic' | 'Standard';
+  frontendIpConfiguration?: FrontendIpConfiguration[];
 };
 
-export namespace GcpVm {
-  export const getBuilder = (): GcpVmBuilder => {
+export namespace AzureLb {
+  export const getBuilder = (): AzureLbBuilder => {
     const params = getParametersInstance();
     const inner = getLiveSystemComponentBuilder()
-      .withType(buildGcpVmType())
+      .withType(buildAzureLbType())
       .withParameters(params)
-      .withProvider('GCP');
+      .withProvider('Azure');
 
-    const builder: GcpVmBuilder = {
+    const builder: AzureLbBuilder = {
       withId: id => {
         inner.withId(buildId(id));
         return builder;
@@ -122,24 +130,20 @@ export namespace GcpVm {
         inner.withDescription(description);
         return builder;
       },
-      withMachineType: value => {
-        pushParam(params, MACHINE_TYPE_PARAM, value);
+      withAzureRegion: value => {
+        pushParam(params, AZURE_REGION_PARAM, value);
         return builder;
       },
-      withZone: value => {
-        pushParam(params, ZONE_PARAM, value);
+      withResourceGroupName: value => {
+        pushParam(params, RESOURCE_GROUP_NAME_PARAM, value);
         return builder;
       },
-      withImageProject: value => {
-        pushParam(params, IMAGE_PROJECT_PARAM, value);
+      withSku: value => {
+        pushParam(params, SKU_PARAM, value);
         return builder;
       },
-      withImageFamily: value => {
-        pushParam(params, IMAGE_FAMILY_PARAM, value);
-        return builder;
-      },
-      withServiceAccountEmail: value => {
-        pushParam(params, SERVICE_ACCOUNT_EMAIL_PARAM, value);
+      withFrontendIpConfiguration: value => {
+        pushParam(params, FRONTEND_IP_CONFIGURATION_PARAM, value);
         return builder;
       },
       build: () => inner.build(),
@@ -150,12 +154,12 @@ export namespace GcpVm {
 
   export const satisfy = (
     blueprint: BlueprintComponent,
-  ): SatisfiedGcpVmBuilder => {
+  ): SatisfiedAzureLbBuilder => {
     const params = getParametersInstance();
     const inner = getLiveSystemComponentBuilder()
-      .withType(buildGcpVmType())
+      .withType(buildAzureLbType())
       .withParameters(params)
-      .withProvider('GCP')
+      .withProvider('Azure')
       .withId(buildId(blueprint.id.toString()))
       .withVersion(
         buildVersion(
@@ -170,25 +174,21 @@ export namespace GcpVm {
 
     if (blueprint.description) inner.withDescription(blueprint.description);
 
-    const satisfiedBuilder: SatisfiedGcpVmBuilder = {
-      withMachineType: value => {
-        pushParam(params, MACHINE_TYPE_PARAM, value);
+    const satisfiedBuilder: SatisfiedAzureLbBuilder = {
+      withAzureRegion: value => {
+        pushParam(params, AZURE_REGION_PARAM, value);
         return satisfiedBuilder;
       },
-      withZone: value => {
-        pushParam(params, ZONE_PARAM, value);
+      withResourceGroupName: value => {
+        pushParam(params, RESOURCE_GROUP_NAME_PARAM, value);
         return satisfiedBuilder;
       },
-      withImageProject: value => {
-        pushParam(params, IMAGE_PROJECT_PARAM, value);
+      withSku: value => {
+        pushParam(params, SKU_PARAM, value);
         return satisfiedBuilder;
       },
-      withImageFamily: value => {
-        pushParam(params, IMAGE_FAMILY_PARAM, value);
-        return satisfiedBuilder;
-      },
-      withServiceAccountEmail: value => {
-        pushParam(params, SERVICE_ACCOUNT_EMAIL_PARAM, value);
+      withFrontendIpConfiguration: value => {
+        pushParam(params, FRONTEND_IP_CONFIGURATION_PARAM, value);
         return satisfiedBuilder;
       },
       build: () => inner.build(),
@@ -197,7 +197,7 @@ export namespace GcpVm {
     return satisfiedBuilder;
   };
 
-  export const create = (config: GcpVmConfig): LiveSystemComponent => {
+  export const create = (config: AzureLbConfig): LiveSystemComponent => {
     const b = getBuilder()
       .withId(config.id)
       .withVersion(
@@ -205,15 +205,15 @@ export namespace GcpVm {
         config.version.minor,
         config.version.patch,
       )
-      .withDisplayName(config.displayName)
-      .withMachineType(config.machineType)
-      .withZone(config.zone)
-      .withImageProject(config.imageProject);
+      .withDisplayName(config.displayName);
 
     if (config.description) b.withDescription(config.description);
-    if (config.imageFamily) b.withImageFamily(config.imageFamily);
-    if (config.serviceAccountEmail)
-      b.withServiceAccountEmail(config.serviceAccountEmail);
+    if (config.azureRegion) b.withAzureRegion(config.azureRegion);
+    if (config.resourceGroupName)
+      b.withResourceGroupName(config.resourceGroupName);
+    if (config.sku) b.withSku(config.sku);
+    if (config.frontendIpConfiguration)
+      b.withFrontendIpConfiguration(config.frontendIpConfiguration);
 
     return b.build();
   };

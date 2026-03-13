@@ -12,7 +12,7 @@ describe('AwsEksCluster', () => {
   describe('create()', () => {
     it('should build a component with the correct type string', () => {
       const c = AwsEksCluster.create(BASE_CONFIG);
-      expect(c.type.toString()).toBe('NetworkAndCompute.PaaS.EKS');
+      expect(c.type.toString()).toBe('NetworkAndCompute.PaaS.Kubernetes');
     });
 
     it('should set provider to AWS', () => {
@@ -103,7 +103,7 @@ describe('AwsEksCluster', () => {
         displayName: 'Test Cluster',
       });
       const c = AwsEksCluster.satisfy(platform.platform).build();
-      expect(c.type.toString()).toBe('NetworkAndCompute.PaaS.EKS');
+      expect(c.type.toString()).toBe('NetworkAndCompute.PaaS.Kubernetes');
     });
 
     it('should allow setting vendor-specific params via sealed builder', () => {
@@ -147,7 +147,7 @@ describe('AwsEksCluster', () => {
         .withVersion(2, 0, 0)
         .withDisplayName('Cluster B')
         .build();
-      expect(c.type.toString()).toBe('NetworkAndCompute.PaaS.EKS');
+      expect(c.type.toString()).toBe('NetworkAndCompute.PaaS.Kubernetes');
       expect(c.id.toString()).toBe('cluster-b');
       expect(c.version.major).toBe(2);
     });

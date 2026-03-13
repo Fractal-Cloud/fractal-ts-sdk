@@ -23,7 +23,7 @@ import {
   MEMORY_PARAM,
 } from '../../../../fractal/component/custom_workloads/caas/workload';
 
-// Agent constant: ECS_TASK_DEF_COMPONENT_NAME = "ECSTaskDefinition"
+// BFF offer id: NetworkAndCompute.CaaS.ECSTaskDefinition
 const ECS_TASK_DEF_TYPE_NAME = 'ECSTaskDefinition';
 const NETWORK_MODE_PARAM = 'networkMode';
 const EXECUTION_ROLE_ARN_PARAM = 'executionRoleArn';
@@ -48,7 +48,7 @@ function buildVersion(major: number, minor: number, patch: number): Version {
 function buildAwsEcsTaskDefType(): BlueprintComponentType {
   return getBlueprintComponentTypeBuilder()
     .withInfrastructureDomain(InfrastructureDomain.NetworkAndCompute)
-    .withServiceDeliveryModel(ServiceDeliveryModel.PaaS)
+    .withServiceDeliveryModel(ServiceDeliveryModel.CaaS)
     .withName(
       PascalCaseString.getBuilder().withValue(ECS_TASK_DEF_TYPE_NAME).build(),
     )

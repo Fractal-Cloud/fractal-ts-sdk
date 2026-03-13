@@ -22,7 +22,7 @@ import {
   MEMORY_PARAM,
 } from '../../../../fractal/component/custom_workloads/caas/workload';
 
-// Agent constant: CLOUD_RUN_SERVICE_COMPONENT_NAME = "CloudRunService"
+// BFF offer id: NetworkAndCompute.CaaS.CloudRunService
 const CLOUD_RUN_SERVICE_TYPE_NAME = 'CloudRunService';
 
 // ── internal helpers ──────────────────────────────────────────────────────────
@@ -44,7 +44,7 @@ function buildVersion(major: number, minor: number, patch: number): Version {
 function buildGcpCloudRunServiceType(): BlueprintComponentType {
   return getBlueprintComponentTypeBuilder()
     .withInfrastructureDomain(InfrastructureDomain.NetworkAndCompute)
-    .withServiceDeliveryModel(ServiceDeliveryModel.PaaS)
+    .withServiceDeliveryModel(ServiceDeliveryModel.CaaS)
     .withName(
       PascalCaseString.getBuilder()
         .withValue(CLOUD_RUN_SERVICE_TYPE_NAME)

@@ -19,7 +19,7 @@ describe('AzureNsg', () => {
   describe('create()', () => {
     it('should build a component with the correct type string', () => {
       const c = AzureNsg.create(BASE_CONFIG);
-      expect(c.type.toString()).toBe('NetworkAndCompute.IaaS.AzureNsg');
+      expect(c.type.toString()).toBe('NetworkAndCompute.IaaS.SecurityGroup');
     });
 
     it('should set provider to Azure', () => {

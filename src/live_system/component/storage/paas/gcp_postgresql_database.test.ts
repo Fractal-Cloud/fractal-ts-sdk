@@ -12,7 +12,7 @@ describe('GcpPostgreSqlDatabase', () => {
   describe('create()', () => {
     it('should build a component with the correct type string', () => {
       const c = GcpPostgreSqlDatabase.create(BASE_CONFIG);
-      expect(c.type.toString()).toBe('Storage.PaaS.GcpPostgreSqlDatabase');
+      expect(c.type.toString()).toBe('Storage.PaaS.PostgreSqlDatabase');
     });
 
     it('should set provider to GCP', () => {

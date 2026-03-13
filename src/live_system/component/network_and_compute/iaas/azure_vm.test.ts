@@ -19,7 +19,7 @@ describe('AzureVm', () => {
   describe('create()', () => {
     it('should build a component with the correct type string', () => {
       const c = AzureVm.create(BASE_CONFIG);
-      expect(c.type.toString()).toBe('NetworkAndCompute.IaaS.AzureVm');
+      expect(c.type.toString()).toBe('NetworkAndCompute.IaaS.VirtualMachine');
     });
 
     it('should set provider to Azure', () => {

@@ -12,7 +12,7 @@ describe('AzureAksCluster', () => {
   describe('create()', () => {
     it('should build a component with the correct type string', () => {
       const c = AzureAksCluster.create(BASE_CONFIG);
-      expect(c.type.toString()).toBe('NetworkAndCompute.PaaS.AKS');
+      expect(c.type.toString()).toBe('NetworkAndCompute.PaaS.Kubernetes');
     });
 
     it('should set provider to Azure', () => {
@@ -90,7 +90,7 @@ describe('AzureAksCluster', () => {
         displayName: 'Test Cluster',
       });
       const c = AzureAksCluster.satisfy(platform.platform).build();
-      expect(c.type.toString()).toBe('NetworkAndCompute.PaaS.AKS');
+      expect(c.type.toString()).toBe('NetworkAndCompute.PaaS.Kubernetes');
     });
 
     it('should allow setting vendor-specific params via sealed builder', () => {
@@ -136,7 +136,7 @@ describe('AzureAksCluster', () => {
         .withVersion(2, 0, 0)
         .withDisplayName('Cluster B')
         .build();
-      expect(c.type.toString()).toBe('NetworkAndCompute.PaaS.AKS');
+      expect(c.type.toString()).toBe('NetworkAndCompute.PaaS.Kubernetes');
       expect(c.id.toString()).toBe('cluster-b');
       expect(c.version.major).toBe(2);
     });

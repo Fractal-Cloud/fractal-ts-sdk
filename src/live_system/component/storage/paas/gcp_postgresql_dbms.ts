@@ -17,8 +17,8 @@ import {LiveSystemComponent} from '../../index';
 import {BlueprintComponent} from '../../../../fractal/component/index';
 import {VERSION_PARAM} from '../../../../fractal/component/storage/paas/relational_dbms';
 
-// Agent constant: GCP_POSTGRESQL_DBMS_COMPONENT_NAME = "GcpPostgreSqlDbms"
-const GCP_POSTGRESQL_DBMS_TYPE_NAME = 'GcpPostgreSqlDbms';
+// BFF offer id: Storage.PaaS.PostgreSqlDbms (shared across providers)
+const GCP_POSTGRESQL_DBMS_TYPE_NAME = 'PostgreSqlDbms';
 const REGION_PARAM = 'region';
 const TIER_PARAM = 'tier';
 const STORAGE_AUTO_RESIZE_PARAM = 'storageAutoResize';

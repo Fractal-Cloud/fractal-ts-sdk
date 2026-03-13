@@ -16,8 +16,8 @@ import {getVersionBuilder, Version} from '../../../../values/version';
 import {LiveSystemComponent} from '../../index';
 import {BlueprintComponent} from '../../../../fractal/component/index';
 
-// Agent constant: GCP_POSTGRESQL_DATABASE_COMPONENT_NAME = "GcpPostgreSqlDatabase"
-const GCP_POSTGRESQL_DATABASE_TYPE_NAME = 'GcpPostgreSqlDatabase';
+// BFF offer id: Storage.PaaS.PostgreSqlDatabase (shared across providers)
+const GCP_POSTGRESQL_DATABASE_TYPE_NAME = 'PostgreSqlDatabase';
 const COLLATION_PARAM = 'collation';
 const CHARSET_PARAM = 'charset';
 

@@ -212,7 +212,7 @@ describe('basic_storage GCP live system', () => {
       .withTier('db-f1-micro')
       .build();
 
-    expect(gcpDbms.type.toString()).toBe('Storage.PaaS.GcpPostgreSqlDbms');
+    expect(gcpDbms.type.toString()).toBe('Storage.PaaS.PostgreSqlDbms');
     expect(gcpDbms.provider).toBe('GCP');
     expect(gcpDbms.id.toString()).toBe('main-dbms');
     // dbVersion carried from blueprint
@@ -230,7 +230,7 @@ describe('basic_storage GCP live system', () => {
     const db = dbms.databases[0];
     const gcpDb = GcpPostgreSqlDatabase.satisfy(db.component).build();
 
-    expect(gcpDb.type.toString()).toBe('Storage.PaaS.GcpPostgreSqlDatabase');
+    expect(gcpDb.type.toString()).toBe('Storage.PaaS.PostgreSqlDatabase');
     expect(gcpDb.provider).toBe('GCP');
     expect(gcpDb.id.toString()).toBe('app-db');
     // collation + charset carried from blueprint

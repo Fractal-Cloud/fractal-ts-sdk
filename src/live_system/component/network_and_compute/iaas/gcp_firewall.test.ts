@@ -17,7 +17,7 @@ describe('GcpFirewall', () => {
   describe('create()', () => {
     it('should build a component with the correct type string', () => {
       const c = GcpFirewall.create(BASE_CONFIG);
-      expect(c.type.toString()).toBe('NetworkAndCompute.IaaS.GcpFirewall');
+      expect(c.type.toString()).toBe('NetworkAndCompute.IaaS.SecurityGroup');
     });
 
     it('should set provider to GCP', () => {

@@ -15,7 +15,7 @@ describe('GcpVm', () => {
   describe('create()', () => {
     it('should build a component with the correct type string', () => {
       const c = GcpVm.create(BASE_CONFIG);
-      expect(c.type.toString()).toBe('NetworkAndCompute.IaaS.GcpVm');
+      expect(c.type.toString()).toBe('NetworkAndCompute.IaaS.VirtualMachine');
     });
 
     it('should set provider to GCP', () => {

@@ -19,7 +19,7 @@ describe('AzureVnet', () => {
   describe('create()', () => {
     it('should build a component with the correct type string', () => {
       const c = AzureVnet.create(BASE_CONFIG);
-      expect(c.type.toString()).toBe('NetworkAndCompute.IaaS.AzureVnet');
+      expect(c.type.toString()).toBe('NetworkAndCompute.IaaS.VNet');
     });
 
     it('should set provider to Azure', () => {

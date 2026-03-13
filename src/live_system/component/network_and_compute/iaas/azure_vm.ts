@@ -16,8 +16,8 @@ import {getVersionBuilder, Version} from '../../../../values/version';
 import {LiveSystemComponent} from '../../index';
 import {BlueprintComponent} from '../../../../fractal/component/index';
 
-// Agent constant: AZURE_VM_COMPONENT_NAME = "AzureVm"
-const AZURE_VM_TYPE_NAME = 'AzureVm';
+// BFF offer id: NetworkAndCompute.IaaS.VirtualMachine (shared across providers)
+const AZURE_VM_TYPE_NAME = 'VirtualMachine';
 const VM_SIZE_PARAM = 'vmSize';
 const LOCATION_PARAM = 'location';
 const RESOURCE_GROUP_PARAM = 'resourceGroup';

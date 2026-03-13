@@ -16,8 +16,8 @@ import {getVersionBuilder, Version} from '../../../../values/version';
 import {LiveSystemComponent} from '../../index';
 import {BlueprintComponent} from '../../../../fractal/component/index';
 
-// Agent constant: AKS_COMPONENT_NAME = "AKS"
-const AKS_CLUSTER_TYPE_NAME = 'AKS';
+// BFF offer id: NetworkAndCompute.PaaS.Kubernetes (shared across providers)
+const AKS_CLUSTER_TYPE_NAME = 'Kubernetes';
 
 // ── internal helpers ──────────────────────────────────────────────────────────
 

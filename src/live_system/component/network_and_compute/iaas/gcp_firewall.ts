@@ -21,8 +21,8 @@ import {
   IngressRule,
 } from '../../../../fractal/component/network_and_compute/iaas/security_group';
 
-// Agent constant: GCP_FIREWALL_COMPONENT_NAME = "GcpFirewall"
-const GCP_FIREWALL_TYPE_NAME = 'GcpFirewall';
+// BFF offer id: NetworkAndCompute.IaaS.SecurityGroup (shared across providers)
+const GCP_FIREWALL_TYPE_NAME = 'SecurityGroup';
 
 // ── internal helpers ──────────────────────────────────────────────────────────
 

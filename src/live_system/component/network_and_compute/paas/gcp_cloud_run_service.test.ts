@@ -15,7 +15,7 @@ describe('GcpCloudRunService', () => {
     it('should build a component with the correct type string', () => {
       const c = GcpCloudRunService.create(BASE_CONFIG);
       expect(c.type.toString()).toBe(
-        'NetworkAndCompute.PaaS.CloudRunService',
+        'NetworkAndCompute.CaaS.CloudRunService',
       );
     });
 
@@ -163,7 +163,7 @@ describe('GcpCloudRunService', () => {
         .withRegion('us-central1')
         .build();
       expect(c.type.toString()).toBe(
-        'NetworkAndCompute.PaaS.CloudRunService',
+        'NetworkAndCompute.CaaS.CloudRunService',
       );
       expect(c.id.toString()).toBe('svc-b');
       expect(c.version.major).toBe(2);

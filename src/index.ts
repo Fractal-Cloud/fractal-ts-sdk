@@ -90,6 +90,13 @@ export type {
   VmPortLink,
 } from './fractal/component/network_and_compute/iaas/vm';
 
+export {LoadBalancer} from './fractal/component/network_and_compute/iaas/load_balancer';
+export type {
+  LoadBalancerBuilder,
+  LoadBalancerConfig,
+  LoadBalancerComponent,
+} from './fractal/component/network_and_compute/iaas/load_balancer';
+
 // Live system component helpers — AWS IaaS
 export {AwsVpc} from './live_system/component/network_and_compute/iaas/vpc';
 export type {
@@ -119,7 +126,22 @@ export type {
   SatisfiedEc2Builder,
 } from './live_system/component/network_and_compute/iaas/ec2_instance';
 
+export {AwsLb} from './live_system/component/network_and_compute/iaas/aws_lb';
+export type {
+  AwsLbBuilder,
+  AwsLbConfig,
+  SatisfiedAwsLbBuilder,
+} from './live_system/component/network_and_compute/iaas/aws_lb';
+
 // Live system component helpers — Azure IaaS
+export {AzureLb} from './live_system/component/network_and_compute/iaas/azure_lb';
+export type {
+  AzureLbBuilder,
+  AzureLbConfig,
+  SatisfiedAzureLbBuilder,
+  FrontendIpConfiguration,
+} from './live_system/component/network_and_compute/iaas/azure_lb';
+
 export {AzureVnet} from './live_system/component/network_and_compute/iaas/azure_vnet';
 export type {
   AzureVnetBuilder,
@@ -149,6 +171,13 @@ export type {
 } from './live_system/component/network_and_compute/iaas/azure_vm';
 
 // Live system component helpers — GCP IaaS
+export {GcpGlb} from './live_system/component/network_and_compute/iaas/gcp_glb';
+export type {
+  GcpGlbBuilder,
+  GcpGlbConfig,
+  SatisfiedGcpGlbBuilder,
+} from './live_system/component/network_and_compute/iaas/gcp_glb';
+
 export {GcpVpc} from './live_system/component/network_and_compute/iaas/gcp_vpc';
 export type {
   GcpVpcBuilder,

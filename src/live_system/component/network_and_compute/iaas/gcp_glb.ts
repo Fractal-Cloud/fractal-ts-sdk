@@ -16,13 +16,13 @@ import {getVersionBuilder, Version} from '../../../../values/version';
 import {LiveSystemComponent} from '../../index';
 import {BlueprintComponent} from '../../../../fractal/component/index';
 
-// BFF offer id: NetworkAndCompute.IaaS.VirtualMachine (shared across providers)
-const GCP_VM_TYPE_NAME = 'VirtualMachine';
-const MACHINE_TYPE_PARAM = 'machineType';
-const ZONE_PARAM = 'zone';
-const IMAGE_PROJECT_PARAM = 'imageProject';
-const IMAGE_FAMILY_PARAM = 'imageFamily';
-const SERVICE_ACCOUNT_EMAIL_PARAM = 'serviceAccountEmail';
+// BFF offer id: NetworkAndCompute.IaaS.GlobalLoadBalancer
+const TYPE_NAME = 'GlobalLoadBalancer';
+const LOAD_BALANCING_SCHEME_PARAM = 'loadBalancingScheme';
+const IP_PROTOCOL_PARAM = 'ipProtocol';
+const PORT_RANGE_PARAM = 'portRange';
+const TARGET_PARAM = 'target';
+const IP_ADDRESS_PARAM = 'ipAddress';
 
 // ── internal helpers ──────────────────────────────────────────────────────────
 
@@ -40,11 +40,11 @@ function buildVersion(major: number, minor: number, patch: number): Version {
     .build();
 }
 
-function buildGcpVmType(): BlueprintComponentType {
+function buildGcpGlbType(): BlueprintComponentType {
   return getBlueprintComponentTypeBuilder()
     .withInfrastructureDomain(InfrastructureDomain.NetworkAndCompute)
     .withServiceDeliveryModel(ServiceDeliveryModel.IaaS)
-    .withName(PascalCaseString.getBuilder().withValue(GCP_VM_TYPE_NAME).build())
+    .withName(PascalCaseString.getBuilder().withValue(TYPE_NAME).build())
     .build();
 }
 
@@ -60,52 +60,54 @@ function pushParam(
 
 /**
  * Returned by satisfy() — only exposes vendor-specific parameters.
- * Structural properties (id, version, displayName, description, dependencies,
- * links) are locked to the blueprint and cannot be overridden.
+ * Structural properties (id, version, displayName, description,
+ * dependencies, links) are locked to the blueprint and cannot be overridden.
  */
-export type SatisfiedGcpVmBuilder = {
-  withMachineType: (machineType: string) => SatisfiedGcpVmBuilder;
-  withZone: (zone: string) => SatisfiedGcpVmBuilder;
-  withImageProject: (project: string) => SatisfiedGcpVmBuilder;
-  withImageFamily: (family: string) => SatisfiedGcpVmBuilder;
-  withServiceAccountEmail: (email: string) => SatisfiedGcpVmBuilder;
+export type SatisfiedGcpGlbBuilder = {
+  withLoadBalancingScheme: (
+    scheme: 'EXTERNAL' | 'INTERNAL',
+  ) => SatisfiedGcpGlbBuilder;
+  withIpProtocol: (protocol: string) => SatisfiedGcpGlbBuilder;
+  withPortRange: (portRange: string) => SatisfiedGcpGlbBuilder;
+  withTarget: (target: string) => SatisfiedGcpGlbBuilder;
+  withIpAddress: (ipAddress: string) => SatisfiedGcpGlbBuilder;
   build: () => LiveSystemComponent;
 };
 
-export type GcpVmBuilder = {
-  withId: (id: string) => GcpVmBuilder;
-  withVersion: (major: number, minor: number, patch: number) => GcpVmBuilder;
-  withDisplayName: (displayName: string) => GcpVmBuilder;
-  withDescription: (description: string) => GcpVmBuilder;
-  withMachineType: (machineType: string) => GcpVmBuilder;
-  withZone: (zone: string) => GcpVmBuilder;
-  withImageProject: (project: string) => GcpVmBuilder;
-  withImageFamily: (family: string) => GcpVmBuilder;
-  withServiceAccountEmail: (email: string) => GcpVmBuilder;
+export type GcpGlbBuilder = {
+  withId: (id: string) => GcpGlbBuilder;
+  withVersion: (major: number, minor: number, patch: number) => GcpGlbBuilder;
+  withDisplayName: (displayName: string) => GcpGlbBuilder;
+  withDescription: (description: string) => GcpGlbBuilder;
+  withLoadBalancingScheme: (scheme: 'EXTERNAL' | 'INTERNAL') => GcpGlbBuilder;
+  withIpProtocol: (protocol: string) => GcpGlbBuilder;
+  withPortRange: (portRange: string) => GcpGlbBuilder;
+  withTarget: (target: string) => GcpGlbBuilder;
+  withIpAddress: (ipAddress: string) => GcpGlbBuilder;
   build: () => LiveSystemComponent;
 };
 
-export type GcpVmConfig = {
+export type GcpGlbConfig = {
   id: string;
   version: {major: number; minor: number; patch: number};
   displayName: string;
   description?: string;
-  machineType: string;
-  zone: string;
-  imageProject: string;
-  imageFamily?: string;
-  serviceAccountEmail?: string;
+  loadBalancingScheme?: 'EXTERNAL' | 'INTERNAL';
+  ipProtocol?: string;
+  portRange?: string;
+  target?: string;
+  ipAddress?: string;
 };
 
-export namespace GcpVm {
-  export const getBuilder = (): GcpVmBuilder => {
+export namespace GcpGlb {
+  export const getBuilder = (): GcpGlbBuilder => {
     const params = getParametersInstance();
     const inner = getLiveSystemComponentBuilder()
-      .withType(buildGcpVmType())
+      .withType(buildGcpGlbType())
       .withParameters(params)
       .withProvider('GCP');
 
-    const builder: GcpVmBuilder = {
+    const builder: GcpGlbBuilder = {
       withId: id => {
         inner.withId(buildId(id));
         return builder;
@@ -122,24 +124,24 @@ export namespace GcpVm {
         inner.withDescription(description);
         return builder;
       },
-      withMachineType: value => {
-        pushParam(params, MACHINE_TYPE_PARAM, value);
+      withLoadBalancingScheme: value => {
+        pushParam(params, LOAD_BALANCING_SCHEME_PARAM, value);
         return builder;
       },
-      withZone: value => {
-        pushParam(params, ZONE_PARAM, value);
+      withIpProtocol: value => {
+        pushParam(params, IP_PROTOCOL_PARAM, value);
         return builder;
       },
-      withImageProject: value => {
-        pushParam(params, IMAGE_PROJECT_PARAM, value);
+      withPortRange: value => {
+        pushParam(params, PORT_RANGE_PARAM, value);
         return builder;
       },
-      withImageFamily: value => {
-        pushParam(params, IMAGE_FAMILY_PARAM, value);
+      withTarget: value => {
+        pushParam(params, TARGET_PARAM, value);
         return builder;
       },
-      withServiceAccountEmail: value => {
-        pushParam(params, SERVICE_ACCOUNT_EMAIL_PARAM, value);
+      withIpAddress: value => {
+        pushParam(params, IP_ADDRESS_PARAM, value);
         return builder;
       },
       build: () => inner.build(),
@@ -150,10 +152,10 @@ export namespace GcpVm {
 
   export const satisfy = (
     blueprint: BlueprintComponent,
-  ): SatisfiedGcpVmBuilder => {
+  ): SatisfiedGcpGlbBuilder => {
     const params = getParametersInstance();
     const inner = getLiveSystemComponentBuilder()
-      .withType(buildGcpVmType())
+      .withType(buildGcpGlbType())
       .withParameters(params)
       .withProvider('GCP')
       .withId(buildId(blueprint.id.toString()))
@@ -170,25 +172,25 @@ export namespace GcpVm {
 
     if (blueprint.description) inner.withDescription(blueprint.description);
 
-    const satisfiedBuilder: SatisfiedGcpVmBuilder = {
-      withMachineType: value => {
-        pushParam(params, MACHINE_TYPE_PARAM, value);
+    const satisfiedBuilder: SatisfiedGcpGlbBuilder = {
+      withLoadBalancingScheme: value => {
+        pushParam(params, LOAD_BALANCING_SCHEME_PARAM, value);
         return satisfiedBuilder;
       },
-      withZone: value => {
-        pushParam(params, ZONE_PARAM, value);
+      withIpProtocol: value => {
+        pushParam(params, IP_PROTOCOL_PARAM, value);
         return satisfiedBuilder;
       },
-      withImageProject: value => {
-        pushParam(params, IMAGE_PROJECT_PARAM, value);
+      withPortRange: value => {
+        pushParam(params, PORT_RANGE_PARAM, value);
         return satisfiedBuilder;
       },
-      withImageFamily: value => {
-        pushParam(params, IMAGE_FAMILY_PARAM, value);
+      withTarget: value => {
+        pushParam(params, TARGET_PARAM, value);
         return satisfiedBuilder;
       },
-      withServiceAccountEmail: value => {
-        pushParam(params, SERVICE_ACCOUNT_EMAIL_PARAM, value);
+      withIpAddress: value => {
+        pushParam(params, IP_ADDRESS_PARAM, value);
         return satisfiedBuilder;
       },
       build: () => inner.build(),
@@ -197,7 +199,7 @@ export namespace GcpVm {
     return satisfiedBuilder;
   };
 
-  export const create = (config: GcpVmConfig): LiveSystemComponent => {
+  export const create = (config: GcpGlbConfig): LiveSystemComponent => {
     const b = getBuilder()
       .withId(config.id)
       .withVersion(
@@ -205,15 +207,15 @@ export namespace GcpVm {
         config.version.minor,
         config.version.patch,
       )
-      .withDisplayName(config.displayName)
-      .withMachineType(config.machineType)
-      .withZone(config.zone)
-      .withImageProject(config.imageProject);
+      .withDisplayName(config.displayName);
 
     if (config.description) b.withDescription(config.description);
-    if (config.imageFamily) b.withImageFamily(config.imageFamily);
-    if (config.serviceAccountEmail)
-      b.withServiceAccountEmail(config.serviceAccountEmail);
+    if (config.loadBalancingScheme)
+      b.withLoadBalancingScheme(config.loadBalancingScheme);
+    if (config.ipProtocol) b.withIpProtocol(config.ipProtocol);
+    if (config.portRange) b.withPortRange(config.portRange);
+    if (config.target) b.withTarget(config.target);
+    if (config.ipAddress) b.withIpAddress(config.ipAddress);
 
     return b.build();
   };
