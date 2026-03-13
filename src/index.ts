@@ -729,3 +729,336 @@ export type {
   MessagingSaaSUnmanagedConfig,
   SatisfiedMessagingSaaSUnmanagedBuilder,
 } from './live_system/component/messaging/saas/unmanaged';
+
+// ── BigData domain — Blueprint component helpers ─────────────────────────────
+
+export {DistributedDataProcessing} from './fractal/component/big_data/paas/distributed_data_processing';
+export type {
+  DistributedDataProcessingBuilder,
+  DistributedDataProcessingConfig,
+  DistributedDataProcessingComponent,
+} from './fractal/component/big_data/paas/distributed_data_processing';
+
+export {ComputeCluster} from './fractal/component/big_data/paas/compute_cluster';
+export type {
+  ComputeClusterBuilder,
+  ComputeClusterConfig,
+  ComputeClusterComponent,
+} from './fractal/component/big_data/paas/compute_cluster';
+
+export {DataProcessingJob} from './fractal/component/big_data/paas/data_processing_job';
+export type {
+  DataProcessingJobBuilder,
+  DataProcessingJobConfig,
+  DataProcessingJobComponent,
+} from './fractal/component/big_data/paas/data_processing_job';
+
+export {MlExperiment} from './fractal/component/big_data/paas/ml_experiment';
+export type {
+  MlExperimentBuilder,
+  MlExperimentConfig,
+  MlExperimentComponent,
+} from './fractal/component/big_data/paas/ml_experiment';
+
+export {Datalake} from './fractal/component/big_data/paas/datalake';
+export type {
+  DatalakeBuilder,
+  DatalakeConfig,
+  DatalakeComponent,
+} from './fractal/component/big_data/paas/datalake';
+
+export {BigDataUnmanaged} from './fractal/component/big_data/saas/unmanaged';
+export type {
+  BigDataUnmanagedBuilder,
+  BigDataUnmanagedConfig,
+  BigDataUnmanagedComponent,
+} from './fractal/component/big_data/saas/unmanaged';
+
+// ── BigData domain — Live system component helpers ───────────────────────────
+
+// Live system — AWS BigData
+export {AwsDatabricks} from './live_system/component/big_data/paas/aws_databricks';
+export type {
+  AwsDatabricksBuilder,
+  AwsDatabricksConfig,
+  SatisfiedAwsDatabricksBuilder,
+} from './live_system/component/big_data/paas/aws_databricks';
+
+export {AwsDatabricksCluster} from './live_system/component/big_data/paas/aws_databricks_cluster';
+export type {
+  AwsDatabricksClusterBuilder,
+  AwsDatabricksClusterConfig,
+  SatisfiedAwsDatabricksClusterBuilder,
+} from './live_system/component/big_data/paas/aws_databricks_cluster';
+
+export {AwsDatabricksJob} from './live_system/component/big_data/paas/aws_databricks_job';
+export type {
+  AwsDatabricksJobBuilder,
+  AwsDatabricksJobConfig,
+  SatisfiedAwsDatabricksJobBuilder,
+} from './live_system/component/big_data/paas/aws_databricks_job';
+
+export {AwsDatabricksMlflow} from './live_system/component/big_data/paas/aws_databricks_mlflow';
+export type {
+  AwsDatabricksMlflowBuilder,
+  AwsDatabricksMlflowConfig,
+  SatisfiedAwsDatabricksMlflowBuilder,
+} from './live_system/component/big_data/paas/aws_databricks_mlflow';
+
+export {AwsS3Datalake} from './live_system/component/big_data/paas/aws_s3_datalake';
+export type {
+  AwsS3DatalakeBuilder,
+  AwsS3DatalakeConfig,
+  SatisfiedAwsS3DatalakeBuilder,
+} from './live_system/component/big_data/paas/aws_s3_datalake';
+
+// Live system — Azure BigData
+export {AzureDatabricks} from './live_system/component/big_data/paas/azure_databricks';
+export type {
+  AzureDatabricksBuilder,
+  AzureDatabricksConfig,
+  SatisfiedAzureDatabricksBuilder,
+} from './live_system/component/big_data/paas/azure_databricks';
+
+export {AzureDatabricksCluster} from './live_system/component/big_data/paas/azure_databricks_cluster';
+export type {
+  AzureDatabricksClusterBuilder,
+  AzureDatabricksClusterConfig,
+  SatisfiedAzureDatabricksClusterBuilder,
+} from './live_system/component/big_data/paas/azure_databricks_cluster';
+
+export {AzureDatabricksJob} from './live_system/component/big_data/paas/azure_databricks_job';
+export type {
+  AzureDatabricksJobBuilder,
+  AzureDatabricksJobConfig,
+  SatisfiedAzureDatabricksJobBuilder,
+} from './live_system/component/big_data/paas/azure_databricks_job';
+
+export {AzureDatabricksMlflow} from './live_system/component/big_data/paas/azure_databricks_mlflow';
+export type {
+  AzureDatabricksMlflowBuilder,
+  AzureDatabricksMlflowConfig,
+  SatisfiedAzureDatabricksMlflowBuilder,
+} from './live_system/component/big_data/paas/azure_databricks_mlflow';
+
+export {AzureDatalake} from './live_system/component/big_data/paas/azure_datalake';
+export type {
+  AzureDatalakeBuilder,
+  AzureDatalakeConfig,
+  SatisfiedAzureDatalakeBuilder,
+} from './live_system/component/big_data/paas/azure_datalake';
+
+// Live system — GCP BigData
+export {GcpDatabricks} from './live_system/component/big_data/paas/gcp_databricks';
+export type {
+  GcpDatabricksBuilder,
+  GcpDatabricksConfig,
+  SatisfiedGcpDatabricksBuilder,
+} from './live_system/component/big_data/paas/gcp_databricks';
+
+export {GcpDatabricksCluster} from './live_system/component/big_data/paas/gcp_databricks_cluster';
+export type {
+  GcpDatabricksClusterBuilder,
+  GcpDatabricksClusterConfig,
+  SatisfiedGcpDatabricksClusterBuilder,
+} from './live_system/component/big_data/paas/gcp_databricks_cluster';
+
+export {GcpDatabricksJob} from './live_system/component/big_data/paas/gcp_databricks_job';
+export type {
+  GcpDatabricksJobBuilder,
+  GcpDatabricksJobConfig,
+  SatisfiedGcpDatabricksJobBuilder,
+} from './live_system/component/big_data/paas/gcp_databricks_job';
+
+export {GcpDatabricksMlflow} from './live_system/component/big_data/paas/gcp_databricks_mlflow';
+export type {
+  GcpDatabricksMlflowBuilder,
+  GcpDatabricksMlflowConfig,
+  SatisfiedGcpDatabricksMlflowBuilder,
+} from './live_system/component/big_data/paas/gcp_databricks_mlflow';
+
+export {GcpDatalake} from './live_system/component/big_data/paas/gcp_datalake';
+export type {
+  GcpDatalakeBuilder,
+  GcpDatalakeConfig,
+  SatisfiedGcpDatalakeBuilder,
+} from './live_system/component/big_data/paas/gcp_datalake';
+
+// Live system — SaaS BigData
+export {BigDataSaaSUnmanaged} from './live_system/component/big_data/saas/unmanaged';
+export type {
+  BigDataSaaSUnmanagedBuilder,
+  BigDataSaaSUnmanagedConfig,
+  SatisfiedBigDataSaaSUnmanagedBuilder,
+} from './live_system/component/big_data/saas/unmanaged';
+
+// ── APIManagement Blueprint helpers ─────────────────────────────────────────
+
+export {PaaSApiGateway} from './fractal/component/api_management/paas/api_gateway';
+export type {
+  PaaSApiGatewayBuilder,
+  PaaSApiGatewayConfig,
+  PaaSApiGatewayComponent,
+} from './fractal/component/api_management/paas/api_gateway';
+
+export {CaaSApiGateway} from './fractal/component/api_management/caas/api_gateway';
+export type {
+  CaaSApiGatewayBuilder,
+  CaaSApiGatewayConfig,
+  CaaSApiGatewayComponent,
+} from './fractal/component/api_management/caas/api_gateway';
+
+export {ApiManagementUnmanaged} from './fractal/component/api_management/saas/unmanaged';
+export type {
+  ApiManagementUnmanagedBuilder,
+  ApiManagementUnmanagedConfig,
+  ApiManagementUnmanagedComponent,
+} from './fractal/component/api_management/saas/unmanaged';
+
+// ── APIManagement Live system — AWS ─────────────────────────────────────────
+
+export {AwsCloudFront} from './live_system/component/api_management/paas/aws_cloudfront';
+export type {
+  AwsCloudFrontBuilder,
+  AwsCloudFrontConfig,
+  SatisfiedAwsCloudFrontBuilder,
+} from './live_system/component/api_management/paas/aws_cloudfront';
+
+// ── APIManagement Live system — Azure ───────────────────────────────────────
+
+export {AzureApiManagement} from './live_system/component/api_management/paas/azure_api_management';
+export type {
+  AzureApiManagementBuilder,
+  AzureApiManagementConfig,
+  SatisfiedAzureApiManagementBuilder,
+} from './live_system/component/api_management/paas/azure_api_management';
+
+// ── APIManagement Live system — GCP ─────────────────────────────────────────
+
+export {GcpApiGateway} from './live_system/component/api_management/paas/gcp_api_gateway';
+export type {
+  GcpApiGatewayBuilder,
+  GcpApiGatewayConfig,
+  SatisfiedGcpApiGatewayBuilder,
+} from './live_system/component/api_management/paas/gcp_api_gateway';
+
+// ── APIManagement Live system — CaaS ────────────────────────────────────────
+
+export {Ambassador} from './live_system/component/api_management/caas/ambassador';
+export type {
+  AmbassadorBuilder,
+  AmbassadorConfig,
+  SatisfiedAmbassadorBuilder,
+} from './live_system/component/api_management/caas/ambassador';
+
+export {Traefik} from './live_system/component/api_management/caas/traefik';
+export type {
+  TraefikBuilder,
+  TraefikConfig,
+  SatisfiedTraefikBuilder,
+} from './live_system/component/api_management/caas/traefik';
+
+// ── APIManagement Live system — SaaS ────────────────────────────────────────
+
+export {ApiManagementSaaSUnmanaged} from './live_system/component/api_management/saas/unmanaged';
+export type {
+  ApiManagementSaaSUnmanagedBuilder,
+  ApiManagementSaaSUnmanagedConfig,
+  SatisfiedApiManagementSaaSUnmanagedBuilder,
+} from './live_system/component/api_management/saas/unmanaged';
+
+// ── Observability Blueprint helpers ─────────────────────────────────────────
+
+export {Monitoring} from './fractal/component/observability/caas/monitoring';
+export type {
+  MonitoringBuilder,
+  MonitoringConfig,
+  MonitoringComponent,
+} from './fractal/component/observability/caas/monitoring';
+
+export {Tracing} from './fractal/component/observability/caas/tracing';
+export type {
+  TracingBuilder,
+  TracingConfig,
+  TracingComponent,
+} from './fractal/component/observability/caas/tracing';
+
+export {Logging} from './fractal/component/observability/caas/logging';
+export type {
+  LoggingBuilder,
+  LoggingConfig,
+  LoggingComponent,
+} from './fractal/component/observability/caas/logging';
+
+export {ObservabilityUnmanaged} from './fractal/component/observability/saas/unmanaged';
+export type {
+  ObservabilityUnmanagedBuilder,
+  ObservabilityUnmanagedConfig,
+  ObservabilityUnmanagedComponent,
+} from './fractal/component/observability/saas/unmanaged';
+
+// ── Observability Live system — CaaS ────────────────────────────────────────
+
+export {Prometheus} from './live_system/component/observability/caas/prometheus';
+export type {
+  PrometheusBuilder,
+  PrometheusConfig,
+  SatisfiedPrometheusBuilder,
+} from './live_system/component/observability/caas/prometheus';
+
+export {Jaeger} from './live_system/component/observability/caas/jaeger';
+export type {
+  JaegerBuilder,
+  JaegerConfig,
+  SatisfiedJaegerBuilder,
+} from './live_system/component/observability/caas/jaeger';
+
+export {ObservabilityElastic} from './live_system/component/observability/caas/elastic';
+export type {
+  ObservabilityElasticBuilder,
+  ObservabilityElasticConfig,
+  SatisfiedObservabilityElasticBuilder,
+} from './live_system/component/observability/caas/elastic';
+
+// ── Observability Live system — SaaS ────────────────────────────────────────
+
+export {ObservabilitySaaSUnmanaged} from './live_system/component/observability/saas/unmanaged';
+export type {
+  ObservabilitySaaSUnmanagedBuilder,
+  ObservabilitySaaSUnmanagedConfig,
+  SatisfiedObservabilitySaaSUnmanagedBuilder,
+} from './live_system/component/observability/saas/unmanaged';
+
+// ── Security Blueprint helpers ──────────────────────────────────────────────
+
+export {ServiceMesh} from './fractal/component/security/caas/service_mesh';
+export type {
+  ServiceMeshBuilder,
+  ServiceMeshConfig,
+  ServiceMeshComponent,
+} from './fractal/component/security/caas/service_mesh';
+
+export {SecurityUnmanaged} from './fractal/component/security/saas/unmanaged';
+export type {
+  SecurityUnmanagedBuilder,
+  SecurityUnmanagedConfig,
+  SecurityUnmanagedComponent,
+} from './fractal/component/security/saas/unmanaged';
+
+// ── Security Live system — CaaS ─────────────────────────────────────────────
+
+export {Ocelot} from './live_system/component/security/caas/ocelot';
+export type {
+  OcelotBuilder,
+  OcelotConfig,
+  SatisfiedOcelotBuilder,
+} from './live_system/component/security/caas/ocelot';
+
+// ── Security Live system — SaaS ─────────────────────────────────────────────
+
+export {SecuritySaaSUnmanaged} from './live_system/component/security/saas/unmanaged';
+export type {
+  SecuritySaaSUnmanagedBuilder,
+  SecuritySaaSUnmanagedConfig,
+  SatisfiedSecuritySaaSUnmanagedBuilder,
+} from './live_system/component/security/saas/unmanaged';
