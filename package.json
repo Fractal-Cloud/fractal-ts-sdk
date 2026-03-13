@@ -2,7 +2,7 @@
   "name": "@fractal_cloud/sdk",
   "version": "0.0.1",
   "description": "Typescript Fractal Cloud SDK",
-  "license": "GPL-3.0-or-later",
+  "license": "AGPL-3.0-or-later",
   "author": "Fractal Cloud",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",

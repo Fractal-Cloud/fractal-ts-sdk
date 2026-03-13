@@ -332,7 +332,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines. Use GitHub I
 
 ## License
 
-Licensed under GPLv3. See the [LICENSE](LICENSE) file for details.
+Licensed under AGPLv3. See the [LICENSE](LICENSE) file for details.
 
 Made with ❤️ by the Fractal Cloud team.
 
