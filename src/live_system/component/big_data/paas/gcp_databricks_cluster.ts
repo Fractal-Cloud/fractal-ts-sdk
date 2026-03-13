@@ -77,9 +77,7 @@ function pushParam(
  */
 export type SatisfiedGcpDatabricksClusterBuilder = {
   withNodeTypeId: (nodeTypeId: string) => SatisfiedGcpDatabricksClusterBuilder;
-  withDataSecurityMode: (
-    mode: string,
-  ) => SatisfiedGcpDatabricksClusterBuilder;
+  withDataSecurityMode: (mode: string) => SatisfiedGcpDatabricksClusterBuilder;
   build: () => LiveSystemComponent;
 };
 

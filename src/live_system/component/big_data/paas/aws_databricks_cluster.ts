@@ -74,9 +74,7 @@ function pushParam(
  */
 export type SatisfiedAwsDatabricksClusterBuilder = {
   withNodeTypeId: (nodeTypeId: string) => SatisfiedAwsDatabricksClusterBuilder;
-  withDataSecurityMode: (
-    mode: string,
-  ) => SatisfiedAwsDatabricksClusterBuilder;
+  withDataSecurityMode: (mode: string) => SatisfiedAwsDatabricksClusterBuilder;
   build: () => LiveSystemComponent;
 };
 
