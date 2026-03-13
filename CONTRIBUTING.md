@@ -86,4 +86,4 @@ npm run build:docs
 5.  **Documentation**: Update the README or inline JSDoc if your changes affect the public API.
 
 ## License
-By contributing to this project, you agree that your contributions will be licensed under the [GPL-3.0-or-later](LICENSE) license.
+By contributing to this project, you agree that your contributions will be licensed under the [AGPL-3.0-or-later](LICENSE) license.
