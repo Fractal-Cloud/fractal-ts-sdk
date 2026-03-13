@@ -28,6 +28,7 @@ import {
 } from '../../../../fractal/component/big_data/paas/compute_cluster';
 
 const NODE_TYPE_ID_PARAM = 'nodeTypeId';
+const DATA_SECURITY_MODE_PARAM = 'dataSecurityMode';
 
 // Agent constant: DATABRICKS_CLUSTER_COMPONENT_NAME = "DatabricksCluster"
 const DATABRICKS_CLUSTER_TYPE_NAME = 'DatabricksCluster';
@@ -76,6 +77,7 @@ function pushParam(
  */
 export type SatisfiedGcpDatabricksClusterBuilder = {
   withNodeTypeId: (nodeTypeId: string) => SatisfiedGcpDatabricksClusterBuilder;
+  withDataSecurityMode: (mode: string) => SatisfiedGcpDatabricksClusterBuilder;
   build: () => LiveSystemComponent;
 };
 
@@ -170,6 +172,10 @@ export namespace GcpDatabricksCluster {
     const satisfiedBuilder: SatisfiedGcpDatabricksClusterBuilder = {
       withNodeTypeId: nodeTypeId => {
         pushParam(params, NODE_TYPE_ID_PARAM, nodeTypeId);
+        return satisfiedBuilder;
+      },
+      withDataSecurityMode: mode => {
+        pushParam(params, DATA_SECURITY_MODE_PARAM, mode);
         return satisfiedBuilder;
       },
       build: () => inner.build(),

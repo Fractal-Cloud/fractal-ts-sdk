@@ -25,6 +25,7 @@ import {
 } from '../../../../fractal/component/big_data/paas/compute_cluster';
 
 const NODE_TYPE_ID_PARAM = 'nodeTypeId';
+const DATA_SECURITY_MODE_PARAM = 'dataSecurityMode';
 
 // Agent constant: DATABRICKS_CLUSTER_COMPONENT_NAME = "DatabricksCluster"
 const AWS_DATABRICKS_CLUSTER_TYPE_NAME = 'DatabricksCluster';
@@ -73,6 +74,7 @@ function pushParam(
  */
 export type SatisfiedAwsDatabricksClusterBuilder = {
   withNodeTypeId: (nodeTypeId: string) => SatisfiedAwsDatabricksClusterBuilder;
+  withDataSecurityMode: (mode: string) => SatisfiedAwsDatabricksClusterBuilder;
   build: () => LiveSystemComponent;
 };
 
@@ -95,6 +97,7 @@ export type AwsDatabricksClusterBuilder = {
   withPypiLibraries: (libs: string[]) => AwsDatabricksClusterBuilder;
   withMavenLibraries: (libs: string[]) => AwsDatabricksClusterBuilder;
   withAutoTerminationMinutes: (minutes: number) => AwsDatabricksClusterBuilder;
+  withDataSecurityMode: (mode: string) => AwsDatabricksClusterBuilder;
   build: () => LiveSystemComponent;
 };
 
@@ -113,6 +116,7 @@ export type AwsDatabricksClusterConfig = {
   pypiLibraries?: string[];
   mavenLibraries?: string[];
   autoTerminationMinutes?: number;
+  dataSecurityMode?: string;
 };
 
 export namespace AwsDatabricksCluster {
@@ -180,6 +184,10 @@ export namespace AwsDatabricksCluster {
         pushParam(params, AUTO_TERMINATION_MINUTES_PARAM, minutes);
         return builder;
       },
+      withDataSecurityMode: mode => {
+        pushParam(params, DATA_SECURITY_MODE_PARAM, mode);
+        return builder;
+      },
       build: () => inner.build(),
     };
 
@@ -230,6 +238,10 @@ export namespace AwsDatabricksCluster {
         pushParam(params, NODE_TYPE_ID_PARAM, nodeTypeId);
         return satisfiedBuilder;
       },
+      withDataSecurityMode: mode => {
+        pushParam(params, DATA_SECURITY_MODE_PARAM, mode);
+        return satisfiedBuilder;
+      },
       build: () => inner.build(),
     };
 
@@ -260,6 +272,8 @@ export namespace AwsDatabricksCluster {
     if (config.mavenLibraries) b.withMavenLibraries(config.mavenLibraries);
     if (config.autoTerminationMinutes !== undefined)
       b.withAutoTerminationMinutes(config.autoTerminationMinutes);
+    if (config.dataSecurityMode)
+      b.withDataSecurityMode(config.dataSecurityMode);
 
     return b.build();
   };
