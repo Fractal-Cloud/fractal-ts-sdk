@@ -18,7 +18,6 @@ import {BlueprintComponent} from '../../../../fractal/component/index';
 import {
   CLUSTER_NAME_PARAM,
   SPARK_VERSION_PARAM,
-  NODE_TYPE_ID_PARAM,
   NUM_WORKERS_PARAM,
   MIN_WORKERS_PARAM,
   MAX_WORKERS_PARAM,
@@ -27,6 +26,8 @@ import {
   MAVEN_LIBRARIES_PARAM,
   AUTO_TERMINATION_MINUTES_PARAM,
 } from '../../../../fractal/component/big_data/paas/compute_cluster';
+
+const NODE_TYPE_ID_PARAM = 'nodeTypeId';
 
 // Agent constant: DATABRICKS_CLUSTER_COMPONENT_NAME = "DatabricksCluster"
 const DATABRICKS_CLUSTER_TYPE_NAME = 'DatabricksCluster';
@@ -74,6 +75,7 @@ function pushParam(
  * GCP Databricks Cluster. All parameters are carried from the blueprint.
  */
 export type SatisfiedGcpDatabricksClusterBuilder = {
+  withNodeTypeId: (nodeTypeId: string) => SatisfiedGcpDatabricksClusterBuilder;
   build: () => LiveSystemComponent;
 };
 
@@ -152,7 +154,6 @@ export namespace GcpDatabricksCluster {
     const paramKeys = [
       CLUSTER_NAME_PARAM,
       SPARK_VERSION_PARAM,
-      NODE_TYPE_ID_PARAM,
       NUM_WORKERS_PARAM,
       MIN_WORKERS_PARAM,
       MAX_WORKERS_PARAM,
@@ -166,7 +167,15 @@ export namespace GcpDatabricksCluster {
       if (val !== null) pushParam(params, key, val);
     }
 
-    return {build: () => inner.build()};
+    const satisfiedBuilder: SatisfiedGcpDatabricksClusterBuilder = {
+      withNodeTypeId: nodeTypeId => {
+        pushParam(params, NODE_TYPE_ID_PARAM, nodeTypeId);
+        return satisfiedBuilder;
+      },
+      build: () => inner.build(),
+    };
+
+    return satisfiedBuilder;
   };
 
   export const create = (

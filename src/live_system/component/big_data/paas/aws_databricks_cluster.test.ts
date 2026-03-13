@@ -81,7 +81,6 @@ describe('AwsDatabricksCluster', () => {
         displayName: 'My Cluster',
         clusterName: 'test-cluster',
         sparkVersion: '14.3.x-scala2.12',
-        nodeTypeId: 'i3.xlarge',
       });
       const c = AwsDatabricksCluster.satisfy(bp.component).build();
       expect(c.parameters.getOptionalFieldByName('clusterName')).toBe(
@@ -90,6 +89,17 @@ describe('AwsDatabricksCluster', () => {
       expect(c.parameters.getOptionalFieldByName('sparkVersion')).toBe(
         '14.3.x-scala2.12'
       );
+    });
+
+    it('should set nodeTypeId via satisfied builder', () => {
+      const bp = ComputeCluster.create({
+        id: 'my-cluster',
+        version: {major: 1, minor: 0, patch: 0},
+        displayName: 'My Cluster',
+      });
+      const c = AwsDatabricksCluster.satisfy(bp.component)
+        .withNodeTypeId('i3.xlarge')
+        .build();
       expect(c.parameters.getOptionalFieldByName('nodeTypeId')).toBe(
         'i3.xlarge'
       );

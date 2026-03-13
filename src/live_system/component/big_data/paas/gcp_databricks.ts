@@ -15,10 +15,9 @@ import {KebabCaseString} from '../../../../values/kebab_case_string';
 import {getVersionBuilder, Version} from '../../../../values/version';
 import {LiveSystemComponent} from '../../index';
 import {BlueprintComponent} from '../../../../fractal/component/index';
-import {PRICING_TIER_PARAM} from '../../../../fractal/component/big_data/paas/distributed_data_processing';
-
 // Agent constant: DATABRICKS_COMPONENT_NAME = "Databricks"
 const DATABRICKS_TYPE_NAME = 'Databricks';
+const PRICING_TIER_PARAM = 'pricingTier';
 const NETWORK_ID_PARAM = 'networkId';
 
 // -- internal helpers ----------------------------------------------------------
@@ -63,6 +62,7 @@ function pushParam(
  * dependencies, links) are locked to the blueprint and cannot be overridden.
  */
 export type SatisfiedGcpDatabricksBuilder = {
+  withPricingTier: (tier: string) => SatisfiedGcpDatabricksBuilder;
   withNetworkId: (networkId: string) => SatisfiedGcpDatabricksBuilder;
   build: () => LiveSystemComponent;
 };
@@ -145,12 +145,11 @@ export namespace GcpDatabricks {
 
     if (blueprint.description) inner.withDescription(blueprint.description);
 
-    const pricingTier =
-      blueprint.parameters.getOptionalFieldByName(PRICING_TIER_PARAM);
-    if (pricingTier !== null)
-      pushParam(params, PRICING_TIER_PARAM, String(pricingTier));
-
     const satisfiedBuilder: SatisfiedGcpDatabricksBuilder = {
+      withPricingTier: tier => {
+        pushParam(params, PRICING_TIER_PARAM, tier);
+        return satisfiedBuilder;
+      },
       withNetworkId: value => {
         pushParam(params, NETWORK_ID_PARAM, value);
         return satisfiedBuilder;

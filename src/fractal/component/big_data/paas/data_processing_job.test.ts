@@ -54,7 +54,7 @@ describe('DataProcessingJob (blueprint)', () => {
         notebookPath: '/Users/me/notebook',
         cronSchedule: '0 0 * * *',
         maxRetries: 3,
-        existingCluster: 'cluster-abc',
+        existingCluster: true,
       });
       expect(
         component.parameters.getOptionalFieldByName('notebookPath'),
@@ -67,7 +67,7 @@ describe('DataProcessingJob (blueprint)', () => {
       );
       expect(
         component.parameters.getOptionalFieldByName('existingCluster'),
-      ).toBe('cluster-abc');
+      ).toBe(true);
     });
 
     it('should set pythonFile, mainClassName, jarUri, and parameters', () => {

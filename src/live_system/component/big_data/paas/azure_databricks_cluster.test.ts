@@ -40,7 +40,6 @@ describe('AzureDatabricksCluster', () => {
         description: 'A compute cluster',
         clusterName: 'test-cluster',
         sparkVersion: '13.3.x-scala2.12',
-        nodeTypeId: 'Standard_DS3_v2',
       });
 
       const c = AzureDatabricksCluster.satisfy(bp.component).build();
@@ -51,14 +50,13 @@ describe('AzureDatabricksCluster', () => {
       expect(c.description).toBe('A compute cluster');
     });
 
-    it('should carry blueprint params (clusterName, sparkVersion, nodeTypeId)', () => {
+    it('should carry blueprint params (clusterName, sparkVersion)', () => {
       const bp = ComputeCluster.create({
         id: 'bp-cluster',
         version: {major: 1, minor: 0, patch: 0},
         displayName: 'BP Cluster',
         clusterName: 'my-spark-cluster',
         sparkVersion: '14.0.x-scala2.12',
-        nodeTypeId: 'Standard_DS4_v2',
         numWorkers: 4,
       });
 
@@ -69,10 +67,22 @@ describe('AzureDatabricksCluster', () => {
       expect(c.parameters.getOptionalFieldByName('sparkVersion')).toBe(
         '14.0.x-scala2.12',
       );
+      expect(c.parameters.getOptionalFieldByName('numWorkers')).toBe(4);
+    });
+
+    it('should set nodeTypeId via satisfied builder', () => {
+      const bp = ComputeCluster.create({
+        id: 'bp-cluster',
+        version: {major: 1, minor: 0, patch: 0},
+        displayName: 'BP Cluster',
+      });
+
+      const c = AzureDatabricksCluster.satisfy(bp.component)
+        .withNodeTypeId('Standard_DS4_v2')
+        .build();
       expect(c.parameters.getOptionalFieldByName('nodeTypeId')).toBe(
         'Standard_DS4_v2',
       );
-      expect(c.parameters.getOptionalFieldByName('numWorkers')).toBe(4);
     });
 
     it('should carry dependencies and links from blueprint', () => {
@@ -82,7 +92,6 @@ describe('AzureDatabricksCluster', () => {
         displayName: 'BP Cluster',
         clusterName: 'c',
         sparkVersion: 's',
-        nodeTypeId: 'n',
       });
 
       const c = AzureDatabricksCluster.satisfy(bp.component).build();

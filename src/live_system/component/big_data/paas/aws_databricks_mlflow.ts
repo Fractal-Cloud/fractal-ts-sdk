@@ -12,10 +12,9 @@ import {KebabCaseString} from '../../../../values/kebab_case_string';
 import {getVersionBuilder, Version} from '../../../../values/version';
 import {LiveSystemComponent} from '../../index';
 import {BlueprintComponent} from '../../../../fractal/component/index';
-import {
-  EXPERIMENT_NAME_PARAM,
-  ARTIFACT_LOCATION_PARAM,
-} from '../../../../fractal/component/big_data/paas/ml_experiment';
+import {EXPERIMENT_NAME_PARAM} from '../../../../fractal/component/big_data/paas/ml_experiment';
+
+const ARTIFACT_LOCATION_PARAM = 'artifactLocation';
 
 // Agent constant: DATABRICKS_MLFLOW_EXPERIMENT_COMPONENT_NAME = "DatabricksMlflowExperiment"
 const AWS_DATABRICKS_MLFLOW_TYPE_NAME = 'DatabricksMlflowExperiment';
@@ -59,10 +58,13 @@ function pushParam(
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
- * Returned by satisfy() — all blueprint params are locked.
- * No vendor-specific parameters for DatabricksMlflowExperiment.
+ * Returned by satisfy() — blueprint params are locked.
+ * artifactLocation is vendor-specific and set via the sealed builder.
  */
 export type SatisfiedAwsDatabricksMlflowBuilder = {
+  withArtifactLocation: (
+    location: string,
+  ) => SatisfiedAwsDatabricksMlflowBuilder;
   build: () => LiveSystemComponent;
 };
 
@@ -150,13 +152,17 @@ export namespace AwsDatabricksMlflow {
 
     if (blueprint.description) inner.withDescription(blueprint.description);
 
-    // Carry all blueprint params
-    for (const key of [EXPERIMENT_NAME_PARAM, ARTIFACT_LOCATION_PARAM]) {
+    // Carry blueprint params (experimentName only; artifactLocation is vendor-specific)
+    for (const key of [EXPERIMENT_NAME_PARAM]) {
       const val = blueprint.parameters.getOptionalFieldByName(key);
       if (val !== null) pushParam(params, key, val);
     }
 
     const satisfiedBuilder: SatisfiedAwsDatabricksMlflowBuilder = {
+      withArtifactLocation: location => {
+        pushParam(params, ARTIFACT_LOCATION_PARAM, location);
+        return satisfiedBuilder;
+      },
       build: () => inner.build(),
     };
 

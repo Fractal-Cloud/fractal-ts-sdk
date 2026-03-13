@@ -18,7 +18,6 @@ import {BlueprintComponent} from '../../index';
 export const COMPUTE_CLUSTER_TYPE_NAME = 'ComputeCluster';
 export const CLUSTER_NAME_PARAM = 'clusterName';
 export const SPARK_VERSION_PARAM = 'sparkVersion';
-export const NODE_TYPE_ID_PARAM = 'nodeTypeId';
 export const NUM_WORKERS_PARAM = 'numWorkers';
 export const MIN_WORKERS_PARAM = 'minWorkers';
 export const MAX_WORKERS_PARAM = 'maxWorkers';
@@ -81,7 +80,6 @@ export type ComputeClusterBuilder = {
   withDescription: (description: string) => ComputeClusterBuilder;
   withClusterName: (name: string) => ComputeClusterBuilder;
   withSparkVersion: (version: string) => ComputeClusterBuilder;
-  withNodeTypeId: (nodeTypeId: string) => ComputeClusterBuilder;
   withNumWorkers: (num: number) => ComputeClusterBuilder;
   withMinWorkers: (min: number) => ComputeClusterBuilder;
   withMaxWorkers: (max: number) => ComputeClusterBuilder;
@@ -99,7 +97,6 @@ export type ComputeClusterConfig = {
   description?: string;
   clusterName?: string;
   sparkVersion?: string;
-  nodeTypeId?: string;
   numWorkers?: number;
   minWorkers?: number;
   maxWorkers?: number;
@@ -145,10 +142,6 @@ export namespace ComputeCluster {
       },
       withSparkVersion: version => {
         pushParam(params, SPARK_VERSION_PARAM, version);
-        return builder;
-      },
-      withNodeTypeId: nodeTypeId => {
-        pushParam(params, NODE_TYPE_ID_PARAM, nodeTypeId);
         return builder;
       },
       withNumWorkers: num => {
@@ -200,7 +193,6 @@ export namespace ComputeCluster {
     if (config.description) b.withDescription(config.description);
     if (config.clusterName) b.withClusterName(config.clusterName);
     if (config.sparkVersion) b.withSparkVersion(config.sparkVersion);
-    if (config.nodeTypeId) b.withNodeTypeId(config.nodeTypeId);
     if (config.numWorkers !== undefined) b.withNumWorkers(config.numWorkers);
     if (config.minWorkers !== undefined) b.withMinWorkers(config.minWorkers);
     if (config.maxWorkers !== undefined) b.withMaxWorkers(config.maxWorkers);

@@ -50,16 +50,17 @@ describe('AzureDatabricksMlflow', () => {
       expect(c.displayName).toBe('Blueprint Experiment');
     });
 
-    it('should carry blueprint params (experimentName)', () => {
+    it('should carry blueprint params (experimentName) and set artifactLocation via sealed builder', () => {
       const bp = MlExperiment.create({
         id: 'bp-exp',
         version: {major: 1, minor: 0, patch: 0},
         displayName: 'BP Experiment',
         experimentName: 'training-exp',
-        artifactLocation: 'dbfs:/artifacts',
       });
 
-      const c = AzureDatabricksMlflow.satisfy(bp.component).build();
+      const c = AzureDatabricksMlflow.satisfy(bp.component)
+        .withArtifactLocation('dbfs:/artifacts')
+        .build();
       expect(c.parameters.getOptionalFieldByName('experimentName')).toBe(
         'training-exp',
       );

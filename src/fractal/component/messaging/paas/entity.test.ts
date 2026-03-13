@@ -33,6 +33,16 @@ describe('MessagingEntity (blueprint)', () => {
       const {component} = MessagingEntity.create(BASE_CONFIG);
       expect(component.description).toBeFalsy();
     });
+
+    it('should set messageRetentionHours parameter', () => {
+      const {component} = MessagingEntity.create({
+        ...BASE_CONFIG,
+        messageRetentionHours: 48,
+      });
+      expect(
+        component.parameters.getOptionalFieldByName('messageRetentionHours'),
+      ).toBe(48);
+    });
   });
 
   describe('getBuilder()', () => {

@@ -88,7 +88,7 @@ export type DataProcessingJobBuilder = {
   withParameters: (params: string[]) => DataProcessingJobBuilder;
   withCronSchedule: (cron: string) => DataProcessingJobBuilder;
   withMaxRetries: (retries: number) => DataProcessingJobBuilder;
-  withExistingCluster: (clusterId: string) => DataProcessingJobBuilder;
+  withExistingCluster: (useExisting: boolean) => DataProcessingJobBuilder;
   build: () => BlueprintComponent;
 };
 
@@ -106,7 +106,7 @@ export type DataProcessingJobConfig = {
   parameters?: string[];
   cronSchedule?: string;
   maxRetries?: number;
-  existingCluster?: string;
+  existingCluster?: boolean;
 };
 
 function makeDataProcessingJobComponent(
@@ -175,8 +175,8 @@ export namespace DataProcessingJob {
         pushParam(params, MAX_RETRIES_PARAM, retries);
         return builder;
       },
-      withExistingCluster: clusterId => {
-        pushParam(params, EXISTING_CLUSTER_PARAM, clusterId);
+      withExistingCluster: useExisting => {
+        pushParam(params, EXISTING_CLUSTER_PARAM, useExisting);
         return builder;
       },
       build: () => inner.build(),
@@ -207,7 +207,8 @@ export namespace DataProcessingJob {
     if (config.parameters) b.withParameters(config.parameters);
     if (config.cronSchedule) b.withCronSchedule(config.cronSchedule);
     if (config.maxRetries !== undefined) b.withMaxRetries(config.maxRetries);
-    if (config.existingCluster) b.withExistingCluster(config.existingCluster);
+    if (config.existingCluster !== undefined)
+      b.withExistingCluster(config.existingCluster);
 
     return makeDataProcessingJobComponent(b.build());
   };

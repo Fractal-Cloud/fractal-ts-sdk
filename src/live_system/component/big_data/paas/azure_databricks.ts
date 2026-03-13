@@ -15,9 +15,8 @@ import {KebabCaseString} from '../../../../values/kebab_case_string';
 import {getVersionBuilder, Version} from '../../../../values/version';
 import {LiveSystemComponent} from '../../index';
 import {BlueprintComponent} from '../../../../fractal/component/index';
-import {PRICING_TIER_PARAM} from '../../../../fractal/component/big_data/paas/distributed_data_processing';
-
 const AZURE_DATABRICKS_TYPE_NAME = 'Databricks';
+const PRICING_TIER_PARAM = 'pricingTier';
 const MANAGED_RESOURCE_GROUP_NAME_PARAM = 'managedResourceGroupName';
 const ENABLE_NO_PUBLIC_IP_PARAM = 'enableNoPublicIp';
 
@@ -60,6 +59,7 @@ function pushParam(
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export type SatisfiedAzureDatabricksBuilder = {
+  withPricingTier: (tier: string) => SatisfiedAzureDatabricksBuilder;
   withManagedResourceGroupName: (
     name: string,
   ) => SatisfiedAzureDatabricksBuilder;
@@ -151,13 +151,11 @@ export namespace AzureDatabricks {
 
     if (blueprint.description) inner.withDescription(blueprint.description);
 
-    // Carry blueprint params
-    const pricingTier =
-      blueprint.parameters.getOptionalFieldByName(PRICING_TIER_PARAM);
-    if (pricingTier !== null)
-      pushParam(params, PRICING_TIER_PARAM, pricingTier);
-
     const satisfiedBuilder: SatisfiedAzureDatabricksBuilder = {
+      withPricingTier: tier => {
+        pushParam(params, PRICING_TIER_PARAM, tier);
+        return satisfiedBuilder;
+      },
       withManagedResourceGroupName: value => {
         pushParam(params, MANAGED_RESOURCE_GROUP_NAME_PARAM, value);
         return satisfiedBuilder;

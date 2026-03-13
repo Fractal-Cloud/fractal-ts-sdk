@@ -15,7 +15,6 @@ import {BlueprintComponent} from '../../../../fractal/component/index';
 import {
   CLUSTER_NAME_PARAM,
   SPARK_VERSION_PARAM,
-  NODE_TYPE_ID_PARAM,
   NUM_WORKERS_PARAM,
   MIN_WORKERS_PARAM,
   MAX_WORKERS_PARAM,
@@ -24,6 +23,8 @@ import {
   MAVEN_LIBRARIES_PARAM,
   AUTO_TERMINATION_MINUTES_PARAM,
 } from '../../../../fractal/component/big_data/paas/compute_cluster';
+
+const NODE_TYPE_ID_PARAM = 'nodeTypeId';
 
 // Agent constant: DATABRICKS_CLUSTER_COMPONENT_NAME = "DatabricksCluster"
 const AWS_DATABRICKS_CLUSTER_TYPE_NAME = 'DatabricksCluster';
@@ -67,10 +68,11 @@ function pushParam(
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
- * Returned by satisfy() — all blueprint params are locked.
- * No vendor-specific parameters for DatabricksCluster.
+ * Returned by satisfy() — blueprint params are locked.
+ * Exposes vendor-specific nodeTypeId.
  */
 export type SatisfiedAwsDatabricksClusterBuilder = {
+  withNodeTypeId: (nodeTypeId: string) => SatisfiedAwsDatabricksClusterBuilder;
   build: () => LiveSystemComponent;
 };
 
@@ -210,7 +212,6 @@ export namespace AwsDatabricksCluster {
     const paramKeys = [
       CLUSTER_NAME_PARAM,
       SPARK_VERSION_PARAM,
-      NODE_TYPE_ID_PARAM,
       NUM_WORKERS_PARAM,
       MIN_WORKERS_PARAM,
       MAX_WORKERS_PARAM,
@@ -225,6 +226,10 @@ export namespace AwsDatabricksCluster {
     }
 
     const satisfiedBuilder: SatisfiedAwsDatabricksClusterBuilder = {
+      withNodeTypeId: nodeTypeId => {
+        pushParam(params, NODE_TYPE_ID_PARAM, nodeTypeId);
+        return satisfiedBuilder;
+      },
       build: () => inner.build(),
     };
 

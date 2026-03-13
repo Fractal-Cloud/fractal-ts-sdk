@@ -72,9 +72,10 @@ describe('AwsDatabricksMlflow', () => {
         version: {major: 1, minor: 0, patch: 0},
         displayName: 'Blueprint Experiment',
         experimentName: 'fraud-detection',
-        artifactLocation: 's3://my-bucket/mlflow',
       });
-      const c = AwsDatabricksMlflow.satisfy(bp.component).build();
+      const c = AwsDatabricksMlflow.satisfy(bp.component)
+        .withArtifactLocation('s3://my-bucket/mlflow')
+        .build();
       expect(c.parameters.getOptionalFieldByName('experimentName')).toBe(
         'fraud-detection'
       );

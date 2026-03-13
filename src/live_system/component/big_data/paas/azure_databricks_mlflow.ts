@@ -12,10 +12,9 @@ import {KebabCaseString} from '../../../../values/kebab_case_string';
 import {getVersionBuilder, Version} from '../../../../values/version';
 import {LiveSystemComponent} from '../../index';
 import {BlueprintComponent} from '../../../../fractal/component/index';
-import {
-  EXPERIMENT_NAME_PARAM,
-  ARTIFACT_LOCATION_PARAM,
-} from '../../../../fractal/component/big_data/paas/ml_experiment';
+import {EXPERIMENT_NAME_PARAM} from '../../../../fractal/component/big_data/paas/ml_experiment';
+
+const ARTIFACT_LOCATION_PARAM = 'artifactLocation';
 
 const AZURE_DATABRICKS_MLFLOW_TYPE_NAME = 'DatabricksMlflowExperiment';
 
@@ -50,10 +49,13 @@ function buildType(): BlueprintComponentType {
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
- * Returned by satisfy() — experiment params are locked from the blueprint.
- * No Azure-specific parameters are needed, so only build() is exposed.
+ * Returned by satisfy() — blueprint params are locked.
+ * artifactLocation is vendor-specific and set via the sealed builder.
  */
 export type SatisfiedAzureDatabricksMlflowBuilder = {
+  withArtifactLocation: (
+    location: string,
+  ) => SatisfiedAzureDatabricksMlflowBuilder;
   build: () => LiveSystemComponent;
 };
 
@@ -133,14 +135,25 @@ export namespace AzureDatabricksMlflow {
 
     if (blueprint.description) inner.withDescription(blueprint.description);
 
-    // Carry blueprint experiment params
-    const paramKeys = [EXPERIMENT_NAME_PARAM, ARTIFACT_LOCATION_PARAM];
+    // Carry blueprint params (experimentName only; artifactLocation is vendor-specific)
+    const paramKeys = [EXPERIMENT_NAME_PARAM];
     for (const key of paramKeys) {
       const val = blueprint.parameters.getOptionalFieldByName(key);
       if (val !== null) params.push(key, val as Record<string, object>);
     }
 
-    return {build: () => inner.build()};
+    const satisfiedBuilder: SatisfiedAzureDatabricksMlflowBuilder = {
+      withArtifactLocation: location => {
+        params.push(
+          ARTIFACT_LOCATION_PARAM,
+          location as unknown as Record<string, object>,
+        );
+        return satisfiedBuilder;
+      },
+      build: () => inner.build(),
+    };
+
+    return satisfiedBuilder;
   };
 
   export const create = (

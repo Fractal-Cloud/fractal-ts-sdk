@@ -17,7 +17,6 @@ import {BlueprintComponent} from '../../index';
 
 export const ML_EXPERIMENT_TYPE_NAME = 'MlExperiment';
 export const EXPERIMENT_NAME_PARAM = 'experimentName';
-export const ARTIFACT_LOCATION_PARAM = 'artifactLocation';
 
 // ── internal helpers ──────────────────────────────────────────────────────────
 
@@ -70,7 +69,6 @@ export type MlExperimentBuilder = {
   withDisplayName: (displayName: string) => MlExperimentBuilder;
   withDescription: (description: string) => MlExperimentBuilder;
   withExperimentName: (name: string) => MlExperimentBuilder;
-  withArtifactLocation: (location: string) => MlExperimentBuilder;
   build: () => BlueprintComponent;
 };
 
@@ -80,7 +78,6 @@ export type MlExperimentConfig = {
   displayName: string;
   description?: string;
   experimentName?: string;
-  artifactLocation?: string;
 };
 
 function makeMlExperimentComponent(
@@ -117,10 +114,6 @@ export namespace MlExperiment {
         pushParam(params, EXPERIMENT_NAME_PARAM, name);
         return builder;
       },
-      withArtifactLocation: location => {
-        pushParam(params, ARTIFACT_LOCATION_PARAM, location);
-        return builder;
-      },
       build: () => inner.build(),
     };
 
@@ -139,8 +132,6 @@ export namespace MlExperiment {
 
     if (config.description) b.withDescription(config.description);
     if (config.experimentName) b.withExperimentName(config.experimentName);
-    if (config.artifactLocation)
-      b.withArtifactLocation(config.artifactLocation);
 
     return makeMlExperimentComponent(b.build());
   };

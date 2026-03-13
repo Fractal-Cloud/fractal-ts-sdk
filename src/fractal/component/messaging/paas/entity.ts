@@ -6,13 +6,17 @@ import {
 import {InfrastructureDomain} from '../../../../values/infrastructure_domain';
 import {ServiceDeliveryModel} from '../../../../values/service_delivery_model';
 import {PascalCaseString} from '../../../../values/pascal_case_string';
-import {getParametersInstance} from '../../../../values/generic_parameters';
+import {
+  GenericParameters,
+  getParametersInstance,
+} from '../../../../values/generic_parameters';
 import {getComponentIdBuilder, ComponentId} from '../../../../component/id';
 import {KebabCaseString} from '../../../../values/kebab_case_string';
 import {getVersionBuilder, Version} from '../../../../values/version';
 import {BlueprintComponent} from '../../index';
 
 export const MESSAGING_ENTITY_TYPE_NAME = 'Entity';
+export const MESSAGE_RETENTION_HOURS_PARAM = 'messageRetentionHours';
 
 // ── internal helpers ──────────────────────────────────────────────────────────
 
@@ -42,6 +46,14 @@ function buildMessagingEntityType(): BlueprintComponentType {
     .build();
 }
 
+function pushParam(
+  params: GenericParameters,
+  key: string,
+  value: unknown,
+): void {
+  params.push(key, value as Record<string, object>);
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export type MessagingEntityComponent = {
@@ -58,6 +70,7 @@ export type MessagingEntityBuilder = {
   ) => MessagingEntityBuilder;
   withDisplayName: (displayName: string) => MessagingEntityBuilder;
   withDescription: (description: string) => MessagingEntityBuilder;
+  withMessageRetentionHours: (hours: number) => MessagingEntityBuilder;
   build: () => BlueprintComponent;
 };
 
@@ -66,6 +79,7 @@ export type MessagingEntityConfig = {
   version: {major: number; minor: number; patch: number};
   displayName: string;
   description?: string;
+  messageRetentionHours?: number;
 };
 
 function makeMessagingEntityComponent(
@@ -76,9 +90,10 @@ function makeMessagingEntityComponent(
 
 export namespace MessagingEntity {
   export const getBuilder = (): MessagingEntityBuilder => {
+    const params = getParametersInstance();
     const inner = getBlueprintComponentBuilder()
       .withType(buildMessagingEntityType())
-      .withParameters(getParametersInstance());
+      .withParameters(params);
 
     const builder: MessagingEntityBuilder = {
       withId: id => {
@@ -95,6 +110,10 @@ export namespace MessagingEntity {
       },
       withDescription: description => {
         inner.withDescription(description);
+        return builder;
+      },
+      withMessageRetentionHours: hours => {
+        pushParam(params, MESSAGE_RETENTION_HOURS_PARAM, hours);
         return builder;
       },
       build: () => inner.build(),
@@ -116,6 +135,8 @@ export namespace MessagingEntity {
       .withDisplayName(config.displayName);
 
     if (config.description) b.withDescription(config.description);
+    if (config.messageRetentionHours !== undefined)
+      b.withMessageRetentionHours(config.messageRetentionHours);
 
     return makeMessagingEntityComponent(b.build());
   };

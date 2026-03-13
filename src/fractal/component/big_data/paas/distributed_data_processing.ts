@@ -3,10 +3,7 @@ import {getBlueprintComponentTypeBuilder} from '../../type';
 import {InfrastructureDomain} from '../../../../values/infrastructure_domain';
 import {ServiceDeliveryModel} from '../../../../values/service_delivery_model';
 import {PascalCaseString} from '../../../../values/pascal_case_string';
-import {
-  GenericParameters,
-  getParametersInstance,
-} from '../../../../values/generic_parameters';
+import {getParametersInstance} from '../../../../values/generic_parameters';
 import {getComponentIdBuilder, ComponentId} from '../../../../component/id';
 import {KebabCaseString} from '../../../../values/kebab_case_string';
 import {getVersionBuilder, Version} from '../../../../values/version';
@@ -18,8 +15,6 @@ import {MlExperimentComponent} from './ml_experiment';
 
 export const DISTRIBUTED_DATA_PROCESSING_TYPE_NAME =
   'DistributedDataProcessing';
-export const PRICING_TIER_PARAM = 'pricingTier';
-
 // ── internal helpers ──────────────────────────────────────────────────────────
 
 function buildId(id: string): ComponentId {
@@ -46,14 +41,6 @@ function buildDistributedDataProcessingType() {
         .build(),
     )
     .build();
-}
-
-function pushParam(
-  params: GenericParameters,
-  key: string,
-  value: unknown,
-): void {
-  params.push(key, value as Record<string, object>);
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -83,7 +70,6 @@ export type DistributedDataProcessingBuilder = {
   ) => DistributedDataProcessingBuilder;
   withDisplayName: (displayName: string) => DistributedDataProcessingBuilder;
   withDescription: (description: string) => DistributedDataProcessingBuilder;
-  withPricingTier: (pricingTier: string) => DistributedDataProcessingBuilder;
   build: () => BlueprintComponent;
 };
 
@@ -92,7 +78,6 @@ export type DistributedDataProcessingConfig = {
   version: {major: number; minor: number; patch: number};
   displayName: string;
   description?: string;
-  pricingTier?: string;
 };
 
 function makeDistributedDataProcessingComponent(
@@ -165,10 +150,6 @@ export namespace DistributedDataProcessing {
         inner.withDescription(description);
         return builder;
       },
-      withPricingTier: pricingTier => {
-        pushParam(params, PRICING_TIER_PARAM, pricingTier);
-        return builder;
-      },
       build: () => inner.build(),
     };
 
@@ -188,7 +169,6 @@ export namespace DistributedDataProcessing {
       .withDisplayName(config.displayName);
 
     if (config.description) b.withDescription(config.description);
-    if (config.pricingTier) b.withPricingTier(config.pricingTier);
 
     return makeDistributedDataProcessingComponent(b.build(), [], [], []);
   };

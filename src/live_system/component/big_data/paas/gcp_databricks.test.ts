@@ -53,15 +53,16 @@ describe('GcpDatabricks', () => {
       expect(c.displayName).toBe('Blueprint Databricks');
     });
 
-    it('should carry pricingTier from blueprint', () => {
+    it('should set pricingTier via satisfied builder', () => {
       const ddp = DistributedDataProcessing.create({
         id: 'bp-databricks',
         version: {major: 1, minor: 0, patch: 0},
         displayName: 'Blueprint Databricks',
-        pricingTier: 'PREMIUM',
       });
 
-      const c = GcpDatabricks.satisfy(ddp.platform).build();
+      const c = GcpDatabricks.satisfy(ddp.platform)
+        .withPricingTier('PREMIUM')
+        .build();
       expect(c.parameters.getOptionalFieldByName('pricingTier')).toBe(
         'PREMIUM'
       );

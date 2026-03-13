@@ -6,7 +6,10 @@ import {
 import {InfrastructureDomain} from '../../../../values/infrastructure_domain';
 import {ServiceDeliveryModel} from '../../../../values/service_delivery_model';
 import {PascalCaseString} from '../../../../values/pascal_case_string';
-import {getParametersInstance} from '../../../../values/generic_parameters';
+import {
+  GenericParameters,
+  getParametersInstance,
+} from '../../../../values/generic_parameters';
 import {getComponentIdBuilder, ComponentId} from '../../../../component/id';
 import {KebabCaseString} from '../../../../values/kebab_case_string';
 import {getVersionBuilder, Version} from '../../../../values/version';
@@ -15,6 +18,18 @@ import {BlueprintComponentDependency} from '../../dependency';
 import {WorkloadComponent} from '../../custom_workloads/caas/workload';
 
 export const CONTAINER_PLATFORM_TYPE_NAME = 'ContainerPlatform';
+export const NODE_POOLS_PARAM = 'nodePools';
+
+export type NodePoolConfig = {
+  name: string;
+  diskSizeGb?: number;
+  minNodeCount?: number;
+  maxNodeCount?: number;
+  maxPodsPerNode?: number;
+  autoscalingEnabled?: boolean;
+  initialNodeCount?: number;
+  maxSurge?: number;
+};
 
 // ── internal helpers ──────────────────────────────────────────────────────────
 
@@ -44,6 +59,14 @@ function buildContainerPlatformType(): BlueprintComponentType {
     .build();
 }
 
+function pushParam(
+  params: GenericParameters,
+  key: string,
+  value: unknown,
+): void {
+  params.push(key, value as Record<string, object>);
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export type ContainerPlatformComponent = {
@@ -65,6 +88,7 @@ export type ContainerPlatformBuilder = {
   ) => ContainerPlatformBuilder;
   withDisplayName: (displayName: string) => ContainerPlatformBuilder;
   withDescription: (description: string) => ContainerPlatformBuilder;
+  withNodePools: (nodePools: NodePoolConfig[]) => ContainerPlatformBuilder;
   build: () => BlueprintComponent;
 };
 
@@ -73,6 +97,7 @@ export type ContainerPlatformConfig = {
   version: {major: number; minor: number; patch: number};
   displayName: string;
   description?: string;
+  nodePools?: NodePoolConfig[];
 };
 
 function makeContainerPlatformComponent(
@@ -119,6 +144,10 @@ export namespace ContainerPlatform {
         inner.withDescription(description);
         return builder;
       },
+      withNodePools: nodePools => {
+        pushParam(params, NODE_POOLS_PARAM, nodePools);
+        return builder;
+      },
       build: () => inner.build(),
     };
 
@@ -138,6 +167,7 @@ export namespace ContainerPlatform {
       .withDisplayName(config.displayName);
 
     if (config.description) b.withDescription(config.description);
+    if (config.nodePools) b.withNodePools(config.nodePools);
 
     return makeContainerPlatformComponent(b.build(), []);
   };

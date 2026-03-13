@@ -33,16 +33,6 @@ describe('DistributedDataProcessing', () => {
       expect(node.platform.description).toBe('Databricks workspace');
     });
 
-    it('should set pricingTier parameter', () => {
-      const node = DistributedDataProcessing.create({
-        ...BASE_CONFIG,
-        pricingTier: 'premium',
-      });
-      expect(
-        node.platform.parameters.getOptionalFieldByName('pricingTier'),
-      ).toBe('premium');
-    });
-
     it('should start with no children', () => {
       const node = DistributedDataProcessing.create(BASE_CONFIG);
       expect(node.clusters).toHaveLength(0);

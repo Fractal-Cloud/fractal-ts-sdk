@@ -32,7 +32,6 @@ const sparkCluster = ComputeCluster.create({
   displayName: 'Spark Cluster',
   clusterName: 'main-spark',
   sparkVersion: '14.3.x-scala2.12',
-  nodeTypeId: 'i3.xlarge',
 });
 
 const etlJob = DataProcessingJob.create({
@@ -55,7 +54,6 @@ const platform = DistributedDataProcessing.create({
   id: 'analytics-platform',
   version: {major: 1, minor: 0, patch: 0},
   displayName: 'Analytics Platform',
-  pricingTier: 'premium',
 })
   .withClusters([sparkCluster])
   .withJobs([etlJob])
@@ -70,12 +68,6 @@ describe('basic_big_data blueprint', () => {
     );
     expect(platform.platform.id.toString()).toBe('analytics-platform');
     expect(platform.platform.displayName).toBe('Analytics Platform');
-  });
-
-  it('should set pricingTier parameter on platform', () => {
-    expect(
-      platform.platform.parameters.getOptionalFieldByName('pricingTier'),
-    ).toBe('premium');
   });
 
   it('should create cluster with correct type', () => {
@@ -124,9 +116,6 @@ describe('basic_big_data blueprint', () => {
     expect(
       clusterComp.parameters.getOptionalFieldByName('sparkVersion'),
     ).toBe('14.3.x-scala2.12');
-    expect(
-      clusterComp.parameters.getOptionalFieldByName('nodeTypeId'),
-    ).toBe('i3.xlarge');
   });
 
   it('should set job parameters', () => {
@@ -155,6 +144,7 @@ describe('basic_big_data blueprint', () => {
 describe('basic_big_data AWS live system', () => {
   it('should satisfy DistributedDataProcessing with AwsDatabricks', () => {
     const awsPlatform = AwsDatabricks.satisfy(platform.platform)
+      .withPricingTier('premium')
       .withCredentialsId('my-creds')
       .withStorageConfigurationId('my-storage')
       .withNetworkId('my-network')
@@ -164,11 +154,10 @@ describe('basic_big_data AWS live system', () => {
     expect(awsPlatform.provider).toBe('AWS');
     expect(awsPlatform.id.toString()).toBe('analytics-platform');
     expect(awsPlatform.displayName).toBe('Analytics Platform');
-    // Blueprint param carried
+    // Vendor-specific params
     expect(
       awsPlatform.parameters.getOptionalFieldByName('pricingTier'),
     ).toBe('premium');
-    // Vendor-specific params
     expect(
       awsPlatform.parameters.getOptionalFieldByName('credentialsId'),
     ).toBe('my-creds');
@@ -184,7 +173,9 @@ describe('basic_big_data AWS live system', () => {
 
   it('should satisfy ComputeCluster with AwsDatabricksCluster and carry params + deps', () => {
     const clusterBp = platform.clusters[0].component;
-    const awsCluster = AwsDatabricksCluster.satisfy(clusterBp).build();
+    const awsCluster = AwsDatabricksCluster.satisfy(clusterBp)
+      .withNodeTypeId('i3.xlarge')
+      .build();
 
     expect(awsCluster.type.toString()).toBe(
       'BigData.PaaS.DatabricksCluster',
@@ -204,6 +195,7 @@ describe('basic_big_data AWS live system', () => {
     expect(
       awsCluster.parameters.getOptionalFieldByName('sparkVersion'),
     ).toBe('14.3.x-scala2.12');
+    // Vendor-specific param
     expect(
       awsCluster.parameters.getOptionalFieldByName('nodeTypeId'),
     ).toBe('i3.xlarge');
@@ -256,6 +248,7 @@ describe('basic_big_data AWS live system', () => {
 describe('basic_big_data Azure live system', () => {
   it('should satisfy DistributedDataProcessing with AzureDatabricks', () => {
     const azurePlatform = AzureDatabricks.satisfy(platform.platform)
+      .withPricingTier('premium')
       .withManagedResourceGroupName('my-managed-rg')
       .withEnableNoPublicIp(true)
       .build();
@@ -264,11 +257,10 @@ describe('basic_big_data Azure live system', () => {
     expect(azurePlatform.provider).toBe('Azure');
     expect(azurePlatform.id.toString()).toBe('analytics-platform');
     expect(azurePlatform.displayName).toBe('Analytics Platform');
-    // Blueprint param carried
+    // Vendor-specific params
     expect(
       azurePlatform.parameters.getOptionalFieldByName('pricingTier'),
     ).toBe('premium');
-    // Vendor-specific params
     expect(
       azurePlatform.parameters.getOptionalFieldByName(
         'managedResourceGroupName',
@@ -324,6 +316,7 @@ describe('basic_big_data Azure live system', () => {
 describe('basic_big_data GCP live system', () => {
   it('should satisfy DistributedDataProcessing with GcpDatabricks', () => {
     const gcpPlatform = GcpDatabricks.satisfy(platform.platform)
+      .withPricingTier('premium')
       .withNetworkId('my-gcp-network')
       .build();
 
@@ -331,11 +324,10 @@ describe('basic_big_data GCP live system', () => {
     expect(gcpPlatform.provider).toBe('GCP');
     expect(gcpPlatform.id.toString()).toBe('analytics-platform');
     expect(gcpPlatform.displayName).toBe('Analytics Platform');
-    // Blueprint param carried
+    // Vendor-specific params
     expect(
       gcpPlatform.parameters.getOptionalFieldByName('pricingTier'),
     ).toBe('premium');
-    // Vendor-specific param
     expect(
       gcpPlatform.parameters.getOptionalFieldByName('networkId'),
     ).toBe('my-gcp-network');

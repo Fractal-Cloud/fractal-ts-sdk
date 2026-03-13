@@ -34,27 +34,20 @@ describe('MlExperiment (blueprint)', () => {
       expect(component.description).toBeFalsy();
     });
 
-    it('should set experimentName and artifactLocation parameters', () => {
+    it('should set experimentName parameter', () => {
       const {component} = MlExperiment.create({
         ...BASE_CONFIG,
         experimentName: 'fraud-detection',
-        artifactLocation: 'dbfs:/mlflow/artifacts',
       });
       expect(
         component.parameters.getOptionalFieldByName('experimentName'),
       ).toBe('fraud-detection');
-      expect(
-        component.parameters.getOptionalFieldByName('artifactLocation'),
-      ).toBe('dbfs:/mlflow/artifacts');
     });
 
     it('should not set parameters when omitted', () => {
       const {component} = MlExperiment.create(BASE_CONFIG);
       expect(
         component.parameters.getOptionalFieldByName('experimentName'),
-      ).toBeNull();
-      expect(
-        component.parameters.getOptionalFieldByName('artifactLocation'),
       ).toBeNull();
     });
   });
@@ -71,21 +64,17 @@ describe('MlExperiment (blueprint)', () => {
       expect(c.id.toString()).toBe('exp-a');
     });
 
-    it('should support fluent experimentName and artifactLocation', () => {
+    it('should support fluent experimentName', () => {
       const c = MlExperiment.getBuilder()
         .withId('exp-b')
         .withVersion(1, 0, 0)
         .withDisplayName('Experiment B')
         .withExperimentName('churn-prediction')
-        .withArtifactLocation('s3://bucket/artifacts')
         .build();
 
       expect(
         c.parameters.getOptionalFieldByName('experimentName'),
       ).toBe('churn-prediction');
-      expect(
-        c.parameters.getOptionalFieldByName('artifactLocation'),
-      ).toBe('s3://bucket/artifacts');
     });
   });
 });

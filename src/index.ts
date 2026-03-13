@@ -241,6 +241,7 @@ export type {
   ContainerPlatformBuilder,
   ContainerPlatformConfig,
   ContainerPlatformComponent,
+  NodePoolConfig,
 } from './fractal/component/network_and_compute/paas/container_platform';
 
 // Blueprint component helpers — CaaS

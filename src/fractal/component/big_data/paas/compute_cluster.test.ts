@@ -7,7 +7,6 @@ const BASE_CONFIG = {
   displayName: 'My Cluster',
   clusterName: 'test-cluster',
   sparkVersion: '13.3',
-  nodeTypeId: 'i3.xlarge',
 };
 
 describe('ComputeCluster (blueprint)', () => {
@@ -45,9 +44,6 @@ describe('ComputeCluster (blueprint)', () => {
       expect(
         component.parameters.getOptionalFieldByName('sparkVersion'),
       ).toBe('13.3');
-      expect(
-        component.parameters.getOptionalFieldByName('nodeTypeId'),
-      ).toBe('i3.xlarge');
     });
 
     it('should set optional parameters when provided', () => {
@@ -110,7 +106,6 @@ describe('ComputeCluster (blueprint)', () => {
         .withDisplayName('Cluster A')
         .withClusterName('cluster-a-name')
         .withSparkVersion('14.0')
-        .withNodeTypeId('m5.xlarge')
         .build();
 
       expect(c.type.toString()).toBe('BigData.PaaS.ComputeCluster');

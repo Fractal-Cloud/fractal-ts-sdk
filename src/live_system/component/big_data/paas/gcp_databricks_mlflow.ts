@@ -15,10 +15,9 @@ import {KebabCaseString} from '../../../../values/kebab_case_string';
 import {getVersionBuilder, Version} from '../../../../values/version';
 import {LiveSystemComponent} from '../../index';
 import {BlueprintComponent} from '../../../../fractal/component/index';
-import {
-  EXPERIMENT_NAME_PARAM,
-  ARTIFACT_LOCATION_PARAM,
-} from '../../../../fractal/component/big_data/paas/ml_experiment';
+import {EXPERIMENT_NAME_PARAM} from '../../../../fractal/component/big_data/paas/ml_experiment';
+
+const ARTIFACT_LOCATION_PARAM = 'artifactLocation';
 
 // Agent constant: DATABRICKS_MLFLOW_EXPERIMENT_COMPONENT_NAME = "DatabricksMlflowExperiment"
 const DATABRICKS_MLFLOW_EXPERIMENT_TYPE_NAME = 'DatabricksMlflowExperiment';
@@ -62,10 +61,13 @@ function pushParam(
 // -- Public API ----------------------------------------------------------------
 
 /**
- * Returned by satisfy() — no vendor-specific parameters needed for a
- * GCP Databricks MLflow Experiment. All parameters are carried from the blueprint.
+ * Returned by satisfy() — blueprint params are locked.
+ * artifactLocation is vendor-specific and set via the sealed builder.
  */
 export type SatisfiedGcpDatabricksMlflowBuilder = {
+  withArtifactLocation: (
+    location: string,
+  ) => SatisfiedGcpDatabricksMlflowBuilder;
   build: () => LiveSystemComponent;
 };
 
@@ -141,19 +143,22 @@ export namespace GcpDatabricksMlflow {
 
     if (blueprint.description) inner.withDescription(blueprint.description);
 
+    // Carry blueprint params (experimentName only; artifactLocation is vendor-specific)
     const experimentName = blueprint.parameters.getOptionalFieldByName(
       EXPERIMENT_NAME_PARAM,
     );
     if (experimentName !== null)
       pushParam(params, EXPERIMENT_NAME_PARAM, experimentName);
 
-    const artifactLocation = blueprint.parameters.getOptionalFieldByName(
-      ARTIFACT_LOCATION_PARAM,
-    );
-    if (artifactLocation !== null)
-      pushParam(params, ARTIFACT_LOCATION_PARAM, artifactLocation);
+    const satisfiedBuilder: SatisfiedGcpDatabricksMlflowBuilder = {
+      withArtifactLocation: location => {
+        pushParam(params, ARTIFACT_LOCATION_PARAM, location);
+        return satisfiedBuilder;
+      },
+      build: () => inner.build(),
+    };
 
-    return {build: () => inner.build()};
+    return satisfiedBuilder;
   };
 
   export const create = (

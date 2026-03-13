@@ -67,15 +67,16 @@ describe('AzureDatabricks', () => {
       expect(c.links).toHaveLength(0);
     });
 
-    it('should carry pricingTier from blueprint', () => {
+    it('should set pricingTier via satisfied builder', () => {
       const bp = DistributedDataProcessing.create({
         id: 'bp-databricks',
         version: {major: 1, minor: 0, patch: 0},
         displayName: 'Blueprint Databricks',
-        pricingTier: 'premium',
       });
 
-      const c = AzureDatabricks.satisfy(bp.platform).build();
+      const c = AzureDatabricks.satisfy(bp.platform)
+        .withPricingTier('premium')
+        .build();
 
       expect(c.parameters.getOptionalFieldByName('pricingTier')).toBe(
         'premium',

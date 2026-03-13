@@ -12,10 +12,9 @@ import {KebabCaseString} from '../../../../values/kebab_case_string';
 import {getVersionBuilder, Version} from '../../../../values/version';
 import {LiveSystemComponent} from '../../index';
 import {BlueprintComponent} from '../../../../fractal/component/index';
-import {PRICING_TIER_PARAM} from '../../../../fractal/component/big_data/paas/distributed_data_processing';
-
 // Agent constant: DATABRICKS_COMPONENT_NAME = "Databricks"
 const AWS_DATABRICKS_TYPE_NAME = 'Databricks';
+const PRICING_TIER_PARAM = 'pricingTier';
 const CREDENTIALS_ID_PARAM = 'credentialsId';
 const STORAGE_CONFIGURATION_ID_PARAM = 'storageConfigurationId';
 const NETWORK_ID_PARAM = 'networkId';
@@ -62,6 +61,7 @@ function pushParam(
  * dependencies, links) are locked to the blueprint and cannot be overridden.
  */
 export type SatisfiedAwsDatabricksBuilder = {
+  withPricingTier: (tier: string) => SatisfiedAwsDatabricksBuilder;
   withCredentialsId: (id: string) => SatisfiedAwsDatabricksBuilder;
   withStorageConfigurationId: (id: string) => SatisfiedAwsDatabricksBuilder;
   withNetworkId: (id: string) => SatisfiedAwsDatabricksBuilder;
@@ -164,11 +164,11 @@ export namespace AwsDatabricks {
 
     if (blueprint.description) inner.withDescription(blueprint.description);
 
-    // Carry blueprint params
-    const val = blueprint.parameters.getOptionalFieldByName(PRICING_TIER_PARAM);
-    if (val !== null) pushParam(params, PRICING_TIER_PARAM, val);
-
     const satisfiedBuilder: SatisfiedAwsDatabricksBuilder = {
+      withPricingTier: tier => {
+        pushParam(params, PRICING_TIER_PARAM, tier);
+        return satisfiedBuilder;
+      },
       withCredentialsId: id => {
         pushParam(params, CREDENTIALS_ID_PARAM, id);
         return satisfiedBuilder;

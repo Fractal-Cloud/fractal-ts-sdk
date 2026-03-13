@@ -68,15 +68,16 @@ describe('AwsDatabricks', () => {
       expect(c.links).toHaveLength(0);
     });
 
-    it('should carry blueprint pricingTier param', () => {
+    it('should set pricingTier via satisfied builder', () => {
       const bp = DistributedDataProcessing.create({
         id: 'bp-workspace',
         version: {major: 1, minor: 0, patch: 0},
         displayName: 'Blueprint Workspace',
-        pricingTier: 'PREMIUM',
       });
 
-      const c = AwsDatabricks.satisfy(bp.platform).build();
+      const c = AwsDatabricks.satisfy(bp.platform)
+        .withPricingTier('PREMIUM')
+        .build();
       expect(c.parameters.getOptionalFieldByName('pricingTier')).toBe(
         'PREMIUM'
       );

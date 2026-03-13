@@ -29,7 +29,6 @@ describe('GcpDatabricksCluster', () => {
         displayName: 'Blueprint Cluster',
         clusterName: 'test-cluster',
         sparkVersion: '13.3.x-scala2.12',
-        nodeTypeId: 'n1-standard-4',
       });
 
       const c = GcpDatabricksCluster.satisfy(blueprint).build();
@@ -41,14 +40,13 @@ describe('GcpDatabricksCluster', () => {
       expect(c.displayName).toBe('Blueprint Cluster');
     });
 
-    it('should carry clusterName, sparkVersion, nodeTypeId from blueprint', () => {
+    it('should carry clusterName, sparkVersion from blueprint', () => {
       const {component: blueprint} = ComputeCluster.create({
         id: 'bp-cluster',
         version: {major: 1, minor: 0, patch: 0},
         displayName: 'Blueprint Cluster',
         clusterName: 'my-spark-cluster',
         sparkVersion: '13.3.x-scala2.12',
-        nodeTypeId: 'n1-standard-4',
       });
 
       const c = GcpDatabricksCluster.satisfy(blueprint).build();
@@ -58,6 +56,18 @@ describe('GcpDatabricksCluster', () => {
       expect(c.parameters.getOptionalFieldByName('sparkVersion')).toBe(
         '13.3.x-scala2.12'
       );
+    });
+
+    it('should set nodeTypeId via satisfied builder', () => {
+      const {component: blueprint} = ComputeCluster.create({
+        id: 'bp-cluster',
+        version: {major: 1, minor: 0, patch: 0},
+        displayName: 'Blueprint Cluster',
+      });
+
+      const c = GcpDatabricksCluster.satisfy(blueprint)
+        .withNodeTypeId('n1-standard-4')
+        .build();
       expect(c.parameters.getOptionalFieldByName('nodeTypeId')).toBe(
         'n1-standard-4'
       );
@@ -70,7 +80,6 @@ describe('GcpDatabricksCluster', () => {
         displayName: 'Blueprint Cluster',
         clusterName: 'test',
         sparkVersion: '13.3.x-scala2.12',
-        nodeTypeId: 'n1-standard-4',
       });
 
       const c = GcpDatabricksCluster.satisfy(blueprint).build();

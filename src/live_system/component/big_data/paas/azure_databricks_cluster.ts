@@ -15,7 +15,6 @@ import {BlueprintComponent} from '../../../../fractal/component/index';
 import {
   CLUSTER_NAME_PARAM,
   SPARK_VERSION_PARAM,
-  NODE_TYPE_ID_PARAM,
   NUM_WORKERS_PARAM,
   MIN_WORKERS_PARAM,
   MAX_WORKERS_PARAM,
@@ -24,6 +23,8 @@ import {
   MAVEN_LIBRARIES_PARAM,
   AUTO_TERMINATION_MINUTES_PARAM,
 } from '../../../../fractal/component/big_data/paas/compute_cluster';
+
+const NODE_TYPE_ID_PARAM = 'nodeTypeId';
 
 const AZURE_DATABRICKS_CLUSTER_TYPE_NAME = 'DatabricksCluster';
 
@@ -62,6 +63,9 @@ function buildType(): BlueprintComponentType {
  * No Azure-specific parameters are needed, so only build() is exposed.
  */
 export type SatisfiedAzureDatabricksClusterBuilder = {
+  withNodeTypeId: (
+    nodeTypeId: string,
+  ) => SatisfiedAzureDatabricksClusterBuilder;
   build: () => LiveSystemComponent;
 };
 
@@ -145,7 +149,6 @@ export namespace AzureDatabricksCluster {
     const paramKeys = [
       CLUSTER_NAME_PARAM,
       SPARK_VERSION_PARAM,
-      NODE_TYPE_ID_PARAM,
       NUM_WORKERS_PARAM,
       MIN_WORKERS_PARAM,
       MAX_WORKERS_PARAM,
@@ -159,7 +162,18 @@ export namespace AzureDatabricksCluster {
       if (val !== null) params.push(key, val as Record<string, object>);
     }
 
-    return {build: () => inner.build()};
+    const satisfiedBuilder: SatisfiedAzureDatabricksClusterBuilder = {
+      withNodeTypeId: nodeTypeId => {
+        params.push(
+          NODE_TYPE_ID_PARAM,
+          nodeTypeId as unknown as Record<string, object>,
+        );
+        return satisfiedBuilder;
+      },
+      build: () => inner.build(),
+    };
+
+    return satisfiedBuilder;
   };
 
   export const create = (

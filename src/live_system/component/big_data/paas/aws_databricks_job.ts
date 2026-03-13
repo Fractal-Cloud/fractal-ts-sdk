@@ -92,7 +92,7 @@ export type AwsDatabricksJobBuilder = {
   withParameters: (params: string[]) => AwsDatabricksJobBuilder;
   withCronSchedule: (cron: string) => AwsDatabricksJobBuilder;
   withMaxRetries: (retries: number) => AwsDatabricksJobBuilder;
-  withExistingCluster: (clusterId: string) => AwsDatabricksJobBuilder;
+  withExistingCluster: (useExisting: boolean) => AwsDatabricksJobBuilder;
   build: () => LiveSystemComponent;
 };
 
@@ -110,7 +110,7 @@ export type AwsDatabricksJobConfig = {
   parameters?: string[];
   cronSchedule?: string;
   maxRetries?: number;
-  existingCluster?: string;
+  existingCluster?: boolean;
 };
 
 export namespace AwsDatabricksJob {
@@ -174,8 +174,8 @@ export namespace AwsDatabricksJob {
         pushParam(params, MAX_RETRIES_PARAM, retries);
         return builder;
       },
-      withExistingCluster: clusterId => {
-        pushParam(params, EXISTING_CLUSTER_PARAM, clusterId);
+      withExistingCluster: useExisting => {
+        pushParam(params, EXISTING_CLUSTER_PARAM, useExisting);
         return builder;
       },
       build: () => inner.build(),
@@ -253,7 +253,8 @@ export namespace AwsDatabricksJob {
     if (config.parameters) b.withParameters(config.parameters);
     if (config.cronSchedule) b.withCronSchedule(config.cronSchedule);
     if (config.maxRetries !== undefined) b.withMaxRetries(config.maxRetries);
-    if (config.existingCluster) b.withExistingCluster(config.existingCluster);
+    if (config.existingCluster !== undefined)
+      b.withExistingCluster(config.existingCluster);
 
     return b.build();
   };
