@@ -25,6 +25,7 @@ import {
 } from '../../../../fractal/component/big_data/paas/compute_cluster';
 
 const NODE_TYPE_ID_PARAM = 'nodeTypeId';
+const DATA_SECURITY_MODE_PARAM = 'dataSecurityMode';
 
 const AZURE_DATABRICKS_CLUSTER_TYPE_NAME = 'DatabricksCluster';
 
@@ -65,6 +66,9 @@ function buildType(): BlueprintComponentType {
 export type SatisfiedAzureDatabricksClusterBuilder = {
   withNodeTypeId: (
     nodeTypeId: string,
+  ) => SatisfiedAzureDatabricksClusterBuilder;
+  withDataSecurityMode: (
+    mode: string,
   ) => SatisfiedAzureDatabricksClusterBuilder;
   build: () => LiveSystemComponent;
 };
@@ -167,6 +171,13 @@ export namespace AzureDatabricksCluster {
         params.push(
           NODE_TYPE_ID_PARAM,
           nodeTypeId as unknown as Record<string, object>,
+        );
+        return satisfiedBuilder;
+      },
+      withDataSecurityMode: mode => {
+        params.push(
+          DATA_SECURITY_MODE_PARAM,
+          mode as unknown as Record<string, object>,
         );
         return satisfiedBuilder;
       },

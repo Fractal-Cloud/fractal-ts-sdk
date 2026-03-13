@@ -85,6 +85,21 @@ describe('AzureDatabricksCluster', () => {
       );
     });
 
+    it('should set dataSecurityMode via satisfied builder', () => {
+      const bp = ComputeCluster.create({
+        id: 'bp-cluster',
+        version: {major: 1, minor: 0, patch: 0},
+        displayName: 'BP Cluster',
+      });
+
+      const c = AzureDatabricksCluster.satisfy(bp.component)
+        .withDataSecurityMode('SINGLE_USER')
+        .build();
+      expect(c.parameters.getOptionalFieldByName('dataSecurityMode')).toBe(
+        'SINGLE_USER',
+      );
+    });
+
     it('should carry dependencies and links from blueprint', () => {
       const bp = ComputeCluster.create({
         id: 'bp-cluster',

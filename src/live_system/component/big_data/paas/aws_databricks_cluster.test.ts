@@ -104,5 +104,19 @@ describe('AwsDatabricksCluster', () => {
         'i3.xlarge'
       );
     });
+
+    it('should set dataSecurityMode via satisfied builder', () => {
+      const bp = ComputeCluster.create({
+        id: 'my-cluster',
+        version: {major: 1, minor: 0, patch: 0},
+        displayName: 'My Cluster',
+      });
+      const c = AwsDatabricksCluster.satisfy(bp.component)
+        .withDataSecurityMode('SINGLE_USER')
+        .build();
+      expect(c.parameters.getOptionalFieldByName('dataSecurityMode')).toBe(
+        'SINGLE_USER'
+      );
+    });
   });
 });
