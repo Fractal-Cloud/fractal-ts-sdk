@@ -46,9 +46,9 @@ A Live System is a running instance of a Fractal. It maps each abstract blueprin
 
 | Domain | Blueprint types | Live system offers | Providers |
 |--------|----------------|-------------------|-----------|
-| **NetworkAndCompute** | VirtualNetwork, Subnet, SecurityGroup, VirtualMachine, ContainerPlatform | 24 offers | AWS, Azure, GCP, OCI, Hetzner |
-| **CustomWorkloads** | Workload | Satisfied by PaaS offers (ECS, Container Apps, Cloud Run, etc.) | AWS, Azure, GCP, OCI |
-| **Storage** | FilesAndBlobs, RelationalDbms, RelationalDatabase, DocumentDbms, DocumentDatabase, ColumnOrientedDbms, ColumnOrientedEntity, KeyValueDbms, KeyValueEntity, GraphDbms, GraphDatabase, Search, SearchEntity, Unmanaged | 22 offers | AWS, Azure, GCP, CaaS, SaaS |
+| **NetworkAndCompute** | VirtualNetwork, Subnet, SecurityGroup, VirtualMachine, ContainerPlatform | 31 offers | AWS, Azure, GCP, OCI, Hetzner, VMware, OpenShift |
+| **CustomWorkloads** | Workload | Satisfied by PaaS/CaaS offers (ECS, Container Apps, Cloud Run, OpenShift, etc.) | AWS, Azure, GCP, OCI, OpenShift |
+| **Storage** | FilesAndBlobs, RelationalDbms, RelationalDatabase, DocumentDbms, DocumentDatabase, ColumnOrientedDbms, ColumnOrientedEntity, KeyValueDbms, KeyValueEntity, GraphDbms, GraphDatabase, Search, SearchEntity, Unmanaged | 23 offers | AWS, Azure, GCP, CaaS, SaaS |
 | **Messaging** | Broker, Entity (PaaS + CaaS), Unmanaged | 12 offers | Azure, GCP, CaaS |
 | **BigData** | DistributedDataProcessing, ComputeCluster, DataProcessingJob, MlExperiment, Datalake, Unmanaged | 16 offers | AWS, Azure, GCP |
 | **APIManagement** | PaaS ApiGateway, CaaS ApiGateway, Unmanaged | 6 offers | AWS, Azure, GCP, CaaS |
@@ -231,19 +231,26 @@ The same blueprint can be deployed on any supported provider. Live system files 
 
 ### IaaS
 
-| Blueprint component | AWS | Azure | GCP | OCI | Hetzner |
-|---------------------|-----|-------|-----|-----|---------|
-| `VirtualNetwork` | `AwsVpc` | `AzureVnet` | `GcpVpc` | `OciVcn` | `HetznerNetwork` |
-| `Subnet` | `AwsSubnet` | `AzureSubnet` | `GcpSubnet` | `OciSubnet` | `HetznerSubnet` |
-| `SecurityGroup` | `AwsSecurityGroup` | `AzureNsg` | `GcpFirewall` | `OciSecurityList` | `HetznerFirewall` |
-| `VirtualMachine` | `Ec2Instance` | `AzureVm` | `GcpVm` | `OciInstance` | `HetznerServer` |
+| Blueprint component | AWS | Azure | GCP | OCI | Hetzner | VMware | OpenShift |
+|---------------------|-----|-------|-----|-----|---------|--------|-----------|
+| `VirtualNetwork` | `AwsVpc` | `AzureVnet` | `GcpVpc` | `OciVcn` | `HetznerNetwork` | `VspherePortGroup` | — |
+| `Subnet` | `AwsSubnet` | `AzureSubnet` | `GcpSubnet` | `OciSubnet` | `HetznerSubnet` | `VsphereVlan` | — |
+| `SecurityGroup` | `AwsSecurityGroup` | `AzureNsg` | `GcpFirewall` | `OciSecurityList` | `HetznerFirewall` | — | `OpenshiftSecurityGroup` |
+| `VirtualMachine` | `Ec2Instance` | `AzureVm` | `GcpVm` | `OciInstance` | `HetznerServer` | `VsphereVm` | `OpenshiftVm` |
 
 ### PaaS / CaaS
 
-| Blueprint component | AWS | Azure | GCP | OCI |
-|---------------------|-----|-------|-----|-----|
-| `ContainerPlatform` | `AwsEcsCluster` · `AwsEksCluster` | `AzureAksCluster` · `AzureContainerAppsEnvironment` | `GcpGkeCluster` | — |
-| `Workload` | `AwsEcsTaskDefinition` + `AwsEcsService` | `AzureContainerInstance` · `AzureContainerApp` | `GcpCloudRunService` | `OciContainerInstance` |
+| Blueprint component | AWS | Azure | GCP | OCI | OpenShift |
+|---------------------|-----|-------|-----|-----|-----------|
+| `ContainerPlatform` | `AwsEcsCluster` · `AwsEksCluster` | `AzureAksCluster` · `AzureContainerAppsEnvironment` | `GcpGkeCluster` | — | — |
+| `Workload` | `AwsEcsTaskDefinition` + `AwsEcsService` | `AzureContainerInstance` · `AzureContainerApp` | `GcpCloudRunService` | `OciContainerInstance` | `OpenshiftWorkload` |
+
+### OpenShift-specific offers
+
+| Offer | Type string | Blueprint equivalent |
+|-------|-------------|---------------------|
+| `OpenshiftService` | `NetworkAndCompute.CaaS.OpenshiftService` | Kubernetes Service + Route (standalone) |
+| `OpenshiftPersistentVolume` | `Storage.CaaS.OpenshiftPersistentVolume` | Persistent Volume Claim (standalone) |
 
 ### Storage
 
@@ -479,8 +486,9 @@ src/
       security/              # ServiceMesh
   live_system/       # Provider-specific helpers
     component/
-      network_and_compute/   # AWS, Azure, GCP, OCI, Hetzner (IaaS + PaaS)
-      storage/               # AWS S3, Azure Storage/CosmosDB/PostgreSQL, GCP Storage/Firestore/BigTable
+      network_and_compute/   # AWS, Azure, GCP, OCI, Hetzner, VMware (IaaS) + OpenShift (CaaS) + AWS/Azure/GCP (PaaS)
+      custom_workloads/      # OpenShift (CaaS)
+      storage/               # AWS S3, Azure Storage/CosmosDB/PostgreSQL, GCP Storage/Firestore/BigTable, OpenShift PV
       messaging/             # Azure ServiceBus/EventHub, GCP PubSub, CaaS Kafka
       big_data/              # AWS/Azure/GCP Databricks + Datalake
       api_management/        # AWS CloudFront, Azure API Management, GCP API Gateway, CaaS Ambassador/Traefik
