@@ -54,6 +54,9 @@ A Live System is a running instance of a Fractal. It maps each abstract blueprin
 | **APIManagement** | PaaS ApiGateway, CaaS ApiGateway, Unmanaged | 6 offers | AWS, Azure, GCP, CaaS |
 | **Observability** | Monitoring, Tracing, Logging, Unmanaged | 4 offers | CaaS |
 | **Security** | ServiceMesh, Unmanaged | 2 offers | CaaS |
+| **Custom** | Any (via `Custom.blueprint()`) | Any (via `Custom.offer()`) | Any |
+
+> Custom aria agents can register additional domains, services, and offers beyond this built-in set. See [Custom Aria Components](#custom-aria-components) below.
 
 ## Installation
 
@@ -263,6 +266,186 @@ The same blueprint can be deployed on any supported provider. Live system files 
 | `MlExperiment` | `AwsDatabricksMlflow` | `AzureDatabricksMlflow` | `GcpDatabricksMlflow` |
 | `Datalake` | `AwsS3Datalake` | `AzureDatalake` | `GcpDatalake` |
 
+## Custom Aria Components
+
+Enterprise customers running custom aria agents can extend the SDK with their own infrastructure domains, service delivery models, and component types — no fork required.
+
+### Defining custom component types
+
+Use `Custom.blueprint()` and `Custom.offer()` to create reusable factories. Each factory stamps out components of a specific type, just like the built-in helpers (`VirtualNetwork`, `AwsVpc`, etc.).
+
+```typescript
+import {
+  Custom, Fractal, LiveSystem, ServiceDeliveryModel,
+} from '@fractal_cloud/sdk';
+
+// ── 1. Define factories (once per type, reusable) ─────────────────────────
+
+const TimeSeriesStore = Custom.blueprint({
+  domain: 'Analytics',                       // any string — not limited to built-in domains
+  serviceDeliveryModel: ServiceDeliveryModel.PaaS,
+  name: 'TimeSeriesStore',                   // must be PascalCase
+});
+
+const InfluxDb = Custom.offer({
+  domain: 'Analytics',
+  serviceDeliveryModel: ServiceDeliveryModel.PaaS,
+  name: 'InfluxDb',
+  provider: 'CustomProvider',                // any string — not limited to built-in providers
+});
+```
+
+### Creating blueprint components (cloud-agnostic)
+
+```typescript
+// ── 2. Blueprint — what the architecture needs ────────────────────────────
+
+const metricsDb = TimeSeriesStore.create({
+  id: 'metrics-db',
+  version: { major: 1, minor: 0, patch: 0 },
+  displayName: 'Metrics Database',
+  parameters: { retentionDays: '90', replicationFactor: '3' },
+});
+```
+
+### Satisfying with a custom offer (vendor-specific)
+
+The `satisfy()` method works exactly like built-in offers: it locks the blueprint's id, version, displayName, description, dependencies, links, and parameters, then exposes only vendor-specific parameter setters.
+
+```typescript
+// ── 3. Live system — how the architecture is provisioned ──────────────────
+
+const influx = InfluxDb.satisfy(metricsDb)
+  .withParameter('bucket', 'metrics')
+  .withParameter('orgId', 'my-org')
+  .build();
+```
+
+### Standalone creation (without a blueprint)
+
+If you don't need the blueprint-satisfy flow, create live system components directly:
+
+```typescript
+const influx = InfluxDb.create({
+  id: 'metrics-db',
+  version: { major: 1, minor: 0, patch: 0 },
+  displayName: 'Metrics Database',
+  parameters: { bucket: 'metrics', orgId: 'my-org' },
+});
+```
+
+### Using the fluent builder
+
+For advanced scenarios (dependencies, links, conditional params), use the builder API:
+
+```typescript
+const metricsDb = TimeSeriesStore.getBuilder()
+  .withId('metrics-db')
+  .withVersion(1, 0, 0)
+  .withDisplayName('Metrics Database')
+  .withParameter('retentionDays', '90')
+  .withDependencies([{ id: someOtherComponent.id }])
+  .withLinks([{ id: anotherComponent.id, parameters: linkParams }])
+  .build();
+```
+
+### Deploying custom components
+
+Custom components integrate seamlessly with the standard deploy flow:
+
+```typescript
+// ── 4. Deploy as usual ────────────────────────────────────────────────────
+
+const fractal = Fractal.getBuilder()
+  .withId(fractalId)
+  .withComponents([metricsDb])
+  .build();
+
+const liveSystem = LiveSystem.getBuilder()
+  .withId(liveSystemId)
+  .withFractalId(fractal.id)
+  .withGenericProvider('CustomProvider')
+  .withEnvironment(environment)
+  .withComponent(influx)
+  .build();
+
+await fractal.deploy(credentials);
+await liveSystem.deploy(credentials, { mode: 'wait' });
+```
+
+### Mixing custom and built-in components
+
+Custom components can coexist with built-in ones in the same Fractal:
+
+```typescript
+import { VirtualNetwork, Subnet, Custom, ServiceDeliveryModel } from '@fractal_cloud/sdk';
+
+const MyCache = Custom.blueprint({
+  domain: 'Performance',
+  serviceDeliveryModel: ServiceDeliveryModel.PaaS,
+  name: 'DistributedCache',
+});
+
+const network = VirtualNetwork.create({ /* ... */ })
+  .withSubnets([
+    Subnet.create({ /* ... */ }),
+  ]);
+
+const cache = MyCache.create({
+  id: 'app-cache',
+  version: { major: 1, minor: 0, patch: 0 },
+  displayName: 'Application Cache',
+  parameters: { maxMemoryMb: '4096', evictionPolicy: 'lru' },
+  dependencies: [{ id: network.vpc.id }],   // depend on built-in components
+});
+
+const fractal = Fractal.getBuilder()
+  .withId(fractalId)
+  .withComponents([...network.components, cache])
+  .build();
+```
+
+### API reference
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `Custom.blueprint(config)` | `CustomBlueprintFactory` | Define a reusable blueprint component type |
+| `Custom.offer(config)` | `CustomOfferFactory` | Define a reusable live system offer type |
+
+**`CustomBlueprintFactory`**
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `.create(config)` | `BlueprintComponent` | Create a component with id, version, displayName, parameters, dependencies, links |
+| `.getBuilder()` | `CustomBlueprintBuilder` | Fluent builder with `withParameter(key, value)`, `withDependencies()`, `withLinks()` |
+| `.typeString` | `string` | The full type string (e.g. `"Analytics.PaaS.TimeSeriesStore"`) |
+
+**`CustomOfferFactory`**
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `.create(config)` | `LiveSystemComponent` | Create a live system component directly |
+| `.getBuilder()` | `CustomOfferBuilder` | Fluent builder with full access to all fields |
+| `.satisfy(blueprint)` | `CustomSatisfiedBuilder` | Lock structural fields from blueprint; only `withParameter()`/`withParameters()` exposed |
+| `.typeString` | `string` | The full type string (e.g. `"Analytics.PaaS.InfluxDb"`) |
+
+**`CustomSatisfiedBuilder`** (returned by `satisfy()`)
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `.withParameter(key, value)` | `CustomSatisfiedBuilder` | Add a single vendor-specific parameter |
+| `.withParameters(record)` | `CustomSatisfiedBuilder` | Add multiple vendor-specific parameters at once |
+| `.build()` | `LiveSystemComponent` | Build the final component |
+
+### Validation
+
+- **Component name** must be PascalCase (e.g. `TimeSeriesStore`, `InfluxDb`). Validated eagerly when the factory is created — a `SyntaxError` is thrown immediately for invalid names.
+- **Component id** must be kebab-case (e.g. `metrics-db`). Each segment must start with a letter.
+- **Domain and provider** accept any string. Built-in values (`InfrastructureDomain.Storage`, `'AWS'`, etc.) provide autocomplete but are not enforced.
+- Custom domains and providers must be registered with the Fractal Cloud platform for deployment to succeed.
+
+---
+
 ## Samples
 
 The [sample repository](https://github.com/Fractal-Cloud/fractal-ts-sdk-samples) contains ready-to-run examples:
@@ -283,6 +466,7 @@ The [sample repository](https://github.com/Fractal-Cloud/fractal-ts-sdk-samples)
 
 ```
 src/
+  custom/            # Custom aria component factories (Custom.blueprint, Custom.offer)
   fractal/           # Cloud-agnostic blueprint helpers
     component/
       network_and_compute/   # VirtualNetwork, Subnet, SecurityGroup, VirtualMachine, ContainerPlatform
