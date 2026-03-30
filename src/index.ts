@@ -11,6 +11,7 @@ import * as ServiceDeliveryModelInternal from './values/service_delivery_model';
 import * as VersionInternal from './values/version';
 import * as EnvironmentInternal from './environment';
 import * as LiveSystemInternal from './live_system';
+import * as CustomInternal from './custom';
 
 export const BoundedContext = BoundedContextInternal.BoundedContext;
 export type BoundedContext = BoundedContextInternal.BoundedContext;
@@ -56,6 +57,18 @@ export type Environment = EnvironmentInternal.Environment;
 
 export const LiveSystem = LiveSystemInternal.LiveSystem;
 export type LiveSystem = LiveSystemInternal.LiveSystem;
+
+export const Custom = CustomInternal.Custom;
+export type {
+  CustomBlueprintConfig,
+  CustomBlueprintFactory,
+  CustomBlueprintBuilder,
+  CustomOfferConfig,
+  CustomOfferFactory,
+  CustomOfferBuilder,
+  CustomSatisfiedBuilder,
+  CustomComponentConfig,
+} from './custom';
 
 // Blueprint component helpers (cloud-agnostic)
 export {VirtualNetwork} from './fractal/component/network_and_compute/iaas/virtual_network';

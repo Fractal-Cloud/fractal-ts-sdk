@@ -1,25 +1,27 @@
 /**
- * Enumeration representing various infrastructure domains.
- * These domains categorize components or services
+ * Known infrastructure domains that categorize components or services
  * within an infrastructure system.
  *
- * @enum {string}
- * @property {string} ApiManagement - Represents API management-related components.
- * @property {string} NetworkAndCompute - Represents network and compute components.
- * @property {string} CustomWorkloads - Represents custom workload components.
- * @property {string} Messaging - Represents messaging and communication components.
- * @property {string} Storage - Represents data storage components.
- * @property {string} Observability - Represents observability tools and monitoring components.
- * @property {string} Security - Represents security-focused components.
- * @property {string} BigData - Represents big data processing components.
+ * This is an open type — custom aria agents may define additional domains
+ * beyond the built-in set. Any string is accepted where an
+ * `InfrastructureDomain` is expected; the known values provide
+ * autocomplete convenience.
  */
-export enum InfrastructureDomain {
-  ApiManagement = 'APIManagement',
-  BigData = 'BigData',
-  NetworkAndCompute = 'NetworkAndCompute',
-  CustomWorkloads = 'CustomWorkloads',
-  Messaging = 'Messaging',
-  Storage = 'Storage',
-  Observability = 'Observability',
-  Security = 'Security',
-}
+export const InfrastructureDomain = {
+  ApiManagement: 'APIManagement',
+  BigData: 'BigData',
+  NetworkAndCompute: 'NetworkAndCompute',
+  CustomWorkloads: 'CustomWorkloads',
+  Messaging: 'Messaging',
+  Storage: 'Storage',
+  Observability: 'Observability',
+  Security: 'Security',
+} as const;
+
+/**
+ * Any of the built-in infrastructure domain values, or a custom string
+ * for domains defined by custom aria agents.
+ */
+export type InfrastructureDomain =
+  | (typeof InfrastructureDomain)[keyof typeof InfrastructureDomain]
+  | (string & {});

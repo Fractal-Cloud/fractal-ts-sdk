@@ -21,7 +21,8 @@ export namespace LiveSystemComponent {
     | 'OCI'
     | 'Hetzner'
     | 'CaaS'
-    | 'SaaS';
+    | 'SaaS'
+    | (string & {});
 
   export type Builder = LiveSystemComponentBuilder;
   export const getBuilder = getLiveSystemComponentBuilder;
