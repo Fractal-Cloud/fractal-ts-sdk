@@ -22,6 +22,7 @@ const NAME_PARAM = 'name';
 const STORAGE_SIZE_PARAM = 'storageSize';
 const STORAGE_CLASS_NAME_PARAM = 'storageClassName';
 const ACCESS_MODE_PARAM = 'accessMode';
+const NAMESPACE_PARAM = 'namespace';
 
 // ── internal helpers ──────────────────────────────────────────────────────────
 
@@ -71,6 +72,9 @@ export type SatisfiedOpenshiftPersistentVolumeBuilder = {
     className: string,
   ) => SatisfiedOpenshiftPersistentVolumeBuilder;
   withAccessMode: (mode: string) => SatisfiedOpenshiftPersistentVolumeBuilder;
+  withNamespace: (
+    namespace: string,
+  ) => SatisfiedOpenshiftPersistentVolumeBuilder;
   build: () => LiveSystemComponent;
 };
 
@@ -87,6 +91,7 @@ export type OpenshiftPersistentVolumeBuilder = {
   withStorageSize: (size: string) => OpenshiftPersistentVolumeBuilder;
   withStorageClassName: (className: string) => OpenshiftPersistentVolumeBuilder;
   withAccessMode: (mode: string) => OpenshiftPersistentVolumeBuilder;
+  withNamespace: (namespace: string) => OpenshiftPersistentVolumeBuilder;
   build: () => LiveSystemComponent;
 };
 
@@ -99,6 +104,7 @@ export type OpenshiftPersistentVolumeConfig = {
   storageSize: string;
   storageClassName?: string;
   accessMode?: string;
+  namespace?: string;
 };
 
 export namespace OpenshiftPersistentVolume {
@@ -140,6 +146,10 @@ export namespace OpenshiftPersistentVolume {
       },
       withAccessMode: value => {
         pushParam(params, ACCESS_MODE_PARAM, value);
+        return builder;
+      },
+      withNamespace: value => {
+        pushParam(params, NAMESPACE_PARAM, value);
         return builder;
       },
       build: () => inner.build(),
@@ -187,6 +197,10 @@ export namespace OpenshiftPersistentVolume {
         pushParam(params, ACCESS_MODE_PARAM, value);
         return satisfiedBuilder;
       },
+      withNamespace: value => {
+        pushParam(params, NAMESPACE_PARAM, value);
+        return satisfiedBuilder;
+      },
       build: () => inner.build(),
     };
 
@@ -211,6 +225,7 @@ export namespace OpenshiftPersistentVolume {
     if (config.storageClassName)
       b.withStorageClassName(config.storageClassName);
     if (config.accessMode) b.withAccessMode(config.accessMode);
+    if (config.namespace) b.withNamespace(config.namespace);
 
     return b.build();
   };

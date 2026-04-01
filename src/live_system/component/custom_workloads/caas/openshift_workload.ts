@@ -87,6 +87,7 @@ function pushParam(
  * dependencies, links) are locked to the blueprint and cannot be overridden.
  */
 export type SatisfiedOpenshiftWorkloadBuilder = {
+  withName: (name: string) => SatisfiedOpenshiftWorkloadBuilder;
   withNamespace: (namespace: string) => SatisfiedOpenshiftWorkloadBuilder;
   withWorkloadType: (workloadType: string) => SatisfiedOpenshiftWorkloadBuilder;
   withCpuLimit: (cpuLimit: string) => SatisfiedOpenshiftWorkloadBuilder;
@@ -299,6 +300,10 @@ export namespace OpenshiftWorkload {
     if (replicas !== null) pushParam(params, REPLICAS_PARAM, replicas);
 
     const satisfiedBuilder: SatisfiedOpenshiftWorkloadBuilder = {
+      withName: value => {
+        pushParam(params, NAME_PARAM, value);
+        return satisfiedBuilder;
+      },
       withNamespace: value => {
         pushParam(params, NAMESPACE_PARAM, value);
         return satisfiedBuilder;

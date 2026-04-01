@@ -23,6 +23,7 @@ const DATACENTER_PARAM = 'datacenter';
 const VLAN_ID_PARAM = 'vlanId';
 const NUM_PORTS_PARAM = 'numPorts';
 const PORT_BINDING_PARAM = 'portBinding';
+const NAME_PARAM = 'name';
 
 // ── internal helpers ──────────────────────────────────────────────────────────
 
@@ -68,6 +69,7 @@ function pushParam(
  * dependencies, links) are locked to the blueprint and cannot be overridden.
  */
 export type SatisfiedVspherePortGroupBuilder = {
+  withName: (name: string) => SatisfiedVspherePortGroupBuilder;
   withDvSwitchName: (name: string) => SatisfiedVspherePortGroupBuilder;
   withDatacenter: (datacenter: string) => SatisfiedVspherePortGroupBuilder;
   withVlanId: (vlanId: number) => SatisfiedVspherePortGroupBuilder;
@@ -85,6 +87,7 @@ export type VspherePortGroupBuilder = {
   ) => VspherePortGroupBuilder;
   withDisplayName: (displayName: string) => VspherePortGroupBuilder;
   withDescription: (description: string) => VspherePortGroupBuilder;
+  withName: (name: string) => VspherePortGroupBuilder;
   withDvSwitchName: (name: string) => VspherePortGroupBuilder;
   withDatacenter: (datacenter: string) => VspherePortGroupBuilder;
   withVlanId: (vlanId: number) => VspherePortGroupBuilder;
@@ -128,6 +131,10 @@ export namespace VspherePortGroup {
       },
       withDescription: description => {
         inner.withDescription(description);
+        return builder;
+      },
+      withName: value => {
+        pushParam(params, NAME_PARAM, value);
         return builder;
       },
       withDvSwitchName: value => {
@@ -179,6 +186,10 @@ export namespace VspherePortGroup {
     if (blueprint.description) inner.withDescription(blueprint.description);
 
     const satisfiedBuilder: SatisfiedVspherePortGroupBuilder = {
+      withName: value => {
+        pushParam(params, NAME_PARAM, value);
+        return satisfiedBuilder;
+      },
       withDvSwitchName: value => {
         pushParam(params, DV_SWITCH_NAME_PARAM, value);
         return satisfiedBuilder;

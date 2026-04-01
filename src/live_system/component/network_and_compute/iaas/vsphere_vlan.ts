@@ -23,6 +23,7 @@ const VLAN_ID_PARAM = 'vlanId';
 const GATEWAY_PARAM = 'gateway';
 const DV_SWITCH_NAME_PARAM = 'dvSwitchName';
 const DATACENTER_PARAM = 'datacenter';
+const NAME_PARAM = 'name';
 
 // ── internal helpers ──────────────────────────────────────────────────────────
 
@@ -66,6 +67,7 @@ function pushParam(
  * dependencies, links) are locked to the blueprint and cannot be overridden.
  */
 export type SatisfiedVsphereVlanBuilder = {
+  withName: (name: string) => SatisfiedVsphereVlanBuilder;
   withVlanId: (vlanId: number) => SatisfiedVsphereVlanBuilder;
   withGateway: (gateway: string) => SatisfiedVsphereVlanBuilder;
   withDvSwitchName: (name: string) => SatisfiedVsphereVlanBuilder;
@@ -82,6 +84,7 @@ export type VsphereVlanBuilder = {
   ) => VsphereVlanBuilder;
   withDisplayName: (displayName: string) => VsphereVlanBuilder;
   withDescription: (description: string) => VsphereVlanBuilder;
+  withName: (name: string) => VsphereVlanBuilder;
   withCidrBlock: (cidrBlock: string) => VsphereVlanBuilder;
   withVlanId: (vlanId: number) => VsphereVlanBuilder;
   withGateway: (gateway: string) => VsphereVlanBuilder;
@@ -125,6 +128,10 @@ export namespace VsphereVlan {
       },
       withDescription: description => {
         inner.withDescription(description);
+        return builder;
+      },
+      withName: value => {
+        pushParam(params, NAME_PARAM, value);
         return builder;
       },
       withCidrBlock: value => {
@@ -181,6 +188,10 @@ export namespace VsphereVlan {
       pushParam(params, CIDR_BLOCK_PARAM, String(cidrBlock));
 
     const satisfiedBuilder: SatisfiedVsphereVlanBuilder = {
+      withName: value => {
+        pushParam(params, NAME_PARAM, value);
+        return satisfiedBuilder;
+      },
       withVlanId: value => {
         pushParam(params, VLAN_ID_PARAM, value);
         return satisfiedBuilder;

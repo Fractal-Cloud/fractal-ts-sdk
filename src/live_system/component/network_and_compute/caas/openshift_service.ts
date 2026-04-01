@@ -26,6 +26,8 @@ const SERVICE_TYPE_PARAM = 'serviceType';
 const CREATE_ROUTE_PARAM = 'createRoute';
 const ROUTE_HOSTNAME_PARAM = 'routeHostname';
 const ROUTE_TLS_TERMINATION_PARAM = 'routeTlsTermination';
+const NAMESPACE_PARAM = 'namespace';
+const WORKLOAD_NAME_PARAM = 'workloadName';
 
 // ── internal helpers ──────────────────────────────────────────────────────────
 
@@ -81,6 +83,10 @@ export type SatisfiedOpenshiftServiceBuilder = {
   withRouteTlsTermination: (
     termination: string,
   ) => SatisfiedOpenshiftServiceBuilder;
+  withNamespace: (namespace: string) => SatisfiedOpenshiftServiceBuilder;
+  withWorkloadName: (
+    workloadName: string,
+  ) => SatisfiedOpenshiftServiceBuilder;
   build: () => LiveSystemComponent;
 };
 
@@ -101,6 +107,8 @@ export type OpenshiftServiceBuilder = {
   withCreateRoute: (createRoute: boolean) => OpenshiftServiceBuilder;
   withRouteHostname: (hostname: string) => OpenshiftServiceBuilder;
   withRouteTlsTermination: (termination: string) => OpenshiftServiceBuilder;
+  withNamespace: (namespace: string) => OpenshiftServiceBuilder;
+  withWorkloadName: (workloadName: string) => OpenshiftServiceBuilder;
   build: () => LiveSystemComponent;
 };
 
@@ -117,6 +125,8 @@ export type OpenshiftServiceConfig = {
   createRoute?: boolean;
   routeHostname?: string;
   routeTlsTermination?: string;
+  namespace?: string;
+  workloadName?: string;
 };
 
 export namespace OpenshiftService {
@@ -174,6 +184,14 @@ export namespace OpenshiftService {
       },
       withRouteTlsTermination: value => {
         pushParam(params, ROUTE_TLS_TERMINATION_PARAM, value);
+        return builder;
+      },
+      withNamespace: value => {
+        pushParam(params, NAMESPACE_PARAM, value);
+        return builder;
+      },
+      withWorkloadName: value => {
+        pushParam(params, WORKLOAD_NAME_PARAM, value);
         return builder;
       },
       build: () => inner.build(),
@@ -237,6 +255,14 @@ export namespace OpenshiftService {
         pushParam(params, ROUTE_TLS_TERMINATION_PARAM, value);
         return satisfiedBuilder;
       },
+      withNamespace: value => {
+        pushParam(params, NAMESPACE_PARAM, value);
+        return satisfiedBuilder;
+      },
+      withWorkloadName: value => {
+        pushParam(params, WORKLOAD_NAME_PARAM, value);
+        return satisfiedBuilder;
+      },
       build: () => inner.build(),
     };
 
@@ -265,6 +291,8 @@ export namespace OpenshiftService {
     if (config.routeHostname) b.withRouteHostname(config.routeHostname);
     if (config.routeTlsTermination)
       b.withRouteTlsTermination(config.routeTlsTermination);
+    if (config.namespace) b.withNamespace(config.namespace);
+    if (config.workloadName) b.withWorkloadName(config.workloadName);
 
     return b.build();
   };
