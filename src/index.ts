@@ -277,6 +277,36 @@ export type {
   SatisfiedHetznerServerBuilder,
 } from './live_system/component/network_and_compute/iaas/hetzner_server';
 
+// Live system component helpers — VMware IaaS
+export {VspherePortGroup} from './live_system/component/network_and_compute/iaas/vsphere_port_group';
+export type {
+  VspherePortGroupBuilder,
+  VspherePortGroupConfig,
+  SatisfiedVspherePortGroupBuilder,
+} from './live_system/component/network_and_compute/iaas/vsphere_port_group';
+
+export {VsphereVlan} from './live_system/component/network_and_compute/iaas/vsphere_vlan';
+export type {
+  VsphereVlanBuilder,
+  VsphereVlanConfig,
+  SatisfiedVsphereVlanBuilder,
+} from './live_system/component/network_and_compute/iaas/vsphere_vlan';
+
+export {VsphereVm} from './live_system/component/network_and_compute/iaas/vsphere_vm';
+export type {
+  VsphereVmBuilder,
+  VsphereVmConfig,
+  SatisfiedVsphereVmBuilder,
+} from './live_system/component/network_and_compute/iaas/vsphere_vm';
+
+// Live system component helpers — OpenShift IaaS
+export {OpenshiftVm} from './live_system/component/network_and_compute/iaas/openshift_vm';
+export type {
+  OpenshiftVmBuilder,
+  OpenshiftVmConfig,
+  SatisfiedOpenshiftVmBuilder,
+} from './live_system/component/network_and_compute/iaas/openshift_vm';
+
 // Blueprint component helpers — PaaS
 export {ContainerPlatform} from './fractal/component/network_and_compute/paas/container_platform';
 export type {
@@ -294,6 +324,28 @@ export type {
   WorkloadComponent,
   WorkloadPortLink,
 } from './fractal/component/custom_workloads/caas/workload';
+
+// Live system component helpers — OpenShift CaaS
+export {OpenshiftWorkload} from './live_system/component/custom_workloads/caas/openshift_workload';
+export type {
+  OpenshiftWorkloadBuilder,
+  OpenshiftWorkloadConfig,
+  SatisfiedOpenshiftWorkloadBuilder,
+} from './live_system/component/custom_workloads/caas/openshift_workload';
+
+export {OpenshiftService} from './live_system/component/network_and_compute/caas/openshift_service';
+export type {
+  OpenshiftServiceBuilder,
+  OpenshiftServiceConfig,
+  SatisfiedOpenshiftServiceBuilder,
+} from './live_system/component/network_and_compute/caas/openshift_service';
+
+export {OpenshiftSecurityGroup} from './live_system/component/network_and_compute/caas/openshift_security_group';
+export type {
+  OpenshiftSecurityGroupBuilder,
+  OpenshiftSecurityGroupConfig,
+  SatisfiedOpenshiftSecurityGroupBuilder,
+} from './live_system/component/network_and_compute/caas/openshift_security_group';
 
 // Live system component helpers — AWS PaaS
 export {AwsEksCluster} from './live_system/component/network_and_compute/paas/eks_cluster';
@@ -634,6 +686,13 @@ export type {
   IndexPatternConfig,
   SatisfiedIndexPatternBuilder,
 } from './live_system/component/storage/caas/index_pattern';
+
+export {OpenshiftPersistentVolume} from './live_system/component/storage/caas/openshift_persistent_volume';
+export type {
+  OpenshiftPersistentVolumeBuilder,
+  OpenshiftPersistentVolumeConfig,
+  SatisfiedOpenshiftPersistentVolumeBuilder,
+} from './live_system/component/storage/caas/openshift_persistent_volume';
 
 // Live system — SaaS Storage
 export {SaaSUnmanaged} from './live_system/component/storage/saas/unmanaged';
