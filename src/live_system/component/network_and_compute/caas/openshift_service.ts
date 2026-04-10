@@ -84,9 +84,7 @@ export type SatisfiedOpenshiftServiceBuilder = {
     termination: string,
   ) => SatisfiedOpenshiftServiceBuilder;
   withNamespace: (namespace: string) => SatisfiedOpenshiftServiceBuilder;
-  withWorkloadName: (
-    workloadName: string,
-  ) => SatisfiedOpenshiftServiceBuilder;
+  withWorkloadName: (workloadName: string) => SatisfiedOpenshiftServiceBuilder;
   build: () => LiveSystemComponent;
 };
 
