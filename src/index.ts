@@ -429,6 +429,109 @@ export type {
   SatisfiedOciContainerInstanceBuilder,
 } from './live_system/component/network_and_compute/paas/oci_container_instance';
 
+// Live system component helpers — Aruba IaaS
+export {ArubaVpc} from './live_system/component/network_and_compute/iaas/aruba_vpc';
+export type {
+  ArubaVpcBuilder,
+  ArubaVpcConfig,
+  SatisfiedArubaVpcBuilder,
+} from './live_system/component/network_and_compute/iaas/aruba_vpc';
+
+export {ArubaSubnet} from './live_system/component/network_and_compute/iaas/aruba_subnet';
+export type {
+  ArubaSubnetBuilder,
+  ArubaSubnetConfig,
+  SatisfiedArubaSubnetBuilder,
+} from './live_system/component/network_and_compute/iaas/aruba_subnet';
+
+export {ArubaSecurityGroup} from './live_system/component/network_and_compute/iaas/aruba_security_group';
+export type {
+  ArubaSecurityGroupBuilder,
+  ArubaSecurityGroupConfig,
+  SatisfiedArubaSecurityGroupBuilder,
+} from './live_system/component/network_and_compute/iaas/aruba_security_group';
+
+export {ArubaSshKeyPair} from './live_system/component/network_and_compute/iaas/aruba_ssh_key_pair';
+export type {
+  ArubaSshKeyPairBuilder,
+  ArubaSshKeyPairConfig,
+} from './live_system/component/network_and_compute/iaas/aruba_ssh_key_pair';
+
+export {ArubaCloudServer} from './live_system/component/network_and_compute/iaas/aruba_cloud_server';
+export type {
+  ArubaCloudServerBuilder,
+  ArubaCloudServerConfig,
+  SatisfiedArubaCloudServerBuilder,
+} from './live_system/component/network_and_compute/iaas/aruba_cloud_server';
+
+export {ArubaVpcPeering} from './live_system/component/network_and_compute/iaas/aruba_vpc_peering';
+export type {
+  ArubaVpcPeeringBuilder,
+  ArubaVpcPeeringConfig,
+} from './live_system/component/network_and_compute/iaas/aruba_vpc_peering';
+
+export {ArubaVpnTunnel} from './live_system/component/network_and_compute/iaas/aruba_vpn_tunnel';
+export type {
+  ArubaVpnTunnelBuilder,
+  ArubaVpnTunnelConfig,
+} from './live_system/component/network_and_compute/iaas/aruba_vpn_tunnel';
+
+export {ArubaElasticIp} from './live_system/component/network_and_compute/iaas/aruba_elastic_ip';
+export type {
+  ArubaElasticIpBuilder,
+  ArubaElasticIpConfig,
+} from './live_system/component/network_and_compute/iaas/aruba_elastic_ip';
+
+// Live system component helpers — Aruba PaaS
+export {ArubaKaaS} from './live_system/component/network_and_compute/paas/aruba_kaas';
+export type {
+  ArubaKaaSBuilder,
+  ArubaKaaSConfig,
+  SatisfiedArubaKaaSBuilder,
+} from './live_system/component/network_and_compute/paas/aruba_kaas';
+
+export {ArubaContainerRegistry} from './live_system/component/network_and_compute/paas/aruba_container_registry';
+export type {
+  ArubaContainerRegistryBuilder,
+  ArubaContainerRegistryConfig,
+} from './live_system/component/network_and_compute/paas/aruba_container_registry';
+
+// Live system component helpers — Aruba Storage
+export {ArubaBlockStorage} from './live_system/component/storage/iaas/aruba_block_storage';
+export type {
+  ArubaBlockStorageBuilder,
+  ArubaBlockStorageConfig,
+} from './live_system/component/storage/iaas/aruba_block_storage';
+
+export {ArubaMySqlDbms} from './live_system/component/storage/paas/aruba_mysql_dbms';
+export type {
+  ArubaMySqlDbmsBuilder,
+  ArubaMySqlDbmsConfig,
+  SatisfiedArubaMySqlDbmsBuilder,
+} from './live_system/component/storage/paas/aruba_mysql_dbms';
+
+export {ArubaMsSqlDbms} from './live_system/component/storage/paas/aruba_mssql_dbms';
+export type {
+  ArubaMsSqlDbmsBuilder,
+  ArubaMsSqlDbmsConfig,
+  SatisfiedArubaMsSqlDbmsBuilder,
+} from './live_system/component/storage/paas/aruba_mssql_dbms';
+
+export {ArubaObjectStorageAccount} from './live_system/component/storage/paas/aruba_object_storage_account';
+export type {
+  ArubaObjectStorageAccountBuilder,
+  ArubaObjectStorageAccountConfig,
+  SatisfiedArubaObjectStorageAccountBuilder,
+} from './live_system/component/storage/paas/aruba_object_storage_account';
+
+// Live system component helpers — CaaS K8s Workload
+export {CaaSK8sWorkload} from './live_system/component/custom_workloads/caas/caas_k8s_workload';
+export type {
+  CaaSK8sWorkloadBuilder,
+  CaaSK8sWorkloadConfig,
+  SatisfiedCaaSK8sWorkloadBuilder,
+} from './live_system/component/custom_workloads/caas/caas_k8s_workload';
+
 // ── Storage domain — Blueprint component helpers ─────────────────────────────
 
 // Storage PaaS — Leaf nodes
@@ -993,6 +1096,43 @@ export type {
   BigDataSaaSUnmanagedConfig,
   SatisfiedBigDataSaaSUnmanagedBuilder,
 } from './live_system/component/big_data/saas/unmanaged';
+
+// Live system — Aruba Storage
+export {ArubaS3Bucket} from './live_system/component/big_data/paas/aruba_s3_datalake';
+export type {
+  ArubaS3BucketBuilder,
+  ArubaS3BucketConfig,
+  SatisfiedArubaS3BucketBuilder,
+} from './live_system/component/big_data/paas/aruba_s3_datalake';
+
+// Live system — CaaS BigData
+export {CaaSSparkOperator} from './live_system/component/big_data/caas/caas_spark_operator';
+export type {
+  CaaSSparkOperatorBuilder,
+  CaaSSparkOperatorConfig,
+  SatisfiedCaaSSparkOperatorBuilder,
+} from './live_system/component/big_data/caas/caas_spark_operator';
+
+export {CaaSSparkCluster} from './live_system/component/big_data/caas/caas_spark_cluster';
+export type {
+  CaaSSparkClusterBuilder,
+  CaaSSparkClusterConfig,
+  SatisfiedCaaSSparkClusterBuilder,
+} from './live_system/component/big_data/caas/caas_spark_cluster';
+
+export {CaaSSparkJob} from './live_system/component/big_data/caas/caas_spark_job';
+export type {
+  CaaSSparkJobBuilder,
+  CaaSSparkJobConfig,
+  SatisfiedCaaSSparkJobBuilder,
+} from './live_system/component/big_data/caas/caas_spark_job';
+
+export {CaaSMlflow} from './live_system/component/big_data/caas/caas_mlflow';
+export type {
+  CaaSMlflowBuilder,
+  CaaSMlflowConfig,
+  SatisfiedCaaSMlflowBuilder,
+} from './live_system/component/big_data/caas/caas_mlflow';
 
 // ── APIManagement Blueprint helpers ─────────────────────────────────────────
 
