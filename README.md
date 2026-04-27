@@ -46,11 +46,11 @@ A Live System is a running instance of a Fractal. It maps each abstract blueprin
 
 | Domain | Blueprint types | Live system offers | Providers |
 |--------|----------------|-------------------|-----------|
-| **NetworkAndCompute** | VirtualNetwork, Subnet, SecurityGroup, VirtualMachine, ContainerPlatform | 31 offers | AWS, Azure, GCP, OCI, Hetzner, VMware, OpenShift |
-| **CustomWorkloads** | Workload | Satisfied by PaaS/CaaS offers (ECS, Container Apps, Cloud Run, OpenShift, etc.) | AWS, Azure, GCP, OCI, OpenShift |
-| **Storage** | FilesAndBlobs, RelationalDbms, RelationalDatabase, DocumentDbms, DocumentDatabase, ColumnOrientedDbms, ColumnOrientedEntity, KeyValueDbms, KeyValueEntity, GraphDbms, GraphDatabase, Search, SearchEntity, Unmanaged | 23 offers | AWS, Azure, GCP, CaaS, SaaS |
+| **NetworkAndCompute** | VirtualNetwork, Subnet, SecurityGroup, VirtualMachine, ContainerPlatform | 41 offers | AWS, Azure, GCP, OCI, Hetzner, VMware, OpenShift, Aruba |
+| **CustomWorkloads** | Workload | Satisfied by PaaS/CaaS offers (ECS, Container Apps, Cloud Run, OpenShift, Kubernetes, etc.) | AWS, Azure, GCP, OCI, OpenShift, CaaS |
+| **Storage** | FilesAndBlobs, RelationalDbms, RelationalDatabase, DocumentDbms, DocumentDatabase, ColumnOrientedDbms, ColumnOrientedEntity, KeyValueDbms, KeyValueEntity, GraphDbms, GraphDatabase, Search, SearchEntity, Unmanaged | 27 offers | AWS, Azure, GCP, Aruba, CaaS, SaaS |
 | **Messaging** | Broker, Entity (PaaS + CaaS), Unmanaged | 12 offers | Azure, GCP, CaaS |
-| **BigData** | DistributedDataProcessing, ComputeCluster, DataProcessingJob, MlExperiment, Datalake, Unmanaged | 16 offers | AWS, Azure, GCP |
+| **BigData** | DistributedDataProcessing, ComputeCluster, DataProcessingJob, MlExperiment, Datalake, Unmanaged | 21 offers | AWS, Azure, GCP, Aruba, CaaS |
 | **APIManagement** | PaaS ApiGateway, CaaS ApiGateway, Unmanaged | 6 offers | AWS, Azure, GCP, CaaS |
 | **Observability** | Monitoring, Tracing, Logging, Unmanaged | 4 offers | CaaS |
 | **Security** | ServiceMesh, Unmanaged | 2 offers | CaaS |
@@ -231,19 +231,40 @@ The same blueprint can be deployed on any supported provider. Live system files 
 
 ### IaaS
 
-| Blueprint component | AWS | Azure | GCP | OCI | Hetzner | VMware | OpenShift |
-|---------------------|-----|-------|-----|-----|---------|--------|-----------|
-| `VirtualNetwork` | `AwsVpc` | `AzureVnet` | `GcpVpc` | `OciVcn` | `HetznerNetwork` | `VspherePortGroup` | — |
-| `Subnet` | `AwsSubnet` | `AzureSubnet` | `GcpSubnet` | `OciSubnet` | `HetznerSubnet` | `VsphereVlan` | — |
-| `SecurityGroup` | `AwsSecurityGroup` | `AzureNsg` | `GcpFirewall` | `OciSecurityList` | `HetznerFirewall` | — | `OpenshiftSecurityGroup` |
-| `VirtualMachine` | `Ec2Instance` | `AzureVm` | `GcpVm` | `OciInstance` | `HetznerServer` | `VsphereVm` | `OpenshiftVm` |
+| Blueprint component | AWS | Azure | GCP | OCI | Hetzner | VMware | OpenShift | Aruba |
+|---------------------|-----|-------|-----|-----|---------|--------|-----------|-------|
+| `VirtualNetwork` | `AwsVpc` | `AzureVnet` | `GcpVpc` | `OciVcn` | `HetznerNetwork` | `VspherePortGroup` | — | `ArubaVpc` |
+| `Subnet` | `AwsSubnet` | `AzureSubnet` | `GcpSubnet` | `OciSubnet` | `HetznerSubnet` | `VsphereVlan` | — | `ArubaSubnet` |
+| `SecurityGroup` | `AwsSecurityGroup` | `AzureNsg` | `GcpFirewall` | `OciSecurityList` | `HetznerFirewall` | — | `OpenshiftSecurityGroup` | `ArubaSecurityGroup` |
+| `VirtualMachine` | `Ec2Instance` | `AzureVm` | `GcpVm` | `OciInstance` | `HetznerServer` | `VsphereVm` | `OpenshiftVm` | `ArubaCloudServer` |
 
 ### PaaS / CaaS
 
-| Blueprint component | AWS | Azure | GCP | OCI | OpenShift |
-|---------------------|-----|-------|-----|-----|-----------|
-| `ContainerPlatform` | `AwsEcsCluster` · `AwsEksCluster` | `AzureAksCluster` · `AzureContainerAppsEnvironment` | `GcpGkeCluster` | — | — |
-| `Workload` | `AwsEcsTaskDefinition` + `AwsEcsService` | `AzureContainerInstance` · `AzureContainerApp` | `GcpCloudRunService` | `OciContainerInstance` | `OpenshiftWorkload` |
+| Blueprint component | AWS | Azure | GCP | OCI | OpenShift | Aruba | CaaS |
+|---------------------|-----|-------|-----|-----|-----------|-------|------|
+| `ContainerPlatform` | `AwsEcsCluster` · `AwsEksCluster` | `AzureAksCluster` · `AzureContainerAppsEnvironment` | `GcpGkeCluster` | — | — | `ArubaKaaS` | — |
+| `Workload` | `AwsEcsTaskDefinition` + `AwsEcsService` | `AzureContainerInstance` · `AzureContainerApp` | `GcpCloudRunService` | `OciContainerInstance` | `OpenshiftWorkload` | — | `CaaSK8sWorkload` |
+
+### Storage
+
+| Blueprint component | AWS | Azure | GCP | Aruba | CaaS |
+|---------------------|-----|-------|-----|-------|------|
+| `FilesAndBlobs` | `AwsS3` | `AzureStorageAccount` · `AzureBlobContainer` · `AzureFileStorage` | `GcpCloudStorage` | `ArubaObjectStorageAccount` | — |
+| `RelationalDbms` | — | `AzurePostgreSqlDbms` · `AzureCosmosDbAccount` | `GcpPostgreSqlDbms` | `ArubaMySqlDbms` · `ArubaMsSqlDbms` | — |
+| `RelationalDatabase` | — | `AzurePostgreSqlDatabase` · `AzureCosmosDbPostgreSqlDatabase` | `GcpPostgreSqlDatabase` | — | — |
+| `DocumentDbms` | — | `AzureCosmosDbAccount` | `GcpFirestore` | — | — |
+| `ColumnOrientedDbms` | — | `AzureCosmosDbCassandra` | `GcpBigTable` | — | — |
+| `Search` | — | — | — | — | `Elastic` |
+
+### BigData
+
+| Blueprint component | AWS | Azure | GCP | Aruba | CaaS |
+|---------------------|-----|-------|-----|-------|------|
+| `DistributedDataProcessing` | `AwsDatabricks` | `AzureDatabricks` | `GcpDatabricks` | — | `CaaSSparkOperator` |
+| `ComputeCluster` | `AwsDatabricksCluster` | `AzureDatabricksCluster` | `GcpDatabricksCluster` | — | `CaaSSparkCluster` |
+| `DataProcessingJob` | `AwsDatabricksJob` | `AzureDatabricksJob` | `GcpDatabricksJob` | — | `CaaSSparkJob` |
+| `MlExperiment` | `AwsDatabricksMlflow` | `AzureDatabricksMlflow` | `GcpDatabricksMlflow` | — | `CaaSMlflow` |
+| `Datalake` | `AwsS3Datalake` | `AzureDatalake` | `GcpDatalake` | `ArubaS3Bucket` | — |
 
 ### OpenShift-specific offers
 
@@ -252,26 +273,18 @@ The same blueprint can be deployed on any supported provider. Live system files 
 | `OpenshiftService` | `NetworkAndCompute.CaaS.OpenshiftService` | Kubernetes Service + Route (standalone) |
 | `OpenshiftPersistentVolume` | `Storage.CaaS.OpenshiftPersistentVolume` | Persistent Volume Claim (standalone) |
 
-### Storage
+### Aruba-specific offers
 
-| Blueprint component | AWS | Azure | GCP | CaaS |
-|---------------------|-----|-------|-----|------|
-| `FilesAndBlobs` | `AwsS3` | `AzureStorageAccount` · `AzureBlobContainer` · `AzureFileStorage` | `GcpCloudStorage` | — |
-| `RelationalDbms` | — | `AzurePostgreSqlDbms` · `AzureCosmosDbAccount` | `GcpPostgreSqlDbms` | — |
-| `RelationalDatabase` | — | `AzurePostgreSqlDatabase` · `AzureCosmosDbPostgreSqlDatabase` | `GcpPostgreSqlDatabase` | — |
-| `DocumentDbms` | — | `AzureCosmosDbAccount` | `GcpFirestore` | — |
-| `ColumnOrientedDbms` | — | `AzureCosmosDbCassandra` | `GcpBigTable` | — |
-| `Search` | — | — | — | `Elastic` |
+These offers have no cross-vendor blueprint equivalent and are used standalone alongside the satisfied components above.
 
-### BigData
-
-| Blueprint component | AWS | Azure | GCP |
-|---------------------|-----|-------|-----|
-| `DistributedDataProcessing` | `AwsDatabricks` | `AzureDatabricks` | `GcpDatabricks` |
-| `ComputeCluster` | `AwsDatabricksCluster` | `AzureDatabricksCluster` | `GcpDatabricksCluster` |
-| `DataProcessingJob` | `AwsDatabricksJob` | `AzureDatabricksJob` | `GcpDatabricksJob` |
-| `MlExperiment` | `AwsDatabricksMlflow` | `AzureDatabricksMlflow` | `GcpDatabricksMlflow` |
-| `Datalake` | `AwsS3Datalake` | `AzureDatalake` | `GcpDatalake` |
+| Offer | Type string | Description |
+|-------|-------------|-------------|
+| `ArubaSshKeyPair` | `NetworkAndCompute.IaaS.ArubaSshKeyPair` | SSH key pair registered in the Aruba account |
+| `ArubaElasticIp` | `NetworkAndCompute.IaaS.ArubaElasticIp` | Reserved public IP for Aruba cloud servers |
+| `ArubaVpcPeering` | `NetworkAndCompute.IaaS.ArubaVpcPeering` | VPC-to-VPC peering connection |
+| `ArubaVpnTunnel` | `NetworkAndCompute.IaaS.ArubaVpnTunnel` | Site-to-site VPN tunnel |
+| `ArubaContainerRegistry` | `NetworkAndCompute.PaaS.ArubaContainerRegistry` | Managed container image registry |
+| `ArubaBlockStorage` | `Storage.IaaS.ArubaBlockStorage` | Block storage volume attachable to a cloud server |
 
 ## Custom Aria Components
 
@@ -486,11 +499,11 @@ src/
       security/              # ServiceMesh
   live_system/       # Provider-specific helpers
     component/
-      network_and_compute/   # AWS, Azure, GCP, OCI, Hetzner, VMware (IaaS) + OpenShift (CaaS) + AWS/Azure/GCP (PaaS)
-      custom_workloads/      # OpenShift (CaaS)
-      storage/               # AWS S3, Azure Storage/CosmosDB/PostgreSQL, GCP Storage/Firestore/BigTable, OpenShift PV
+      network_and_compute/   # AWS, Azure, GCP, OCI, Hetzner, VMware, Aruba (IaaS) + OpenShift (CaaS) + AWS/Azure/GCP/Aruba (PaaS)
+      custom_workloads/      # OpenShift, generic Kubernetes (CaaS)
+      storage/               # AWS S3, Azure Storage/CosmosDB/PostgreSQL, GCP Storage/Firestore/BigTable, Aruba MySQL/MsSQL/Object/Block, OpenShift PV
       messaging/             # Azure ServiceBus/EventHub, GCP PubSub, CaaS Kafka
-      big_data/              # AWS/Azure/GCP Databricks + Datalake
+      big_data/              # AWS/Azure/GCP Databricks + Datalake, Aruba S3 Datalake, CaaS Spark (Operator/Cluster/Job/MLflow)
       api_management/        # AWS CloudFront, Azure API Management, GCP API Gateway, CaaS Ambassador/Traefik
       observability/         # CaaS Prometheus, Jaeger, Elastic
       security/              # CaaS Ocelot
