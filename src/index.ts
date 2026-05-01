@@ -1097,13 +1097,13 @@ export type {
   SatisfiedBigDataSaaSUnmanagedBuilder,
 } from './live_system/component/big_data/saas/unmanaged';
 
-// Live system — Aruba Storage
-export {ArubaS3Bucket} from './live_system/component/big_data/paas/aruba_s3_datalake';
+// Live system — CaaS Storage
+export {CaaSMinioTenant} from './live_system/component/storage/caas/caas_minio_tenant';
 export type {
-  ArubaS3BucketBuilder,
-  ArubaS3BucketConfig,
-  SatisfiedArubaS3BucketBuilder,
-} from './live_system/component/big_data/paas/aruba_s3_datalake';
+  CaaSMinioTenantBuilder,
+  CaaSMinioTenantConfig,
+  SatisfiedCaaSMinioTenantBuilder,
+} from './live_system/component/storage/caas/caas_minio_tenant';
 
 // Live system — CaaS BigData
 export {CaaSSparkOperator} from './live_system/component/big_data/caas/caas_spark_operator';
