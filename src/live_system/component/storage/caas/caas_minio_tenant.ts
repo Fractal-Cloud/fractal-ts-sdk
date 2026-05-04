@@ -52,9 +52,7 @@ function buildMinioTenantType(): BlueprintComponentType {
     .withInfrastructureDomain(InfrastructureDomain.Storage)
     .withServiceDeliveryModel(ServiceDeliveryModel.CaaS)
     .withName(
-      PascalCaseString.getBuilder()
-        .withValue(MINIO_TENANT_TYPE_NAME)
-        .build(),
+      PascalCaseString.getBuilder().withValue(MINIO_TENANT_TYPE_NAME).build(),
     )
     .build();
 }
@@ -100,14 +98,10 @@ export type CaaSMinioTenantBuilder = {
   withBucketName: (bucket: string) => CaaSMinioTenantBuilder;
   withMinioVersion: (version: string) => CaaSMinioTenantBuilder;
   withServers: (servers: number) => CaaSMinioTenantBuilder;
-  withVolumesPerServer: (
-    volumesPerServer: number,
-  ) => CaaSMinioTenantBuilder;
+  withVolumesPerServer: (volumesPerServer: number) => CaaSMinioTenantBuilder;
   withVolumeSize: (size: string) => CaaSMinioTenantBuilder;
   withStorageClass: (storageClass: string) => CaaSMinioTenantBuilder;
-  withRequestAutoCert: (
-    requestAutoCert: boolean,
-  ) => CaaSMinioTenantBuilder;
+  withRequestAutoCert: (requestAutoCert: boolean) => CaaSMinioTenantBuilder;
   build: () => LiveSystemComponent;
 };
 

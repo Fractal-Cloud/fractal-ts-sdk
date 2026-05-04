@@ -95,7 +95,9 @@ function buildPortLinkParams(
   return p;
 }
 
-function buildApiGatewayLinkParams(s: ApiGatewayLinkSettings): GenericParameters {
+function buildApiGatewayLinkParams(
+  s: ApiGatewayLinkSettings,
+): GenericParameters {
   const p = getParametersInstance();
   p.push('prefix', s.prefix as unknown as Record<string, object>);
   p.push('hostname', s.hostname as unknown as Record<string, object>);
@@ -109,7 +111,10 @@ function buildApiGatewayLinkParams(s: ApiGatewayLinkSettings): GenericParameters
     p.push('port', s.port as unknown as Record<string, object>);
   }
   if (s.tlsSecretName !== undefined) {
-    p.push('tlsSecretName', s.tlsSecretName as unknown as Record<string, object>);
+    p.push(
+      'tlsSecretName',
+      s.tlsSecretName as unknown as Record<string, object>,
+    );
   }
   return p;
 }
@@ -134,15 +139,15 @@ export type WorkloadEnvFrom =
  * If `items` is omitted every key in the Secret becomes a file at `mountPath/<key>`.
  */
 export type WorkloadSecretMount = {
-  name: string;            // mount name + Secret name
+  name: string; // mount name + Secret name
   mountPath: string;
   items?: {key: string; path: string}[];
-  readOnly?: boolean;       // default true
+  readOnly?: boolean; // default true
 };
 
 export type WorkloadResources = {
-  cpu?: string;     // "500m", "1"
-  memory?: string;  // "256Mi", "1Gi"
+  cpu?: string; // "500m", "1"
+  memory?: string; // "256Mi", "1Gi"
 };
 
 /**

@@ -31,10 +31,10 @@ export const EXISTING_CLUSTER_PARAM = 'existingCluster';
 // registry; the agent downloads it, uploads to the runtime (DBFS / Volume /
 // init container) and creates a python_wheel_task or equivalent. Devs never
 // see Databricks notebooks or SparkApplication CRs.
-export const ARTIFACT_TYPE_PARAM = 'artifactType';      // "python_wheel" | "notebook"
-export const ARTIFACT_URI_PARAM = 'artifactUri';        // gs://, s3://, oci://, https://
-export const PACKAGE_NAME_PARAM = 'packageName';        // Python package name in the wheel
-export const ENTRY_POINT_PARAM = 'entryPoint';          // module:function or function name
+export const ARTIFACT_TYPE_PARAM = 'artifactType'; // "python_wheel" | "notebook"
+export const ARTIFACT_URI_PARAM = 'artifactUri'; // gs://, s3://, oci://, https://
+export const PACKAGE_NAME_PARAM = 'packageName'; // Python package name in the wheel
+export const ENTRY_POINT_PARAM = 'entryPoint'; // module:function or function name
 export const ENTRY_POINT_ARGS_PARAM = 'entryPointArgs'; // string[] passed to entry point
 
 export const ARTIFACT_TYPE_PYTHON_WHEEL = 'python_wheel';
