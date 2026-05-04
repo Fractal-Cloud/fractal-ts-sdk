@@ -27,6 +27,19 @@ export const CRON_SCHEDULE_PARAM = 'cronSchedule';
 export const MAX_RETRIES_PARAM = 'maxRetries';
 export const EXISTING_CLUSTER_PARAM = 'existingCluster';
 
+// Artifact-driven (Python wheel) execution. The dev publishes a wheel to a
+// registry; the agent downloads it, uploads to the runtime (DBFS / Volume /
+// init container) and creates a python_wheel_task or equivalent. Devs never
+// see Databricks notebooks or SparkApplication CRs.
+export const ARTIFACT_TYPE_PARAM = 'artifactType'; // "python_wheel" | "notebook"
+export const ARTIFACT_URI_PARAM = 'artifactUri'; // gs://, s3://, oci://, https://
+export const PACKAGE_NAME_PARAM = 'packageName'; // Python package name in the wheel
+export const ENTRY_POINT_PARAM = 'entryPoint'; // module:function or function name
+export const ENTRY_POINT_ARGS_PARAM = 'entryPointArgs'; // string[] passed to entry point
+
+export const ARTIFACT_TYPE_PYTHON_WHEEL = 'python_wheel';
+export const ARTIFACT_TYPE_NOTEBOOK = 'notebook';
+
 // ── internal helpers ──────────────────────────────────────────────────────────
 
 function buildId(id: string): ComponentId {
@@ -89,6 +102,12 @@ export type DataProcessingJobBuilder = {
   withCronSchedule: (cron: string) => DataProcessingJobBuilder;
   withMaxRetries: (retries: number) => DataProcessingJobBuilder;
   withExistingCluster: (useExisting: boolean) => DataProcessingJobBuilder;
+  /** Vendor-agnostic Python wheel execution. The agent downloads from artifactUri and wraps for the runtime. */
+  withArtifactType: (type: string) => DataProcessingJobBuilder;
+  withArtifactUri: (uri: string) => DataProcessingJobBuilder;
+  withPackageName: (name: string) => DataProcessingJobBuilder;
+  withEntryPoint: (entry: string) => DataProcessingJobBuilder;
+  withEntryPointArgs: (args: string[]) => DataProcessingJobBuilder;
   build: () => BlueprintComponent;
 };
 
@@ -107,6 +126,11 @@ export type DataProcessingJobConfig = {
   cronSchedule?: string;
   maxRetries?: number;
   existingCluster?: boolean;
+  artifactType?: string;
+  artifactUri?: string;
+  packageName?: string;
+  entryPoint?: string;
+  entryPointArgs?: string[];
 };
 
 function makeDataProcessingJobComponent(
@@ -179,6 +203,26 @@ export namespace DataProcessingJob {
         pushParam(params, EXISTING_CLUSTER_PARAM, useExisting);
         return builder;
       },
+      withArtifactType: type => {
+        pushParam(params, ARTIFACT_TYPE_PARAM, type);
+        return builder;
+      },
+      withArtifactUri: uri => {
+        pushParam(params, ARTIFACT_URI_PARAM, uri);
+        return builder;
+      },
+      withPackageName: name => {
+        pushParam(params, PACKAGE_NAME_PARAM, name);
+        return builder;
+      },
+      withEntryPoint: entry => {
+        pushParam(params, ENTRY_POINT_PARAM, entry);
+        return builder;
+      },
+      withEntryPointArgs: args => {
+        pushParam(params, ENTRY_POINT_ARGS_PARAM, args);
+        return builder;
+      },
       build: () => inner.build(),
     };
 
@@ -206,9 +250,29 @@ export namespace DataProcessingJob {
     if (config.jarUri) b.withJarUri(config.jarUri);
     if (config.parameters) b.withParameters(config.parameters);
     if (config.cronSchedule) b.withCronSchedule(config.cronSchedule);
-    if (config.maxRetries !== undefined) b.withMaxRetries(config.maxRetries);
-    if (config.existingCluster !== undefined)
+    if (config.maxRetries !== undefined) {
+      b.withMaxRetries(config.maxRetries);
+    }
+    if (config.existingCluster !== undefined) {
       b.withExistingCluster(config.existingCluster);
+    }
+    // artifactType defaults to "python_wheel" when an artifactUri is supplied —
+    // devs publishing a wheel don't need to declare the type explicitly.
+    if (config.artifactUri) {
+      b.withArtifactUri(config.artifactUri);
+      b.withArtifactType(config.artifactType ?? ARTIFACT_TYPE_PYTHON_WHEEL);
+    } else if (config.artifactType) {
+      b.withArtifactType(config.artifactType);
+    }
+    if (config.packageName) {
+      b.withPackageName(config.packageName);
+    }
+    if (config.entryPoint) {
+      b.withEntryPoint(config.entryPoint);
+    }
+    if (config.entryPointArgs) {
+      b.withEntryPointArgs(config.entryPointArgs);
+    }
 
     return makeDataProcessingJobComponent(b.build());
   };

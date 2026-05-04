@@ -264,7 +264,7 @@ The same blueprint can be deployed on any supported provider. Live system files 
 | `ComputeCluster` | `AwsDatabricksCluster` | `AzureDatabricksCluster` | `GcpDatabricksCluster` | — | `CaaSSparkCluster` |
 | `DataProcessingJob` | `AwsDatabricksJob` | `AzureDatabricksJob` | `GcpDatabricksJob` | — | `CaaSSparkJob` |
 | `MlExperiment` | `AwsDatabricksMlflow` | `AzureDatabricksMlflow` | `GcpDatabricksMlflow` | — | `CaaSMlflow` |
-| `Datalake` | `AwsS3Datalake` | `AzureDatalake` | `GcpDatalake` | `ArubaS3Bucket` | — |
+| `Datalake` | `AwsS3Datalake` | `AzureDatalake` | `GcpDatalake` | — | `CaaSMinioTenant` |
 
 ### OpenShift-specific offers
 

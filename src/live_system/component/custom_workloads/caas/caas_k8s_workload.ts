@@ -20,6 +20,15 @@ const CONTAINER_PORT_PARAM = 'containerPort';
 const CPU_PARAM = 'cpu';
 const MEMORY_PARAM = 'memory';
 
+// OCI artifact URI carrying a `.fractal/` bundle (Deployment / StatefulSet /
+// DaemonSet manifests + fractal-parameters.yml). Optional. When set, the
+// caas-k8s agent fetches the bundle, applies the manifest matching the
+// component's id, then overlays SDK-derived fields on top. When unset, the
+// agent generates a Deployment from SDK params alone. See
+// fractal-docs/getting-started/manifests-as-oci-artifacts.mdx for the
+// full dev-side contract.
+const MANIFEST_URI_PARAM = 'manifestUri';
+
 function buildId(id: string): ComponentId {
   return getComponentIdBuilder()
     .withValue(KebabCaseString.getBuilder().withValue(id).build())
@@ -56,6 +65,21 @@ function pushParam(
 
 export type SatisfiedCaaSK8sWorkloadBuilder = {
   withReplicas: (replicas: number) => SatisfiedCaaSK8sWorkloadBuilder;
+  /**
+   * OCI artifact URI carrying a `.fractal/` bundle.
+   *
+   * Format: `<registry>/<repo>:<tag>` or `<registry>/<repo>@sha256:<digest>`.
+   * The bundle must contain `<componentId>-fdeploy.yaml` for this workload
+   * and a `fractal-parameters.yml` with an entry whose `name` matches the
+   * LiveSystem's environment short-name. SDK-derived fields (replicas,
+   * containerImage, etc.) overlay onto whichever workload-shaped doc the
+   * bundle declares (Deployment, StatefulSet, DaemonSet, ...).
+   *
+   * Optional. When omitted, the agent generates a Deployment from SDK
+   * params alone. There is intentionally no default location — devs name
+   * artifacts however they want.
+   */
+  withManifestUri: (uri: string) => SatisfiedCaaSK8sWorkloadBuilder;
   build: () => LiveSystemComponent;
 };
 
@@ -73,6 +97,8 @@ export type CaaSK8sWorkloadBuilder = {
   withCpu: (cpu: string) => CaaSK8sWorkloadBuilder;
   withMemory: (memory: string) => CaaSK8sWorkloadBuilder;
   withReplicas: (replicas: number) => CaaSK8sWorkloadBuilder;
+  /** See SatisfiedCaaSK8sWorkloadBuilder.withManifestUri. */
+  withManifestUri: (uri: string) => CaaSK8sWorkloadBuilder;
   build: () => LiveSystemComponent;
 };
 
@@ -86,6 +112,8 @@ export type CaaSK8sWorkloadConfig = {
   cpu?: string;
   memory?: string;
   replicas?: number;
+  /** OCI artifact URI of the `.fractal/` bundle. See builder docs. */
+  manifestUri?: string;
 };
 
 export namespace CaaSK8sWorkload {
@@ -131,6 +159,10 @@ export namespace CaaSK8sWorkload {
       },
       withReplicas: v => {
         pushParam(params, REPLICAS_PARAM, v);
+        return builder;
+      },
+      withManifestUri: v => {
+        pushParam(params, MANIFEST_URI_PARAM, v);
         return builder;
       },
       build: () => inner.build(),
@@ -186,6 +218,10 @@ export namespace CaaSK8sWorkload {
         pushParam(params, REPLICAS_PARAM, v);
         return satisfiedBuilder;
       },
+      withManifestUri: v => {
+        pushParam(params, MANIFEST_URI_PARAM, v);
+        return satisfiedBuilder;
+      },
       build: () => inner.build(),
     };
     return satisfiedBuilder;
@@ -219,6 +255,9 @@ export namespace CaaSK8sWorkload {
     }
     if (config.replicas !== undefined) {
       b.withReplicas(config.replicas);
+    }
+    if (config.manifestUri) {
+      b.withManifestUri(config.manifestUri);
     }
     return b.build();
   };
