@@ -16,6 +16,13 @@ import {getVersionBuilder, Version} from '../../../../values/version';
 import {BlueprintComponent} from '../../index';
 import {BlueprintComponentDependency} from '../../dependency';
 import {WorkloadComponent} from '../../custom_workloads/caas/workload';
+import {CaaSApiGatewayComponent} from '../../api_management/caas/api_gateway';
+import {CaaSBrokerComponent} from '../../messaging/caas/broker';
+import {SearchComponent} from '../../storage/caas/search';
+import {MonitoringComponent} from '../../observability/caas/monitoring';
+import {TracingComponent} from '../../observability/caas/tracing';
+import {LoggingComponent} from '../../observability/caas/logging';
+import {ServiceMeshComponent} from '../../security/caas/service_mesh';
 
 export const CONTAINER_PLATFORM_TYPE_NAME = 'ContainerPlatform';
 export const NODE_POOLS_PARAM = 'nodePools';
@@ -67,6 +74,13 @@ function pushParam(
   params.push(key, value as Record<string, object>);
 }
 
+function appendDep(
+  bp: BlueprintComponent,
+  dep: BlueprintComponentDependency,
+): BlueprintComponent {
+  return {...bp, dependencies: [...bp.dependencies, dep]};
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export type ContainerPlatformComponent = {
@@ -76,7 +90,40 @@ export type ContainerPlatformComponent = {
    * Pass these to Subnet.withWorkloads() so the subnet dep is stacked on top.
    */
   readonly workloads: ReadonlyArray<WorkloadComponent>;
+  /** API Gateway with the platform dependency auto-wired (at most one per cluster). */
+  readonly apiGateway: CaaSApiGatewayComponent | undefined;
+  /** Messaging brokers with the platform dep auto-wired; entities transitively depend via the broker. */
+  readonly brokers: ReadonlyArray<CaaSBrokerComponent>;
+  /** Search clusters with the platform dep auto-wired; entities transitively depend via the search. */
+  readonly searches: ReadonlyArray<SearchComponent>;
+  /** Monitoring stack with the platform dependency auto-wired (at most one per cluster). */
+  readonly monitoring: MonitoringComponent | undefined;
+  /** Tracing backend with the platform dependency auto-wired (at most one per cluster). */
+  readonly tracing: TracingComponent | undefined;
+  /** Logging pipeline with the platform dependency auto-wired (at most one per cluster). */
+  readonly logging: LoggingComponent | undefined;
+  /** Service mesh with the platform dependency auto-wired (at most one per cluster). */
+  readonly serviceMesh: ServiceMeshComponent | undefined;
+  /**
+   * Flat list of every blueprint component owned by this container platform —
+   * the platform itself plus all wired CaaS services and their child entities.
+   * Spread these into Fractal.withComponents() for direct inclusion.
+   */
+  readonly components: ReadonlyArray<BlueprintComponent>;
   withWorkloads: (workloads: WorkloadComponent[]) => ContainerPlatformComponent;
+  withApiGateway: (
+    apiGateway: CaaSApiGatewayComponent,
+  ) => ContainerPlatformComponent;
+  withBrokers: (brokers: CaaSBrokerComponent[]) => ContainerPlatformComponent;
+  withSearches: (searches: SearchComponent[]) => ContainerPlatformComponent;
+  withMonitoring: (
+    monitoring: MonitoringComponent,
+  ) => ContainerPlatformComponent;
+  withTracing: (tracing: TracingComponent) => ContainerPlatformComponent;
+  withLogging: (logging: LoggingComponent) => ContainerPlatformComponent;
+  withServiceMesh: (
+    serviceMesh: ServiceMeshComponent,
+  ) => ContainerPlatformComponent;
 };
 
 export type ContainerPlatformBuilder = {
@@ -100,23 +147,110 @@ export type ContainerPlatformConfig = {
   nodePools?: NodePoolConfig[];
 };
 
+type CaaSCollections = {
+  workloads: ReadonlyArray<WorkloadComponent>;
+  apiGateway: CaaSApiGatewayComponent | undefined;
+  brokers: ReadonlyArray<CaaSBrokerComponent>;
+  searches: ReadonlyArray<SearchComponent>;
+  monitoring: MonitoringComponent | undefined;
+  tracing: TracingComponent | undefined;
+  logging: LoggingComponent | undefined;
+  serviceMesh: ServiceMeshComponent | undefined;
+};
+
+const emptyCollections: CaaSCollections = {
+  workloads: [],
+  apiGateway: undefined,
+  brokers: [],
+  searches: [],
+  monitoring: undefined,
+  tracing: undefined,
+  logging: undefined,
+  serviceMesh: undefined,
+};
+
 function makeContainerPlatformComponent(
   platform: BlueprintComponent,
-  workloadNodes: WorkloadComponent[],
+  caas: CaaSCollections,
 ): ContainerPlatformComponent {
   const platformDep: BlueprintComponentDependency = {id: platform.id};
-  const wiredWorkloads = workloadNodes.map(w => ({
+
+  const wiredWorkloads = caas.workloads.map(w => ({
     ...w,
-    component: {
-      ...w.component,
-      dependencies: [...w.component.dependencies, platformDep],
-    },
+    component: appendDep(w.component, platformDep),
   }));
+
+  const wiredBrokers = caas.brokers.map(b => {
+    const broker = appendDep(b.broker, platformDep);
+    return {...b, broker};
+  });
+
+  const wiredSearches = caas.searches.map(s => {
+    const search = appendDep(s.search, platformDep);
+    return {...s, search};
+  });
+
+  const wireSingleton = <T extends {component: BlueprintComponent}>(
+    node: T | undefined,
+  ): T | undefined => {
+    if (!node) {
+      return undefined;
+    }
+    const component = appendDep(node.component, platformDep);
+    return {...node, component, components: [component]};
+  };
+
+  const wiredApiGateway = wireSingleton(caas.apiGateway);
+  const wiredMonitoring = wireSingleton(caas.monitoring);
+  const wiredTracing = wireSingleton(caas.tracing);
+  const wiredLogging = wireSingleton(caas.logging);
+  const wiredServiceMesh = wireSingleton(caas.serviceMesh);
+
+  const components: BlueprintComponent[] = [
+    platform,
+    ...wiredWorkloads.map(w => w.component),
+    ...(wiredApiGateway ? [wiredApiGateway.component] : []),
+    ...wiredBrokers.flatMap(b => [
+      b.broker,
+      ...b.entities.map(e => e.component),
+    ]),
+    ...wiredSearches.flatMap(s => [
+      s.search,
+      ...s.entities.map(e => e.component),
+    ]),
+    ...(wiredMonitoring ? [wiredMonitoring.component] : []),
+    ...(wiredTracing ? [wiredTracing.component] : []),
+    ...(wiredLogging ? [wiredLogging.component] : []),
+    ...(wiredServiceMesh ? [wiredServiceMesh.component] : []),
+  ];
+
   return {
     platform,
     workloads: wiredWorkloads,
-    withWorkloads: newWorkloads =>
-      makeContainerPlatformComponent(platform, newWorkloads),
+    apiGateway: wiredApiGateway,
+    brokers: wiredBrokers,
+    searches: wiredSearches,
+    monitoring: wiredMonitoring,
+    tracing: wiredTracing,
+    logging: wiredLogging,
+    serviceMesh: wiredServiceMesh,
+    components,
+    withWorkloads: workloads =>
+      makeContainerPlatformComponent(platform, {...caas, workloads}),
+    withApiGateway: apiGateway =>
+      makeContainerPlatformComponent(platform, {...caas, apiGateway}),
+    withBrokers: brokers =>
+      makeContainerPlatformComponent(platform, {...caas, brokers}),
+    withSearches: searches =>
+      makeContainerPlatformComponent(platform, {...caas, searches}),
+    withMonitoring: monitoring =>
+      makeContainerPlatformComponent(platform, {...caas, monitoring}),
+    withTracing: tracing =>
+      makeContainerPlatformComponent(platform, {...caas, tracing}),
+    withLogging: logging =>
+      makeContainerPlatformComponent(platform, {...caas, logging}),
+    withServiceMesh: serviceMesh =>
+      makeContainerPlatformComponent(platform, {...caas, serviceMesh}),
   };
 }
 
@@ -166,9 +300,13 @@ export namespace ContainerPlatform {
       )
       .withDisplayName(config.displayName);
 
-    if (config.description) b.withDescription(config.description);
-    if (config.nodePools) b.withNodePools(config.nodePools);
+    if (config.description) {
+      b.withDescription(config.description);
+    }
+    if (config.nodePools) {
+      b.withNodePools(config.nodePools);
+    }
 
-    return makeContainerPlatformComponent(b.build(), []);
+    return makeContainerPlatformComponent(b.build(), emptyCollections);
   };
 }

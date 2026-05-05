@@ -17,6 +17,8 @@ import {BlueprintComponent} from '../../index';
 import {getLinkBuilder} from '../../../../component/link';
 import {SecurityGroupComponent} from '../../network_and_compute/iaas/security_group';
 import {CaaSApiGatewayComponent} from '../../api_management/caas/api_gateway';
+import {CaaSMessagingEntityComponent} from '../../messaging/caas/entity';
+import {MessagingEntityComponent} from '../../messaging/paas/entity';
 
 export const WORKLOAD_TYPE_NAME = 'Workload';
 export const CONTAINER_IMAGE_PARAM = 'containerImage';
@@ -91,6 +93,24 @@ function buildPortLinkParams(
   }
   if (protocol) {
     p.push('protocol', protocol as unknown as Record<string, object>);
+  }
+  return p;
+}
+
+function buildMessagingLinkParams(s: MessagingLinkSettings): GenericParameters {
+  const p = getParametersInstance();
+  p.push('access', s.access as unknown as Record<string, object>);
+  if (s.consumerGroup !== undefined) {
+    p.push(
+      'consumerGroup',
+      s.consumerGroup as unknown as Record<string, object>,
+    );
+  }
+  if (s.startingPosition !== undefined) {
+    p.push(
+      'startingPosition',
+      s.startingPosition as unknown as Record<string, object>,
+    );
   }
   return p;
 }
@@ -178,6 +198,31 @@ export type WorkloadApiGatewayLink = {
   target: CaaSApiGatewayComponent;
 } & ApiGatewayLinkSettings;
 
+/**
+ * Access mode for a Workload → Messaging entity link.
+ * - `publish`: workload only produces messages.
+ * - `subscribe`: workload only consumes messages.
+ * - `publish-subscribe`: workload both produces and consumes.
+ */
+export type MessagingAccessType = 'publish' | 'subscribe' | 'publish-subscribe';
+
+/**
+ * Settings for a Workload → MessagingEntity link. The agent that reconciles the
+ * messaging stack uses these to grant the workload the right IAM/ACL on the topic
+ * (and to wire any consumer-side parameters like consumer group / starting position).
+ */
+export type MessagingLinkSettings = {
+  access: MessagingAccessType;
+  /** Consumer group; only meaningful when `access` includes `subscribe`. */
+  consumerGroup?: string;
+  /** Subscriber starting position: `"start"`, `"end"`, or an ISO timestamp. */
+  startingPosition?: string;
+};
+
+export type WorkloadMessagingLink = {
+  target: CaaSMessagingEntityComponent | MessagingEntityComponent;
+} & MessagingLinkSettings;
+
 export type WorkloadComponent = {
   readonly component: BlueprintComponent;
   readonly components: ReadonlyArray<BlueprintComponent>;
@@ -187,6 +232,8 @@ export type WorkloadComponent = {
   linkToSecurityGroup: (sgs: SecurityGroupComponent[]) => WorkloadComponent;
   /** Declares "expose me through this API Gateway". Settings carry the routing contract (prefix, hostname, rewrite, timeoutMs, port, tlsSecretName). The gateway's agent derives a Mapping/Ingress/etc per link. */
   linkToApiGateway: (links: WorkloadApiGatewayLink[]) => WorkloadComponent;
+  /** Declares "I publish to / subscribe from this messaging topic/queue". Settings carry the access mode and optional consumer-side parameters. The messaging agent uses these to provision IAM/ACLs and wire consumer config. */
+  linkToMessagingEntity: (links: WorkloadMessagingLink[]) => WorkloadComponent;
 };
 
 export type WorkloadBuilder = {
@@ -279,6 +326,19 @@ function makeWorkloadComponent(
       return makeWorkloadComponent({
         ...component,
         links: [...component.links, ...gwLinks],
+      });
+    },
+    linkToMessagingEntity: (links: WorkloadMessagingLink[]) => {
+      const msgLinks = links.map(l =>
+        getLinkBuilder()
+          .withId(l.target.component.id)
+          .withType(l.target.component.type)
+          .withParameters(buildMessagingLinkParams(l))
+          .build(),
+      );
+      return makeWorkloadComponent({
+        ...component,
+        links: [...component.links, ...msgLinks],
       });
     },
   };
