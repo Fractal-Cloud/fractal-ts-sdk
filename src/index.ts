@@ -323,6 +323,11 @@ export type {
   WorkloadConfig,
   WorkloadComponent,
   WorkloadPortLink,
+  WorkloadApiGatewayLink,
+  WorkloadMessagingLink,
+  ApiGatewayLinkSettings,
+  MessagingLinkSettings,
+  MessagingAccessType,
 } from './fractal/component/custom_workloads/caas/workload';
 
 // Live system component helpers — OpenShift CaaS
@@ -956,6 +961,12 @@ export type {
   DataProcessingJobBuilder,
   DataProcessingJobConfig,
   DataProcessingJobComponent,
+  DataProcessingJobDatalakeLink,
+  DatalakeLinkSettings,
+  DatalakePurpose,
+  DataProcessingJobMessagingLink,
+  DataProcessingJobMessagingLinkSettings,
+  DataProcessingJobMessagingAccessType,
 } from './fractal/component/big_data/paas/data_processing_job';
 
 export {MlExperiment} from './fractal/component/big_data/paas/ml_experiment';

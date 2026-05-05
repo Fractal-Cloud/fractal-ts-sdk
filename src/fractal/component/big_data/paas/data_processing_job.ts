@@ -14,6 +14,10 @@ import {getComponentIdBuilder, ComponentId} from '../../../../component/id';
 import {KebabCaseString} from '../../../../values/kebab_case_string';
 import {getVersionBuilder, Version} from '../../../../values/version';
 import {BlueprintComponent} from '../../index';
+import {getLinkBuilder} from '../../../../component/link';
+import {DatalakeComponent} from './datalake';
+import {MessagingEntityComponent} from '../../messaging/paas/entity';
+import {CaaSMessagingEntityComponent} from '../../messaging/caas/entity';
 
 export const DATA_PROCESSING_JOB_TYPE_NAME = 'DataProcessingJob';
 export const JOB_NAME_PARAM = 'jobName';
@@ -39,6 +43,27 @@ export const ENTRY_POINT_ARGS_PARAM = 'entryPointArgs'; // string[] passed to en
 
 export const ARTIFACT_TYPE_PYTHON_WHEEL = 'python_wheel';
 export const ARTIFACT_TYPE_NOTEBOOK = 'notebook';
+
+// ── Datalake link settings (DataProcessingJob → Datalake) ────────────────────
+//
+// A job declares a runtime relationship to a Datalake by purpose. The agent
+// reads these links and injects the corresponding URI(s) into the job runtime
+// (e.g. as env vars on the wheel task / SparkApplication).
+export const DATALAKE_PURPOSE_PARAM = 'purpose';
+export const DATALAKE_PATH_PARAM = 'path';
+
+export const DATALAKE_PURPOSE_RAW = 'raw';
+export const DATALAKE_PURPOSE_CURATED = 'curated';
+export const DATALAKE_PURPOSE_CHECKPOINT = 'checkpoint';
+
+// ── MessagingEntity link settings (DataProcessingJob → MessagingEntity) ──────
+//
+// A job declares what topics/queues it reads from and writes to. The agent
+// reconciling the messaging stack uses these to grant the right IAM/ACLs and
+// to wire any consumer-side parameters.
+export const MESSAGING_ACCESS_PARAM = 'access';
+export const MESSAGING_CONSUMER_GROUP_PARAM = 'consumerGroup';
+export const MESSAGING_STARTING_POSITION_PARAM = 'startingPosition';
 
 // ── internal helpers ──────────────────────────────────────────────────────────
 
@@ -76,11 +101,112 @@ function pushParam(
   params.push(key, value as Record<string, object>);
 }
 
+function buildDatalakeLinkParams(s: DatalakeLinkSettings): GenericParameters {
+  const p = getParametersInstance();
+  p.push(
+    DATALAKE_PURPOSE_PARAM,
+    s.purpose as unknown as Record<string, object>,
+  );
+  if (s.path !== undefined) {
+    p.push(DATALAKE_PATH_PARAM, s.path as unknown as Record<string, object>);
+  }
+  return p;
+}
+
+function buildMessagingLinkParams(
+  s: DataProcessingJobMessagingLinkSettings,
+): GenericParameters {
+  const p = getParametersInstance();
+  p.push(MESSAGING_ACCESS_PARAM, s.access as unknown as Record<string, object>);
+  if (s.consumerGroup !== undefined) {
+    p.push(
+      MESSAGING_CONSUMER_GROUP_PARAM,
+      s.consumerGroup as unknown as Record<string, object>,
+    );
+  }
+  if (s.startingPosition !== undefined) {
+    p.push(
+      MESSAGING_STARTING_POSITION_PARAM,
+      s.startingPosition as unknown as Record<string, object>,
+    );
+  }
+  return p;
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
+
+/**
+ * Purpose of a DataProcessingJob → Datalake link.
+ * - `raw`: ingestion zone for unprocessed inputs
+ * - `curated`: processed / cleaned outputs
+ * - `checkpoint`: streaming checkpoint location (Spark Structured Streaming, etc.)
+ */
+export type DatalakePurpose = 'raw' | 'curated' | 'checkpoint';
+
+/**
+ * Settings for a DataProcessingJob → Datalake link. The agent uses these to
+ * inject the right URI into the job runtime (e.g. LAKE_RAW_URI, LAKE_CURATED_URI,
+ * LAKE_CHECKPOINT_URI as env vars / Spark conf), composed as `<lake-uri>/<path>`
+ * when `path` is set.
+ */
+export type DatalakeLinkSettings = {
+  purpose: DatalakePurpose;
+  /** Optional subpath within the lake. Agent composes `<lake-uri>/<path>`. */
+  path?: string;
+};
+
+export type DataProcessingJobDatalakeLink = {
+  target: DatalakeComponent;
+} & DatalakeLinkSettings;
+
+/**
+ * Access mode for a DataProcessingJob → MessagingEntity link.
+ * - `publish`: job only writes messages.
+ * - `subscribe`: job only consumes messages.
+ * - `publish-subscribe`: job both writes and consumes.
+ */
+export type DataProcessingJobMessagingAccessType =
+  | 'publish'
+  | 'subscribe'
+  | 'publish-subscribe';
+
+/**
+ * Settings for a DataProcessingJob → MessagingEntity link. The messaging
+ * agent uses these to grant the job the right IAM/ACL on the topic and to
+ * wire any consumer-side parameters (consumer group / starting position).
+ */
+export type DataProcessingJobMessagingLinkSettings = {
+  access: DataProcessingJobMessagingAccessType;
+  /** Consumer group; only meaningful when `access` includes `subscribe`. */
+  consumerGroup?: string;
+  /** Subscriber starting position: `"start"`, `"end"`, or an ISO timestamp. */
+  startingPosition?: string;
+};
+
+export type DataProcessingJobMessagingLink = {
+  target: MessagingEntityComponent | CaaSMessagingEntityComponent;
+} & DataProcessingJobMessagingLinkSettings;
 
 export type DataProcessingJobComponent = {
   readonly component: BlueprintComponent;
   readonly components: ReadonlyArray<BlueprintComponent>;
+  /**
+   * Declares "this job reads from / writes to this Datalake for the given purpose".
+   * The agent injects the corresponding URI into the job runtime. Multiple links
+   * are allowed and may target different Datalakes.
+   */
+  linkToDatalake: (
+    links: DataProcessingJobDatalakeLink[],
+  ) => DataProcessingJobComponent;
+  /**
+   * Declares "this job publishes to / subscribes from this messaging topic/queue".
+   * Settings carry the access mode and optional consumer-side parameters
+   * (consumer group, starting position). The messaging agent uses these to
+   * provision IAM/ACLs and wire consumer config.
+   */
+  linkToMessagingEntity: (
+    links: DataProcessingJobMessagingLink[],
+  ) => DataProcessingJobComponent;
 };
 
 export type DataProcessingJobBuilder = {
@@ -136,7 +262,36 @@ export type DataProcessingJobConfig = {
 function makeDataProcessingJobComponent(
   component: BlueprintComponent,
 ): DataProcessingJobComponent {
-  return {component, components: [component]};
+  return {
+    component,
+    components: [component],
+    linkToDatalake: (links: DataProcessingJobDatalakeLink[]) => {
+      const lakeLinks = links.map(l =>
+        getLinkBuilder()
+          .withId(l.target.component.id)
+          .withType(l.target.component.type)
+          .withParameters(buildDatalakeLinkParams(l))
+          .build(),
+      );
+      return makeDataProcessingJobComponent({
+        ...component,
+        links: [...component.links, ...lakeLinks],
+      });
+    },
+    linkToMessagingEntity: (links: DataProcessingJobMessagingLink[]) => {
+      const msgLinks = links.map(l =>
+        getLinkBuilder()
+          .withId(l.target.component.id)
+          .withType(l.target.component.type)
+          .withParameters(buildMessagingLinkParams(l))
+          .build(),
+      );
+      return makeDataProcessingJobComponent({
+        ...component,
+        links: [...component.links, ...msgLinks],
+      });
+    },
+  };
 }
 
 export namespace DataProcessingJob {

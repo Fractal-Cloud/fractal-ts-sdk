@@ -8,6 +8,8 @@ import {
   DESIRED_COUNT_PARAM,
 } from './workload';
 import {SecurityGroup} from '../../network_and_compute/iaas/security_group';
+import {CaaSMessagingEntity} from '../../messaging/caas/entity';
+import {MessagingEntity} from '../../messaging/paas/entity';
 
 const BASE_CONFIG = {
   id: 'my-workload',
@@ -127,6 +129,115 @@ describe('Workload', () => {
       });
       const workload = Workload.create(BASE_CONFIG).linkToSecurityGroup([sg]);
       expect(workload.component.dependencies).toHaveLength(0);
+    });
+  });
+
+  describe('linkToMessagingEntity()', () => {
+    const entityVersion = {major: 1, minor: 0, patch: 0};
+
+    it('should add a publish link to a CaaS entity with the entity type carried through', () => {
+      const topic = CaaSMessagingEntity.create({
+        id: 'orders-topic',
+        version: entityVersion,
+        displayName: 'Orders',
+      });
+      const workload = Workload.create(BASE_CONFIG).linkToMessagingEntity([
+        {target: topic, access: 'publish'},
+      ]);
+
+      expect(workload.component.links).toHaveLength(1);
+      const link = workload.component.links[0];
+      expect(link.id.toString()).toBe('orders-topic');
+      expect(link.type.toString()).toBe('Messaging.CaaS.Entity');
+      expect(link.parameters.getOptionalFieldByName('access')).toBe('publish');
+    });
+
+    it('should support PaaS messaging entities and carry their type through', () => {
+      const queue = MessagingEntity.create({
+        id: 'orders-queue',
+        version: entityVersion,
+        displayName: 'Orders',
+      });
+      const workload = Workload.create(BASE_CONFIG).linkToMessagingEntity([
+        {target: queue, access: 'subscribe', consumerGroup: 'order-processor'},
+      ]);
+
+      const link = workload.component.links[0];
+      expect(link.type.toString()).toBe('Messaging.PaaS.Entity');
+      expect(link.parameters.getOptionalFieldByName('access')).toBe('subscribe');
+      expect(link.parameters.getOptionalFieldByName('consumerGroup')).toBe(
+        'order-processor',
+      );
+    });
+
+    it('should accept publish-subscribe access and a startingPosition setting', () => {
+      const topic = CaaSMessagingEntity.create({
+        id: 'events-topic',
+        version: entityVersion,
+        displayName: 'Events',
+      });
+      const workload = Workload.create(BASE_CONFIG).linkToMessagingEntity([
+        {
+          target: topic,
+          access: 'publish-subscribe',
+          consumerGroup: 'audit',
+          startingPosition: 'end',
+        },
+      ]);
+
+      const link = workload.component.links[0];
+      expect(link.parameters.getOptionalFieldByName('access')).toBe(
+        'publish-subscribe',
+      );
+      expect(link.parameters.getOptionalFieldByName('startingPosition')).toBe(
+        'end',
+      );
+    });
+
+    it('should accumulate multiple messaging links', () => {
+      const orders = CaaSMessagingEntity.create({
+        id: 'orders-topic',
+        version: entityVersion,
+        displayName: 'Orders',
+      });
+      const audit = CaaSMessagingEntity.create({
+        id: 'audit-topic',
+        version: entityVersion,
+        displayName: 'Audit',
+      });
+      const workload = Workload.create(BASE_CONFIG).linkToMessagingEntity([
+        {target: orders, access: 'publish'},
+        {target: audit, access: 'subscribe', consumerGroup: 'auditor'},
+      ]);
+      expect(workload.component.links).toHaveLength(2);
+      expect(workload.component.links[0].id.toString()).toBe('orders-topic');
+      expect(workload.component.links[1].id.toString()).toBe('audit-topic');
+    });
+
+    it('should not add a dependency on the entity (links are runtime, not ordering)', () => {
+      const topic = CaaSMessagingEntity.create({
+        id: 'orders-topic',
+        version: entityVersion,
+        displayName: 'Orders',
+      });
+      const workload = Workload.create(BASE_CONFIG).linkToMessagingEntity([
+        {target: topic, access: 'publish'},
+      ]);
+      expect(workload.component.dependencies).toHaveLength(0);
+    });
+
+    it('should be immutable — linkToMessagingEntity returns a new node', () => {
+      const topic = CaaSMessagingEntity.create({
+        id: 'orders-topic',
+        version: entityVersion,
+        displayName: 'Orders',
+      });
+      const original = Workload.create(BASE_CONFIG);
+      const linked = original.linkToMessagingEntity([
+        {target: topic, access: 'publish'},
+      ]);
+      expect(original.component.links).toHaveLength(0);
+      expect(linked.component.links).toHaveLength(1);
     });
   });
 });
