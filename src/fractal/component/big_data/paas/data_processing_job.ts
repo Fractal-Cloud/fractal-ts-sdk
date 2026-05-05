@@ -117,10 +117,7 @@ function buildMessagingLinkParams(
   s: DataProcessingJobMessagingLinkSettings,
 ): GenericParameters {
   const p = getParametersInstance();
-  p.push(
-    MESSAGING_ACCESS_PARAM,
-    s.access as unknown as Record<string, object>,
-  );
+  p.push(MESSAGING_ACCESS_PARAM, s.access as unknown as Record<string, object>);
   if (s.consumerGroup !== undefined) {
     p.push(
       MESSAGING_CONSUMER_GROUP_PARAM,
