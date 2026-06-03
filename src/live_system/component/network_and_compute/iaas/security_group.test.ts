@@ -17,7 +17,7 @@ describe('AwsSecurityGroup', () => {
   describe('create()', () => {
     it('should build a component with the correct type string', () => {
       const c = AwsSecurityGroup.create(BASE_CONFIG);
-      expect(c.type.toString()).toBe('NetworkAndCompute.IaaS.SecurityGroup');
+      expect(c.type.toString()).toBe('NetworkAndCompute.IaaS.AwsSecurityGroup');
     });
 
     it('should set provider to AWS', () => {
@@ -29,15 +29,17 @@ describe('AwsSecurityGroup', () => {
       const c = AwsSecurityGroup.create(BASE_CONFIG);
       expect(c.description).toBe('Allow HTTP');
       expect(c.parameters.getOptionalFieldByName(DESCRIPTION_PARAM)).toBe(
-        'Allow HTTP'
+        'Allow HTTP',
       );
     });
 
     it('should set ingressRules when provided', () => {
-      const rules = [{fromPort: 80, toPort: 80, protocol: 'tcp', sourceCidr: '0.0.0.0/0'}];
+      const rules = [
+        {fromPort: 80, toPort: 80, protocol: 'tcp', sourceCidr: '0.0.0.0/0'},
+      ];
       const c = AwsSecurityGroup.create({...BASE_CONFIG, ingressRules: rules});
       expect(c.parameters.getOptionalFieldByName('ingressRules')).toEqual(
-        rules
+        rules,
       );
     });
 
@@ -58,7 +60,7 @@ describe('AwsSecurityGroup', () => {
 
       const c = AwsSecurityGroup.satisfy(blueprint).build();
       expect(c.parameters.getOptionalFieldByName(DESCRIPTION_PARAM)).toBe(
-        'Blueprint description'
+        'Blueprint description',
       );
     });
 
@@ -87,7 +89,7 @@ describe('AwsSecurityGroup', () => {
 
       const c = AwsSecurityGroup.satisfy(blueprint).build();
       expect(c.parameters.getOptionalFieldByName(INGRESS_RULES_PARAM)).toEqual(
-        rules
+        rules,
       );
     });
 
@@ -101,7 +103,7 @@ describe('AwsSecurityGroup', () => {
 
       const c = AwsSecurityGroup.satisfy(blueprint).build();
       expect(
-        c.parameters.getOptionalFieldByName(INGRESS_RULES_PARAM)
+        c.parameters.getOptionalFieldByName(INGRESS_RULES_PARAM),
       ).toBeNull();
     });
   });
