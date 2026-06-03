@@ -21,8 +21,10 @@ import {
   IngressRule,
 } from '../../../../fractal/component/network_and_compute/iaas/security_group';
 
-// Agent constant: SEC_GROUP_COMPONENT_NAME = "SecurityGroup"
-const AWS_SG_TYPE_NAME = 'SecurityGroup';
+// Agent constant: SEC_GROUP_COMPONENT_NAME = "AwsSecurityGroup" (FRA-2881 forked
+// the shared SecurityGroup offer into per-provider offers; the AWS agent now only
+// reconciles the concrete AwsSecurityGroup offer id).
+const AWS_SG_TYPE_NAME = 'AwsSecurityGroup';
 
 // ── internal helpers ──────────────────────────────────────────────────────────
 
