@@ -330,6 +330,42 @@ export type {
   MessagingAccessType,
 } from './fractal/component/custom_workloads/caas/workload';
 
+// Blueprint component helpers — FaaS (serverless functions)
+export {Function} from './fractal/component/custom_workloads/faas/function';
+export type {
+  FunctionBuilder,
+  FunctionConfig,
+  FunctionComponent,
+  FunctionPackageType,
+} from './fractal/component/custom_workloads/faas/function';
+
+// Live system component helpers — FaaS offers (unified sourceArtifact contract)
+export {AwsLambda} from './live_system/component/api_management/faas/aws_lambda';
+export type {
+  AwsLambdaBuilder,
+  AwsLambdaConfig,
+  SatisfiedAwsLambdaBuilder,
+} from './live_system/component/api_management/faas/aws_lambda';
+
+export {AzureFunction} from './live_system/component/custom_workloads/faas/azure_function';
+export type {
+  AzureFunctionBuilder,
+  AzureFunctionConfig,
+  SatisfiedAzureFunctionBuilder,
+  AzureFunctionApplicationStack,
+  AzureFunctionConfiguration,
+  AzureFunctionCorsSettings,
+  AzureFunctionIdentity,
+  AzureFunctionAppServicePlan,
+} from './live_system/component/custom_workloads/faas/azure_function';
+
+export {GoogleFunction} from './live_system/component/api_management/faas/gcp_google_function';
+export type {
+  GoogleFunctionBuilder,
+  GoogleFunctionConfig,
+  SatisfiedGoogleFunctionBuilder,
+} from './live_system/component/api_management/faas/gcp_google_function';
+
 // Live system component helpers — OpenShift CaaS
 export {OpenshiftWorkload} from './live_system/component/custom_workloads/caas/openshift_workload';
 export type {
