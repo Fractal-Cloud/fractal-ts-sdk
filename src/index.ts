@@ -340,12 +340,12 @@ export type {
 } from './fractal/component/custom_workloads/faas/function';
 
 // Live system component helpers — FaaS offers (unified sourceArtifact contract)
-export {AwsLambda} from './live_system/component/api_management/faas/aws_lambda';
+export {AwsLambda} from './live_system/component/custom_workloads/faas/aws_lambda';
 export type {
   AwsLambdaBuilder,
   AwsLambdaConfig,
   SatisfiedAwsLambdaBuilder,
-} from './live_system/component/api_management/faas/aws_lambda';
+} from './live_system/component/custom_workloads/faas/aws_lambda';
 
 export {AzureFunction} from './live_system/component/custom_workloads/faas/azure_function';
 export type {
@@ -359,12 +359,12 @@ export type {
   AzureFunctionAppServicePlan,
 } from './live_system/component/custom_workloads/faas/azure_function';
 
-export {GoogleFunction} from './live_system/component/api_management/faas/gcp_google_function';
+export {GoogleFunction} from './live_system/component/custom_workloads/faas/gcp_google_function';
 export type {
   GoogleFunctionBuilder,
   GoogleFunctionConfig,
   SatisfiedGoogleFunctionBuilder,
-} from './live_system/component/api_management/faas/gcp_google_function';
+} from './live_system/component/custom_workloads/faas/gcp_google_function';
 
 // Live system component helpers — OpenShift CaaS
 export {OpenshiftWorkload} from './live_system/component/custom_workloads/caas/openshift_workload';

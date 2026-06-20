@@ -13,7 +13,7 @@ describe('AwsLambda', () => {
   describe('create()', () => {
     it('should build a component with the correct type string', () => {
       const c = AwsLambda.create(BASE_CONFIG);
-      expect(c.type.toString()).toBe('APIManagement.FaaS.AwsLambda');
+      expect(c.type.toString()).toBe('CustomWorkloads.FaaS.AwsLambda');
     });
 
     it('should set provider to AWS', () => {

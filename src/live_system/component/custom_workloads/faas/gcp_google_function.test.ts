@@ -14,7 +14,7 @@ describe('GoogleFunction', () => {
   describe('create()', () => {
     it('should build a component with the correct type string', () => {
       const c = GoogleFunction.create(BASE_CONFIG);
-      expect(c.type.toString()).toBe('APIManagement.FaaS.GoogleFunction');
+      expect(c.type.toString()).toBe('CustomWorkloads.FaaS.GoogleFunction');
     });
 
     it('should set provider to GCP', () => {
@@ -59,7 +59,7 @@ describe('GoogleFunction', () => {
 
       const c = GoogleFunction.satisfy(fn.component).build();
 
-      expect(c.type.toString()).toBe('APIManagement.FaaS.GoogleFunction');
+      expect(c.type.toString()).toBe('CustomWorkloads.FaaS.GoogleFunction');
       expect(c.id.toString()).toBe('bp-fn');
       expect(c.version.major).toBe(2);
       expect(c.displayName).toBe('Blueprint Fn');
