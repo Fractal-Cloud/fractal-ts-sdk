@@ -25,7 +25,7 @@ import {
   ENVIRONMENT_PARAM,
 } from '../../../../fractal/component/custom_workloads/faas/function';
 
-// Agent constant: Offer type = "APIManagement.FaaS.AwsLambda"
+// Agent constant: Offer type = "CustomWorkloads.FaaS.AwsLambda"
 const AWS_LAMBDA_TYPE_NAME = 'AwsLambda';
 
 const FUNCTION_NAME_PARAM = 'functionName';
@@ -49,7 +49,7 @@ function buildVersion(major: number, minor: number, patch: number): Version {
 
 function buildType(): BlueprintComponentType {
   return getBlueprintComponentTypeBuilder()
-    .withInfrastructureDomain(InfrastructureDomain.ApiManagement)
+    .withInfrastructureDomain(InfrastructureDomain.CustomWorkloads)
     .withServiceDeliveryModel(ServiceDeliveryModel.FaaS)
     .withName(
       PascalCaseString.getBuilder().withValue(AWS_LAMBDA_TYPE_NAME).build(),

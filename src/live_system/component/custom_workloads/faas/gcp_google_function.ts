@@ -21,7 +21,7 @@ import {
   ENTRY_POINT_PARAM,
 } from '../../../../fractal/component/custom_workloads/faas/function';
 
-// Agent constant: Offer type = "APIManagement.FaaS.GoogleFunction"
+// Agent constant: Offer type = "CustomWorkloads.FaaS.GoogleFunction"
 const GOOGLE_FUNCTION_TYPE_NAME = 'GoogleFunction';
 
 const LOCATION_PARAM = 'location';
@@ -44,7 +44,7 @@ function buildVersion(major: number, minor: number, patch: number): Version {
 
 function buildType(): BlueprintComponentType {
   return getBlueprintComponentTypeBuilder()
-    .withInfrastructureDomain(InfrastructureDomain.ApiManagement)
+    .withInfrastructureDomain(InfrastructureDomain.CustomWorkloads)
     .withServiceDeliveryModel(ServiceDeliveryModel.FaaS)
     .withName(
       PascalCaseString.getBuilder()
