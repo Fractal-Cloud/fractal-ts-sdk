@@ -6,6 +6,7 @@ import {Version} from '../../values/version';
 import {BlueprintComponentDependency} from './dependency';
 import {ComponentId} from '../../component/id';
 import {ComponentLink} from '../../component/link';
+import type {BlueprintComponentService} from './service';
 
 export const DEFAULT_BLUEPRINT_COMPONENT: BlueprintComponent = {
   ...DEFAULT_COMPONENT,
@@ -107,6 +108,16 @@ export type BlueprintComponentBuilder = {
    */
   withDependencies: (
     dependencies: BlueprintComponentDependency[],
+  ) => BlueprintComponentBuilder;
+
+  /**
+   * Sets the candidate Services (with their offers) for the component.
+   *
+   * @param {BlueprintComponentService[]} services - The services to associate.
+   * @returns {BlueprintComponentBuilder} The builder instance for method chaining.
+   */
+  withServices: (
+    services: BlueprintComponentService[],
   ) => BlueprintComponentBuilder;
 
   /**
@@ -216,6 +227,10 @@ export const getBlueprintComponentBuilder = (): BlueprintComponentBuilder => {
     },
     withDependencies: (dependencies: BlueprintComponentDependency[]) => {
       internalState.dependencies = dependencies;
+      return builder;
+    },
+    withServices: (services: BlueprintComponentService[]) => {
+      internalState.services = services;
       return builder;
     },
     reset: () => {

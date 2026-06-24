@@ -204,6 +204,7 @@ export type LiveSystemBuilder = {
 export const getLiveSystemBuilder = (): LiveSystemBuilder => {
   const internalState: LiveSystem = {
     ...DEFAULT_LIVE_SYSTEM,
+    components: [],
   };
 
   const builder = {
@@ -253,7 +254,7 @@ export const getLiveSystemBuilder = (): LiveSystemBuilder => {
       internalState.description = DEFAULT_LIVE_SYSTEM.description;
       internalState.status = DEFAULT_LIVE_SYSTEM.status;
       internalState.statusMessage = DEFAULT_LIVE_SYSTEM.statusMessage;
-      internalState.components = DEFAULT_LIVE_SYSTEM.components;
+      internalState.components = [];
       internalState.genericProvider = DEFAULT_LIVE_SYSTEM.genericProvider;
       internalState.environment = DEFAULT_LIVE_SYSTEM.environment;
       internalState.createdAt = DEFAULT_LIVE_SYSTEM.createdAt;

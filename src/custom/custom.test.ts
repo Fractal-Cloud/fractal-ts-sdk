@@ -3,6 +3,7 @@ import {Custom} from './index';
 import {InfrastructureDomain} from '../values/infrastructure_domain';
 import {ServiceDeliveryModel} from '../values/service_delivery_model';
 import {VirtualNetwork} from '../fractal/component/network_and_compute/iaas/virtual_network';
+import {AwsVpc} from '../live_system/component/network_and_compute/iaas/vpc';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -106,10 +107,10 @@ describe('CustomBlueprintFactory', () => {
     });
 
     it('should set dependencies when provided', () => {
-      const {vpc} = VirtualNetwork.create({
+      const vpc = VirtualNetwork.create({
         id: 'dep-vpc',
-        version: {major: 1, minor: 0, patch: 0},
         displayName: 'Dep VPC',
+        offers: [AwsVpc],
       });
       const c = factory.create({
         ...BASE_COMPONENT,
@@ -263,10 +264,10 @@ describe('CustomOfferFactory', () => {
     });
 
     it('should carry dependencies from blueprint', () => {
-      const {vpc} = VirtualNetwork.create({
+      const vpc = VirtualNetwork.create({
         id: 'dep-vpc',
-        version: {major: 1, minor: 0, patch: 0},
         displayName: 'Dep VPC',
+        offers: [AwsVpc],
       });
       const bp = bpFactory.create({
         ...BASE_COMPONENT,
@@ -320,13 +321,12 @@ describe('backward compatibility', () => {
   });
 
   it('built-in helpers still produce correct type strings', () => {
-    const {vpc} = VirtualNetwork.create({
+    const vpc = VirtualNetwork.create({
       id: 'compat-vpc',
-      version: {major: 1, minor: 0, patch: 0},
       displayName: 'Compat VPC',
-      cidrBlock: '10.0.0.0/16',
+      offers: [AwsVpc],
     });
-    expect(vpc.type.toString()).toBe(
+    expect(vpc.toBlueprintComponent().type.toString()).toBe(
       'NetworkAndCompute.IaaS.VirtualNetwork',
     );
   });

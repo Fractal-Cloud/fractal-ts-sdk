@@ -1,220 +1,165 @@
+/**
+ * openshift_workload.test.ts
+ *
+ * New-model proof for the migrated `OpenshiftWorkload` functional Offer
+ * (M1, CustomWorkloads.CaaS). Mirrors samples/workload_fractal.test.ts:
+ *   - one abstract `Workload` capability offering [OpenshiftWorkload, CloudRun],
+ *   - the dev specializes through the Fractal Interface with vendor-neutral
+ *     keys only (image/port/replicas),
+ *   - the Provider selects the offer; neutral params/deps are inherited,
+ *   - toLiveSystem returns a real, validated LiveSystem,
+ *   - an unknown provider throws.
+ */
+
 import {describe, expect, it} from 'vitest';
+import {createFractal} from '../../../../fractal/create_fractal';
+import {
+  Workload,
+  IMAGE_PARAM,
+  PORT_PARAM,
+  REPLICAS_PARAM,
+} from '../../../../fractal/component/custom_workloads/caas/workload';
 import {OpenshiftWorkload} from './openshift_workload';
-import {Workload} from '../../../../fractal/component/custom_workloads/caas/workload';
-import {VirtualMachine} from '../../../../fractal/component/network_and_compute/iaas/vm';
+import {CloudRun} from '../../network_and_compute/paas/gcp_cloud_run_service';
+import {getComponentIdBuilder} from '../../../../component/id';
+import {KebabCaseString} from '../../../../values/kebab_case_string';
+import {getEnvironmentBuilder} from '../../../../environment/entity';
+import {getEnvironmentIdBuilder} from '../../../../environment/id';
+import {OwnerType} from '../../../../values/owner_type';
+import {OwnerId} from '../../../../values/owner_id';
+import {getBoundedContextIdBuilder} from '../../../../bounded_context/id';
 
-const BASE_CONFIG = {
-  id: 'my-workload',
-  version: {major: 1, minor: 0, patch: 0},
-  displayName: 'My Workload',
-  image: 'nginx:latest',
-};
+// ── fixtures ─────────────────────────────────────────────────────────────────
 
-describe('OpenshiftWorkload', () => {
-  describe('create()', () => {
-    it('should build a component with the correct type string', () => {
-      const c = OpenshiftWorkload.create(BASE_CONFIG);
-      expect(c.type.toString()).toBe('CustomWorkloads.CaaS.OpenshiftWorkload');
-    });
+function kebab(value: string): KebabCaseString {
+  return KebabCaseString.getBuilder().withValue(value).build();
+}
 
-    it('should set provider to RedHat', () => {
-      const c = OpenshiftWorkload.create(BASE_CONFIG);
-      expect(c.provider).toBe('RedHat');
-    });
+const ownerId = OwnerId.getBuilder()
+  .withValue('00000000-0000-0000-0000-000000000001')
+  .build();
 
-    it('should set required image parameter', () => {
-      const c = OpenshiftWorkload.create(BASE_CONFIG);
-      expect(c.parameters.getOptionalFieldByName('image')).toBe(
-        'nginx:latest'
-      );
-    });
+const boundedContextId = getBoundedContextIdBuilder()
+  .withOwnerType(OwnerType.Personal)
+  .withOwnerId(ownerId)
+  .withName(kebab('reusable-templates'))
+  .build();
 
-    it('should set optional parameters when provided', () => {
-      const c = OpenshiftWorkload.create({
-        ...BASE_CONFIG,
-        port: 8080,
-        name: 'web',
-        replicas: 3,
-        namespace: 'production',
-        workloadType: 'Deployment',
-        cpuRequest: '250m',
-        cpuLimit: '500m',
-        memoryRequest: '256Mi',
-        memoryLimit: '512Mi',
-        protocol: 'TCP',
-        envVars: '{"FOO":"bar"}',
-        serviceAccountName: 'my-sa',
-        command: '["node"]',
-        args: '["server.js"]',
-        volumeMounts: '[{"name":"data","mountPath":"/data"}]',
-      });
-      expect(c.parameters.getOptionalFieldByName('port')).toBe(8080);
-      expect(c.parameters.getOptionalFieldByName('name')).toBe('web');
-      expect(c.parameters.getOptionalFieldByName('replicas')).toBe(3);
-      expect(c.parameters.getOptionalFieldByName('namespace')).toBe(
-        'production'
-      );
-      expect(c.parameters.getOptionalFieldByName('workloadType')).toBe(
-        'Deployment'
-      );
-      expect(c.parameters.getOptionalFieldByName('cpuRequest')).toBe('250m');
-      expect(c.parameters.getOptionalFieldByName('cpuLimit')).toBe('500m');
-      expect(c.parameters.getOptionalFieldByName('memoryRequest')).toBe(
-        '256Mi'
-      );
-      expect(c.parameters.getOptionalFieldByName('memoryLimit')).toBe('512Mi');
-      expect(c.parameters.getOptionalFieldByName('protocol')).toBe('TCP');
-      expect(c.parameters.getOptionalFieldByName('envVars')).toBe(
-        '{"FOO":"bar"}'
-      );
-      expect(c.parameters.getOptionalFieldByName('serviceAccountName')).toBe(
-        'my-sa'
-      );
-      expect(c.parameters.getOptionalFieldByName('command')).toBe('["node"]');
-      expect(c.parameters.getOptionalFieldByName('args')).toBe(
-        '["server.js"]'
-      );
-      expect(c.parameters.getOptionalFieldByName('volumeMounts')).toBe(
-        '[{"name":"data","mountPath":"/data"}]'
-      );
-    });
+const environment = getEnvironmentBuilder()
+  .withId(
+    getEnvironmentIdBuilder()
+      .withOwnerType(OwnerType.Personal)
+      .withOwnerId(ownerId)
+      .withName(kebab('test'))
+      .build(),
+  )
+  .build();
 
-    it('should not set optional params when omitted', () => {
-      const c = OpenshiftWorkload.create(BASE_CONFIG);
-      expect(c.parameters.getOptionalFieldByName('port')).toBeNull();
-      expect(c.parameters.getOptionalFieldByName('namespace')).toBeNull();
-      expect(c.parameters.getOptionalFieldByName('workloadType')).toBeNull();
-    });
+// A blueprint dependency the abstract declares — inherited by every offer.
+const declaredDependencyId = getComponentIdBuilder()
+  .withValue(kebab('some-subnet'))
+  .build();
+
+// ── authored fractal ─────────────────────────────────────────────────────────
+
+function authorWorkloadFractal() {
+  return createFractal({
+    id: 'openshift-workload-fractal',
+    version: {major: 1, minor: 0, patch: 0},
+    description: 'Governed container workload',
+    boundedContextId,
+    blueprint: bp => ({
+      api: bp.add(
+        Workload.abstract({
+          id: 'api',
+          displayName: 'API',
+          offers: [OpenshiftWorkload, CloudRun],
+          dependencies: [{id: declaredDependencyId}],
+        }),
+      ),
+    }),
+    operations: bp => ({
+      withImage: (image: string) => bp.api.set(IMAGE_PARAM, image),
+      withPort: (port: number) => bp.api.set(PORT_PARAM, port),
+      withReplicas: (replicas: number) => bp.api.set(REPLICAS_PARAM, replicas),
+    }),
+  });
+}
+
+type WorkloadProvider = 'RedHat' | 'GCP';
+
+function specialize(provider: WorkloadProvider) {
+  const fractal = authorWorkloadFractal();
+  fractal.operations.withImage('nginx:1.27').withPort(8080).withReplicas(3);
+  return fractal.toLiveSystem({name: 'acme-api', environment, provider});
+}
+
+// ── tests ──────────────────────────────────────────────────────────────────
+
+describe('OpenshiftWorkload — Fractal + Interface offer', () => {
+  it('selects the offer by provider', () => {
+    const cases: {provider: WorkloadProvider; type: string}[] = [
+      {provider: 'RedHat', type: 'CustomWorkloads.CaaS.OpenshiftWorkload'},
+      {provider: 'GCP', type: 'NetworkAndCompute.CaaS.CloudRunService'},
+    ];
+
+    for (const {provider, type} of cases) {
+      const ls = specialize(provider);
+      const primary = ls.components.find(c => c.id.toString() === 'api')!;
+      expect(primary.type.toString()).toBe(type);
+      expect(primary.provider).toBe(provider);
+    }
   });
 
-  describe('satisfy()', () => {
-    it('should copy id, version, displayName, and description from blueprint', () => {
-      const workload = Workload.create({
-        id: 'bp-workload',
-        version: {major: 2, minor: 1, patch: 0},
-        displayName: 'Blueprint Workload',
-        description: 'A workload',
-        containerImage: 'myapp:v1',
-      });
+  it('inherits neutral params and declared dependency into the offer', () => {
+    const redhat = specialize('RedHat').components.find(
+      c => c.id.toString() === 'api',
+    )!;
 
-      const c = OpenshiftWorkload.satisfy(workload.component).build();
+    // neutral params set through the Interface flow into the chosen offer
+    expect(redhat.parameters.getOptionalFieldByName(IMAGE_PARAM)).toBe(
+      'nginx:1.27',
+    );
+    expect(redhat.parameters.getOptionalFieldByName(PORT_PARAM)).toBe(8080);
+    expect(redhat.parameters.getOptionalFieldByName(REPLICAS_PARAM)).toBe(3);
 
-      expect(c.id.toString()).toBe('bp-workload');
-      expect(c.version.major).toBe(2);
-      expect(c.version.minor).toBe(1);
-      expect(c.displayName).toBe('Blueprint Workload');
-      expect(c.description).toBe('A workload');
-    });
+    // declared dependency inherited
+    expect(
+      redhat.dependencies.some(d => d.id.toString() === 'some-subnet'),
+    ).toBe(true);
+  });
 
-    it('should carry blueprint params with mapped keys', () => {
-      const workload = Workload.create({
-        id: 'bp-workload-map',
-        version: {major: 1, minor: 0, patch: 0},
-        displayName: 'BP Workload Map',
-        containerImage: 'myapp:v2',
-        containerPort: 3000,
-        containerName: 'app',
-        cpu: '512',
-        memory: '1024',
-        desiredCount: 5,
-      });
+  it('toLiveSystem returns a real, validated LiveSystem', () => {
+    const ls = specialize('RedHat');
+    expect(typeof ls.deploy).toBe('function');
+    expect(ls.fractalId.toString()).toContain('openshift-workload-fractal');
+    expect(ls.environment).toBeDefined();
+    expect(ls.genericProvider).toBe('RedHat');
+  });
 
-      const c = OpenshiftWorkload.satisfy(workload.component).build();
+  it('serializes the OpenShift offer onto the Blueprint component Services', () => {
+    const blueprint = authorWorkloadFractal().blueprint;
+    const api = blueprint.components.find(c => c.id.toString() === 'api')!;
 
-      // containerImage → image
-      expect(c.parameters.getOptionalFieldByName('image')).toBe('myapp:v2');
-      // containerPort → port
-      expect(c.parameters.getOptionalFieldByName('port')).toBe(3000);
-      // containerName → name
-      expect(c.parameters.getOptionalFieldByName('name')).toBe('app');
-      // cpu → cpuRequest
-      expect(c.parameters.getOptionalFieldByName('cpuRequest')).toBe('512');
-      // memory → memoryRequest
-      expect(c.parameters.getOptionalFieldByName('memoryRequest')).toBe(
-        '1024'
-      );
-      // desiredCount → replicas
-      expect(c.parameters.getOptionalFieldByName('replicas')).toBe(5);
-    });
+    expect(api.services).toBeDefined();
+    const allOfferTypes = api
+      .services!.flatMap(s => s.offers)
+      .map(o => o.type.toString())
+      .sort();
+    expect(allOfferTypes).toEqual([
+      'CustomWorkloads.CaaS.OpenshiftWorkload',
+      'NetworkAndCompute.CaaS.CloudRunService',
+    ]);
+  });
 
-    it('should carry dependencies from the blueprint unchanged', () => {
-      const rawWorkload = Workload.getBuilder()
-        .withId('dep-workload')
-        .withVersion(1, 0, 0)
-        .withDisplayName('Dep Workload')
-        .withContainerImage('nginx:latest')
-        .build();
-      const workloadWithDep = {
-        ...rawWorkload,
-        dependencies: [{id: rawWorkload.id}],
-      };
-
-      const c = OpenshiftWorkload.satisfy(workloadWithDep).build();
-      expect(c.dependencies).toHaveLength(1);
-    });
-
-    it('should carry links from the blueprint unchanged', () => {
-      const target = Workload.create({
-        id: 'target-workload',
-        version: {major: 1, minor: 0, patch: 0},
-        displayName: 'Target',
-        containerImage: 'nginx:latest',
-      });
-      const source = Workload.create({
-        id: 'source-workload',
-        version: {major: 1, minor: 0, patch: 0},
-        displayName: 'Source',
-        containerImage: 'app:latest',
-      }).linkToWorkload([{target, fromPort: 8080, protocol: 'tcp'}]);
-
-      const c = OpenshiftWorkload.satisfy(source.component).build();
-      expect(c.links).toHaveLength(1);
-      expect(c.links[0].id.toString()).toBe('target-workload');
-    });
-
-    it('should allow setting vendor-specific params after satisfy', () => {
-      const workload = Workload.create({
-        id: 'bp-workload-vendor',
-        version: {major: 1, minor: 0, patch: 0},
-        displayName: 'BP Workload Vendor',
-        containerImage: 'nginx:latest',
-      });
-
-      const c = OpenshiftWorkload.satisfy(workload.component)
-        .withNamespace('production')
-        .withWorkloadType('StatefulSet')
-        .withCpuLimit('1000m')
-        .withMemoryLimit('2Gi')
-        .withProtocol('TCP')
-        .withEnvVars('{"KEY":"value"}')
-        .withServiceAccountName('my-sa')
-        .withCommand('["node"]')
-        .withArgs('["index.js"]')
-        .withVolumeMounts('[{"name":"vol","mountPath":"/mnt"}]')
-        .build();
-
-      expect(c.parameters.getOptionalFieldByName('namespace')).toBe(
-        'production'
-      );
-      expect(c.parameters.getOptionalFieldByName('workloadType')).toBe(
-        'StatefulSet'
-      );
-      expect(c.parameters.getOptionalFieldByName('cpuLimit')).toBe('1000m');
-      expect(c.parameters.getOptionalFieldByName('memoryLimit')).toBe('2Gi');
-      expect(c.parameters.getOptionalFieldByName('protocol')).toBe('TCP');
-      expect(c.parameters.getOptionalFieldByName('envVars')).toBe(
-        '{"KEY":"value"}'
-      );
-      expect(c.parameters.getOptionalFieldByName('serviceAccountName')).toBe(
-        'my-sa'
-      );
-      expect(c.parameters.getOptionalFieldByName('command')).toBe('["node"]');
-      expect(c.parameters.getOptionalFieldByName('args')).toBe(
-        '["index.js"]'
-      );
-      expect(c.parameters.getOptionalFieldByName('volumeMounts')).toBe(
-        '[{"name":"vol","mountPath":"/mnt"}]'
-      );
-    });
+  it('throws for a provider with no candidate offer', () => {
+    const fractal = authorWorkloadFractal();
+    expect(() =>
+      fractal.toLiveSystem({
+        name: 'acme-api',
+        environment,
+        provider: 'Hetzner' as never,
+      }),
+    ).toThrow(/No Workload offer/);
   });
 });

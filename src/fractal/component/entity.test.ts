@@ -10,22 +10,28 @@ import {AwsVpc} from '../../live_system/component/network_and_compute/iaas/vpc';
 
 const bcId = BoundedContext.Id.getBuilder()
   .withOwnerType(OwnerType.Personal)
-  .withOwnerId(OwnerId.getBuilder().withValue('00000000-0000-0000-0000-000000000001').build())
+  .withOwnerId(
+    OwnerId.getBuilder()
+      .withValue('00000000-0000-0000-0000-000000000001')
+      .build(),
+  )
   .withName(KebabCaseString.getBuilder().withValue('test-bc').build())
   .build();
 
 const fractalId = Fractal.Id.getBuilder()
   .withBoundedContextId(bcId)
   .withName(KebabCaseString.getBuilder().withValue('test-fractal').build())
-  .withVersion(Version.getBuilder().withMajor(1).withMinor(0).withPatch(0).build())
+  .withVersion(
+    Version.getBuilder().withMajor(1).withMinor(0).withPatch(0).build(),
+  )
   .build();
 
 function validBlueprintComponent() {
   return VirtualNetwork.create({
     id: 'main-vpc',
-    version: {major: 1, minor: 0, patch: 0},
     displayName: 'Main VPC',
-  }).vpc;
+    offers: [AwsVpc],
+  }).toBlueprintComponent();
 }
 
 describe('Fractal blueprint guard', () => {
@@ -39,30 +45,26 @@ describe('Fractal blueprint guard', () => {
   });
 
   it('should throw when a live system component is added to a Fractal', () => {
-    const liveSystemComponent = AwsVpc.create({
+    const liveSystemComponent = VirtualNetwork.create({
       id: 'main-vpc',
-      version: {major: 1, minor: 0, patch: 0},
       displayName: 'Main VPC',
-      cidrBlock: '10.0.0.0/16',
-    });
+      offers: [AwsVpc],
+    }).instantiate('AWS')[0];
 
     expect(() =>
       Fractal.getBuilder()
         .withId(fractalId)
         .withComponents([liveSystemComponent as unknown as Fractal.Component])
         .build(),
-    ).toThrow(
-      'Live system components cannot be added to a Fractal blueprint.',
-    );
+    ).toThrow('Live system components cannot be added to a Fractal blueprint.');
   });
 
   it('should include the component id in the error message', () => {
-    const liveSystemComponent = AwsVpc.create({
+    const liveSystemComponent = VirtualNetwork.create({
       id: 'rogue-vpc',
-      version: {major: 1, minor: 0, patch: 0},
       displayName: 'Rogue VPC',
-      cidrBlock: '10.0.0.0/16',
-    });
+      offers: [AwsVpc],
+    }).instantiate('AWS')[0];
 
     expect(() =>
       Fractal.getBuilder()

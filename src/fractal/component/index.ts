@@ -9,6 +9,7 @@ import {
   BlueprintComponentBuilder,
   getBlueprintComponentBuilder,
 } from './entity';
+import type {BlueprintComponentService} from './service';
 
 export namespace BlueprintComponent {
   export type Type = BlueprintComponentType;
@@ -25,6 +26,7 @@ export namespace BlueprintComponent {
 
   export type Builder = BlueprintComponentBuilder;
   export type Dependency = BlueprintComponentDependency;
+  export type Service = BlueprintComponentService;
   export const getBuilder = getBlueprintComponentBuilder;
 }
 
@@ -33,4 +35,9 @@ export type BlueprintComponent = Omit<Component, 'type' | 'dependencies'> & {
   dependencies: BlueprintComponent.Dependency[];
   isLocked: boolean;
   recreateOnFailure: boolean;
+  /**
+   * Candidate Services (delivery-model-specific) carrying the offers that can
+   * satisfy this component. Optional — absent on leaf/offer-coupled components.
+   */
+  services?: BlueprintComponent.Service[];
 };

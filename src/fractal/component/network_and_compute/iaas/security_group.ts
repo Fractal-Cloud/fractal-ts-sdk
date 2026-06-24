@@ -1,25 +1,35 @@
-import {getBlueprintComponentBuilder} from '../../entity';
 import {
-  getBlueprintComponentTypeBuilder,
-  BlueprintComponentType,
-} from '../../type';
-import {InfrastructureDomain} from '../../../../values/infrastructure_domain';
-import {ServiceDeliveryModel} from '../../../../values/service_delivery_model';
-import {PascalCaseString} from '../../../../values/pascal_case_string';
-import {
-  GenericParameters,
-  getParametersInstance,
-} from '../../../../values/generic_parameters';
-import {getComponentIdBuilder, ComponentId} from '../../../../component/id';
-import {KebabCaseString} from '../../../../values/kebab_case_string';
-import {getVersionBuilder, Version} from '../../../../values/version';
-import {BlueprintComponent} from '../../index';
+  createAbstractComponent,
+  AbstractComponent,
+} from '../../abstract_component';
+import {Offer} from '../../../offer';
+import {BlueprintComponentDependency} from '../../dependency';
 import {ComponentLink} from '../../../../component/link';
+import {InfrastructureDomain} from '../../../../values/infrastructure_domain';
 
-export const SECURITY_GROUP_TYPE_NAME = 'SecurityGroup';
+/**
+ * `SecurityGroup` — the abstract NetworkAndCompute capability "I need a managed
+ * set of network traffic rules". It is satisfied by candidate Offers
+ * (AwsSecurityGroup on AWS, AzureNsg on Azure, GcpFirewall on GCP,
+ * HetznerFirewall on Hetzner, OciSecurityList on OCI, ArubaSecurityGroup on
+ * Aruba, OpenshiftSecurityGroup on RedHat/OpenShift). The dev specializes it
+ * through a Fractal Interface using vendor-neutral concepts only.
+ *
+ * Neutral knobs shared by every candidate offer — and therefore Fractal
+ * Interface ops:
+ *   - `description`
+ *   - `ingressRules`
+ *
+ * Vendor-only extras (location, resourceGroup, compartmentId, name, policyType,
+ * podSelector, egressRules, ...) live on each offer, never on the Interface.
+ */
+
+/** Neutral parameter key carried by every SecurityGroup offer. */
 export const DESCRIPTION_PARAM = 'description';
+/** Neutral parameter key carried by every SecurityGroup offer. */
 export const INGRESS_RULES_PARAM = 'ingressRules';
 
+/** Vendor-neutral shape of a single ingress rule, shared by every offer. */
 export type IngressRule = {
   protocol?: string;
   fromPort: number;
@@ -28,124 +38,29 @@ export type IngressRule = {
   sourceGroupId?: string;
 };
 
-// ── internal helpers ──────────────────────────────────────────────────────────
-
-function buildId(id: string): ComponentId {
-  return getComponentIdBuilder()
-    .withValue(KebabCaseString.getBuilder().withValue(id).build())
-    .build();
-}
-
-function buildVersion(major: number, minor: number, patch: number): Version {
-  return getVersionBuilder()
-    .withMajor(major)
-    .withMinor(minor)
-    .withPatch(patch)
-    .build();
-}
-
-function buildSecurityGroupType(): BlueprintComponentType {
-  return getBlueprintComponentTypeBuilder()
-    .withInfrastructureDomain(InfrastructureDomain.NetworkAndCompute)
-    .withServiceDeliveryModel(ServiceDeliveryModel.IaaS)
-    .withName(
-      PascalCaseString.getBuilder().withValue(SECURITY_GROUP_TYPE_NAME).build(),
-    )
-    .build();
-}
-
-function pushParam(
-  params: GenericParameters,
-  key: string,
-  value: unknown,
-): void {
-  params.push(key, value as Record<string, object>);
-}
-
-// ── Public API ────────────────────────────────────────────────────────────────
-
-export type SecurityGroupBuilder = {
-  withId: (id: string) => SecurityGroupBuilder;
-  withVersion: (
-    major: number,
-    minor: number,
-    patch: number,
-  ) => SecurityGroupBuilder;
-  withDisplayName: (displayName: string) => SecurityGroupBuilder;
-  withDescription: (description: string) => SecurityGroupBuilder;
-  withIngressRules: (rules: IngressRule[]) => SecurityGroupBuilder;
-  withLinks: (links: ComponentLink[]) => SecurityGroupBuilder;
-  build: () => SecurityGroupComponent;
-};
-
 export type SecurityGroupConfig = {
   id: string;
-  version: {major: number; minor: number; patch: number};
   displayName: string;
-  description: string;
-  ingressRules?: IngressRule[];
-};
-
-/** A BlueprintComponent that is guaranteed to be a SecurityGroup. */
-export type SecurityGroupComponent = BlueprintComponent & {
-  readonly _brand: 'SecurityGroup';
+  description?: string;
+  /** Candidate offers that can satisfy this security group. */
+  offers: Offer[];
+  dependencies?: BlueprintComponentDependency[];
+  links?: ComponentLink[];
 };
 
 export namespace SecurityGroup {
-  export const getBuilder = (): SecurityGroupBuilder => {
-    const params = getParametersInstance();
-    const inner = getBlueprintComponentBuilder()
-      .withType(buildSecurityGroupType())
-      .withParameters(params);
+  /** Vendor-neutral Service name this capability resolves to. */
+  export const SERVICE_NAME = 'SecurityGroup';
 
-    const builder: SecurityGroupBuilder = {
-      withId: id => {
-        inner.withId(buildId(id));
-        return builder;
-      },
-      withVersion: (major, minor, patch) => {
-        inner.withVersion(buildVersion(major, minor, patch));
-        return builder;
-      },
-      withDisplayName: displayName => {
-        inner.withDisplayName(displayName);
-        return builder;
-      },
-      withDescription: description => {
-        inner.withDescription(description);
-        pushParam(params, DESCRIPTION_PARAM, description);
-        return builder;
-      },
-      withIngressRules: rules => {
-        pushParam(params, INGRESS_RULES_PARAM, rules);
-        return builder;
-      },
-      withLinks: links => {
-        inner.withLinks(links);
-        return builder;
-      },
-      build: () => inner.build() as SecurityGroupComponent,
-    };
-
-    return builder;
-  };
-
-  export const create = (
-    config: SecurityGroupConfig,
-  ): SecurityGroupComponent => {
-    const b = getBuilder()
-      .withId(config.id)
-      .withVersion(
-        config.version.major,
-        config.version.minor,
-        config.version.patch,
-      )
-      .withDisplayName(config.displayName)
-      .withDescription(config.description);
-
-    if (config.ingressRules && config.ingressRules.length > 0)
-      b.withIngressRules(config.ingressRules);
-
-    return b.build();
-  };
+  export const create = (config: SecurityGroupConfig): AbstractComponent =>
+    createAbstractComponent({
+      id: config.id,
+      displayName: config.displayName,
+      description: config.description,
+      domain: InfrastructureDomain.NetworkAndCompute,
+      serviceName: SERVICE_NAME,
+      offers: config.offers,
+      dependencies: config.dependencies,
+      links: config.links,
+    });
 }

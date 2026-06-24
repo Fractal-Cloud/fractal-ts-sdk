@@ -70,265 +70,106 @@ export type {
   CustomComponentConfig,
 } from './custom';
 
-// Blueprint component helpers (cloud-agnostic)
+// ── NetworkAndCompute Blueprint — abstract components ───────────────────────
+// Each abstract component carries candidate Offers; the dev specialises through
+// a Fractal Interface using vendor-neutral concepts only. The Provider chosen at
+// instantiation selects the concrete Offer.
+
 export {VirtualNetwork} from './fractal/component/network_and_compute/iaas/virtual_network';
-export type {
-  VirtualNetworkBuilder,
-  VirtualNetworkConfig,
-  VirtualNetworkComponent,
-  VirtualNetworkResult,
-} from './fractal/component/network_and_compute/iaas/virtual_network';
+export type {VirtualNetworkConfig} from './fractal/component/network_and_compute/iaas/virtual_network';
 
 export {Subnet} from './fractal/component/network_and_compute/iaas/subnet';
-export type {
-  SubnetBuilder,
-  SubnetConfig,
-  SubnetComponent,
-  SubnetResult,
-} from './fractal/component/network_and_compute/iaas/subnet';
+export type {SubnetConfig} from './fractal/component/network_and_compute/iaas/subnet';
 
 export {SecurityGroup} from './fractal/component/network_and_compute/iaas/security_group';
 export type {
-  SecurityGroupBuilder,
   SecurityGroupConfig,
-  SecurityGroupComponent,
   IngressRule,
 } from './fractal/component/network_and_compute/iaas/security_group';
 
 export {VirtualMachine} from './fractal/component/network_and_compute/iaas/vm';
-export type {
-  VirtualMachineBuilder,
-  VirtualMachineConfig,
-  VirtualMachineComponent,
-  VmPortLink,
-} from './fractal/component/network_and_compute/iaas/vm';
+export type {VirtualMachineConfig} from './fractal/component/network_and_compute/iaas/vm';
 
 export {LoadBalancer} from './fractal/component/network_and_compute/iaas/load_balancer';
-export type {
-  LoadBalancerBuilder,
-  LoadBalancerConfig,
-  LoadBalancerComponent,
-} from './fractal/component/network_and_compute/iaas/load_balancer';
+export type {LoadBalancerConfig} from './fractal/component/network_and_compute/iaas/load_balancer';
 
-// Live system component helpers — AWS IaaS
+export {ElasticIp} from './fractal/component/network_and_compute/iaas/elastic_ip';
+export type {ElasticIpConfig} from './fractal/component/network_and_compute/iaas/elastic_ip';
+
+export {SshKeyPair} from './fractal/component/network_and_compute/iaas/ssh_key_pair';
+export type {SshKeyPairConfig} from './fractal/component/network_and_compute/iaas/ssh_key_pair';
+
+export {VpcPeering} from './fractal/component/network_and_compute/iaas/vpc_peering';
+export type {VpcPeeringConfig} from './fractal/component/network_and_compute/iaas/vpc_peering';
+
+export {VpnTunnel} from './fractal/component/network_and_compute/iaas/vpn_tunnel';
+export type {VpnTunnelConfig} from './fractal/component/network_and_compute/iaas/vpn_tunnel';
+
+// ── NetworkAndCompute Live system — IaaS offers ─────────────────────────────
+// Offers satisfy an abstract NetworkAndCompute component. Each is a vendor-neutral
+// `Offer` value (or a vendor-config factory) consumed by `createFractal`.
+
+// VirtualNetwork offers
 export {AwsVpc} from './live_system/component/network_and_compute/iaas/vpc';
-export type {
-  AwsVpcBuilder,
-  AwsVpcConfig,
-  SatisfiedAwsVpcBuilder,
-} from './live_system/component/network_and_compute/iaas/vpc';
-
-export {AwsSubnet} from './live_system/component/network_and_compute/iaas/subnet';
-export type {
-  AwsSubnetBuilder,
-  AwsSubnetConfig,
-  SatisfiedAwsSubnetBuilder,
-} from './live_system/component/network_and_compute/iaas/subnet';
-
-export {AwsSecurityGroup} from './live_system/component/network_and_compute/iaas/security_group';
-export type {
-  AwsSecurityGroupBuilder,
-  AwsSecurityGroupConfig,
-  SatisfiedAwsSecurityGroupBuilder,
-} from './live_system/component/network_and_compute/iaas/security_group';
-
-export {Ec2Instance} from './live_system/component/network_and_compute/iaas/ec2_instance';
-export type {
-  Ec2InstanceBuilder,
-  Ec2InstanceConfig,
-  SatisfiedEc2Builder,
-} from './live_system/component/network_and_compute/iaas/ec2_instance';
-
-export {AwsLb} from './live_system/component/network_and_compute/iaas/aws_lb';
-export type {
-  AwsLbBuilder,
-  AwsLbConfig,
-  SatisfiedAwsLbBuilder,
-} from './live_system/component/network_and_compute/iaas/aws_lb';
-
-// Live system component helpers — Azure IaaS
-export {AzureLb} from './live_system/component/network_and_compute/iaas/azure_lb';
-export type {
-  AzureLbBuilder,
-  AzureLbConfig,
-  SatisfiedAzureLbBuilder,
-  FrontendIpConfiguration,
-} from './live_system/component/network_and_compute/iaas/azure_lb';
-
 export {AzureVnet} from './live_system/component/network_and_compute/iaas/azure_vnet';
-export type {
-  AzureVnetBuilder,
-  AzureVnetConfig,
-  SatisfiedAzureVnetBuilder,
-} from './live_system/component/network_and_compute/iaas/azure_vnet';
-
-export {AzureSubnet} from './live_system/component/network_and_compute/iaas/azure_subnet';
-export type {
-  AzureSubnetBuilder,
-  AzureSubnetConfig,
-  SatisfiedAzureSubnetBuilder,
-} from './live_system/component/network_and_compute/iaas/azure_subnet';
-
-export {AzureNsg} from './live_system/component/network_and_compute/iaas/azure_nsg';
-export type {
-  AzureNsgBuilder,
-  AzureNsgConfig,
-  SatisfiedAzureNsgBuilder,
-} from './live_system/component/network_and_compute/iaas/azure_nsg';
-
-export {AzureVm} from './live_system/component/network_and_compute/iaas/azure_vm';
-export type {
-  AzureVmBuilder,
-  AzureVmConfig,
-  SatisfiedAzureVmBuilder,
-} from './live_system/component/network_and_compute/iaas/azure_vm';
-
-// Live system component helpers — GCP IaaS
-export {GcpGlb} from './live_system/component/network_and_compute/iaas/gcp_glb';
-export type {
-  GcpGlbBuilder,
-  GcpGlbConfig,
-  SatisfiedGcpGlbBuilder,
-} from './live_system/component/network_and_compute/iaas/gcp_glb';
-
 export {GcpVpc} from './live_system/component/network_and_compute/iaas/gcp_vpc';
-export type {
-  GcpVpcBuilder,
-  GcpVpcConfig,
-  SatisfiedGcpVpcBuilder,
-} from './live_system/component/network_and_compute/iaas/gcp_vpc';
-
-export {GcpSubnet} from './live_system/component/network_and_compute/iaas/gcp_subnet';
-export type {
-  GcpSubnetBuilder,
-  GcpSubnetConfig,
-  SatisfiedGcpSubnetBuilder,
-} from './live_system/component/network_and_compute/iaas/gcp_subnet';
-
-export {GcpFirewall} from './live_system/component/network_and_compute/iaas/gcp_firewall';
-export type {
-  GcpFirewallBuilder,
-  GcpFirewallConfig,
-  SatisfiedGcpFirewallBuilder,
-} from './live_system/component/network_and_compute/iaas/gcp_firewall';
-
-export {GcpVm} from './live_system/component/network_and_compute/iaas/gcp_vm';
-export type {
-  GcpVmBuilder,
-  GcpVmConfig,
-  SatisfiedGcpVmBuilder,
-} from './live_system/component/network_and_compute/iaas/gcp_vm';
-
-// Live system component helpers — OCI IaaS
-export {OciVcn} from './live_system/component/network_and_compute/iaas/oci_vcn';
-export type {
-  OciVcnBuilder,
-  OciVcnConfig,
-  SatisfiedOciVcnBuilder,
-} from './live_system/component/network_and_compute/iaas/oci_vcn';
-
-export {OciSubnet} from './live_system/component/network_and_compute/iaas/oci_subnet';
-export type {
-  OciSubnetBuilder,
-  OciSubnetConfig,
-  SatisfiedOciSubnetBuilder,
-} from './live_system/component/network_and_compute/iaas/oci_subnet';
-
-export {OciSecurityList} from './live_system/component/network_and_compute/iaas/oci_security_list';
-export type {
-  OciSecurityListBuilder,
-  OciSecurityListConfig,
-  SatisfiedOciSecurityListBuilder,
-} from './live_system/component/network_and_compute/iaas/oci_security_list';
-
-export {OciInstance} from './live_system/component/network_and_compute/iaas/oci_instance';
-export type {
-  OciInstanceBuilder,
-  OciInstanceConfig,
-  SatisfiedOciInstanceBuilder,
-} from './live_system/component/network_and_compute/iaas/oci_instance';
-
-// Live system component helpers — Hetzner IaaS
 export {HetznerNetwork} from './live_system/component/network_and_compute/iaas/hetzner_network';
-export type {
-  HetznerNetworkBuilder,
-  HetznerNetworkConfig,
-  SatisfiedHetznerNetworkBuilder,
-} from './live_system/component/network_and_compute/iaas/hetzner_network';
+export {OciVcn} from './live_system/component/network_and_compute/iaas/oci_vcn';
+export {ArubaVpc} from './live_system/component/network_and_compute/iaas/aruba_vpc';
 
+// Subnet offers
+export {AwsSubnet} from './live_system/component/network_and_compute/iaas/subnet';
+export {AzureSubnet} from './live_system/component/network_and_compute/iaas/azure_subnet';
+export {GcpSubnet} from './live_system/component/network_and_compute/iaas/gcp_subnet';
 export {HetznerSubnet} from './live_system/component/network_and_compute/iaas/hetzner_subnet';
-export type {
-  HetznerSubnetBuilder,
-  HetznerSubnetConfig,
-  SatisfiedHetznerSubnetBuilder,
-} from './live_system/component/network_and_compute/iaas/hetzner_subnet';
-
-export {HetznerFirewall} from './live_system/component/network_and_compute/iaas/hetzner_firewall';
-export type {
-  HetznerFirewallBuilder,
-  HetznerFirewallConfig,
-  SatisfiedHetznerFirewallBuilder,
-} from './live_system/component/network_and_compute/iaas/hetzner_firewall';
-
-export {HetznerServer} from './live_system/component/network_and_compute/iaas/hetzner_server';
-export type {
-  HetznerServerBuilder,
-  HetznerServerConfig,
-  SatisfiedHetznerServerBuilder,
-} from './live_system/component/network_and_compute/iaas/hetzner_server';
-
-// Live system component helpers — VMware IaaS
-export {VspherePortGroup} from './live_system/component/network_and_compute/iaas/vsphere_port_group';
-export type {
-  VspherePortGroupBuilder,
-  VspherePortGroupConfig,
-  SatisfiedVspherePortGroupBuilder,
-} from './live_system/component/network_and_compute/iaas/vsphere_port_group';
-
+export {OciSubnet} from './live_system/component/network_and_compute/iaas/oci_subnet';
+export {ArubaSubnet} from './live_system/component/network_and_compute/iaas/aruba_subnet';
 export {VsphereVlan} from './live_system/component/network_and_compute/iaas/vsphere_vlan';
-export type {
-  VsphereVlanBuilder,
-  VsphereVlanConfig,
-  SatisfiedVsphereVlanBuilder,
-} from './live_system/component/network_and_compute/iaas/vsphere_vlan';
+export {VspherePortGroup} from './live_system/component/network_and_compute/iaas/vsphere_port_group';
 
+// SecurityGroup offers
+export {AwsSecurityGroup} from './live_system/component/network_and_compute/iaas/security_group';
+export {AzureNsg} from './live_system/component/network_and_compute/iaas/azure_nsg';
+export type {AzureNsgVendorConfig} from './live_system/component/network_and_compute/iaas/azure_nsg';
+export {GcpFirewall} from './live_system/component/network_and_compute/iaas/gcp_firewall';
+export {HetznerFirewall} from './live_system/component/network_and_compute/iaas/hetzner_firewall';
+export {OciSecurityList} from './live_system/component/network_and_compute/iaas/oci_security_list';
+export type {OciSecurityListVendorConfig} from './live_system/component/network_and_compute/iaas/oci_security_list';
+export {ArubaSecurityGroup} from './live_system/component/network_and_compute/iaas/aruba_security_group';
+export type {ArubaSecurityGroupVendorConfig} from './live_system/component/network_and_compute/iaas/aruba_security_group';
+export {OpenshiftSecurityGroup} from './live_system/component/network_and_compute/caas/openshift_security_group';
+export type {OpenshiftSecurityGroupVendorConfig} from './live_system/component/network_and_compute/caas/openshift_security_group';
+
+// VirtualMachine offers
+export {Ec2Instance} from './live_system/component/network_and_compute/iaas/ec2_instance';
+export {AzureVm} from './live_system/component/network_and_compute/iaas/azure_vm';
+export {GcpVm} from './live_system/component/network_and_compute/iaas/gcp_vm';
+export {HetznerServer} from './live_system/component/network_and_compute/iaas/hetzner_server';
+export {OciInstance} from './live_system/component/network_and_compute/iaas/oci_instance';
+export {ArubaCloudServer} from './live_system/component/network_and_compute/iaas/aruba_cloud_server';
 export {VsphereVm} from './live_system/component/network_and_compute/iaas/vsphere_vm';
-export type {
-  VsphereVmBuilder,
-  VsphereVmConfig,
-  SatisfiedVsphereVmBuilder,
-} from './live_system/component/network_and_compute/iaas/vsphere_vm';
-
-// Live system component helpers — OpenShift IaaS
 export {OpenshiftVm} from './live_system/component/network_and_compute/iaas/openshift_vm';
-export type {
-  OpenshiftVmBuilder,
-  OpenshiftVmConfig,
-  SatisfiedOpenshiftVmBuilder,
-} from './live_system/component/network_and_compute/iaas/openshift_vm';
 
-// Blueprint component helpers — PaaS
+// LoadBalancer offers
+export {AwsLb} from './live_system/component/network_and_compute/iaas/aws_lb';
+export {AzureLb} from './live_system/component/network_and_compute/iaas/azure_lb';
+export {GcpGlb} from './live_system/component/network_and_compute/iaas/gcp_glb';
+
+// ── NetworkAndCompute Blueprint — PaaS abstract component ───────────────────
 export {ContainerPlatform} from './fractal/component/network_and_compute/paas/container_platform';
 export type {
-  ContainerPlatformBuilder,
   ContainerPlatformConfig,
-  ContainerPlatformComponent,
   NodePoolConfig,
 } from './fractal/component/network_and_compute/paas/container_platform';
 
+export {ContainerRegistry} from './fractal/component/network_and_compute/paas/container_registry';
+export type {ContainerRegistryConfig} from './fractal/component/network_and_compute/paas/container_registry';
+
 // Blueprint component helpers — CaaS
+// Workload migrated to the Fractal + Interface model: abstract capability +
+// candidate functional Offers (M1).
 export {Workload} from './fractal/component/custom_workloads/caas/workload';
-export type {
-  WorkloadBuilder,
-  WorkloadConfig,
-  WorkloadComponent,
-  WorkloadPortLink,
-  WorkloadApiGatewayLink,
-  WorkloadMessagingLink,
-  ApiGatewayLinkSettings,
-  MessagingLinkSettings,
-  MessagingAccessType,
-} from './fractal/component/custom_workloads/caas/workload';
+export type {WorkloadConfig} from './fractal/component/custom_workloads/caas/workload';
 
 // Blueprint component helpers — FaaS (serverless functions)
 export {Function} from './fractal/component/custom_workloads/faas/function';
@@ -366,176 +207,53 @@ export type {
   SatisfiedGoogleFunctionBuilder,
 } from './live_system/component/custom_workloads/faas/gcp_google_function';
 
-// Live system component helpers — OpenShift CaaS
+// Workload offer (Fractal + Interface, M1) — RedHat (OpenShift Workload)
 export {OpenshiftWorkload} from './live_system/component/custom_workloads/caas/openshift_workload';
-export type {
-  OpenshiftWorkloadBuilder,
-  OpenshiftWorkloadConfig,
-  SatisfiedOpenshiftWorkloadBuilder,
-} from './live_system/component/custom_workloads/caas/openshift_workload';
 
+// Workload offer (Fractal + Interface, M1) — RedHat
 export {OpenshiftService} from './live_system/component/network_and_compute/caas/openshift_service';
-export type {
-  OpenshiftServiceBuilder,
-  OpenshiftServiceConfig,
-  SatisfiedOpenshiftServiceBuilder,
-} from './live_system/component/network_and_compute/caas/openshift_service';
 
-export {OpenshiftSecurityGroup} from './live_system/component/network_and_compute/caas/openshift_security_group';
-export type {
-  OpenshiftSecurityGroupBuilder,
-  OpenshiftSecurityGroupConfig,
-  SatisfiedOpenshiftSecurityGroupBuilder,
-} from './live_system/component/network_and_compute/caas/openshift_security_group';
+// (OpenshiftSecurityGroup offer is exported with the consolidated
+//  NetworkAndCompute SecurityGroup offer section above.)
+
+// ── NetworkAndCompute Live system — PaaS ContainerPlatform offers ───────────
+export {Eks} from './live_system/component/network_and_compute/paas/eks_cluster';
+export {Aks} from './live_system/component/network_and_compute/paas/azure_aks';
+export {Gke} from './live_system/component/network_and_compute/paas/gcp_gke';
+export {ArubaKaaS} from './live_system/component/network_and_compute/paas/aruba_kaas';
 
 // Live system component helpers — AWS PaaS
-export {AwsEksCluster} from './live_system/component/network_and_compute/paas/eks_cluster';
-export type {
-  AwsEksClusterBuilder,
-  AwsEksClusterConfig,
-  SatisfiedAwsEksClusterBuilder,
-} from './live_system/component/network_and_compute/paas/eks_cluster';
+export {EcsCluster} from './live_system/component/network_and_compute/paas/ecs_cluster';
 
-export {AwsEcsCluster} from './live_system/component/network_and_compute/paas/ecs_cluster';
-export type {
-  AwsEcsClusterBuilder,
-  AwsEcsClusterConfig,
-  SatisfiedAwsEcsClusterBuilder,
-} from './live_system/component/network_and_compute/paas/ecs_cluster';
+// Workload offers (Fractal + Interface, M1). The AWS ECS Task Definition is a
+// live-system-only sub-component built inline by the EcsService offer and has
+// no standalone export.
+export {EcsService} from './live_system/component/network_and_compute/paas/ecs_service';
 
-export {AwsEcsTaskDefinition} from './live_system/component/network_and_compute/paas/ecs_task_definition';
-export type {
-  AwsEcsTaskDefinitionBuilder,
-  AwsEcsTaskDefinitionComponent,
-  AwsEcsTaskDefinitionConfig,
-  SatisfiedAwsEcsTaskDefinitionBuilder,
-} from './live_system/component/network_and_compute/paas/ecs_task_definition';
-
-export {AwsEcsService} from './live_system/component/network_and_compute/paas/ecs_service';
-export type {
-  AwsEcsServiceBuilder,
-  AwsEcsServiceConfig,
-  SatisfiedAwsEcsServiceBuilder,
-} from './live_system/component/network_and_compute/paas/ecs_service';
-
-// Live system component helpers — Azure PaaS
-export {AzureAksCluster} from './live_system/component/network_and_compute/paas/azure_aks';
-export type {
-  AzureAksClusterBuilder,
-  AzureAksClusterConfig,
-  SatisfiedAzureAksClusterBuilder,
-} from './live_system/component/network_and_compute/paas/azure_aks';
-
+// Workload offers (Fractal + Interface, M1) — Azure
 export {AzureContainerAppsEnvironment} from './live_system/component/network_and_compute/paas/azure_container_apps_environment';
-export type {
-  AzureContainerAppsEnvironmentBuilder,
-  AzureContainerAppsEnvironmentConfig,
-  SatisfiedAzureContainerAppsEnvironmentBuilder,
-} from './live_system/component/network_and_compute/paas/azure_container_apps_environment';
-
 export {AzureContainerInstance} from './live_system/component/network_and_compute/paas/azure_container_instance';
-export type {
-  AzureContainerInstanceBuilder,
-  AzureContainerInstanceConfig,
-  SatisfiedAzureContainerInstanceBuilder,
-} from './live_system/component/network_and_compute/paas/azure_container_instance';
-
 export {AzureContainerApp} from './live_system/component/network_and_compute/paas/azure_container_app';
-export type {
-  AzureContainerAppBuilder,
-  AzureContainerAppConfig,
-  SatisfiedAzureContainerAppBuilder,
-} from './live_system/component/network_and_compute/paas/azure_container_app';
 
-// Live system component helpers — GCP PaaS
-export {GcpGkeCluster} from './live_system/component/network_and_compute/paas/gcp_gke';
-export type {
-  GcpGkeClusterBuilder,
-  GcpGkeClusterConfig,
-  SatisfiedGcpGkeClusterBuilder,
-} from './live_system/component/network_and_compute/paas/gcp_gke';
+// Workload offer (Fractal + Interface, M1) — GCP
+export {CloudRun} from './live_system/component/network_and_compute/paas/gcp_cloud_run_service';
 
-export {GcpCloudRunService} from './live_system/component/network_and_compute/paas/gcp_cloud_run_service';
-export type {
-  GcpCloudRunServiceBuilder,
-  GcpCloudRunServiceConfig,
-  SatisfiedGcpCloudRunServiceBuilder,
-} from './live_system/component/network_and_compute/paas/gcp_cloud_run_service';
-
-// Live system component helpers — OCI PaaS
+// Workload offer (Fractal + Interface, M1) — OCI
 export {OciContainerInstance} from './live_system/component/network_and_compute/paas/oci_container_instance';
-export type {
-  OciContainerInstanceBuilder,
-  OciContainerInstanceConfig,
-  SatisfiedOciContainerInstanceBuilder,
-} from './live_system/component/network_and_compute/paas/oci_container_instance';
 
 // Live system component helpers — Aruba IaaS
-export {ArubaVpc} from './live_system/component/network_and_compute/iaas/aruba_vpc';
-export type {
-  ArubaVpcBuilder,
-  ArubaVpcConfig,
-  SatisfiedArubaVpcBuilder,
-} from './live_system/component/network_and_compute/iaas/aruba_vpc';
-
-export {ArubaSubnet} from './live_system/component/network_and_compute/iaas/aruba_subnet';
-export type {
-  ArubaSubnetBuilder,
-  ArubaSubnetConfig,
-  SatisfiedArubaSubnetBuilder,
-} from './live_system/component/network_and_compute/iaas/aruba_subnet';
-
-export {ArubaSecurityGroup} from './live_system/component/network_and_compute/iaas/aruba_security_group';
-export type {
-  ArubaSecurityGroupBuilder,
-  ArubaSecurityGroupConfig,
-  SatisfiedArubaSecurityGroupBuilder,
-} from './live_system/component/network_and_compute/iaas/aruba_security_group';
-
+// (ArubaVpc / ArubaSubnet / ArubaSecurityGroup / ArubaCloudServer offers are
+//  exported with the consolidated NetworkAndCompute offer sections above.)
 export {ArubaSshKeyPair} from './live_system/component/network_and_compute/iaas/aruba_ssh_key_pair';
-export type {
-  ArubaSshKeyPairBuilder,
-  ArubaSshKeyPairConfig,
-} from './live_system/component/network_and_compute/iaas/aruba_ssh_key_pair';
-
-export {ArubaCloudServer} from './live_system/component/network_and_compute/iaas/aruba_cloud_server';
-export type {
-  ArubaCloudServerBuilder,
-  ArubaCloudServerConfig,
-  SatisfiedArubaCloudServerBuilder,
-} from './live_system/component/network_and_compute/iaas/aruba_cloud_server';
 
 export {ArubaVpcPeering} from './live_system/component/network_and_compute/iaas/aruba_vpc_peering';
-export type {
-  ArubaVpcPeeringBuilder,
-  ArubaVpcPeeringConfig,
-} from './live_system/component/network_and_compute/iaas/aruba_vpc_peering';
 
 export {ArubaVpnTunnel} from './live_system/component/network_and_compute/iaas/aruba_vpn_tunnel';
-export type {
-  ArubaVpnTunnelBuilder,
-  ArubaVpnTunnelConfig,
-} from './live_system/component/network_and_compute/iaas/aruba_vpn_tunnel';
 
 export {ArubaElasticIp} from './live_system/component/network_and_compute/iaas/aruba_elastic_ip';
-export type {
-  ArubaElasticIpBuilder,
-  ArubaElasticIpConfig,
-} from './live_system/component/network_and_compute/iaas/aruba_elastic_ip';
 
 // Live system component helpers — Aruba PaaS
-export {ArubaKaaS} from './live_system/component/network_and_compute/paas/aruba_kaas';
-export type {
-  ArubaKaaSBuilder,
-  ArubaKaaSConfig,
-  SatisfiedArubaKaaSBuilder,
-} from './live_system/component/network_and_compute/paas/aruba_kaas';
-
 export {ArubaContainerRegistry} from './live_system/component/network_and_compute/paas/aruba_container_registry';
-export type {
-  ArubaContainerRegistryBuilder,
-  ArubaContainerRegistryConfig,
-} from './live_system/component/network_and_compute/paas/aruba_container_registry';
 
 // Live system component helpers — Aruba Storage
 export {ArubaBlockStorage} from './live_system/component/storage/iaas/aruba_block_storage';
@@ -1351,3 +1069,36 @@ export type {
   SecuritySaaSUnmanagedConfig,
   SatisfiedSecuritySaaSUnmanagedBuilder,
 } from './live_system/component/security/saas/unmanaged';
+
+// ── Fractal + Interface (book model) ────────────────────────────────────────
+// A Fractal bundles a Blueprint of abstract components (each carrying candidate
+// Offers) with a typed Interface. Devs specialise through the Interface only; the
+// Provider chosen at instantiation selects the concrete Offer.
+
+export {createFractal} from './fractal/create_fractal';
+export type {
+  Fractal as FractalDefinitionResult,
+  FractalDefinition,
+  Blueprint,
+  ChainableOperations,
+} from './fractal/create_fractal';
+
+export type {Offer, OfferInstantiationContext} from './fractal/offer';
+export {instantiateFromNeutral} from './fractal/offer';
+
+export {createAbstractComponent} from './fractal/component/abstract_component';
+export type {
+  AbstractComponent,
+  AbstractComponentConfig,
+} from './fractal/component/abstract_component';
+export type {BlueprintComponentService} from './fractal/component/service';
+
+// ── Security Blueprint — IdentityProvider (abstract) ────────────────────────
+
+export {IdentityProvider} from './fractal/component/security/identity_provider';
+export type {IdentityProviderConfig} from './fractal/component/security/identity_provider';
+
+// ── Security Live system — IdentityProvider offers ──────────────────────────
+
+export {Cognito} from './live_system/component/security/paas/cognito';
+export {Keycloak} from './live_system/component/security/caas/keycloak';

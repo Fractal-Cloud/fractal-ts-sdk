@@ -1,32 +1,17 @@
-import {getLiveSystemComponentBuilder} from '../../entity';
-import {getBlueprintComponentTypeBuilder} from '../../../../fractal/component/type';
+import {Offer, instantiateFromNeutral} from '../../../../fractal/offer';
+import {
+  getBlueprintComponentTypeBuilder,
+  BlueprintComponentType,
+} from '../../../../fractal/component/type';
 import {InfrastructureDomain} from '../../../../values/infrastructure_domain';
 import {ServiceDeliveryModel} from '../../../../values/service_delivery_model';
 import {PascalCaseString} from '../../../../values/pascal_case_string';
-import {getParametersInstance} from '../../../../values/generic_parameters';
-import {getComponentIdBuilder, ComponentId} from '../../../../component/id';
-import {KebabCaseString} from '../../../../values/kebab_case_string';
-import {getVersionBuilder, Version} from '../../../../values/version';
-import {LiveSystemComponent} from '../../index';
 
-// Matches aria-agent-aruba handlers/elastic_ip.go: NetworkAndCompute.IaaS.ArubaElasticIp
+// Agent offer constant: NetworkAndCompute.IaaS.ArubaElasticIp
+// Matches aria-agent-aruba handlers/elastic_ip.go.
 const ARUBA_ELASTIC_IP_TYPE_NAME = 'ArubaElasticIp';
 
-function buildId(id: string): ComponentId {
-  return getComponentIdBuilder()
-    .withValue(KebabCaseString.getBuilder().withValue(id).build())
-    .build();
-}
-
-function buildVersion(major: number, minor: number, patch: number): Version {
-  return getVersionBuilder()
-    .withMajor(major)
-    .withMinor(minor)
-    .withPatch(patch)
-    .build();
-}
-
-function buildType() {
+function buildArubaElasticIpType(): BlueprintComponentType {
   return getBlueprintComponentTypeBuilder()
     .withInfrastructureDomain(InfrastructureDomain.NetworkAndCompute)
     .withServiceDeliveryModel(ServiceDeliveryModel.IaaS)
@@ -38,70 +23,17 @@ function buildType() {
     .build();
 }
 
-export type ArubaElasticIpBuilder = {
-  withId: (id: string) => ArubaElasticIpBuilder;
-  withVersion: (
-    major: number,
-    minor: number,
-    patch: number,
-  ) => ArubaElasticIpBuilder;
-  withDisplayName: (displayName: string) => ArubaElasticIpBuilder;
-  withDescription: (description: string) => ArubaElasticIpBuilder;
-  build: () => LiveSystemComponent;
+const ARUBA_ELASTIC_IP_TYPE = buildArubaElasticIpType();
+
+/**
+ * Aruba Elastic IP — Aruba-managed static public IP Offer satisfying the
+ * abstract ElasticIp. Inherits all vendor-neutral parameters, dependencies and
+ * links; adds no vendor-only knobs and emits no sub-components in v1.
+ */
+export const ArubaElasticIp: Offer = {
+  type: ARUBA_ELASTIC_IP_TYPE,
+  provider: 'Aruba',
+  instantiate: ctx => [
+    instantiateFromNeutral(ctx, ARUBA_ELASTIC_IP_TYPE, 'Aruba'),
+  ],
 };
-
-export type ArubaElasticIpConfig = {
-  id: string;
-  version: {major: number; minor: number; patch: number};
-  displayName: string;
-  description?: string;
-};
-
-export namespace ArubaElasticIp {
-  export const getBuilder = (): ArubaElasticIpBuilder => {
-    const params = getParametersInstance();
-    const inner = getLiveSystemComponentBuilder()
-      .withType(buildType())
-      .withParameters(params)
-      .withProvider('Aruba');
-
-    const builder: ArubaElasticIpBuilder = {
-      withId: id => {
-        inner.withId(buildId(id));
-        return builder;
-      },
-      withVersion: (major, minor, patch) => {
-        inner.withVersion(buildVersion(major, minor, patch));
-        return builder;
-      },
-      withDisplayName: displayName => {
-        inner.withDisplayName(displayName);
-        return builder;
-      },
-      withDescription: description => {
-        inner.withDescription(description);
-        return builder;
-      },
-      build: () => inner.build(),
-    };
-
-    return builder;
-  };
-
-  export const create = (config: ArubaElasticIpConfig): LiveSystemComponent => {
-    const b = getBuilder()
-      .withId(config.id)
-      .withVersion(
-        config.version.major,
-        config.version.minor,
-        config.version.patch,
-      )
-      .withDisplayName(config.displayName);
-
-    if (config.description) {
-      b.withDescription(config.description);
-    }
-
-    return b.build();
-  };
-}

@@ -1,127 +1,49 @@
-import {getBlueprintComponentBuilder} from '../../entity';
 import {
-  getBlueprintComponentTypeBuilder,
-  BlueprintComponentType,
-} from '../../type';
+  createAbstractComponent,
+  AbstractComponent,
+} from '../../abstract_component';
+import {Offer} from '../../../offer';
 import {InfrastructureDomain} from '../../../../values/infrastructure_domain';
-import {ServiceDeliveryModel} from '../../../../values/service_delivery_model';
-import {PascalCaseString} from '../../../../values/pascal_case_string';
-import {getParametersInstance} from '../../../../values/generic_parameters';
-import {getComponentIdBuilder, ComponentId} from '../../../../component/id';
-import {KebabCaseString} from '../../../../values/kebab_case_string';
-import {getVersionBuilder, Version} from '../../../../values/version';
-import {BlueprintComponent} from '../../index';
+import {BlueprintComponentDependency} from '../../dependency';
 import {ComponentLink} from '../../../../component/link';
 
-export const LOAD_BALANCER_TYPE_NAME = 'LoadBalancer';
-
-// ── internal helpers ──────────────────────────────────────────────────────────
-
-function buildId(id: string): ComponentId {
-  return getComponentIdBuilder()
-    .withValue(KebabCaseString.getBuilder().withValue(id).build())
-    .build();
-}
-
-function buildVersion(major: number, minor: number, patch: number): Version {
-  return getVersionBuilder()
-    .withMajor(major)
-    .withMinor(minor)
-    .withPatch(patch)
-    .build();
-}
-
-function buildLoadBalancerType(): BlueprintComponentType {
-  return getBlueprintComponentTypeBuilder()
-    .withInfrastructureDomain(InfrastructureDomain.NetworkAndCompute)
-    .withServiceDeliveryModel(ServiceDeliveryModel.IaaS)
-    .withName(
-      PascalCaseString.getBuilder().withValue(LOAD_BALANCER_TYPE_NAME).build(),
-    )
-    .build();
-}
-
-// ── Public API ────────────────────────────────────────────────────────────────
-
-export type LoadBalancerComponent = {
-  readonly component: BlueprintComponent;
-  readonly components: ReadonlyArray<BlueprintComponent>;
-};
-
-function makeLoadBalancerComponent(
-  component: BlueprintComponent,
-): LoadBalancerComponent {
-  return {
-    component,
-    components: [component],
-  };
-}
-
-export type LoadBalancerBuilder = {
-  withId: (id: string) => LoadBalancerBuilder;
-  withVersion: (
-    major: number,
-    minor: number,
-    patch: number,
-  ) => LoadBalancerBuilder;
-  withDisplayName: (displayName: string) => LoadBalancerBuilder;
-  withDescription: (description: string) => LoadBalancerBuilder;
-  withLinks: (links: ComponentLink[]) => LoadBalancerBuilder;
-  build: () => BlueprintComponent;
-};
-
+/**
+ * `LoadBalancer` — the abstract NetworkAndCompute capability "I need a load
+ * balancer". It is satisfied by candidate Offers (e.g. an AWS ELB, an Azure
+ * Load Balancer, a GCP Global Load Balancer). The dev specializes it through a
+ * Fractal Interface using vendor-neutral concepts only.
+ *
+ * Neutral-vs-vendor split: every knob the candidate offers expose
+ * (loadBalancerType, internal, sku, frontendIpConfiguration, loadBalancingScheme,
+ * portRange, target, ...) is supported by exactly one offer, so none qualifies
+ * as a Fractal Interface op (an op requires ≥2 candidate offers sharing it).
+ * The neutral Interface op set for this capability is therefore empty: devs
+ * specialize structurally (dependencies + links), and the Provider selects the
+ * concrete offer that carries its own vendor-only extras.
+ */
 export type LoadBalancerConfig = {
   id: string;
-  version: {major: number; minor: number; patch: number};
   displayName: string;
   description?: string;
+  /** Candidate offers that can satisfy this load balancer. */
+  offers: Offer[];
+  dependencies?: BlueprintComponentDependency[];
+  links?: ComponentLink[];
 };
 
 export namespace LoadBalancer {
-  export const getBuilder = (): LoadBalancerBuilder => {
-    const inner = getBlueprintComponentBuilder()
-      .withType(buildLoadBalancerType())
-      .withParameters(getParametersInstance());
+  /** Vendor-neutral Service name this capability resolves to. */
+  export const SERVICE_NAME = 'LoadBalancer';
 
-    const builder: LoadBalancerBuilder = {
-      withId: id => {
-        inner.withId(buildId(id));
-        return builder;
-      },
-      withVersion: (major, minor, patch) => {
-        inner.withVersion(buildVersion(major, minor, patch));
-        return builder;
-      },
-      withDisplayName: displayName => {
-        inner.withDisplayName(displayName);
-        return builder;
-      },
-      withDescription: description => {
-        inner.withDescription(description);
-        return builder;
-      },
-      withLinks: links => {
-        inner.withLinks(links);
-        return builder;
-      },
-      build: () => inner.build(),
-    };
-
-    return builder;
-  };
-
-  export const create = (config: LoadBalancerConfig): LoadBalancerComponent => {
-    const b = getBuilder()
-      .withId(config.id)
-      .withVersion(
-        config.version.major,
-        config.version.minor,
-        config.version.patch,
-      )
-      .withDisplayName(config.displayName);
-
-    if (config.description) b.withDescription(config.description);
-
-    return makeLoadBalancerComponent(b.build());
-  };
+  export const create = (config: LoadBalancerConfig): AbstractComponent =>
+    createAbstractComponent({
+      id: config.id,
+      displayName: config.displayName,
+      description: config.description,
+      domain: InfrastructureDomain.NetworkAndCompute,
+      serviceName: SERVICE_NAME,
+      offers: config.offers,
+      dependencies: config.dependencies,
+      links: config.links,
+    });
 }
