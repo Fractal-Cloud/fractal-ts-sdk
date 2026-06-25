@@ -1,125 +1,54 @@
-import {getBlueprintComponentBuilder} from '../../entity';
-import {getBlueprintComponentTypeBuilder} from '../../type';
+import {
+  createAbstractComponent,
+  AbstractComponent,
+} from '../../abstract_component';
+import {Offer} from '../../../offer';
 import {InfrastructureDomain} from '../../../../values/infrastructure_domain';
-import {ServiceDeliveryModel} from '../../../../values/service_delivery_model';
-import {PascalCaseString} from '../../../../values/pascal_case_string';
-import {getParametersInstance} from '../../../../values/generic_parameters';
-import {getComponentIdBuilder, ComponentId} from '../../../../component/id';
-import {KebabCaseString} from '../../../../values/kebab_case_string';
-import {getVersionBuilder, Version} from '../../../../values/version';
-import {BlueprintComponent} from '../../index';
 import {BlueprintComponentDependency} from '../../dependency';
-import {MessagingEntityComponent} from './entity';
+import {ComponentLink} from '../../../../component/link';
 
-export const BROKER_TYPE_NAME = 'Broker';
-
-// ── internal helpers ──────────────────────────────────────────────────────────
-
-function buildId(id: string): ComponentId {
-  return getComponentIdBuilder()
-    .withValue(KebabCaseString.getBuilder().withValue(id).build())
-    .build();
-}
-
-function buildVersion(major: number, minor: number, patch: number): Version {
-  return getVersionBuilder()
-    .withMajor(major)
-    .withMinor(minor)
-    .withPatch(patch)
-    .build();
-}
-
-function buildBrokerType() {
-  return getBlueprintComponentTypeBuilder()
-    .withInfrastructureDomain(InfrastructureDomain.Messaging)
-    .withServiceDeliveryModel(ServiceDeliveryModel.PaaS)
-    .withName(PascalCaseString.getBuilder().withValue(BROKER_TYPE_NAME).build())
-    .build();
-}
-
-// ── Public API ────────────────────────────────────────────────────────────────
-
-export type BrokerComponent = {
-  readonly broker: BlueprintComponent;
-  readonly entities: ReadonlyArray<MessagingEntityComponent>;
-  withEntities: (entities: MessagingEntityComponent[]) => BrokerComponent;
-};
-
-export type BrokerBuilder = {
-  withId: (id: string) => BrokerBuilder;
-  withVersion: (major: number, minor: number, patch: number) => BrokerBuilder;
-  withDisplayName: (displayName: string) => BrokerBuilder;
-  withDescription: (description: string) => BrokerBuilder;
-  build: () => BlueprintComponent;
-};
+/**
+ * `Broker` — the abstract Messaging capability "I need a managed message broker".
+ * It is satisfied by candidate Offers (e.g. AzureServiceBus, AzureRelay and
+ * AzureEventHubNamespace on Azure, GcpPubSub on GCP). The dev specializes it
+ * through a Fractal Interface using vendor-neutral concepts only.
+ *
+ * Neutral Interface ops (shared by ≥2 candidate offers): `azureRegion`,
+ * `azureResourceGroup`, `sku`. Set via `component.set(key, value)`.
+ *
+ * Vendor-only knobs (e.g. AzureEventHubNamespace's `kafkaEnabled`,
+ * `autoInflateEnabled`, `maximumThroughputUnits`, `minimumTlsVersion`,
+ * `publicNetworkAccess`, `skuName`, `skuTier`, `skuCapacity`, `zoneRedundant`)
+ * are offer-level extras supported by a single offer, and therefore live on that
+ * offer, NOT on this Interface.
+ */
+export const AZURE_REGION_PARAM = 'azureRegion';
+export const AZURE_RESOURCE_GROUP_PARAM = 'azureResourceGroup';
+export const SKU_PARAM = 'sku';
 
 export type BrokerConfig = {
   id: string;
-  version: {major: number; minor: number; patch: number};
   displayName: string;
   description?: string;
+  /** Candidate offers that can satisfy this broker. */
+  offers: Offer[];
+  dependencies?: BlueprintComponentDependency[];
+  links?: ComponentLink[];
 };
 
-function makeBrokerComponent(
-  broker: BlueprintComponent,
-  entityNodes: MessagingEntityComponent[],
-): BrokerComponent {
-  const brokerDep: BlueprintComponentDependency = {id: broker.id};
-  const wiredEntities = entityNodes.map(e => ({
-    ...e,
-    component: {
-      ...e.component,
-      dependencies: [...e.component.dependencies, brokerDep],
-    },
-  }));
-  return {
-    broker,
-    entities: wiredEntities,
-    withEntities: newEntities => makeBrokerComponent(broker, newEntities),
-  };
-}
-
 export namespace Broker {
-  export const getBuilder = (): BrokerBuilder => {
-    const inner = getBlueprintComponentBuilder()
-      .withType(buildBrokerType())
-      .withParameters(getParametersInstance());
+  /** Vendor-neutral Service name this capability resolves to. */
+  export const SERVICE_NAME = 'Broker';
 
-    const builder: BrokerBuilder = {
-      withId: id => {
-        inner.withId(buildId(id));
-        return builder;
-      },
-      withVersion: (major, minor, patch) => {
-        inner.withVersion(buildVersion(major, minor, patch));
-        return builder;
-      },
-      withDisplayName: displayName => {
-        inner.withDisplayName(displayName);
-        return builder;
-      },
-      withDescription: description => {
-        inner.withDescription(description);
-        return builder;
-      },
-      build: () => inner.build(),
-    };
-
-    return builder;
-  };
-
-  export const create = (config: BrokerConfig): BrokerComponent => {
-    const b = getBuilder()
-      .withId(config.id)
-      .withVersion(
-        config.version.major,
-        config.version.minor,
-        config.version.patch,
-      )
-      .withDisplayName(config.displayName);
-
-    if (config.description) b.withDescription(config.description);
-
-    return makeBrokerComponent(b.build(), []);
-  };
+  export const create = (config: BrokerConfig): AbstractComponent =>
+    createAbstractComponent({
+      id: config.id,
+      displayName: config.displayName,
+      description: config.description,
+      domain: InfrastructureDomain.Messaging,
+      serviceName: SERVICE_NAME,
+      offers: config.offers,
+      dependencies: config.dependencies,
+      links: config.links,
+    });
 }

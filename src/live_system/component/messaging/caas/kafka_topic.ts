@@ -1,4 +1,4 @@
-import {getLiveSystemComponentBuilder} from '../../entity';
+import {Offer, instantiateFromNeutral} from '../../../../fractal/offer';
 import {
   getBlueprintComponentTypeBuilder,
   BlueprintComponentType,
@@ -6,37 +6,12 @@ import {
 import {InfrastructureDomain} from '../../../../values/infrastructure_domain';
 import {ServiceDeliveryModel} from '../../../../values/service_delivery_model';
 import {PascalCaseString} from '../../../../values/pascal_case_string';
-import {
-  GenericParameters,
-  getParametersInstance,
-} from '../../../../values/generic_parameters';
-import {getComponentIdBuilder, ComponentId} from '../../../../component/id';
-import {KebabCaseString} from '../../../../values/kebab_case_string';
-import {getVersionBuilder, Version} from '../../../../values/version';
-import {LiveSystemComponent} from '../../index';
-import {BlueprintComponent} from '../../../../fractal/component/index';
 
-// Agent constant: KAFKA_TOPIC_COMPONENT_NAME = "KafkaTopic"
+// Agent constant: KAFKA_TOPIC_COMPONENT_NAME = "KafkaTopic" — offer type
+// Messaging.CaaS.KafkaTopic
 const KAFKA_TOPIC_TYPE_NAME = 'KafkaTopic';
-const NAMESPACE_PARAM = 'namespace';
 
-// ── internal helpers ──────────────────────────────────────────────────────────
-
-function buildId(id: string): ComponentId {
-  return getComponentIdBuilder()
-    .withValue(KebabCaseString.getBuilder().withValue(id).build())
-    .build();
-}
-
-function buildVersion(major: number, minor: number, patch: number): Version {
-  return getVersionBuilder()
-    .withMajor(major)
-    .withMinor(minor)
-    .withPatch(patch)
-    .build();
-}
-
-function buildType(): BlueprintComponentType {
+function buildKafkaTopicType(): BlueprintComponentType {
   return getBlueprintComponentTypeBuilder()
     .withInfrastructureDomain(InfrastructureDomain.Messaging)
     .withServiceDeliveryModel(ServiceDeliveryModel.CaaS)
@@ -46,128 +21,17 @@ function buildType(): BlueprintComponentType {
     .build();
 }
 
-function pushParam(
-  params: GenericParameters,
-  key: string,
-  value: unknown,
-): void {
-  params.push(key, value as Record<string, object>);
-}
-
-// ── Public API ────────────────────────────────────────────────────────────────
+const KAFKA_TOPIC_TYPE = buildKafkaTopicType();
 
 /**
- * Returned by satisfy() — only exposes vendor-specific parameters.
- * Structural properties (id, version, displayName, description,
- * dependencies, links) are locked to the blueprint and cannot be overridden.
+ * Kafka Topic — self-managed (CaaS) Kafka topic Offer satisfying the abstract
+ * CaaSMessagingEntity. It inherits the abstract component's vendor-neutral
+ * parameters, dependencies and links. The vendor-only knob `namespace` is an
+ * offer-level extra and is not part of the neutral Interface. There are no
+ * vendor sub-components for this offer.
  */
-export type SatisfiedKafkaTopicBuilder = {
-  withNamespace: (namespace: string) => SatisfiedKafkaTopicBuilder;
-  build: () => LiveSystemComponent;
+export const KafkaTopic: Offer = {
+  type: KAFKA_TOPIC_TYPE,
+  provider: 'CaaS',
+  instantiate: ctx => [instantiateFromNeutral(ctx, KAFKA_TOPIC_TYPE, 'CaaS')],
 };
-
-export type KafkaTopicBuilder = {
-  withId: (id: string) => KafkaTopicBuilder;
-  withVersion: (
-    major: number,
-    minor: number,
-    patch: number,
-  ) => KafkaTopicBuilder;
-  withDisplayName: (displayName: string) => KafkaTopicBuilder;
-  withDescription: (description: string) => KafkaTopicBuilder;
-  withNamespace: (namespace: string) => KafkaTopicBuilder;
-  build: () => LiveSystemComponent;
-};
-
-export type KafkaTopicConfig = {
-  id: string;
-  version: {major: number; minor: number; patch: number};
-  displayName: string;
-  description?: string;
-  namespace?: string;
-};
-
-export namespace KafkaTopic {
-  export const getBuilder = (): KafkaTopicBuilder => {
-    const params = getParametersInstance();
-    const inner = getLiveSystemComponentBuilder()
-      .withType(buildType())
-      .withParameters(params)
-      .withProvider('CaaS');
-
-    const builder: KafkaTopicBuilder = {
-      withId: id => {
-        inner.withId(buildId(id));
-        return builder;
-      },
-      withVersion: (major, minor, patch) => {
-        inner.withVersion(buildVersion(major, minor, patch));
-        return builder;
-      },
-      withDisplayName: displayName => {
-        inner.withDisplayName(displayName);
-        return builder;
-      },
-      withDescription: description => {
-        inner.withDescription(description);
-        return builder;
-      },
-      withNamespace: value => {
-        pushParam(params, NAMESPACE_PARAM, value);
-        return builder;
-      },
-      build: () => inner.build(),
-    };
-
-    return builder;
-  };
-
-  export const satisfy = (
-    blueprint: BlueprintComponent,
-  ): SatisfiedKafkaTopicBuilder => {
-    const params = getParametersInstance();
-    const inner = getLiveSystemComponentBuilder()
-      .withType(buildType())
-      .withParameters(params)
-      .withProvider('CaaS')
-      .withId(buildId(blueprint.id.toString()))
-      .withVersion(
-        buildVersion(
-          blueprint.version.major,
-          blueprint.version.minor,
-          blueprint.version.patch,
-        ),
-      )
-      .withDisplayName(blueprint.displayName)
-      .withDependencies(blueprint.dependencies)
-      .withLinks(blueprint.links);
-
-    if (blueprint.description) inner.withDescription(blueprint.description);
-
-    const satisfiedBuilder: SatisfiedKafkaTopicBuilder = {
-      withNamespace: value => {
-        pushParam(params, NAMESPACE_PARAM, value);
-        return satisfiedBuilder;
-      },
-      build: () => inner.build(),
-    };
-
-    return satisfiedBuilder;
-  };
-
-  export const create = (config: KafkaTopicConfig): LiveSystemComponent => {
-    const b = getBuilder()
-      .withId(config.id)
-      .withVersion(
-        config.version.major,
-        config.version.minor,
-        config.version.patch,
-      )
-      .withDisplayName(config.displayName);
-
-    if (config.description) b.withDescription(config.description);
-    if (config.namespace) b.withNamespace(config.namespace);
-
-    return b.build();
-  };
-}

@@ -373,468 +373,177 @@ export {CaaSMinioTenant} from './live_system/component/storage/caas/caas_minio_t
 export {SaaSUnmanaged} from './live_system/component/storage/saas/unmanaged';
 
 // ── Messaging domain — Blueprint component helpers ───────────────────────────
+// Each abstract component carries candidate Offers; the dev specialises through
+// a Fractal Interface using vendor-neutral concepts only. The Provider chosen at
+// instantiation selects the concrete Offer.
 
 // Messaging PaaS
-export {MessagingEntity} from './fractal/component/messaging/paas/entity';
-export type {
-  MessagingEntityBuilder,
-  MessagingEntityConfig,
-  MessagingEntityComponent,
-} from './fractal/component/messaging/paas/entity';
-
 export {Broker} from './fractal/component/messaging/paas/broker';
-export type {
-  BrokerBuilder,
-  BrokerConfig,
-  BrokerComponent,
-} from './fractal/component/messaging/paas/broker';
+export type {BrokerConfig} from './fractal/component/messaging/paas/broker';
+
+export {MessagingEntity} from './fractal/component/messaging/paas/entity';
+export type {MessagingEntityConfig} from './fractal/component/messaging/paas/entity';
 
 // Messaging CaaS
-export {CaaSMessagingEntity} from './fractal/component/messaging/caas/entity';
-export type {
-  CaaSMessagingEntityBuilder,
-  CaaSMessagingEntityConfig,
-  CaaSMessagingEntityComponent,
-} from './fractal/component/messaging/caas/entity';
-
 export {CaaSBroker} from './fractal/component/messaging/caas/broker';
-export type {
-  CaaSBrokerBuilder,
-  CaaSBrokerConfig,
-  CaaSBrokerComponent,
-} from './fractal/component/messaging/caas/broker';
+export type {CaaSBrokerConfig} from './fractal/component/messaging/caas/broker';
+
+export {CaaSMessagingEntity} from './fractal/component/messaging/caas/entity';
+export type {CaaSMessagingEntityConfig} from './fractal/component/messaging/caas/entity';
 
 // Messaging SaaS
 export {MessagingUnmanaged} from './fractal/component/messaging/saas/unmanaged';
-export type {
-  MessagingUnmanagedBuilder,
-  MessagingUnmanagedConfig,
-  MessagingUnmanagedComponent,
-} from './fractal/component/messaging/saas/unmanaged';
+export type {MessagingUnmanagedConfig} from './fractal/component/messaging/saas/unmanaged';
 
-// ── Messaging domain — Live system component helpers ─────────────────────────
+// ── Messaging domain — Live system offers ────────────────────────────────────
+// Offers satisfy an abstract Messaging component. Each is a vendor-neutral
+// `Offer` value consumed by `createFractal`.
 
-// Live system — Azure Messaging
+// Messaging offers — Azure
 export {AzureServiceBus} from './live_system/component/messaging/paas/azure_service_bus';
-export type {
-  AzureServiceBusBuilder,
-  AzureServiceBusConfig,
-  SatisfiedAzureServiceBusBuilder,
-} from './live_system/component/messaging/paas/azure_service_bus';
-
 export {AzureServiceBusTopic} from './live_system/component/messaging/paas/azure_service_bus_topic';
-export type {
-  AzureServiceBusTopicBuilder,
-  AzureServiceBusTopicConfig,
-  SatisfiedAzureServiceBusTopicBuilder,
-} from './live_system/component/messaging/paas/azure_service_bus_topic';
-
 export {AzureServiceBusQueue} from './live_system/component/messaging/paas/azure_service_bus_queue';
-export type {
-  AzureServiceBusQueueBuilder,
-  AzureServiceBusQueueConfig,
-  SatisfiedAzureServiceBusQueueBuilder,
-} from './live_system/component/messaging/paas/azure_service_bus_queue';
-
 export {AzureRelay} from './live_system/component/messaging/paas/azure_relay';
-export type {
-  AzureRelayBuilder,
-  AzureRelayConfig,
-  SatisfiedAzureRelayBuilder,
-} from './live_system/component/messaging/paas/azure_relay';
-
 export {AzureEventHubNamespace} from './live_system/component/messaging/paas/azure_eventhub_namespace';
-export type {
-  AzureEventHubNamespaceBuilder,
-  AzureEventHubNamespaceConfig,
-  SatisfiedAzureEventHubNamespaceBuilder,
-} from './live_system/component/messaging/paas/azure_eventhub_namespace';
-
 export {AzureEventHub} from './live_system/component/messaging/paas/azure_eventhub';
-export type {
-  AzureEventHubBuilder,
-  AzureEventHubConfig,
-  SatisfiedAzureEventHubBuilder,
-} from './live_system/component/messaging/paas/azure_eventhub';
 
-// Live system — GCP Messaging
+// Messaging offers — GCP
 export {GcpPubSub} from './live_system/component/messaging/paas/gcp_pubsub';
-export type {
-  GcpPubSubBuilder,
-  GcpPubSubConfig,
-  SatisfiedGcpPubSubBuilder,
-} from './live_system/component/messaging/paas/gcp_pubsub';
-
 export {GcpPubSubTopic} from './live_system/component/messaging/paas/gcp_pubsub_topic';
-export type {
-  GcpPubSubTopicBuilder,
-  GcpPubSubTopicConfig,
-  SatisfiedGcpPubSubTopicBuilder,
-} from './live_system/component/messaging/paas/gcp_pubsub_topic';
-
 export {GcpPubSubSubscription} from './live_system/component/messaging/paas/gcp_pubsub_subscription';
-export type {
-  GcpPubSubSubscriptionBuilder,
-  GcpPubSubSubscriptionConfig,
-  SatisfiedGcpPubSubSubscriptionBuilder,
-} from './live_system/component/messaging/paas/gcp_pubsub_subscription';
 
-// Live system — CaaS Messaging
+// Messaging offers — CaaS
 export {Kafka} from './live_system/component/messaging/caas/kafka';
-export type {
-  KafkaBuilder,
-  KafkaConfig,
-  SatisfiedKafkaBuilder,
-} from './live_system/component/messaging/caas/kafka';
-
 export {KafkaTopic} from './live_system/component/messaging/caas/kafka_topic';
-export type {
-  KafkaTopicBuilder,
-  KafkaTopicConfig,
-  SatisfiedKafkaTopicBuilder,
-} from './live_system/component/messaging/caas/kafka_topic';
 
-// Live system — SaaS Messaging
+// Messaging offers — SaaS
 export {MessagingSaaSUnmanaged} from './live_system/component/messaging/saas/unmanaged';
-export type {
-  MessagingSaaSUnmanagedBuilder,
-  MessagingSaaSUnmanagedConfig,
-  SatisfiedMessagingSaaSUnmanagedBuilder,
-} from './live_system/component/messaging/saas/unmanaged';
 
 // ── BigData domain — Blueprint component helpers ─────────────────────────────
+// Each abstract component carries candidate Offers; the dev specialises through
+// a Fractal Interface using vendor-neutral concepts only. The Provider chosen at
+// instantiation selects the concrete Offer.
 
+// BigData PaaS
 export {DistributedDataProcessing} from './fractal/component/big_data/paas/distributed_data_processing';
-export type {
-  DistributedDataProcessingBuilder,
-  DistributedDataProcessingConfig,
-  DistributedDataProcessingComponent,
-} from './fractal/component/big_data/paas/distributed_data_processing';
+export type {DistributedDataProcessingConfig} from './fractal/component/big_data/paas/distributed_data_processing';
 
 export {ComputeCluster} from './fractal/component/big_data/paas/compute_cluster';
-export type {
-  ComputeClusterBuilder,
-  ComputeClusterConfig,
-  ComputeClusterComponent,
-} from './fractal/component/big_data/paas/compute_cluster';
+export type {ComputeClusterConfig} from './fractal/component/big_data/paas/compute_cluster';
 
 export {DataProcessingJob} from './fractal/component/big_data/paas/data_processing_job';
-export type {
-  DataProcessingJobBuilder,
-  DataProcessingJobConfig,
-  DataProcessingJobComponent,
-  DataProcessingJobDatalakeLink,
-  DatalakeLinkSettings,
-  DatalakePurpose,
-  DataProcessingJobMessagingLink,
-  DataProcessingJobMessagingLinkSettings,
-  DataProcessingJobMessagingAccessType,
-} from './fractal/component/big_data/paas/data_processing_job';
+export type {DataProcessingJobConfig} from './fractal/component/big_data/paas/data_processing_job';
 
 export {MlExperiment} from './fractal/component/big_data/paas/ml_experiment';
-export type {
-  MlExperimentBuilder,
-  MlExperimentConfig,
-  MlExperimentComponent,
-} from './fractal/component/big_data/paas/ml_experiment';
+export type {MlExperimentConfig} from './fractal/component/big_data/paas/ml_experiment';
 
 export {Datalake} from './fractal/component/big_data/paas/datalake';
-export type {
-  DatalakeBuilder,
-  DatalakeConfig,
-  DatalakeComponent,
-} from './fractal/component/big_data/paas/datalake';
+export type {DatalakeConfig} from './fractal/component/big_data/paas/datalake';
 
+// BigData SaaS
 export {BigDataUnmanaged} from './fractal/component/big_data/saas/unmanaged';
-export type {
-  BigDataUnmanagedBuilder,
-  BigDataUnmanagedConfig,
-  BigDataUnmanagedComponent,
-} from './fractal/component/big_data/saas/unmanaged';
+export type {BigDataUnmanagedConfig} from './fractal/component/big_data/saas/unmanaged';
 
-// ── BigData domain — Live system component helpers ───────────────────────────
+// ── BigData domain — Live system offers ──────────────────────────────────────
+// Offers satisfy an abstract BigData component. Each is a vendor-neutral
+// `Offer` value consumed by `createFractal`.
 
-// Live system — AWS BigData
+// BigData offers — AWS
 export {AwsDatabricks} from './live_system/component/big_data/paas/aws_databricks';
-export type {
-  AwsDatabricksBuilder,
-  AwsDatabricksConfig,
-  SatisfiedAwsDatabricksBuilder,
-} from './live_system/component/big_data/paas/aws_databricks';
-
 export {AwsDatabricksCluster} from './live_system/component/big_data/paas/aws_databricks_cluster';
-export type {
-  AwsDatabricksClusterBuilder,
-  AwsDatabricksClusterConfig,
-  SatisfiedAwsDatabricksClusterBuilder,
-} from './live_system/component/big_data/paas/aws_databricks_cluster';
-
 export {AwsDatabricksJob} from './live_system/component/big_data/paas/aws_databricks_job';
-export type {
-  AwsDatabricksJobBuilder,
-  AwsDatabricksJobConfig,
-  SatisfiedAwsDatabricksJobBuilder,
-} from './live_system/component/big_data/paas/aws_databricks_job';
-
 export {AwsDatabricksMlflow} from './live_system/component/big_data/paas/aws_databricks_mlflow';
-export type {
-  AwsDatabricksMlflowBuilder,
-  AwsDatabricksMlflowConfig,
-  SatisfiedAwsDatabricksMlflowBuilder,
-} from './live_system/component/big_data/paas/aws_databricks_mlflow';
-
 export {AwsS3Datalake} from './live_system/component/big_data/paas/aws_s3_datalake';
-export type {
-  AwsS3DatalakeBuilder,
-  AwsS3DatalakeConfig,
-  SatisfiedAwsS3DatalakeBuilder,
-} from './live_system/component/big_data/paas/aws_s3_datalake';
 
-// Live system — Azure BigData
+// BigData offers — Azure
 export {AzureDatabricks} from './live_system/component/big_data/paas/azure_databricks';
-export type {
-  AzureDatabricksBuilder,
-  AzureDatabricksConfig,
-  SatisfiedAzureDatabricksBuilder,
-} from './live_system/component/big_data/paas/azure_databricks';
-
 export {AzureDatabricksCluster} from './live_system/component/big_data/paas/azure_databricks_cluster';
-export type {
-  AzureDatabricksClusterBuilder,
-  AzureDatabricksClusterConfig,
-  SatisfiedAzureDatabricksClusterBuilder,
-} from './live_system/component/big_data/paas/azure_databricks_cluster';
-
 export {AzureDatabricksJob} from './live_system/component/big_data/paas/azure_databricks_job';
-export type {
-  AzureDatabricksJobBuilder,
-  AzureDatabricksJobConfig,
-  SatisfiedAzureDatabricksJobBuilder,
-} from './live_system/component/big_data/paas/azure_databricks_job';
-
 export {AzureDatabricksMlflow} from './live_system/component/big_data/paas/azure_databricks_mlflow';
-export type {
-  AzureDatabricksMlflowBuilder,
-  AzureDatabricksMlflowConfig,
-  SatisfiedAzureDatabricksMlflowBuilder,
-} from './live_system/component/big_data/paas/azure_databricks_mlflow';
-
 export {AzureDatalake} from './live_system/component/big_data/paas/azure_datalake';
-export type {
-  AzureDatalakeBuilder,
-  AzureDatalakeConfig,
-  SatisfiedAzureDatalakeBuilder,
-} from './live_system/component/big_data/paas/azure_datalake';
 
-// Live system — GCP BigData
+// BigData offers — GCP
 export {GcpDatabricks} from './live_system/component/big_data/paas/gcp_databricks';
-export type {
-  GcpDatabricksBuilder,
-  GcpDatabricksConfig,
-  SatisfiedGcpDatabricksBuilder,
-} from './live_system/component/big_data/paas/gcp_databricks';
-
 export {GcpDatabricksCluster} from './live_system/component/big_data/paas/gcp_databricks_cluster';
-export type {
-  GcpDatabricksClusterBuilder,
-  GcpDatabricksClusterConfig,
-  SatisfiedGcpDatabricksClusterBuilder,
-} from './live_system/component/big_data/paas/gcp_databricks_cluster';
-
 export {GcpDatabricksJob} from './live_system/component/big_data/paas/gcp_databricks_job';
-export type {
-  GcpDatabricksJobBuilder,
-  GcpDatabricksJobConfig,
-  SatisfiedGcpDatabricksJobBuilder,
-} from './live_system/component/big_data/paas/gcp_databricks_job';
-
 export {GcpDatabricksMlflow} from './live_system/component/big_data/paas/gcp_databricks_mlflow';
-export type {
-  GcpDatabricksMlflowBuilder,
-  GcpDatabricksMlflowConfig,
-  SatisfiedGcpDatabricksMlflowBuilder,
-} from './live_system/component/big_data/paas/gcp_databricks_mlflow';
-
 export {GcpDatalake} from './live_system/component/big_data/paas/gcp_datalake';
-export type {
-  GcpDatalakeBuilder,
-  GcpDatalakeConfig,
-  SatisfiedGcpDatalakeBuilder,
-} from './live_system/component/big_data/paas/gcp_datalake';
 
-// Live system — SaaS BigData
-export {BigDataSaaSUnmanaged} from './live_system/component/big_data/saas/unmanaged';
-export type {
-  BigDataSaaSUnmanagedBuilder,
-  BigDataSaaSUnmanagedConfig,
-  SatisfiedBigDataSaaSUnmanagedBuilder,
-} from './live_system/component/big_data/saas/unmanaged';
-
-// Live system — CaaS BigData
-export {CaaSSparkOperator} from './live_system/component/big_data/caas/caas_spark_operator';
-export type {
-  CaaSSparkOperatorBuilder,
-  CaaSSparkOperatorConfig,
-  SatisfiedCaaSSparkOperatorBuilder,
-} from './live_system/component/big_data/caas/caas_spark_operator';
-
+// BigData offers — CaaS
 export {CaaSSparkCluster} from './live_system/component/big_data/caas/caas_spark_cluster';
-export type {
-  CaaSSparkClusterBuilder,
-  CaaSSparkClusterConfig,
-  SatisfiedCaaSSparkClusterBuilder,
-} from './live_system/component/big_data/caas/caas_spark_cluster';
-
 export {CaaSSparkJob} from './live_system/component/big_data/caas/caas_spark_job';
-export type {
-  CaaSSparkJobBuilder,
-  CaaSSparkJobConfig,
-  SatisfiedCaaSSparkJobBuilder,
-} from './live_system/component/big_data/caas/caas_spark_job';
-
 export {CaaSMlflow} from './live_system/component/big_data/caas/caas_mlflow';
-export type {
-  CaaSMlflowBuilder,
-  CaaSMlflowConfig,
-  SatisfiedCaaSMlflowBuilder,
-} from './live_system/component/big_data/caas/caas_mlflow';
 
-// ── APIManagement Blueprint helpers ─────────────────────────────────────────
+// BigData offers — SaaS
+export {BigDataSaaSUnmanaged} from './live_system/component/big_data/saas/unmanaged';
 
-export {PaaSApiGateway} from './fractal/component/api_management/paas/api_gateway';
-export type {
-  PaaSApiGatewayBuilder,
-  PaaSApiGatewayConfig,
-  PaaSApiGatewayComponent,
-} from './fractal/component/api_management/paas/api_gateway';
+// ── APIManagement domain — Blueprint component helpers ───────────────────────
+// Each abstract component carries candidate Offers; the dev specialises through
+// a Fractal Interface using vendor-neutral concepts only. The Provider chosen at
+// instantiation selects the concrete Offer.
 
-export {CaaSApiGateway} from './fractal/component/api_management/caas/api_gateway';
-export type {
-  CaaSApiGatewayBuilder,
-  CaaSApiGatewayConfig,
-  CaaSApiGatewayComponent,
-} from './fractal/component/api_management/caas/api_gateway';
+// APIManagement PaaS
+export {ApiGateway} from './fractal/component/api_management/paas/api_gateway';
+export type {ApiGatewayConfig} from './fractal/component/api_management/paas/api_gateway';
 
+// APIManagement CaaS
+export {APIGateway} from './fractal/component/api_management/caas/api_gateway';
+export type {APIGatewayConfig} from './fractal/component/api_management/caas/api_gateway';
+
+// APIManagement SaaS
 export {ApiManagementUnmanaged} from './fractal/component/api_management/saas/unmanaged';
-export type {
-  ApiManagementUnmanagedBuilder,
-  ApiManagementUnmanagedConfig,
-  ApiManagementUnmanagedComponent,
-} from './fractal/component/api_management/saas/unmanaged';
+export type {ApiManagementUnmanagedConfig} from './fractal/component/api_management/saas/unmanaged';
 
-// ── APIManagement Live system — AWS ─────────────────────────────────────────
+// ── APIManagement domain — Live system offers ────────────────────────────────
+// Offers satisfy an abstract APIManagement component. Each is a vendor-neutral
+// `Offer` value consumed by `createFractal`.
 
+// APIManagement offers — AWS
 export {AwsCloudFront} from './live_system/component/api_management/paas/aws_cloudfront';
-export type {
-  AwsCloudFrontBuilder,
-  AwsCloudFrontConfig,
-  SatisfiedAwsCloudFrontBuilder,
-} from './live_system/component/api_management/paas/aws_cloudfront';
 
-// ── APIManagement Live system — Azure ───────────────────────────────────────
-
+// APIManagement offers — Azure
 export {AzureApiManagement} from './live_system/component/api_management/paas/azure_api_management';
-export type {
-  AzureApiManagementBuilder,
-  AzureApiManagementConfig,
-  SatisfiedAzureApiManagementBuilder,
-} from './live_system/component/api_management/paas/azure_api_management';
 
-// ── APIManagement Live system — GCP ─────────────────────────────────────────
-
+// APIManagement offers — GCP
 export {GcpApiGateway} from './live_system/component/api_management/paas/gcp_api_gateway';
-export type {
-  GcpApiGatewayBuilder,
-  GcpApiGatewayConfig,
-  SatisfiedGcpApiGatewayBuilder,
-} from './live_system/component/api_management/paas/gcp_api_gateway';
 
-// ── APIManagement Live system — CaaS ────────────────────────────────────────
-
+// APIManagement offers — CaaS
 export {Ambassador} from './live_system/component/api_management/caas/ambassador';
-export type {
-  AmbassadorBuilder,
-  AmbassadorConfig,
-  SatisfiedAmbassadorBuilder,
-} from './live_system/component/api_management/caas/ambassador';
-
 export {Traefik} from './live_system/component/api_management/caas/traefik';
-export type {
-  TraefikBuilder,
-  TraefikConfig,
-  SatisfiedTraefikBuilder,
-} from './live_system/component/api_management/caas/traefik';
 
-// ── APIManagement Live system — SaaS ────────────────────────────────────────
-
+// APIManagement offers — SaaS
 export {ApiManagementSaaSUnmanaged} from './live_system/component/api_management/saas/unmanaged';
-export type {
-  ApiManagementSaaSUnmanagedBuilder,
-  ApiManagementSaaSUnmanagedConfig,
-  SatisfiedApiManagementSaaSUnmanagedBuilder,
-} from './live_system/component/api_management/saas/unmanaged';
 
-// ── Observability Blueprint helpers ─────────────────────────────────────────
+// ── Observability domain — Blueprint component helpers ───────────────────────
+// Each abstract component carries candidate Offers; the dev specialises through
+// a Fractal Interface using vendor-neutral concepts only. The Provider chosen at
+// instantiation selects the concrete Offer.
 
+// Observability CaaS
 export {Monitoring} from './fractal/component/observability/caas/monitoring';
-export type {
-  MonitoringBuilder,
-  MonitoringConfig,
-  MonitoringComponent,
-} from './fractal/component/observability/caas/monitoring';
+export type {MonitoringConfig} from './fractal/component/observability/caas/monitoring';
 
 export {Tracing} from './fractal/component/observability/caas/tracing';
-export type {
-  TracingBuilder,
-  TracingConfig,
-  TracingComponent,
-} from './fractal/component/observability/caas/tracing';
+export type {TracingConfig} from './fractal/component/observability/caas/tracing';
 
 export {Logging} from './fractal/component/observability/caas/logging';
-export type {
-  LoggingBuilder,
-  LoggingConfig,
-  LoggingComponent,
-} from './fractal/component/observability/caas/logging';
+export type {LoggingConfig} from './fractal/component/observability/caas/logging';
 
+// Observability SaaS
 export {ObservabilityUnmanaged} from './fractal/component/observability/saas/unmanaged';
-export type {
-  ObservabilityUnmanagedBuilder,
-  ObservabilityUnmanagedConfig,
-  ObservabilityUnmanagedComponent,
-} from './fractal/component/observability/saas/unmanaged';
+export type {ObservabilityUnmanagedConfig} from './fractal/component/observability/saas/unmanaged';
 
-// ── Observability Live system — CaaS ────────────────────────────────────────
+// ── Observability domain — Live system offers ────────────────────────────────
+// Offers satisfy an abstract Observability component. Each is a vendor-neutral
+// `Offer` value consumed by `createFractal`.
 
+// Observability offers — CaaS
 export {Prometheus} from './live_system/component/observability/caas/prometheus';
-export type {
-  PrometheusBuilder,
-  PrometheusConfig,
-  SatisfiedPrometheusBuilder,
-} from './live_system/component/observability/caas/prometheus';
-
 export {Jaeger} from './live_system/component/observability/caas/jaeger';
-export type {
-  JaegerBuilder,
-  JaegerConfig,
-  SatisfiedJaegerBuilder,
-} from './live_system/component/observability/caas/jaeger';
-
 export {ObservabilityElastic} from './live_system/component/observability/caas/elastic';
-export type {
-  ObservabilityElasticBuilder,
-  ObservabilityElasticConfig,
-  SatisfiedObservabilityElasticBuilder,
-} from './live_system/component/observability/caas/elastic';
 
-// ── Observability Live system — SaaS ────────────────────────────────────────
-
-export {ObservabilitySaaSUnmanaged} from './live_system/component/observability/saas/unmanaged';
-export type {
-  ObservabilitySaaSUnmanagedBuilder,
-  ObservabilitySaaSUnmanagedConfig,
-  SatisfiedObservabilitySaaSUnmanagedBuilder,
-} from './live_system/component/observability/saas/unmanaged';
+// Observability offers — SaaS
+export {ObservabilityUnmanaged as ObservabilitySaaSUnmanaged} from './live_system/component/observability/saas/unmanaged';
 
 // ── Security Blueprint helpers ──────────────────────────────────────────────
 

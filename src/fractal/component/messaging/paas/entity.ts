@@ -1,143 +1,56 @@
-import {getBlueprintComponentBuilder} from '../../entity';
 import {
-  getBlueprintComponentTypeBuilder,
-  BlueprintComponentType,
-} from '../../type';
+  createAbstractComponent,
+  AbstractComponent,
+} from '../../abstract_component';
+import {Offer} from '../../../offer';
 import {InfrastructureDomain} from '../../../../values/infrastructure_domain';
-import {ServiceDeliveryModel} from '../../../../values/service_delivery_model';
-import {PascalCaseString} from '../../../../values/pascal_case_string';
-import {
-  GenericParameters,
-  getParametersInstance,
-} from '../../../../values/generic_parameters';
-import {getComponentIdBuilder, ComponentId} from '../../../../component/id';
-import {KebabCaseString} from '../../../../values/kebab_case_string';
-import {getVersionBuilder, Version} from '../../../../values/version';
-import {BlueprintComponent} from '../../index';
+import {BlueprintComponentDependency} from '../../dependency';
+import {ComponentLink} from '../../../../component/link';
 
-export const MESSAGING_ENTITY_TYPE_NAME = 'Entity';
+/**
+ * `MessagingEntity` — the abstract Messaging capability "I need a messaging
+ * entity" (a topic, queue, event hub, or pub/sub subscription). It is satisfied
+ * by candidate Offers (e.g. AzureServiceBusTopic, AzureServiceBusQueue and
+ * AzureEventHub on Azure; GcpPubSubTopic and GcpPubSubSubscription on GCP). The
+ * dev specializes it through a Fractal Interface using vendor-neutral concepts
+ * only.
+ *
+ * Neutral Interface ops (shared by ≥2 candidate offers): `messageRetentionHours`,
+ * `azureRegion`, `azureResourceGroup`. Vendor-only knobs (e.g. EventHub's
+ * `partitionCount` / `messageRetentionInDays`) live on the individual offers,
+ * NOT on this Interface.
+ *
+ * A MessagingEntity logically depends on a Broker (the messaging namespace /
+ * service hosting it); the infra team wires that dependency when authoring the
+ * Fractal.
+ */
 export const MESSAGE_RETENTION_HOURS_PARAM = 'messageRetentionHours';
-
-// ── internal helpers ──────────────────────────────────────────────────────────
-
-function buildId(id: string): ComponentId {
-  return getComponentIdBuilder()
-    .withValue(KebabCaseString.getBuilder().withValue(id).build())
-    .build();
-}
-
-function buildVersion(major: number, minor: number, patch: number): Version {
-  return getVersionBuilder()
-    .withMajor(major)
-    .withMinor(minor)
-    .withPatch(patch)
-    .build();
-}
-
-function buildMessagingEntityType(): BlueprintComponentType {
-  return getBlueprintComponentTypeBuilder()
-    .withInfrastructureDomain(InfrastructureDomain.Messaging)
-    .withServiceDeliveryModel(ServiceDeliveryModel.PaaS)
-    .withName(
-      PascalCaseString.getBuilder()
-        .withValue(MESSAGING_ENTITY_TYPE_NAME)
-        .build(),
-    )
-    .build();
-}
-
-function pushParam(
-  params: GenericParameters,
-  key: string,
-  value: unknown,
-): void {
-  params.push(key, value as Record<string, object>);
-}
-
-// ── Public API ────────────────────────────────────────────────────────────────
-
-export type MessagingEntityComponent = {
-  readonly component: BlueprintComponent;
-  readonly components: ReadonlyArray<BlueprintComponent>;
-};
-
-export type MessagingEntityBuilder = {
-  withId: (id: string) => MessagingEntityBuilder;
-  withVersion: (
-    major: number,
-    minor: number,
-    patch: number,
-  ) => MessagingEntityBuilder;
-  withDisplayName: (displayName: string) => MessagingEntityBuilder;
-  withDescription: (description: string) => MessagingEntityBuilder;
-  withMessageRetentionHours: (hours: number) => MessagingEntityBuilder;
-  build: () => BlueprintComponent;
-};
+export const AZURE_REGION_PARAM = 'azureRegion';
+export const AZURE_RESOURCE_GROUP_PARAM = 'azureResourceGroup';
 
 export type MessagingEntityConfig = {
   id: string;
-  version: {major: number; minor: number; patch: number};
   displayName: string;
   description?: string;
-  messageRetentionHours?: number;
+  /** Candidate offers that can satisfy this messaging entity. */
+  offers: Offer[];
+  dependencies?: BlueprintComponentDependency[];
+  links?: ComponentLink[];
 };
 
-function makeMessagingEntityComponent(
-  component: BlueprintComponent,
-): MessagingEntityComponent {
-  return {component, components: [component]};
-}
-
 export namespace MessagingEntity {
-  export const getBuilder = (): MessagingEntityBuilder => {
-    const params = getParametersInstance();
-    const inner = getBlueprintComponentBuilder()
-      .withType(buildMessagingEntityType())
-      .withParameters(params);
+  /** Vendor-neutral Service name this capability resolves to. */
+  export const SERVICE_NAME = 'Entity';
 
-    const builder: MessagingEntityBuilder = {
-      withId: id => {
-        inner.withId(buildId(id));
-        return builder;
-      },
-      withVersion: (major, minor, patch) => {
-        inner.withVersion(buildVersion(major, minor, patch));
-        return builder;
-      },
-      withDisplayName: displayName => {
-        inner.withDisplayName(displayName);
-        return builder;
-      },
-      withDescription: description => {
-        inner.withDescription(description);
-        return builder;
-      },
-      withMessageRetentionHours: hours => {
-        pushParam(params, MESSAGE_RETENTION_HOURS_PARAM, hours);
-        return builder;
-      },
-      build: () => inner.build(),
-    };
-
-    return builder;
-  };
-
-  export const create = (
-    config: MessagingEntityConfig,
-  ): MessagingEntityComponent => {
-    const b = getBuilder()
-      .withId(config.id)
-      .withVersion(
-        config.version.major,
-        config.version.minor,
-        config.version.patch,
-      )
-      .withDisplayName(config.displayName);
-
-    if (config.description) b.withDescription(config.description);
-    if (config.messageRetentionHours !== undefined)
-      b.withMessageRetentionHours(config.messageRetentionHours);
-
-    return makeMessagingEntityComponent(b.build());
-  };
+  export const create = (config: MessagingEntityConfig): AbstractComponent =>
+    createAbstractComponent({
+      id: config.id,
+      displayName: config.displayName,
+      description: config.description,
+      domain: InfrastructureDomain.Messaging,
+      serviceName: SERVICE_NAME,
+      offers: config.offers,
+      dependencies: config.dependencies,
+      links: config.links,
+    });
 }

@@ -1,122 +1,47 @@
-import {getBlueprintComponentBuilder} from '../../entity';
 import {
-  getBlueprintComponentTypeBuilder,
-  BlueprintComponentType,
-} from '../../type';
+  createAbstractComponent,
+  AbstractComponent,
+} from '../../abstract_component';
+import {Offer} from '../../../offer';
 import {InfrastructureDomain} from '../../../../values/infrastructure_domain';
-import {ServiceDeliveryModel} from '../../../../values/service_delivery_model';
-import {PascalCaseString} from '../../../../values/pascal_case_string';
-import {getParametersInstance} from '../../../../values/generic_parameters';
-import {getComponentIdBuilder, ComponentId} from '../../../../component/id';
-import {KebabCaseString} from '../../../../values/kebab_case_string';
-import {getVersionBuilder, Version} from '../../../../values/version';
-import {BlueprintComponent} from '../../index';
+import {BlueprintComponentDependency} from '../../dependency';
+import {ComponentLink} from '../../../../component/link';
 
-export const CAAS_API_GATEWAY_TYPE_NAME = 'APIGateway';
+/**
+ * `APIGateway` — the abstract APIManagement capability "I need an API gateway /
+ * ingress". It is satisfied by candidate Offers (e.g. Ambassador and Traefik on
+ * CaaS). The dev specializes it through a Fractal Interface using vendor-neutral
+ * concepts only.
+ *
+ * Neutral Interface op (shared by ≥2 candidate offers): `namespace`. Every
+ * vendor-only knob (host/ACME on Ambassador, OIDC/TLS settings on Traefik) lives
+ * on the individual offers, NOT on this Interface.
+ */
+export const NAMESPACE_PARAM = 'namespace';
 
-// -- internal helpers ----------------------------------------------------------
-
-function buildId(id: string): ComponentId {
-  return getComponentIdBuilder()
-    .withValue(KebabCaseString.getBuilder().withValue(id).build())
-    .build();
-}
-
-function buildVersion(major: number, minor: number, patch: number): Version {
-  return getVersionBuilder()
-    .withMajor(major)
-    .withMinor(minor)
-    .withPatch(patch)
-    .build();
-}
-
-function buildCaaSApiGatewayType(): BlueprintComponentType {
-  return getBlueprintComponentTypeBuilder()
-    .withInfrastructureDomain(InfrastructureDomain.ApiManagement)
-    .withServiceDeliveryModel(ServiceDeliveryModel.CaaS)
-    .withName(
-      PascalCaseString.getBuilder()
-        .withValue(CAAS_API_GATEWAY_TYPE_NAME)
-        .build(),
-    )
-    .build();
-}
-
-// -- Public API ----------------------------------------------------------------
-
-export type CaaSApiGatewayComponent = {
-  readonly component: BlueprintComponent;
-  readonly components: ReadonlyArray<BlueprintComponent>;
-};
-
-export type CaaSApiGatewayBuilder = {
-  withId: (id: string) => CaaSApiGatewayBuilder;
-  withVersion: (
-    major: number,
-    minor: number,
-    patch: number,
-  ) => CaaSApiGatewayBuilder;
-  withDisplayName: (displayName: string) => CaaSApiGatewayBuilder;
-  withDescription: (description: string) => CaaSApiGatewayBuilder;
-  build: () => BlueprintComponent;
-};
-
-export type CaaSApiGatewayConfig = {
+export type APIGatewayConfig = {
   id: string;
-  version: {major: number; minor: number; patch: number};
   displayName: string;
   description?: string;
+  /** Candidate offers that can satisfy this API gateway. */
+  offers: Offer[];
+  dependencies?: BlueprintComponentDependency[];
+  links?: ComponentLink[];
 };
 
-function makeCaaSApiGatewayComponent(
-  component: BlueprintComponent,
-): CaaSApiGatewayComponent {
-  return {component, components: [component]};
-}
+export namespace APIGateway {
+  /** Vendor-neutral Service name this capability resolves to. */
+  export const SERVICE_NAME = 'APIGateway';
 
-export namespace CaaSApiGateway {
-  export const getBuilder = (): CaaSApiGatewayBuilder => {
-    const inner = getBlueprintComponentBuilder()
-      .withType(buildCaaSApiGatewayType())
-      .withParameters(getParametersInstance());
-
-    const builder: CaaSApiGatewayBuilder = {
-      withId: id => {
-        inner.withId(buildId(id));
-        return builder;
-      },
-      withVersion: (major, minor, patch) => {
-        inner.withVersion(buildVersion(major, minor, patch));
-        return builder;
-      },
-      withDisplayName: displayName => {
-        inner.withDisplayName(displayName);
-        return builder;
-      },
-      withDescription: description => {
-        inner.withDescription(description);
-        return builder;
-      },
-      build: () => inner.build(),
-    };
-
-    return builder;
-  };
-
-  export const create = (
-    config: CaaSApiGatewayConfig,
-  ): CaaSApiGatewayComponent => {
-    const b = getBuilder()
-      .withId(config.id)
-      .withVersion(
-        config.version.major,
-        config.version.minor,
-        config.version.patch,
-      )
-      .withDisplayName(config.displayName);
-
-    if (config.description) b.withDescription(config.description);
-
-    return makeCaaSApiGatewayComponent(b.build());
-  };
+  export const create = (config: APIGatewayConfig): AbstractComponent =>
+    createAbstractComponent({
+      id: config.id,
+      displayName: config.displayName,
+      description: config.description,
+      domain: InfrastructureDomain.ApiManagement,
+      serviceName: SERVICE_NAME,
+      offers: config.offers,
+      dependencies: config.dependencies,
+      links: config.links,
+    });
 }

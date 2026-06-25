@@ -1,4 +1,4 @@
-import {getLiveSystemComponentBuilder} from '../../entity';
+import {Offer, instantiateFromNeutral} from '../../../../fractal/offer';
 import {
   getBlueprintComponentTypeBuilder,
   BlueprintComponentType,
@@ -6,37 +6,10 @@ import {
 import {InfrastructureDomain} from '../../../../values/infrastructure_domain';
 import {ServiceDeliveryModel} from '../../../../values/service_delivery_model';
 import {PascalCaseString} from '../../../../values/pascal_case_string';
-import {
-  GenericParameters,
-  getParametersInstance,
-} from '../../../../values/generic_parameters';
-import {getComponentIdBuilder, ComponentId} from '../../../../component/id';
-import {KebabCaseString} from '../../../../values/kebab_case_string';
-import {getVersionBuilder, Version} from '../../../../values/version';
-import {LiveSystemComponent} from '../../index';
-import {BlueprintComponent} from '../../../../fractal/component/index';
+
 const AZURE_DATABRICKS_TYPE_NAME = 'Databricks';
-const PRICING_TIER_PARAM = 'pricingTier';
-const MANAGED_RESOURCE_GROUP_NAME_PARAM = 'managedResourceGroupName';
-const ENABLE_NO_PUBLIC_IP_PARAM = 'enableNoPublicIp';
 
-// ── internal helpers ──────────────────────────────────────────────────────────
-
-function buildId(id: string): ComponentId {
-  return getComponentIdBuilder()
-    .withValue(KebabCaseString.getBuilder().withValue(id).build())
-    .build();
-}
-
-function buildVersion(major: number, minor: number, patch: number): Version {
-  return getVersionBuilder()
-    .withMajor(major)
-    .withMinor(minor)
-    .withPatch(patch)
-    .build();
-}
-
-function buildType(): BlueprintComponentType {
+function buildAzureDatabricksType(): BlueprintComponentType {
   return getBlueprintComponentTypeBuilder()
     .withInfrastructureDomain(InfrastructureDomain.BigData)
     .withServiceDeliveryModel(ServiceDeliveryModel.PaaS)
@@ -48,146 +21,20 @@ function buildType(): BlueprintComponentType {
     .build();
 }
 
-function pushParam(
-  params: GenericParameters,
-  key: string,
-  value: unknown,
-): void {
-  params.push(key, value as Record<string, object>);
-}
+const AZURE_DATABRICKS_TYPE = buildAzureDatabricksType();
 
-// ── Public API ────────────────────────────────────────────────────────────────
-
-export type SatisfiedAzureDatabricksBuilder = {
-  withPricingTier: (tier: string) => SatisfiedAzureDatabricksBuilder;
-  withManagedResourceGroupName: (
-    name: string,
-  ) => SatisfiedAzureDatabricksBuilder;
-  withEnableNoPublicIp: (enable: boolean) => SatisfiedAzureDatabricksBuilder;
-  build: () => LiveSystemComponent;
+/**
+ * Azure Databricks — Azure-managed distributed data processing Offer satisfying
+ * the abstract DistributedDataProcessing. Inherits the abstract component's
+ * vendor-neutral parameters, dependencies and links. Vendor-only knobs
+ * (`pricingTier`, `managedResourceGroupName`, `enableNoPublicIp`) are set at
+ * reconcile time by the agent and are not part of the neutral Interface. No
+ * sub-components.
+ */
+export const AzureDatabricks: Offer = {
+  type: AZURE_DATABRICKS_TYPE,
+  provider: 'Azure',
+  instantiate: ctx => [
+    instantiateFromNeutral(ctx, AZURE_DATABRICKS_TYPE, 'Azure'),
+  ],
 };
-
-export type AzureDatabricksBuilder = {
-  withId: (id: string) => AzureDatabricksBuilder;
-  withVersion: (
-    major: number,
-    minor: number,
-    patch: number,
-  ) => AzureDatabricksBuilder;
-  withDisplayName: (displayName: string) => AzureDatabricksBuilder;
-  withDescription: (description: string) => AzureDatabricksBuilder;
-  withManagedResourceGroupName: (name: string) => AzureDatabricksBuilder;
-  withEnableNoPublicIp: (enable: boolean) => AzureDatabricksBuilder;
-  build: () => LiveSystemComponent;
-};
-
-export type AzureDatabricksConfig = {
-  id: string;
-  version: {major: number; minor: number; patch: number};
-  displayName: string;
-  description?: string;
-  managedResourceGroupName?: string;
-  enableNoPublicIp?: boolean;
-};
-
-export namespace AzureDatabricks {
-  export const getBuilder = (): AzureDatabricksBuilder => {
-    const params = getParametersInstance();
-    const inner = getLiveSystemComponentBuilder()
-      .withType(buildType())
-      .withParameters(params)
-      .withProvider('Azure');
-
-    const builder: AzureDatabricksBuilder = {
-      withId: id => {
-        inner.withId(buildId(id));
-        return builder;
-      },
-      withVersion: (major, minor, patch) => {
-        inner.withVersion(buildVersion(major, minor, patch));
-        return builder;
-      },
-      withDisplayName: displayName => {
-        inner.withDisplayName(displayName);
-        return builder;
-      },
-      withDescription: description => {
-        inner.withDescription(description);
-        return builder;
-      },
-      withManagedResourceGroupName: value => {
-        pushParam(params, MANAGED_RESOURCE_GROUP_NAME_PARAM, value);
-        return builder;
-      },
-      withEnableNoPublicIp: value => {
-        pushParam(params, ENABLE_NO_PUBLIC_IP_PARAM, value);
-        return builder;
-      },
-      build: () => inner.build(),
-    };
-
-    return builder;
-  };
-
-  export const satisfy = (
-    blueprint: BlueprintComponent,
-  ): SatisfiedAzureDatabricksBuilder => {
-    const params = getParametersInstance();
-    const inner = getLiveSystemComponentBuilder()
-      .withType(buildType())
-      .withParameters(params)
-      .withProvider('Azure')
-      .withId(buildId(blueprint.id.toString()))
-      .withVersion(
-        buildVersion(
-          blueprint.version.major,
-          blueprint.version.minor,
-          blueprint.version.patch,
-        ),
-      )
-      .withDisplayName(blueprint.displayName)
-      .withDependencies(blueprint.dependencies)
-      .withLinks(blueprint.links);
-
-    if (blueprint.description) inner.withDescription(blueprint.description);
-
-    const satisfiedBuilder: SatisfiedAzureDatabricksBuilder = {
-      withPricingTier: tier => {
-        pushParam(params, PRICING_TIER_PARAM, tier);
-        return satisfiedBuilder;
-      },
-      withManagedResourceGroupName: value => {
-        pushParam(params, MANAGED_RESOURCE_GROUP_NAME_PARAM, value);
-        return satisfiedBuilder;
-      },
-      withEnableNoPublicIp: value => {
-        pushParam(params, ENABLE_NO_PUBLIC_IP_PARAM, value);
-        return satisfiedBuilder;
-      },
-      build: () => inner.build(),
-    };
-
-    return satisfiedBuilder;
-  };
-
-  export const create = (
-    config: AzureDatabricksConfig,
-  ): LiveSystemComponent => {
-    const b = getBuilder()
-      .withId(config.id)
-      .withVersion(
-        config.version.major,
-        config.version.minor,
-        config.version.patch,
-      )
-      .withDisplayName(config.displayName);
-
-    if (config.description) b.withDescription(config.description);
-    if (config.managedResourceGroupName)
-      b.withManagedResourceGroupName(config.managedResourceGroupName);
-    if (config.enableNoPublicIp !== undefined)
-      b.withEnableNoPublicIp(config.enableNoPublicIp);
-
-    return b.build();
-  };
-}
