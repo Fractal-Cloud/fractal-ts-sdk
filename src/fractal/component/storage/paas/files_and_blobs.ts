@@ -1,122 +1,62 @@
-import {getBlueprintComponentBuilder} from '../../entity';
 import {
-  getBlueprintComponentTypeBuilder,
-  BlueprintComponentType,
-} from '../../type';
+  createAbstractComponent,
+  AbstractComponent,
+} from '../../abstract_component';
+import {Offer} from '../../../offer';
 import {InfrastructureDomain} from '../../../../values/infrastructure_domain';
-import {ServiceDeliveryModel} from '../../../../values/service_delivery_model';
-import {PascalCaseString} from '../../../../values/pascal_case_string';
-import {getParametersInstance} from '../../../../values/generic_parameters';
-import {getComponentIdBuilder, ComponentId} from '../../../../component/id';
-import {KebabCaseString} from '../../../../values/kebab_case_string';
-import {getVersionBuilder, Version} from '../../../../values/version';
-import {BlueprintComponent} from '../../index';
+import {BlueprintComponentDependency} from '../../dependency';
+import {ComponentLink} from '../../../../component/link';
 
-export const FILES_AND_BLOBS_TYPE_NAME = 'FilesAndBlobs';
-
-// ── internal helpers ──────────────────────────────────────────────────────────
-
-function buildId(id: string): ComponentId {
-  return getComponentIdBuilder()
-    .withValue(KebabCaseString.getBuilder().withValue(id).build())
-    .build();
-}
-
-function buildVersion(major: number, minor: number, patch: number): Version {
-  return getVersionBuilder()
-    .withMajor(major)
-    .withMinor(minor)
-    .withPatch(patch)
-    .build();
-}
-
-function buildFilesAndBlobsType(): BlueprintComponentType {
-  return getBlueprintComponentTypeBuilder()
-    .withInfrastructureDomain(InfrastructureDomain.Storage)
-    .withServiceDeliveryModel(ServiceDeliveryModel.PaaS)
-    .withName(
-      PascalCaseString.getBuilder()
-        .withValue(FILES_AND_BLOBS_TYPE_NAME)
-        .build(),
-    )
-    .build();
-}
-
-// ── Public API ────────────────────────────────────────────────────────────────
-
-export type FilesAndBlobsComponent = {
-  readonly component: BlueprintComponent;
-  readonly components: ReadonlyArray<BlueprintComponent>;
-};
-
-export type FilesAndBlobsBuilder = {
-  withId: (id: string) => FilesAndBlobsBuilder;
-  withVersion: (
-    major: number,
-    minor: number,
-    patch: number,
-  ) => FilesAndBlobsBuilder;
-  withDisplayName: (displayName: string) => FilesAndBlobsBuilder;
-  withDescription: (description: string) => FilesAndBlobsBuilder;
-  build: () => BlueprintComponent;
-};
+/**
+ * `FilesAndBlobs` — the abstract Storage capability "I need an object/blob/file
+ * store". It is satisfied by candidate Offers (e.g. AwsS3 on AWS;
+ * AzureStorageAccount / AzureBlobContainer / AzureFileStorage on Azure;
+ * GcpCloudStorage on GCP; ArubaObjectStorageAccount on Aruba; CaaSMinioTenant on
+ * CaaS). The dev specializes it through a Fractal Interface using vendor-neutral
+ * concepts only.
+ *
+ * Neutral Interface ops (shared by ≥2 candidate offers): `azureRegion`,
+ * `azureResourceGroup`, `accessTier`, `versioningEnabled`, `storageClass`. Set
+ * via `component.set(key, value)`.
+ *
+ * Vendor-only knobs (bucket/acl/forceDestroy/objectLockEnabled on AWS; kind/sku
+ * on Azure; publicAccess on blob container; shareQuota on file storage;
+ * region/uniformBucketLevelAccess on GCP; accountName/password/regionCode on
+ * Aruba; namespace/tenantName/bucketName/minioVersion/servers/volumesPerServer/
+ * volumeSize/requestAutoCert on MinIO) live on the individual offers, NOT on this
+ * Interface.
+ */
+export const NEUTRAL_PARAM_KEYS = [
+  'azureRegion',
+  'azureResourceGroup',
+  'accessTier',
+  'versioningEnabled',
+  'storageClass',
+] as const;
 
 export type FilesAndBlobsConfig = {
   id: string;
-  version: {major: number; minor: number; patch: number};
   displayName: string;
   description?: string;
+  /** Candidate offers that can satisfy this files-and-blobs store. */
+  offers: Offer[];
+  dependencies?: BlueprintComponentDependency[];
+  links?: ComponentLink[];
 };
 
-function makeFilesAndBlobsComponent(
-  component: BlueprintComponent,
-): FilesAndBlobsComponent {
-  return {component, components: [component]};
-}
-
 export namespace FilesAndBlobs {
-  export const getBuilder = (): FilesAndBlobsBuilder => {
-    const inner = getBlueprintComponentBuilder()
-      .withType(buildFilesAndBlobsType())
-      .withParameters(getParametersInstance());
+  /** Vendor-neutral Service name this capability resolves to. */
+  export const SERVICE_NAME = 'FilesAndBlobs';
 
-    const builder: FilesAndBlobsBuilder = {
-      withId: id => {
-        inner.withId(buildId(id));
-        return builder;
-      },
-      withVersion: (major, minor, patch) => {
-        inner.withVersion(buildVersion(major, minor, patch));
-        return builder;
-      },
-      withDisplayName: displayName => {
-        inner.withDisplayName(displayName);
-        return builder;
-      },
-      withDescription: description => {
-        inner.withDescription(description);
-        return builder;
-      },
-      build: () => inner.build(),
-    };
-
-    return builder;
-  };
-
-  export const create = (
-    config: FilesAndBlobsConfig,
-  ): FilesAndBlobsComponent => {
-    const b = getBuilder()
-      .withId(config.id)
-      .withVersion(
-        config.version.major,
-        config.version.minor,
-        config.version.patch,
-      )
-      .withDisplayName(config.displayName);
-
-    if (config.description) b.withDescription(config.description);
-
-    return makeFilesAndBlobsComponent(b.build());
-  };
+  export const create = (config: FilesAndBlobsConfig): AbstractComponent =>
+    createAbstractComponent({
+      id: config.id,
+      displayName: config.displayName,
+      description: config.description,
+      domain: InfrastructureDomain.Storage,
+      serviceName: SERVICE_NAME,
+      offers: config.offers,
+      dependencies: config.dependencies,
+      links: config.links,
+    });
 }

@@ -7,33 +7,33 @@ import {InfrastructureDomain} from '../../../../values/infrastructure_domain';
 import {ServiceDeliveryModel} from '../../../../values/service_delivery_model';
 import {PascalCaseString} from '../../../../values/pascal_case_string';
 
-// Agent offer constant: Storage.PaaS.StorageBlobContainer
-const AZURE_BLOB_CONTAINER_TYPE_NAME = 'StorageBlobContainer';
+// Agent offer constant: Storage.PaaS.BigtableDbms
+const GCP_BIGTABLE_DBMS_TYPE_NAME = 'BigtableDbms';
 
-function buildAzureBlobContainerType(): BlueprintComponentType {
+function buildGcpBigtableDbmsType(): BlueprintComponentType {
   return getBlueprintComponentTypeBuilder()
     .withInfrastructureDomain(InfrastructureDomain.Storage)
     .withServiceDeliveryModel(ServiceDeliveryModel.PaaS)
     .withName(
       PascalCaseString.getBuilder()
-        .withValue(AZURE_BLOB_CONTAINER_TYPE_NAME)
+        .withValue(GCP_BIGTABLE_DBMS_TYPE_NAME)
         .build(),
     )
     .build();
 }
 
-const AZURE_BLOB_CONTAINER_TYPE = buildAzureBlobContainerType();
+const GCP_BIGTABLE_DBMS_TYPE = buildGcpBigtableDbmsType();
 
 /**
- * Azure Blob Container — Azure-managed blob container Offer satisfying the
- * abstract FilesAndBlobs. Inherits the vendor-neutral parameters (`azureRegion`,
- * `azureResourceGroup`, `accessTier`, ...). Vendor-only knobs (publicAccess) are
+ * Google Cloud Bigtable — GCP-managed key-value DBMS Offer satisfying the abstract
+ * KeyValueDbms. Inherits all vendor-neutral parameters, dependencies and links.
+ * Vendor-only knobs (region, instanceType, storageType, clusterNodeCount, ...) are
  * offer-level extras and are not part of the neutral Interface.
  */
-export const AzureBlobContainer: Offer = {
-  type: AZURE_BLOB_CONTAINER_TYPE,
-  provider: 'Azure',
+export const GcpBigtable: Offer = {
+  type: GCP_BIGTABLE_DBMS_TYPE,
+  provider: 'GCP',
   instantiate: ctx => [
-    instantiateFromNeutral(ctx, AZURE_BLOB_CONTAINER_TYPE, 'Azure'),
+    instantiateFromNeutral(ctx, GCP_BIGTABLE_DBMS_TYPE, 'GCP'),
   ],
 };

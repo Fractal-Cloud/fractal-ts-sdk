@@ -1,122 +1,50 @@
-import {getBlueprintComponentBuilder} from '../../entity';
 import {
-  getBlueprintComponentTypeBuilder,
-  BlueprintComponentType,
-} from '../../type';
+  createAbstractComponent,
+  AbstractComponent,
+} from '../../abstract_component';
+import {Offer} from '../../../offer';
 import {InfrastructureDomain} from '../../../../values/infrastructure_domain';
-import {ServiceDeliveryModel} from '../../../../values/service_delivery_model';
-import {PascalCaseString} from '../../../../values/pascal_case_string';
-import {getParametersInstance} from '../../../../values/generic_parameters';
-import {getComponentIdBuilder, ComponentId} from '../../../../component/id';
-import {KebabCaseString} from '../../../../values/kebab_case_string';
-import {getVersionBuilder, Version} from '../../../../values/version';
-import {BlueprintComponent} from '../../index';
+import {BlueprintComponentDependency} from '../../dependency';
+import {ComponentLink} from '../../../../component/link';
 
-export const DOCUMENT_DATABASE_TYPE_NAME = 'DocumentDatabase';
-
-// ── internal helpers ──────────────────────────────────────────────────────────
-
-function buildId(id: string): ComponentId {
-  return getComponentIdBuilder()
-    .withValue(KebabCaseString.getBuilder().withValue(id).build())
-    .build();
-}
-
-function buildVersion(major: number, minor: number, patch: number): Version {
-  return getVersionBuilder()
-    .withMajor(major)
-    .withMinor(minor)
-    .withPatch(patch)
-    .build();
-}
-
-function buildDocumentDatabaseType(): BlueprintComponentType {
-  return getBlueprintComponentTypeBuilder()
-    .withInfrastructureDomain(InfrastructureDomain.Storage)
-    .withServiceDeliveryModel(ServiceDeliveryModel.PaaS)
-    .withName(
-      PascalCaseString.getBuilder()
-        .withValue(DOCUMENT_DATABASE_TYPE_NAME)
-        .build(),
-    )
-    .build();
-}
-
-// ── Public API ────────────────────────────────────────────────────────────────
-
-export type DocumentDatabaseComponent = {
-  readonly component: BlueprintComponent;
-  readonly components: ReadonlyArray<BlueprintComponent>;
-};
-
-export type DocumentDatabaseBuilder = {
-  withId: (id: string) => DocumentDatabaseBuilder;
-  withVersion: (
-    major: number,
-    minor: number,
-    patch: number,
-  ) => DocumentDatabaseBuilder;
-  withDisplayName: (displayName: string) => DocumentDatabaseBuilder;
-  withDescription: (description: string) => DocumentDatabaseBuilder;
-  build: () => BlueprintComponent;
-};
-
+/**
+ * `DocumentDatabase` — the abstract Storage capability "I need a document
+ * database". It is satisfied by candidate Offers (e.g. CosmosDbMongoDatabase on
+ * Azure, FirestoreCollection on GCP). The dev specializes it through a Fractal
+ * Interface using vendor-neutral concepts only.
+ *
+ * Neutral Interface ops (shared by ≥2 candidate offers): none — every knob the
+ * candidate offers expose is vendor-only and lives on the individual offers, NOT
+ * on this Interface.
+ *
+ * Capability dependency: a DocumentDatabase depends on a `DocumentDbms`
+ * capability. The infra team wires that dependency at authoring time via the
+ * abstract component's `dependencies` config; it is inherited by whichever offer
+ * the provider selects.
+ */
 export type DocumentDatabaseConfig = {
   id: string;
-  version: {major: number; minor: number; patch: number};
   displayName: string;
   description?: string;
+  /** Candidate offers that can satisfy this document database. */
+  offers: Offer[];
+  dependencies?: BlueprintComponentDependency[];
+  links?: ComponentLink[];
 };
 
-function makeDocumentDatabaseComponent(
-  component: BlueprintComponent,
-): DocumentDatabaseComponent {
-  return {component, components: [component]};
-}
-
 export namespace DocumentDatabase {
-  export const getBuilder = (): DocumentDatabaseBuilder => {
-    const inner = getBlueprintComponentBuilder()
-      .withType(buildDocumentDatabaseType())
-      .withParameters(getParametersInstance());
+  /** Vendor-neutral Service name this capability resolves to. */
+  export const SERVICE_NAME = 'DocumentDatabase';
 
-    const builder: DocumentDatabaseBuilder = {
-      withId: id => {
-        inner.withId(buildId(id));
-        return builder;
-      },
-      withVersion: (major, minor, patch) => {
-        inner.withVersion(buildVersion(major, minor, patch));
-        return builder;
-      },
-      withDisplayName: displayName => {
-        inner.withDisplayName(displayName);
-        return builder;
-      },
-      withDescription: description => {
-        inner.withDescription(description);
-        return builder;
-      },
-      build: () => inner.build(),
-    };
-
-    return builder;
-  };
-
-  export const create = (
-    config: DocumentDatabaseConfig,
-  ): DocumentDatabaseComponent => {
-    const b = getBuilder()
-      .withId(config.id)
-      .withVersion(
-        config.version.major,
-        config.version.minor,
-        config.version.patch,
-      )
-      .withDisplayName(config.displayName);
-
-    if (config.description) b.withDescription(config.description);
-
-    return makeDocumentDatabaseComponent(b.build());
-  };
+  export const create = (config: DocumentDatabaseConfig): AbstractComponent =>
+    createAbstractComponent({
+      id: config.id,
+      displayName: config.displayName,
+      description: config.description,
+      domain: InfrastructureDomain.Storage,
+      serviceName: SERVICE_NAME,
+      offers: config.offers,
+      dependencies: config.dependencies,
+      links: config.links,
+    });
 }

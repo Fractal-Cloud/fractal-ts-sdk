@@ -1,132 +1,46 @@
-import {getBlueprintComponentBuilder} from '../../entity';
-import {getBlueprintComponentTypeBuilder} from '../../type';
+import {
+  createAbstractComponent,
+  AbstractComponent,
+} from '../../abstract_component';
+import {Offer} from '../../../offer';
 import {InfrastructureDomain} from '../../../../values/infrastructure_domain';
-import {ServiceDeliveryModel} from '../../../../values/service_delivery_model';
-import {PascalCaseString} from '../../../../values/pascal_case_string';
-import {getParametersInstance} from '../../../../values/generic_parameters';
-import {getComponentIdBuilder, ComponentId} from '../../../../component/id';
-import {KebabCaseString} from '../../../../values/kebab_case_string';
-import {getVersionBuilder, Version} from '../../../../values/version';
-import {BlueprintComponent} from '../../index';
 import {BlueprintComponentDependency} from '../../dependency';
-import {KeyValueEntityComponent} from './key_value_entity';
+import {ComponentLink} from '../../../../component/link';
 
-export const KEY_VALUE_DBMS_TYPE_NAME = 'KeyValueDbms';
-
-// ── internal helpers ──────────────────────────────────────────────────────────
-
-function buildId(id: string): ComponentId {
-  return getComponentIdBuilder()
-    .withValue(KebabCaseString.getBuilder().withValue(id).build())
-    .build();
-}
-
-function buildVersion(major: number, minor: number, patch: number): Version {
-  return getVersionBuilder()
-    .withMajor(major)
-    .withMinor(minor)
-    .withPatch(patch)
-    .build();
-}
-
-function buildKeyValueDbmsType() {
-  return getBlueprintComponentTypeBuilder()
-    .withInfrastructureDomain(InfrastructureDomain.Storage)
-    .withServiceDeliveryModel(ServiceDeliveryModel.PaaS)
-    .withName(
-      PascalCaseString.getBuilder().withValue(KEY_VALUE_DBMS_TYPE_NAME).build(),
-    )
-    .build();
-}
-
-// ── Public API ────────────────────────────────────────────────────────────────
-
-export type KeyValueDbmsComponent = {
-  readonly dbms: BlueprintComponent;
-  readonly entities: ReadonlyArray<KeyValueEntityComponent>;
-  withEntities: (entities: KeyValueEntityComponent[]) => KeyValueDbmsComponent;
-};
-
-export type KeyValueDbmsBuilder = {
-  withId: (id: string) => KeyValueDbmsBuilder;
-  withVersion: (
-    major: number,
-    minor: number,
-    patch: number,
-  ) => KeyValueDbmsBuilder;
-  withDisplayName: (displayName: string) => KeyValueDbmsBuilder;
-  withDescription: (description: string) => KeyValueDbmsBuilder;
-  build: () => BlueprintComponent;
-};
-
+/**
+ * `KeyValueDbms` — the abstract Storage capability "I need a key-value database
+ * management platform". It is satisfied by candidate Offers (e.g. AwsDynamoDb on
+ * AWS, AzureCosmosDb on Azure, GcpBigtable on GCP). The dev specializes it through
+ * a Fractal Interface using vendor-neutral concepts only.
+ *
+ * Neutral Interface ops (shared by >=2 candidate offers): none in v1 — every knob
+ * a key-value platform exposes (region, throughput, resource group, instance
+ * type, ...) is vendor-specific and lives on the individual offers, NOT on this
+ * Interface.
+ */
 export type KeyValueDbmsConfig = {
   id: string;
-  version: {major: number; minor: number; patch: number};
   displayName: string;
   description?: string;
+  /** Candidate offers that can satisfy this key-value DBMS. */
+  offers: Offer[];
+  dependencies?: BlueprintComponentDependency[];
+  links?: ComponentLink[];
 };
 
-function makeKeyValueDbmsComponent(
-  dbms: BlueprintComponent,
-  entityNodes: KeyValueEntityComponent[],
-): KeyValueDbmsComponent {
-  const dbmsDep: BlueprintComponentDependency = {id: dbms.id};
-  const wiredEntities = entityNodes.map(e => ({
-    ...e,
-    component: {
-      ...e.component,
-      dependencies: [...e.component.dependencies, dbmsDep],
-    },
-  }));
-  return {
-    dbms,
-    entities: wiredEntities,
-    withEntities: newEntities => makeKeyValueDbmsComponent(dbms, newEntities),
-  };
-}
-
 export namespace KeyValueDbms {
-  export const getBuilder = (): KeyValueDbmsBuilder => {
-    const params = getParametersInstance();
-    const inner = getBlueprintComponentBuilder()
-      .withType(buildKeyValueDbmsType())
-      .withParameters(params);
+  /** Vendor-neutral Service name this capability resolves to. */
+  export const SERVICE_NAME = 'KeyValueDbms';
 
-    const builder: KeyValueDbmsBuilder = {
-      withId: id => {
-        inner.withId(buildId(id));
-        return builder;
-      },
-      withVersion: (major, minor, patch) => {
-        inner.withVersion(buildVersion(major, minor, patch));
-        return builder;
-      },
-      withDisplayName: displayName => {
-        inner.withDisplayName(displayName);
-        return builder;
-      },
-      withDescription: description => {
-        inner.withDescription(description);
-        return builder;
-      },
-      build: () => inner.build(),
-    };
-
-    return builder;
-  };
-
-  export const create = (config: KeyValueDbmsConfig): KeyValueDbmsComponent => {
-    const b = getBuilder()
-      .withId(config.id)
-      .withVersion(
-        config.version.major,
-        config.version.minor,
-        config.version.patch,
-      )
-      .withDisplayName(config.displayName);
-
-    if (config.description) b.withDescription(config.description);
-
-    return makeKeyValueDbmsComponent(b.build(), []);
-  };
+  export const create = (config: KeyValueDbmsConfig): AbstractComponent =>
+    createAbstractComponent({
+      id: config.id,
+      displayName: config.displayName,
+      description: config.description,
+      domain: InfrastructureDomain.Storage,
+      serviceName: SERVICE_NAME,
+      offers: config.offers,
+      dependencies: config.dependencies,
+      links: config.links,
+    });
 }

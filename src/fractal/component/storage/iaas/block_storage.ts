@@ -8,33 +8,33 @@ import {BlueprintComponentDependency} from '../../dependency';
 import {ComponentLink} from '../../../../component/link';
 
 /**
- * `Search` — the abstract Storage capability "I need a search engine". It is
- * satisfied by candidate Offers (e.g. Elastic on CaaS, OpenshiftPersistentVolume
- * on RedHat). The dev specializes it through a Fractal Interface using
+ * `BlockStorage` — the abstract Storage capability "I need a block storage
+ * volume". It is satisfied by candidate Offers (e.g. ArubaBlockStorage on
+ * Aruba). The dev specializes it through a Fractal Interface using
  * vendor-neutral concepts only.
  *
- * Neutral Interface ops (shared by ≥2 candidate offers): `namespace`.
- * Vendor-only knobs — Elastic's (elasticVersion, elasticInstances, storage) and
- * OpenshiftPersistentVolume's (name, storageSize, storageClassName, accessMode) —
- * live on the individual offers, NOT on this Interface.
+ * There are no neutral Interface ops yet (only one candidate offer exists, so no
+ * knob is shared by ≥2 offers). Vendor-only knobs (sizeGb, type on Aruba) live on
+ * the individual offers and are set via `component.set(key, value)`, NOT promoted
+ * to this Interface until a second offer shares them.
  */
-export const NAMESPACE_PARAM = 'namespace';
+export const NEUTRAL_PARAM_KEYS = [] as const;
 
-export type SearchConfig = {
+export type BlockStorageConfig = {
   id: string;
   displayName: string;
   description?: string;
-  /** Candidate offers that can satisfy this search engine. */
+  /** Candidate offers that can satisfy this block storage volume. */
   offers: Offer[];
   dependencies?: BlueprintComponentDependency[];
   links?: ComponentLink[];
 };
 
-export namespace Search {
+export namespace BlockStorage {
   /** Vendor-neutral Service name this capability resolves to. */
-  export const SERVICE_NAME = 'Search';
+  export const SERVICE_NAME = 'ArubaBlockStorage';
 
-  export const create = (config: SearchConfig): AbstractComponent =>
+  export const create = (config: BlockStorageConfig): AbstractComponent =>
     createAbstractComponent({
       id: config.id,
       displayName: config.displayName,

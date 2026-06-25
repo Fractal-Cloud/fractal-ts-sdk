@@ -1,120 +1,48 @@
-import {getBlueprintComponentBuilder} from '../../entity';
 import {
-  getBlueprintComponentTypeBuilder,
-  BlueprintComponentType,
-} from '../../type';
+  createAbstractComponent,
+  AbstractComponent,
+} from '../../abstract_component';
+import {Offer} from '../../../offer';
 import {InfrastructureDomain} from '../../../../values/infrastructure_domain';
-import {ServiceDeliveryModel} from '../../../../values/service_delivery_model';
-import {PascalCaseString} from '../../../../values/pascal_case_string';
-import {getParametersInstance} from '../../../../values/generic_parameters';
-import {getComponentIdBuilder, ComponentId} from '../../../../component/id';
-import {KebabCaseString} from '../../../../values/kebab_case_string';
-import {getVersionBuilder, Version} from '../../../../values/version';
-import {BlueprintComponent} from '../../index';
+import {BlueprintComponentDependency} from '../../dependency';
+import {ComponentLink} from '../../../../component/link';
 
-export const GRAPH_DATABASE_TYPE_NAME = 'GraphDatabase';
-
-// ── internal helpers ──────────────────────────────────────────────────────────
-
-function buildId(id: string): ComponentId {
-  return getComponentIdBuilder()
-    .withValue(KebabCaseString.getBuilder().withValue(id).build())
-    .build();
-}
-
-function buildVersion(major: number, minor: number, patch: number): Version {
-  return getVersionBuilder()
-    .withMajor(major)
-    .withMinor(minor)
-    .withPatch(patch)
-    .build();
-}
-
-function buildGraphDatabaseType(): BlueprintComponentType {
-  return getBlueprintComponentTypeBuilder()
-    .withInfrastructureDomain(InfrastructureDomain.Storage)
-    .withServiceDeliveryModel(ServiceDeliveryModel.PaaS)
-    .withName(
-      PascalCaseString.getBuilder().withValue(GRAPH_DATABASE_TYPE_NAME).build(),
-    )
-    .build();
-}
-
-// ── Public API ────────────────────────────────────────────────────────────────
-
-export type GraphDatabaseComponent = {
-  readonly component: BlueprintComponent;
-  readonly components: ReadonlyArray<BlueprintComponent>;
-};
-
-export type GraphDatabaseBuilder = {
-  withId: (id: string) => GraphDatabaseBuilder;
-  withVersion: (
-    major: number,
-    minor: number,
-    patch: number,
-  ) => GraphDatabaseBuilder;
-  withDisplayName: (displayName: string) => GraphDatabaseBuilder;
-  withDescription: (description: string) => GraphDatabaseBuilder;
-  build: () => BlueprintComponent;
-};
-
+/**
+ * `GraphDatabase` — the abstract Storage capability "I need a managed graph
+ * database" (a graph hosted within a graph DBMS). It is satisfied by candidate
+ * Offers (e.g. AzureCosmosDbGremlinDatabase on Azure). The dev specializes it
+ * through a Fractal Interface using vendor-neutral concepts only.
+ *
+ * Neutral Interface ops (shared by ≥2 candidate offers): none today — only one
+ * candidate offer exists, so every knob is an offer-level extra and lives on that
+ * offer, NOT on this Interface.
+ *
+ * Depends on a `GraphDbms` — a GraphDatabase cannot exist without the graph DBMS
+ * that hosts it; declare that DBMS as a dependency when authoring the Fractal.
+ */
 export type GraphDatabaseConfig = {
   id: string;
-  version: {major: number; minor: number; patch: number};
   displayName: string;
   description?: string;
+  /** Candidate offers that can satisfy this graph database. */
+  offers: Offer[];
+  dependencies?: BlueprintComponentDependency[];
+  links?: ComponentLink[];
 };
 
-function makeGraphDatabaseComponent(
-  component: BlueprintComponent,
-): GraphDatabaseComponent {
-  return {component, components: [component]};
-}
-
 export namespace GraphDatabase {
-  export const getBuilder = (): GraphDatabaseBuilder => {
-    const inner = getBlueprintComponentBuilder()
-      .withType(buildGraphDatabaseType())
-      .withParameters(getParametersInstance());
+  /** Vendor-neutral Service name this capability resolves to. */
+  export const SERVICE_NAME = 'GraphDatabase';
 
-    const builder: GraphDatabaseBuilder = {
-      withId: id => {
-        inner.withId(buildId(id));
-        return builder;
-      },
-      withVersion: (major, minor, patch) => {
-        inner.withVersion(buildVersion(major, minor, patch));
-        return builder;
-      },
-      withDisplayName: displayName => {
-        inner.withDisplayName(displayName);
-        return builder;
-      },
-      withDescription: description => {
-        inner.withDescription(description);
-        return builder;
-      },
-      build: () => inner.build(),
-    };
-
-    return builder;
-  };
-
-  export const create = (
-    config: GraphDatabaseConfig,
-  ): GraphDatabaseComponent => {
-    const b = getBuilder()
-      .withId(config.id)
-      .withVersion(
-        config.version.major,
-        config.version.minor,
-        config.version.patch,
-      )
-      .withDisplayName(config.displayName);
-
-    if (config.description) b.withDescription(config.description);
-
-    return makeGraphDatabaseComponent(b.build());
-  };
+  export const create = (config: GraphDatabaseConfig): AbstractComponent =>
+    createAbstractComponent({
+      id: config.id,
+      displayName: config.displayName,
+      description: config.description,
+      domain: InfrastructureDomain.Storage,
+      serviceName: SERVICE_NAME,
+      offers: config.offers,
+      dependencies: config.dependencies,
+      links: config.links,
+    });
 }

@@ -1,150 +1,51 @@
-import {getBlueprintComponentBuilder} from '../../entity';
 import {
-  getBlueprintComponentTypeBuilder,
-  BlueprintComponentType,
-} from '../../type';
+  createAbstractComponent,
+  AbstractComponent,
+} from '../../abstract_component';
+import {Offer} from '../../../offer';
 import {InfrastructureDomain} from '../../../../values/infrastructure_domain';
-import {ServiceDeliveryModel} from '../../../../values/service_delivery_model';
-import {PascalCaseString} from '../../../../values/pascal_case_string';
-import {
-  GenericParameters,
-  getParametersInstance,
-} from '../../../../values/generic_parameters';
-import {getComponentIdBuilder, ComponentId} from '../../../../component/id';
-import {KebabCaseString} from '../../../../values/kebab_case_string';
-import {getVersionBuilder, Version} from '../../../../values/version';
-import {BlueprintComponent} from '../../index';
+import {BlueprintComponentDependency} from '../../dependency';
+import {ComponentLink} from '../../../../component/link';
 
-export const RELATIONAL_DATABASE_TYPE_NAME = 'RelationalDatabase';
+/**
+ * `RelationalDatabase` — the abstract Storage capability "I need a relational
+ * database". It is satisfied by candidate Offers (e.g. AzurePostgreSqlDatabase
+ * and AzureCosmosDbPostgreSqlDatabase on Azure, GcpPostgreSqlDatabase on GCP).
+ * The dev specializes it through a Fractal Interface using vendor-neutral
+ * concepts only.
+ *
+ * Neutral Interface ops (shared by ≥2 candidate offers): `collation`, `charset`.
+ * Vendor-only knobs live on the individual offers, NOT on this Interface.
+ *
+ * A RelationalDatabase logically depends on a RelationalDbms (the DBMS hosting
+ * it); the infra team wires that dependency when authoring the Fractal.
+ */
 export const COLLATION_PARAM = 'collation';
 export const CHARSET_PARAM = 'charset';
 
-// ── internal helpers ──────────────────────────────────────────────────────────
-
-function buildId(id: string): ComponentId {
-  return getComponentIdBuilder()
-    .withValue(KebabCaseString.getBuilder().withValue(id).build())
-    .build();
-}
-
-function buildVersion(major: number, minor: number, patch: number): Version {
-  return getVersionBuilder()
-    .withMajor(major)
-    .withMinor(minor)
-    .withPatch(patch)
-    .build();
-}
-
-function buildRelationalDatabaseType(): BlueprintComponentType {
-  return getBlueprintComponentTypeBuilder()
-    .withInfrastructureDomain(InfrastructureDomain.Storage)
-    .withServiceDeliveryModel(ServiceDeliveryModel.PaaS)
-    .withName(
-      PascalCaseString.getBuilder()
-        .withValue(RELATIONAL_DATABASE_TYPE_NAME)
-        .build(),
-    )
-    .build();
-}
-
-function pushParam(
-  params: GenericParameters,
-  key: string,
-  value: unknown,
-): void {
-  params.push(key, value as Record<string, object>);
-}
-
-// ── Public API ────────────────────────────────────────────────────────────────
-
-export type RelationalDatabaseComponent = {
-  readonly component: BlueprintComponent;
-  readonly components: ReadonlyArray<BlueprintComponent>;
-};
-
-export type RelationalDatabaseBuilder = {
-  withId: (id: string) => RelationalDatabaseBuilder;
-  withVersion: (
-    major: number,
-    minor: number,
-    patch: number,
-  ) => RelationalDatabaseBuilder;
-  withDisplayName: (displayName: string) => RelationalDatabaseBuilder;
-  withDescription: (description: string) => RelationalDatabaseBuilder;
-  withCollation: (collation: string) => RelationalDatabaseBuilder;
-  withCharset: (charset: string) => RelationalDatabaseBuilder;
-  build: () => BlueprintComponent;
-};
-
 export type RelationalDatabaseConfig = {
   id: string;
-  version: {major: number; minor: number; patch: number};
   displayName: string;
   description?: string;
-  collation?: string;
-  charset?: string;
+  /** Candidate offers that can satisfy this relational database. */
+  offers: Offer[];
+  dependencies?: BlueprintComponentDependency[];
+  links?: ComponentLink[];
 };
 
-function makeRelationalDatabaseComponent(
-  component: BlueprintComponent,
-): RelationalDatabaseComponent {
-  return {component, components: [component]};
-}
-
 export namespace RelationalDatabase {
-  export const getBuilder = (): RelationalDatabaseBuilder => {
-    const params = getParametersInstance();
-    const inner = getBlueprintComponentBuilder()
-      .withType(buildRelationalDatabaseType())
-      .withParameters(params);
+  /** Vendor-neutral Service name this capability resolves to. */
+  export const SERVICE_NAME = 'RelationalDatabase';
 
-    const builder: RelationalDatabaseBuilder = {
-      withId: id => {
-        inner.withId(buildId(id));
-        return builder;
-      },
-      withVersion: (major, minor, patch) => {
-        inner.withVersion(buildVersion(major, minor, patch));
-        return builder;
-      },
-      withDisplayName: displayName => {
-        inner.withDisplayName(displayName);
-        return builder;
-      },
-      withDescription: description => {
-        inner.withDescription(description);
-        return builder;
-      },
-      withCollation: collation => {
-        pushParam(params, COLLATION_PARAM, collation);
-        return builder;
-      },
-      withCharset: charset => {
-        pushParam(params, CHARSET_PARAM, charset);
-        return builder;
-      },
-      build: () => inner.build(),
-    };
-
-    return builder;
-  };
-
-  export const create = (
-    config: RelationalDatabaseConfig,
-  ): RelationalDatabaseComponent => {
-    const b = getBuilder()
-      .withId(config.id)
-      .withVersion(
-        config.version.major,
-        config.version.minor,
-        config.version.patch,
-      )
-      .withDisplayName(config.displayName);
-
-    if (config.description) b.withDescription(config.description);
-    if (config.collation) b.withCollation(config.collation);
-    if (config.charset) b.withCharset(config.charset);
-
-    return makeRelationalDatabaseComponent(b.build());
-  };
+  export const create = (config: RelationalDatabaseConfig): AbstractComponent =>
+    createAbstractComponent({
+      id: config.id,
+      displayName: config.displayName,
+      description: config.description,
+      domain: InfrastructureDomain.Storage,
+      serviceName: SERVICE_NAME,
+      offers: config.offers,
+      dependencies: config.dependencies,
+      links: config.links,
+    });
 }
