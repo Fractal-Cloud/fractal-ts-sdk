@@ -1,91 +1,208 @@
 /**
  * basic_messaging.test.ts
  *
- * Integration tests for the basic_messaging sample pattern.
- * Verifies the blueprint builds correctly and each provider's live system
- * maps components with the right types, dependencies, and parameters.
+ * Fractal + Interface migration of the basic_messaging sample. Mirrors
+ * samples/messaging_broker.test.ts and samples/identity_fractal.test.ts:
+ *
+ *   - An infra team authors ONE Fractal whose abstract `Broker` carries the
+ *     candidate broker Offers (AzureServiceBus/Azure, GcpPubSub/GCP) and whose
+ *     abstract `MessagingEntity` topics carry the candidate entity Offers
+ *     (AzureServiceBusTopic/Azure, GcpPubSubTopic/GCP). Each entity declares a
+ *     blueprint dependency on the broker.
+ *   - A dev specializes through the Interface only (`azureRegion`,
+ *     `azureResourceGroup`, `sku`), never naming a vendor offer.
+ *   - The Provider chosen at LiveSystem time selects the offer per component.
+ *     Swapping the provider changes only the offer `type`/`provider`; the neutral
+ *     params and the broker dependency flow through identically.
+ *   - `toLiveSystem(...)` returns a real, validated LiveSystem.
+ *   - The Blueprint serializes the candidate offers onto each Service.
+ *   - An unknown provider throws.
  */
 
 import {describe, expect, it} from 'vitest';
+import {createFractal} from '../fractal/create_fractal';
 import {Broker} from '../fractal/component/messaging/paas/broker';
 import {MessagingEntity} from '../fractal/component/messaging/paas/entity';
 import {AzureServiceBus} from '../live_system/component/messaging/paas/azure_service_bus';
 import {AzureServiceBusTopic} from '../live_system/component/messaging/paas/azure_service_bus_topic';
 import {GcpPubSub} from '../live_system/component/messaging/paas/gcp_pubsub';
 import {GcpPubSubTopic} from '../live_system/component/messaging/paas/gcp_pubsub_topic';
+import {getComponentIdBuilder} from '../component/id';
+import {KebabCaseString} from '../values/kebab_case_string';
+import {OwnerType} from '../values/owner_type';
+import {OwnerId} from '../values/owner_id';
+import {getBoundedContextIdBuilder} from '../bounded_context/id';
+import {getEnvironmentBuilder} from '../environment/entity';
+import {getEnvironmentIdBuilder} from '../environment/id';
+import {LiveSystemComponent} from '../live_system/component';
 
-// ── Blueprint fixtures ──────────────────────────────────────────────────────
+// ── fixtures ─────────────────────────────────────────────────────────────────
 
-const ordersTopic = MessagingEntity.create({
-  id: 'orders-topic',
-  version: {major: 1, minor: 0, patch: 0},
-  displayName: 'Orders Topic',
-});
+const kebab = (v: string) => KebabCaseString.getBuilder().withValue(v).build();
 
-const notificationsTopic = MessagingEntity.create({
-  id: 'notifications-topic',
-  version: {major: 1, minor: 0, patch: 0},
-  displayName: 'Notifications Topic',
-});
+const ownerId = OwnerId.getBuilder()
+  .withValue('00000000-0000-0000-0000-000000000001')
+  .build();
 
-const broker = Broker.create({
-  id: 'event-broker',
-  version: {major: 1, minor: 0, patch: 0},
-  displayName: 'Event Broker',
-}).withEntities([ordersTopic, notificationsTopic]);
+const boundedContextId = getBoundedContextIdBuilder()
+  .withOwnerType(OwnerType.Personal)
+  .withOwnerId(ownerId)
+  .withName(kebab('reusable-templates'))
+  .build();
 
-// ── Blueprint tests ─────────────────────────────────────────────────────────
+const environment = getEnvironmentBuilder()
+  .withId(
+    getEnvironmentIdBuilder()
+      .withOwnerType(OwnerType.Personal)
+      .withOwnerId(ownerId)
+      .withName(kebab('test'))
+      .build(),
+  )
+  .build();
 
-describe('basic_messaging blueprint', () => {
-  it('should create Broker with correct type', () => {
-    expect(broker.broker.type.toString()).toBe('Messaging.PaaS.Broker');
-    expect(broker.broker.id.toString()).toBe('event-broker');
-    expect(broker.broker.displayName).toBe('Event Broker');
+// The broker's component id — each entity declares a blueprint dependency on it.
+const brokerComponentId = getComponentIdBuilder()
+  .withValue(kebab('event-broker'))
+  .build();
+
+// ── Infra team: author the Fractal once. ─────────────────────────────────────
+function authorMessagingFractal() {
+  return createFractal({
+    id: 'basic-messaging',
+    version: {major: 1, minor: 0, patch: 0},
+    description: 'Governed message broker with two topics',
+    boundedContextId,
+    blueprint: bp => ({
+      broker: bp.add(
+        Broker.create({
+          id: 'event-broker',
+          displayName: 'Event Broker',
+          offers: [AzureServiceBus, GcpPubSub],
+        }),
+      ),
+      ordersTopic: bp.add(
+        MessagingEntity.create({
+          id: 'orders-topic',
+          displayName: 'Orders Topic',
+          offers: [AzureServiceBusTopic, GcpPubSubTopic],
+          dependencies: [{id: brokerComponentId}],
+        }),
+      ),
+      notificationsTopic: bp.add(
+        MessagingEntity.create({
+          id: 'notifications-topic',
+          displayName: 'Notifications Topic',
+          offers: [AzureServiceBusTopic, GcpPubSubTopic],
+          dependencies: [{id: brokerComponentId}],
+        }),
+      ),
+    }),
+    operations: bp => ({
+      withAzureRegion: (region: string) => {
+        bp.broker.set('azureRegion', region);
+        bp.ordersTopic.set('azureRegion', region);
+        bp.notificationsTopic.set('azureRegion', region);
+      },
+      withAzureResourceGroup: (rg: string) => {
+        bp.broker.set('azureResourceGroup', rg);
+        bp.ordersTopic.set('azureResourceGroup', rg);
+        bp.notificationsTopic.set('azureResourceGroup', rg);
+      },
+      withSku: (sku: string) => bp.broker.set('sku', sku),
+    }),
   });
+}
 
-  it('should create entities with correct type', () => {
-    expect(broker.entities).toHaveLength(2);
-    expect(broker.entities[0].component.type.toString()).toBe(
-      'Messaging.PaaS.Entity',
-    );
-    expect(broker.entities[1].component.type.toString()).toBe(
-      'Messaging.PaaS.Entity',
-    );
-  });
+// ── Dev team: specialize through the Interface, offer-free. ──────────────────
+function specialize(provider: LiveSystemComponent.Provider) {
+  const fractal = authorMessagingFractal();
+  fractal.operations
+    .withAzureRegion('westeurope')
+    .withAzureResourceGroup('my-rg')
+    .withSku('Standard');
+  return fractal.toLiveSystem({name: 'acme-messaging', environment, provider});
+}
 
-  it('should auto-wire broker dependency into each entity', () => {
-    for (const entity of broker.entities) {
-      const depIds = entity.component.dependencies.map(d => d.id.toString());
-      expect(depIds).toContain('event-broker');
+// ── tests ────────────────────────────────────────────────────────────────────
+
+describe('basic_messaging Fractal — provider-driven offer swap', () => {
+  it('selects a broker + topic offer per provider from one authored Fractal', () => {
+    const cases: Array<{
+      provider: LiveSystemComponent.Provider;
+      brokerType: string;
+      topicType: string;
+    }> = [
+      {
+        provider: 'Azure',
+        brokerType: 'Messaging.PaaS.ServiceBus',
+        topicType: 'Messaging.PaaS.ServiceBusTopic',
+      },
+      {
+        provider: 'GCP',
+        brokerType: 'Messaging.PaaS.PubSub',
+        topicType: 'Messaging.PaaS.PubSubTopic',
+      },
+    ];
+
+    for (const {provider, brokerType, topicType} of cases) {
+      const ls = specialize(provider);
+
+      const broker = ls.components.find(
+        c => c.id.toString() === 'event-broker',
+      )!;
+      expect(broker).toBeDefined();
+      expect(broker.type.toString()).toBe(brokerType);
+      expect(broker.provider).toBe(provider);
+
+      const orders = ls.components.find(
+        c => c.id.toString() === 'orders-topic',
+      )!;
+      const notifications = ls.components.find(
+        c => c.id.toString() === 'notifications-topic',
+      )!;
+      expect(orders.type.toString()).toBe(topicType);
+      expect(notifications.type.toString()).toBe(topicType);
+      expect(orders.provider).toBe(provider);
+      expect(notifications.provider).toBe(provider);
+
+      // broker + two topics, no vendor sub-components for these offers.
+      expect(ls.components.length).toBe(3);
     }
   });
 
-  it('should preserve entity IDs and display names', () => {
-    expect(broker.entities[0].component.id.toString()).toBe('orders-topic');
-    expect(broker.entities[0].component.displayName).toBe('Orders Topic');
-    expect(broker.entities[1].component.id.toString()).toBe(
-      'notifications-topic',
-    );
-    expect(broker.entities[1].component.displayName).toBe(
-      'Notifications Topic',
-    );
+  it('carries the broker dependency into each topic offer for every provider', () => {
+    for (const provider of ['Azure', 'GCP'] as LiveSystemComponent.Provider[]) {
+      const ls = specialize(provider);
+      for (const id of ['orders-topic', 'notifications-topic']) {
+        const topic = ls.components.find(c => c.id.toString() === id)!;
+        const depIds = topic.dependencies.map(d => d.id.toString());
+        expect(depIds).toContain('event-broker');
+      }
+    }
   });
-});
 
-// ── Azure live system tests ─────────────────────────────────────────────────
+  it('preserves topic IDs and display names across the offer swap', () => {
+    for (const provider of ['Azure', 'GCP'] as LiveSystemComponent.Provider[]) {
+      const ls = specialize(provider);
+      const orders = ls.components.find(
+        c => c.id.toString() === 'orders-topic',
+      )!;
+      const notifications = ls.components.find(
+        c => c.id.toString() === 'notifications-topic',
+      )!;
+      expect(orders.displayName).toBe('Orders Topic');
+      expect(notifications.displayName).toBe('Notifications Topic');
+    }
+  });
 
-describe('basic_messaging Azure live system', () => {
-  it('should satisfy Broker with AzureServiceBus', () => {
-    const azureBroker = AzureServiceBus.satisfy(broker.broker)
-      .withAzureRegion('westeurope')
-      .withAzureResourceGroup('my-rg')
-      .withSku('Standard')
-      .build();
+  it('flows identical neutral params to whichever offer the provider selects', () => {
+    const azureBroker = specialize('Azure').components.find(
+      c => c.id.toString() === 'event-broker',
+    )!;
+    const gcpBroker = specialize('GCP').components.find(
+      c => c.id.toString() === 'event-broker',
+    )!;
 
-    expect(azureBroker.type.toString()).toBe('Messaging.PaaS.ServiceBus');
-    expect(azureBroker.provider).toBe('Azure');
-    expect(azureBroker.id.toString()).toBe('event-broker');
-    expect(azureBroker.displayName).toBe('Event Broker');
     expect(azureBroker.parameters.getOptionalFieldByName('azureRegion')).toBe(
       'westeurope',
     );
@@ -95,82 +212,76 @@ describe('basic_messaging Azure live system', () => {
     expect(azureBroker.parameters.getOptionalFieldByName('sku')).toBe(
       'Standard',
     );
-  });
 
-  it('should satisfy MessagingEntity with AzureServiceBusTopic and carry broker dependency', () => {
-    const ordersEntity = broker.entities[0];
-    const azureTopic = AzureServiceBusTopic.satisfy(ordersEntity.component)
-      .withAzureRegion('westeurope')
-      .withAzureResourceGroup('my-rg')
-      .build();
+    expect(
+      azureBroker.parameters.getOptionalFieldByName('azureRegion'),
+    ).toEqual(gcpBroker.parameters.getOptionalFieldByName('azureRegion'));
+    expect(
+      azureBroker.parameters.getOptionalFieldByName('azureResourceGroup'),
+    ).toEqual(
+      gcpBroker.parameters.getOptionalFieldByName('azureResourceGroup'),
+    );
 
-    expect(azureTopic.type.toString()).toBe('Messaging.PaaS.ServiceBusTopic');
-    expect(azureTopic.provider).toBe('Azure');
-    expect(azureTopic.id.toString()).toBe('orders-topic');
-    expect(azureTopic.displayName).toBe('Orders Topic');
-
-    // broker dependency carried from blueprint
-    const depIds = azureTopic.dependencies.map(d => d.id.toString());
-    expect(depIds).toContain('event-broker');
-
-    // vendor-specific params
-    expect(azureTopic.parameters.getOptionalFieldByName('azureRegion')).toBe(
+    // topics receive the vendor-neutral azure params too
+    const azureOrders = specialize('Azure').components.find(
+      c => c.id.toString() === 'orders-topic',
+    )!;
+    expect(azureOrders.parameters.getOptionalFieldByName('azureRegion')).toBe(
       'westeurope',
     );
     expect(
-      azureTopic.parameters.getOptionalFieldByName('azureResourceGroup'),
+      azureOrders.parameters.getOptionalFieldByName('azureResourceGroup'),
     ).toBe('my-rg');
   });
 
-  it('should carry dependencies for all entities', () => {
-    const notificationsEntity = broker.entities[1];
-    const azureTopic = AzureServiceBusTopic.satisfy(
-      notificationsEntity.component,
-    )
-      .withAzureRegion('westeurope')
-      .withAzureResourceGroup('my-rg')
-      .build();
-
-    expect(azureTopic.id.toString()).toBe('notifications-topic');
-    const depIds = azureTopic.dependencies.map(d => d.id.toString());
-    expect(depIds).toContain('event-broker');
-  });
-});
-
-// ── GCP live system tests ───────────────────────────────────────────────────
-
-describe('basic_messaging GCP live system', () => {
-  it('should satisfy Broker with GcpPubSub', () => {
-    const gcpBroker = GcpPubSub.satisfy(broker.broker).build();
-
-    expect(gcpBroker.type.toString()).toBe('Messaging.PaaS.PubSub');
-    expect(gcpBroker.provider).toBe('GCP');
-    expect(gcpBroker.id.toString()).toBe('event-broker');
-    expect(gcpBroker.displayName).toBe('Event Broker');
+  it('toLiveSystem returns a real, validated LiveSystem', () => {
+    const ls = specialize('Azure');
+    expect(typeof ls.deploy).toBe('function');
+    expect(typeof ls.destroy).toBe('function');
+    expect(ls.fractalId.toString()).toContain('basic-messaging');
+    expect(ls.environment).toBeDefined();
+    expect(ls.genericProvider).toBe('Azure');
   });
 
-  it('should satisfy MessagingEntity with GcpPubSubTopic and carry broker dependency', () => {
-    const ordersEntity = broker.entities[0];
-    const gcpTopic = GcpPubSubTopic.satisfy(ordersEntity.component).build();
+  it('serializes candidate offers onto each Blueprint component Service', () => {
+    const blueprint = authorMessagingFractal().blueprint;
 
-    expect(gcpTopic.type.toString()).toBe('Messaging.PaaS.PubSubTopic');
-    expect(gcpTopic.provider).toBe('GCP');
-    expect(gcpTopic.id.toString()).toBe('orders-topic');
-    expect(gcpTopic.displayName).toBe('Orders Topic');
+    const broker = blueprint.components.find(
+      c => c.id.toString() === 'event-broker',
+    )!;
+    expect(broker.services).toBeDefined();
+    expect(broker.services!.map(s => s.type.toString()).sort()).toEqual([
+      'Messaging.PaaS.Broker',
+    ]);
+    expect(
+      broker
+        .services!.flatMap(s => s.offers)
+        .map(o => o.type.toString())
+        .sort(),
+    ).toEqual(['Messaging.PaaS.PubSub', 'Messaging.PaaS.ServiceBus']);
 
-    // broker dependency carried from blueprint
-    const depIds = gcpTopic.dependencies.map(d => d.id.toString());
-    expect(depIds).toContain('event-broker');
+    const orders = blueprint.components.find(
+      c => c.id.toString() === 'orders-topic',
+    )!;
+    expect(orders.services!.map(s => s.type.toString()).sort()).toEqual([
+      'Messaging.PaaS.Entity',
+    ]);
+    expect(
+      orders
+        .services!.flatMap(s => s.offers)
+        .map(o => o.type.toString())
+        .sort(),
+    ).toEqual(['Messaging.PaaS.PubSubTopic', 'Messaging.PaaS.ServiceBusTopic']);
   });
 
-  it('should carry dependencies for all entities', () => {
-    const notificationsEntity = broker.entities[1];
-    const gcpTopic = GcpPubSubTopic.satisfy(
-      notificationsEntity.component,
-    ).build();
-
-    expect(gcpTopic.id.toString()).toBe('notifications-topic');
-    const depIds = gcpTopic.dependencies.map(d => d.id.toString());
-    expect(depIds).toContain('event-broker');
+  it('throws when no candidate offer matches the requested provider', () => {
+    const fractal = authorMessagingFractal();
+    expect(() =>
+      fractal.toLiveSystem({
+        name: 'acme-messaging',
+        environment,
+        provider: 'AWS',
+      }),
+    ).toThrow(/No Broker offer/);
   });
 });

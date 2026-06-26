@@ -172,40 +172,18 @@ export {Workload} from './fractal/component/custom_workloads/caas/workload';
 export type {WorkloadConfig} from './fractal/component/custom_workloads/caas/workload';
 
 // Blueprint component helpers — FaaS (serverless functions)
+// Function migrated to the Fractal + Interface model: abstract capability +
+// candidate functional Offers (M8).
 export {Function} from './fractal/component/custom_workloads/faas/function';
 export type {
-  FunctionBuilder,
   FunctionConfig,
-  FunctionComponent,
   FunctionPackageType,
 } from './fractal/component/custom_workloads/faas/function';
 
-// Live system component helpers — FaaS offers (unified sourceArtifact contract)
+// Function offers (Fractal + Interface, M8) — one per provider.
 export {AwsLambda} from './live_system/component/custom_workloads/faas/aws_lambda';
-export type {
-  AwsLambdaBuilder,
-  AwsLambdaConfig,
-  SatisfiedAwsLambdaBuilder,
-} from './live_system/component/custom_workloads/faas/aws_lambda';
-
 export {AzureFunction} from './live_system/component/custom_workloads/faas/azure_function';
-export type {
-  AzureFunctionBuilder,
-  AzureFunctionConfig,
-  SatisfiedAzureFunctionBuilder,
-  AzureFunctionApplicationStack,
-  AzureFunctionConfiguration,
-  AzureFunctionCorsSettings,
-  AzureFunctionIdentity,
-  AzureFunctionAppServicePlan,
-} from './live_system/component/custom_workloads/faas/azure_function';
-
 export {GoogleFunction} from './live_system/component/custom_workloads/faas/gcp_google_function';
-export type {
-  GoogleFunctionBuilder,
-  GoogleFunctionConfig,
-  SatisfiedGoogleFunctionBuilder,
-} from './live_system/component/custom_workloads/faas/gcp_google_function';
 
 // Workload offer (Fractal + Interface, M1) — RedHat (OpenShift Workload)
 export {OpenshiftWorkload} from './live_system/component/custom_workloads/caas/openshift_workload';
@@ -258,13 +236,8 @@ export {ArubaContainerRegistry} from './live_system/component/network_and_comput
 // (Aruba Storage offers are exported with the consolidated Storage offer
 //  section below.)
 
-// Live system component helpers — CaaS K8s Workload
+// Workload offer (Fractal + Interface, M8) — generic CaaS Kubernetes Workload
 export {CaaSK8sWorkload} from './live_system/component/custom_workloads/caas/caas_k8s_workload';
-export type {
-  CaaSK8sWorkloadBuilder,
-  CaaSK8sWorkloadConfig,
-  SatisfiedCaaSK8sWorkloadBuilder,
-} from './live_system/component/custom_workloads/caas/caas_k8s_workload';
 
 // ── Storage domain — Blueprint abstract components ───────────────────────────
 // Each abstract component carries candidate Offers; the dev specialises through
@@ -545,39 +518,18 @@ export {ObservabilityElastic} from './live_system/component/observability/caas/e
 // Observability offers — SaaS
 export {ObservabilityUnmanaged as ObservabilitySaaSUnmanaged} from './live_system/component/observability/saas/unmanaged';
 
-// ── Security Blueprint helpers ──────────────────────────────────────────────
+// ── Security Blueprint — abstract components ────────────────────────────────
 
 export {ServiceMesh} from './fractal/component/security/caas/service_mesh';
-export type {
-  ServiceMeshBuilder,
-  ServiceMeshConfig,
-  ServiceMeshComponent,
-} from './fractal/component/security/caas/service_mesh';
+export type {ServiceMeshConfig} from './fractal/component/security/caas/service_mesh';
 
 export {SecurityUnmanaged} from './fractal/component/security/saas/unmanaged';
-export type {
-  SecurityUnmanagedBuilder,
-  SecurityUnmanagedConfig,
-  SecurityUnmanagedComponent,
-} from './fractal/component/security/saas/unmanaged';
+export type {SecurityUnmanagedConfig} from './fractal/component/security/saas/unmanaged';
 
-// ── Security Live system — CaaS ─────────────────────────────────────────────
+// ── Security Live system — offers ───────────────────────────────────────────
 
 export {Ocelot} from './live_system/component/security/caas/ocelot';
-export type {
-  OcelotBuilder,
-  OcelotConfig,
-  SatisfiedOcelotBuilder,
-} from './live_system/component/security/caas/ocelot';
-
-// ── Security Live system — SaaS ─────────────────────────────────────────────
-
-export {SecuritySaaSUnmanaged} from './live_system/component/security/saas/unmanaged';
-export type {
-  SecuritySaaSUnmanagedBuilder,
-  SecuritySaaSUnmanagedConfig,
-  SatisfiedSecuritySaaSUnmanagedBuilder,
-} from './live_system/component/security/saas/unmanaged';
+export {Unmanaged as SecuritySaaSUnmanaged} from './live_system/component/security/saas/unmanaged';
 
 // ── Fractal + Interface (book model) ────────────────────────────────────────
 // A Fractal bundles a Blueprint of abstract components (each carrying candidate

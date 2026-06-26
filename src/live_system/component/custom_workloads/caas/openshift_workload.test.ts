@@ -70,7 +70,7 @@ function authorWorkloadFractal() {
     boundedContextId,
     blueprint: bp => ({
       api: bp.add(
-        Workload.abstract({
+        Workload.create({
           id: 'api',
           displayName: 'API',
           offers: [OpenshiftWorkload, CloudRun],

@@ -4,6 +4,8 @@ import {
 } from '../../abstract_component';
 import {Offer} from '../../../offer';
 import {InfrastructureDomain} from '../../../../values/infrastructure_domain';
+import {BlueprintComponentDependency} from '../../dependency';
+import {ComponentLink} from '../../../../component/link';
 
 /**
  * `SecurityUnmanaged` — the abstract Security capability "I rely on an
@@ -20,6 +22,8 @@ export type SecurityUnmanagedConfig = {
   description?: string;
   /** Candidate offers that can satisfy this unmanaged security component. */
   offers: Offer[];
+  dependencies?: BlueprintComponentDependency[];
+  links?: ComponentLink[];
 };
 
 export namespace SecurityUnmanaged {
@@ -34,5 +38,7 @@ export namespace SecurityUnmanaged {
       domain: InfrastructureDomain.Security,
       serviceName: SERVICE_NAME,
       offers: config.offers,
+      dependencies: config.dependencies,
+      links: config.links,
     });
 }

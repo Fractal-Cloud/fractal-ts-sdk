@@ -1,19 +1,11 @@
-import {getBlueprintComponentBuilder} from '../../entity';
-import {
-  getBlueprintComponentTypeBuilder,
-  BlueprintComponentType,
-} from '../../type';
 import {InfrastructureDomain} from '../../../../values/infrastructure_domain';
-import {ServiceDeliveryModel} from '../../../../values/service_delivery_model';
-import {PascalCaseString} from '../../../../values/pascal_case_string';
 import {
-  GenericParameters,
-  getParametersInstance,
-} from '../../../../values/generic_parameters';
-import {getComponentIdBuilder, ComponentId} from '../../../../component/id';
-import {KebabCaseString} from '../../../../values/kebab_case_string';
-import {getVersionBuilder, Version} from '../../../../values/version';
-import {BlueprintComponent} from '../../index';
+  createAbstractComponent,
+  AbstractComponent,
+} from '../../abstract_component';
+import {Offer} from '../../../offer';
+import {BlueprintComponentDependency} from '../../dependency';
+import {ComponentLink} from '../../../../component/link';
 
 export const FUNCTION_TYPE_NAME = 'Function';
 
@@ -35,179 +27,61 @@ export const ENVIRONMENT_PARAM = 'environment';
 export const PACKAGE_TYPE_IMAGE = 'image';
 export const PACKAGE_TYPE_ZIP = 'zip';
 
-// ── internal helpers ──────────────────────────────────────────────────────────
+// ── Neutral Interface keys (Fractal + Interface migration) ────────────────────
+// A knob is a neutral Interface op iff >=2 candidate offers share it. The four
+// keys below are shared by the Function offers (AWS Lambda, Azure Function,
+// GCP Google Function) and are set through the Fractal Interface via
+// `component.set(key, value)`. Everything else (functionName, roleArn, handler,
+// memoryMb, timeoutSeconds on AWS; storageAccountConnectionString, appSettings,
+// configuration, identity, appServicePlan on Azure; location, entryPoint on GCP)
+// is an offer-only extra and stays off the neutral Interface.
+export const SOURCE_ARTIFACT_NEUTRAL_PARAM = SOURCE_ARTIFACT_PARAM;
+export const PACKAGE_TYPE_NEUTRAL_PARAM = PACKAGE_TYPE_PARAM;
+export const RUNTIME_NEUTRAL_PARAM = RUNTIME_PARAM;
+export const ENVIRONMENT_NEUTRAL_PARAM = ENVIRONMENT_PARAM;
 
-function buildId(id: string): ComponentId {
-  return getComponentIdBuilder()
-    .withValue(KebabCaseString.getBuilder().withValue(id).build())
-    .build();
-}
-
-function buildVersion(major: number, minor: number, patch: number): Version {
-  return getVersionBuilder()
-    .withMajor(major)
-    .withMinor(minor)
-    .withPatch(patch)
-    .build();
-}
-
-function buildFunctionType(): BlueprintComponentType {
-  return getBlueprintComponentTypeBuilder()
-    .withInfrastructureDomain(InfrastructureDomain.CustomWorkloads)
-    .withServiceDeliveryModel(ServiceDeliveryModel.FaaS)
-    .withName(
-      PascalCaseString.getBuilder().withValue(FUNCTION_TYPE_NAME).build(),
-    )
-    .build();
-}
-
-function pushParam(
-  params: GenericParameters,
-  key: string,
-  value: unknown,
-): void {
-  params.push(key, value as Record<string, object>);
-}
-
-// ── Public API ────────────────────────────────────────────────────────────────
+// ── Fractal + Interface abstract component ────────────────────────────────────
 
 /** Package format hint for the function artefact. */
 export type FunctionPackageType = 'image' | 'zip';
 
-export type FunctionComponent = {
-  readonly component: BlueprintComponent;
-  readonly components: ReadonlyArray<BlueprintComponent>;
-};
-
-export type FunctionBuilder = {
-  withId: (id: string) => FunctionBuilder;
-  withVersion: (major: number, minor: number, patch: number) => FunctionBuilder;
-  withDisplayName: (displayName: string) => FunctionBuilder;
-  withDescription: (description: string) => FunctionBuilder;
-  /** OCI artefact reference for the function code (REQUIRED). */
-  withSourceArtifact: (sourceArtifact: string) => FunctionBuilder;
-  /** Package format hint: "image" or "zip". Blank lets the agent auto-detect. */
-  withPackageType: (packageType: string) => FunctionBuilder;
-  withRuntime: (runtime: string) => FunctionBuilder;
-  /** Handler reference for zip artefacts (not needed for image packages). */
-  withHandler: (handler: string) => FunctionBuilder;
-  /** Entry point (module:function form) for runtimes that require it. */
-  withEntryPoint: (entryPoint: string) => FunctionBuilder;
-  withMemoryMb: (memoryMb: number) => FunctionBuilder;
-  withTimeoutSeconds: (timeoutSeconds: number) => FunctionBuilder;
-  /** Environment variables injected into the function runtime. */
-  withEnvironment: (environment: Record<string, string>) => FunctionBuilder;
-  build: () => BlueprintComponent;
-};
-
+/**
+ * Config for the vendor-neutral `Function` abstract component. The dev declares
+ * the candidate Offers (one per provider) plus any blueprint dependencies/links;
+ * the Provider chosen at LiveSystem time selects the matching Offer.
+ */
 export type FunctionConfig = {
   id: string;
-  version: {major: number; minor: number; patch: number};
   displayName: string;
   description?: string;
-  sourceArtifact: string;
-  packageType?: FunctionPackageType;
-  runtime?: string;
-  handler?: string;
-  entryPoint?: string;
-  memoryMb?: number;
-  timeoutSeconds?: number;
-  environment?: Record<string, string>;
+  /** Candidate offers that can satisfy this function (one per provider). */
+  offers: Offer[];
+  dependencies?: BlueprintComponentDependency[];
+  links?: ComponentLink[];
 };
 
-function makeFunctionComponent(
-  component: BlueprintComponent,
-): FunctionComponent {
-  return {
-    component,
-    components: [component],
-  };
-}
-
 export namespace Function {
-  export const getBuilder = (): FunctionBuilder => {
-    const params = getParametersInstance();
-    const inner = getBlueprintComponentBuilder()
-      .withType(buildFunctionType())
-      .withParameters(params);
+  /** Vendor-neutral Service name this capability resolves to. */
+  export const SERVICE_NAME = FUNCTION_TYPE_NAME;
 
-    const builder: FunctionBuilder = {
-      withId: id => {
-        inner.withId(buildId(id));
-        return builder;
-      },
-      withVersion: (major, minor, patch) => {
-        inner.withVersion(buildVersion(major, minor, patch));
-        return builder;
-      },
-      withDisplayName: displayName => {
-        inner.withDisplayName(displayName);
-        return builder;
-      },
-      withDescription: description => {
-        inner.withDescription(description);
-        return builder;
-      },
-      withSourceArtifact: sourceArtifact => {
-        pushParam(params, SOURCE_ARTIFACT_PARAM, sourceArtifact);
-        return builder;
-      },
-      withPackageType: packageType => {
-        pushParam(params, PACKAGE_TYPE_PARAM, packageType);
-        return builder;
-      },
-      withRuntime: runtime => {
-        pushParam(params, RUNTIME_PARAM, runtime);
-        return builder;
-      },
-      withHandler: handler => {
-        pushParam(params, HANDLER_PARAM, handler);
-        return builder;
-      },
-      withEntryPoint: entryPoint => {
-        pushParam(params, ENTRY_POINT_PARAM, entryPoint);
-        return builder;
-      },
-      withMemoryMb: memoryMb => {
-        pushParam(params, MEMORY_MB_PARAM, memoryMb);
-        return builder;
-      },
-      withTimeoutSeconds: timeoutSeconds => {
-        pushParam(params, TIMEOUT_SECONDS_PARAM, timeoutSeconds);
-        return builder;
-      },
-      withEnvironment: environment => {
-        pushParam(params, ENVIRONMENT_PARAM, environment);
-        return builder;
-      },
-      build: () => inner.build(),
-    };
-
-    return builder;
-  };
-
-  export const create = (config: FunctionConfig): FunctionComponent => {
-    const b = getBuilder()
-      .withId(config.id)
-      .withVersion(
-        config.version.major,
-        config.version.minor,
-        config.version.patch,
-      )
-      .withDisplayName(config.displayName)
-      .withSourceArtifact(config.sourceArtifact);
-
-    if (config.description) b.withDescription(config.description);
-    if (config.packageType) b.withPackageType(config.packageType);
-    if (config.runtime) b.withRuntime(config.runtime);
-    if (config.handler) b.withHandler(config.handler);
-    if (config.entryPoint) b.withEntryPoint(config.entryPoint);
-    if (config.memoryMb !== undefined) b.withMemoryMb(config.memoryMb);
-    if (config.timeoutSeconds !== undefined) {
-      b.withTimeoutSeconds(config.timeoutSeconds);
-    }
-    if (config.environment) b.withEnvironment(config.environment);
-
-    return makeFunctionComponent(b.build());
-  };
+  /**
+   * Build the abstract `Function` capability ("I need to run a serverless
+   * function"). Satisfied by candidate Offers (AWS Lambda on AWS, Azure Function
+   * on Azure, Google Function on GCP). The dev specializes it through the
+   * Fractal Interface using vendor-neutral keys only — `sourceArtifact`,
+   * `packageType`, `runtime`, `environment` (set via `component.set(key, value)`);
+   * everything else (function name, role ARN, handler, app service plan, ...) is
+   * an offer-only extra and stays off the Interface.
+   */
+  export const create = (config: FunctionConfig): AbstractComponent =>
+    createAbstractComponent({
+      id: config.id,
+      displayName: config.displayName,
+      description: config.description,
+      domain: InfrastructureDomain.CustomWorkloads,
+      serviceName: SERVICE_NAME,
+      offers: config.offers,
+      dependencies: config.dependencies,
+      links: config.links,
+    });
 }

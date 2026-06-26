@@ -62,7 +62,7 @@ export namespace Workload {
    * (set via `component.set(key, value)`); everything else (launch type, region,
    * resource group, ...) is an offer-only extra and stays off the Interface.
    */
-  export const abstract = (config: WorkloadConfig): AbstractComponent =>
+  export const create = (config: WorkloadConfig): AbstractComponent =>
     createAbstractComponent({
       id: config.id,
       displayName: config.displayName,
