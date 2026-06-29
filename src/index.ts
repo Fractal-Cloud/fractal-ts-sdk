@@ -554,6 +554,23 @@ export type {
 } from './fractal/component/abstract_component';
 export type {BlueprintComponentService} from './fractal/component/service';
 
+// ── Blueprint wiring primitives — dependencies & links ──────────────────────
+// Public surface for authoring inter-component structure in a blueprint. A
+// dependency is `{id: ComponentId}` (use a component handle's `.id`). A link is
+// built with `getLinkBuilder()` and carries a target `ComponentId`, a
+// `ComponentType` (target domain + Service name, e.g. NetworkAndCompute +
+// 'VirtualMachine'), and a `GenericParameters` settings map (fromPort, protocol,
+// access, ...). These are the same primitives the SDK uses internally.
+export {getComponentIdBuilder} from './component/id';
+export type {ComponentId, ComponentIdBuilder} from './component/id';
+export {getComponentTypeBuilder} from './component/type';
+export type {ComponentType, ComponentTypeBuilder} from './component/type';
+export {getLinkBuilder} from './component/link';
+export type {ComponentLink, LinkBuilder} from './component/link';
+export {getParametersInstance} from './values/generic_parameters';
+export type {GenericParameters} from './values/generic_parameters';
+export type {BlueprintComponentDependency} from './fractal/component/dependency';
+
 // ── Security Blueprint — IdentityProvider (abstract) ────────────────────────
 
 export {IdentityProvider} from './fractal/component/security/identity_provider';
