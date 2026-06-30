@@ -5,7 +5,14 @@
  * Each agnostic param is a typed `.withXxx()` guardrail setter (locked at design
  * time via `guardrail`). Vendor knobs never appear here — they live on Offers.
  */
-import {ComponentNode, NodeState, newNode, guardrail} from '../core';
+import {
+  ComponentNode,
+  NodeState,
+  AnyNode,
+  newNode,
+  guardrail,
+  addDependency,
+} from '../core';
 
 // ── Workload ─────────────────────────────────────────────────────────────────
 export type WorkloadNode<Id extends string = string> = ComponentNode<
@@ -20,6 +27,7 @@ export type WorkloadNode<Id extends string = string> = ComponentNode<
   withMemoryRequest: (v: string) => WorkloadNode<Id>;
   withMaxReplicas: (v: number) => WorkloadNode<Id>;
   withHealthCheck: (v: {path: string; port: number}) => WorkloadNode<Id>;
+  dependsOn: (other: AnyNode) => WorkloadNode<Id>;
 };
 const workloadNode = <Id extends string>(s: NodeState): WorkloadNode<Id> => ({
   state: s,
@@ -31,6 +39,7 @@ const workloadNode = <Id extends string>(s: NodeState): WorkloadNode<Id> => ({
   withMemoryRequest: v => workloadNode<Id>(guardrail(s, 'memoryRequest', v)),
   withMaxReplicas: v => workloadNode<Id>(guardrail(s, 'maxReplicas', v)),
   withHealthCheck: v => workloadNode<Id>(guardrail(s, 'healthCheck', v)),
+  dependsOn: other => workloadNode<Id>(addDependency(s, other.state.id)),
 });
 export const Workload = <const Id extends string>(cfg: {
   id: Id;
@@ -48,6 +57,7 @@ export type FunctionNode<Id extends string = string> = ComponentNode<
   withMemory: (v: number) => FunctionNode<Id>;
   withTimeout: (v: number) => FunctionNode<Id>;
   withConcurrency: (v: number) => FunctionNode<Id>;
+  dependsOn: (other: AnyNode) => FunctionNode<Id>;
 };
 const functionNode = <Id extends string>(s: NodeState): FunctionNode<Id> => ({
   state: s,
@@ -57,6 +67,7 @@ const functionNode = <Id extends string>(s: NodeState): FunctionNode<Id> => ({
   withMemory: v => functionNode<Id>(guardrail(s, 'memory', v)),
   withTimeout: v => functionNode<Id>(guardrail(s, 'timeout', v)),
   withConcurrency: v => functionNode<Id>(guardrail(s, 'concurrency', v)),
+  dependsOn: other => functionNode<Id>(addDependency(s, other.state.id)),
 });
 export const Function = <const Id extends string>(cfg: {
   id: Id;
