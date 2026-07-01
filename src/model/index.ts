@@ -9,8 +9,15 @@
 // Engine
 export * from './core';
 
+// Shared HTTP contract (credentials type surfaced publicly)
+export type {Credentials} from './http';
+
 // Deploy service (deploy/destroy a LiveSystem to the Fractal Cloud API)
 export * from './service';
+
+// Environment management (control-plane: management + operational envs,
+// cloud agents, secrets, CI/CD profiles, deployEnvironment)
+export * from './environment';
 
 // Component catalogue (abstract — vendor-agnostic)
 export * from './components/network_and_compute';
