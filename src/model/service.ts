@@ -12,15 +12,13 @@
  */
 import superagent from 'superagent';
 import type {LiveSystem, OwnerRef} from './core';
+import {FRACTAL_API_URL, authHeaders, sleep, elapsedSec, log} from './http';
+import type {Credentials} from './http';
 
-const FRACTAL_API_URL = 'https://api.fractal.cloud';
-const CLIENT_ID_HEADER = 'X-ClientID';
-const CLIENT_SECRET_HEADER = 'X-ClientSecret';
 const DEFAULT_POLL_INTERVAL_MS = 5_000;
 const DEFAULT_TIMEOUT_MS = 600_000;
 const TERMINAL_FAILURE_STATUSES = ['FailedMutation', 'Error'];
 
-export type Credentials = {clientId: string; clientSecret: string};
 export type DeployOptions = {
   mode: 'wait' | 'fire-and-forget';
   quiet?: boolean;
@@ -67,36 +65,6 @@ const buildBody = (ls: LiveSystem) => ({
     parameters: {},
   },
 });
-
-// ── helpers ──────────────────────────────────────────────────────────────────
-const sleep = (ms: number): Promise<void> =>
-  new Promise(resolve => setTimeout(resolve, ms));
-
-const authHeaders = (c: Credentials) => ({
-  [CLIENT_ID_HEADER]: c.clientId,
-  [CLIENT_SECRET_HEADER]: c.clientSecret,
-});
-
-const log = (
-  quiet: boolean,
-  level: 'INFO' | 'CHECK' | 'WARN' | 'ERROR',
-  message: string,
-  fields: Record<string, string | number> = {},
-): void => {
-  if (quiet) {
-    return;
-  }
-  const ts = new Date().toISOString();
-  const fieldStr = Object.entries(fields)
-    .map(([k, v]) => `${k}=${v}`)
-    .join(' ');
-  console.log(
-    `[${ts}] ${level.padEnd(5)} ${message}${fieldStr ? '  ' + fieldStr : ''}`,
-  );
-};
-
-const elapsedSec = (startMs: number): string =>
-  `${Math.round((Date.now() - startMs) / 1000)}s`;
 
 // ── HTTP ─────────────────────────────────────────────────────────────────────
 const submit = async (ls: LiveSystem, creds: Credentials): Promise<void> => {
