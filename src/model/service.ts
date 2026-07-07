@@ -66,8 +66,50 @@ const buildBody = (ls: LiveSystem) => ({
   },
 });
 
+// ── blueprint (Fractal) registration ─────────────────────────────────────────
+// The API rejects a LiveSystem whose Fractal (blueprint) is not registered
+// (`reasonCode: BlueprintDoesNotExist`). `createFractal` authors the blueprint
+// locally only; deploying must first upsert it to the control plane. The
+// blueprint URL is the fractal id with `:` → `/`
+// (`/blueprints/Personal/<ownerId>/<shortName>/<name>/<version>`).
+const buildBlueprintBody = (ls: LiveSystem) => ({
+  description: `${ls.fractalName} — authored via the Fractal Cloud TypeScript SDK`,
+  isPrivate: false,
+  components: ls.components.map(c => ({
+    type: c.type,
+    id: c.id,
+    provider: c.provider,
+    deliveryModel: c.deliveryModel,
+    parameters: c.parameters,
+    dependencies: [...c.dependencies],
+    links: c.links.map(l => ({
+      componentId: l.componentId,
+      settings: l.settings,
+    })),
+  })),
+});
+
+const publishBlueprint = async (
+  ls: LiveSystem,
+  creds: Credentials,
+): Promise<void> => {
+  const url = `${FRACTAL_API_URL}/blueprints/${fractalApiId(ls).replace(':', '/')}`;
+  const existing = await superagent
+    .get(url)
+    .ok(res => res.status === 200 || res.status === 404)
+    .set(authHeaders(creds));
+  const body = buildBlueprintBody(ls);
+  if (existing.status === 200) {
+    await superagent.put(url).set(authHeaders(creds)).send(body);
+  } else {
+    await superagent.post(url).set(authHeaders(creds)).send(body);
+  }
+};
+
 // ── HTTP ─────────────────────────────────────────────────────────────────────
 const submit = async (ls: LiveSystem, creds: Credentials): Promise<void> => {
+  // Ensure the Fractal (blueprint) exists before the LiveSystem references it.
+  await publishBlueprint(ls, creds);
   const id = liveSystemId(ls);
   const url = `${FRACTAL_API_URL}/livesystems/${id}`;
   const existing = await superagent
