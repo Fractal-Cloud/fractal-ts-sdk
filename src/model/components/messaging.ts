@@ -31,7 +31,9 @@ const brokerNode = <Id extends string>(s: NodeState): BrokerNode<Id> => ({
 });
 export const Broker = <const Id extends string>(cfg: {
   id: Id;
-}): BrokerNode<Id> => brokerNode<Id>(newNode(cfg.id, 'Messaging.Broker'));
+  displayName?: string;
+}): BrokerNode<Id> =>
+  brokerNode<Id>(newNode(cfg.id, 'Messaging.Broker', cfg.displayName));
 
 // ── MessagingEntity (depends on a Broker) ─────────────────────────────────────
 export type MessagingEntityNode<Id extends string = string> = ComponentNode<
@@ -60,5 +62,8 @@ const messagingEntityNode = <Id extends string>(
 });
 export const MessagingEntity = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): MessagingEntityNode<Id> =>
-  messagingEntityNode<Id>(newNode(cfg.id, 'Messaging.MessagingEntity'));
+  messagingEntityNode<Id>(
+    newNode(cfg.id, 'Messaging.MessagingEntity', cfg.displayName),
+  );

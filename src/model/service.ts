@@ -43,6 +43,7 @@ const buildBody = (ls: LiveSystem) => ({
       acc[c.id] = {
         type: c.type,
         id: c.id,
+        displayName: c.displayName,
         provider: c.provider,
         deliveryModel: c.deliveryModel,
         parameters: c.parameters,
@@ -78,6 +79,7 @@ const buildBlueprintBody = (ls: LiveSystem) => ({
   components: ls.components.map(c => ({
     type: c.type,
     id: c.id,
+    displayName: c.displayName,
     provider: c.provider,
     deliveryModel: c.deliveryModel,
     parameters: c.parameters,

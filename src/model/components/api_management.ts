@@ -37,5 +37,8 @@ const apiGatewayNode = <Id extends string>(
 });
 export const ApiGateway = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): ApiGatewayNode<Id> =>
-  apiGatewayNode<Id>(newNode(cfg.id, 'APIManagement.ApiGateway'));
+  apiGatewayNode<Id>(
+    newNode(cfg.id, 'APIManagement.ApiGateway', cfg.displayName),
+  );

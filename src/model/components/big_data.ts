@@ -42,8 +42,11 @@ const computeClusterNode = <Id extends string>(
 });
 export const ComputeCluster = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): ComputeClusterNode<Id> =>
-  computeClusterNode<Id>(newNode(cfg.id, 'BigData.ComputeCluster'));
+  computeClusterNode<Id>(
+    newNode(cfg.id, 'BigData.ComputeCluster', cfg.displayName),
+  );
 
 // ── DataProcessingJob ────────────────────────────────────────────────────────
 export type DataProcessingJobNode<Id extends string = string> = ComponentNode<
@@ -70,8 +73,11 @@ const dataProcessingJobNode = <Id extends string>(
 });
 export const DataProcessingJob = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): DataProcessingJobNode<Id> =>
-  dataProcessingJobNode<Id>(newNode(cfg.id, 'BigData.DataProcessingJob'));
+  dataProcessingJobNode<Id>(
+    newNode(cfg.id, 'BigData.DataProcessingJob', cfg.displayName),
+  );
 
 // ── MlExperiment ─────────────────────────────────────────────────────────────
 export type MlExperimentNode<Id extends string = string> = ComponentNode<
@@ -89,8 +95,11 @@ const mlExperimentNode = <Id extends string>(
 });
 export const MlExperiment = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): MlExperimentNode<Id> =>
-  mlExperimentNode<Id>(newNode(cfg.id, 'BigData.MlExperiment'));
+  mlExperimentNode<Id>(
+    newNode(cfg.id, 'BigData.MlExperiment', cfg.displayName),
+  );
 
 // ── Datalake ─────────────────────────────────────────────────────────────────
 export type DatalakeNode<Id extends string = string> = ComponentNode<
@@ -110,7 +119,9 @@ const datalakeNode = <Id extends string>(s: NodeState): DatalakeNode<Id> => ({
 });
 export const Datalake = <const Id extends string>(cfg: {
   id: Id;
-}): DatalakeNode<Id> => datalakeNode<Id>(newNode(cfg.id, 'BigData.Datalake'));
+  displayName?: string;
+}): DatalakeNode<Id> =>
+  datalakeNode<Id>(newNode(cfg.id, 'BigData.Datalake', cfg.displayName));
 
 // ── DistributedDataProcessing ────────────────────────────────────────────────
 export type DistributedDataProcessingNode<Id extends string = string> =
@@ -126,7 +137,8 @@ const distributedDataProcessingNode = <Id extends string>(
 });
 export const DistributedDataProcessing = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): DistributedDataProcessingNode<Id> =>
   distributedDataProcessingNode<Id>(
-    newNode(cfg.id, 'BigData.DistributedDataProcessing'),
+    newNode(cfg.id, 'BigData.DistributedDataProcessing', cfg.displayName),
   );
