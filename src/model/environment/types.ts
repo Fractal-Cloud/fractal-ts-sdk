@@ -51,12 +51,39 @@ export type DnsZone = {
   dnsZoneType?: string;
 };
 
+/** AWS cloud-agent credentials: static access key (optionally session-scoped) or
+ *  federated web identity (role ARN + OIDC token exchanged via
+ *  AssumeRoleWithWebIdentity). */
+export type AwsCredentials =
+  | {accessKeyId: string; secretAccessKey: string; sessionToken?: string}
+  | {roleArn: string; webIdentityToken: string};
+
+/** Azure cloud-agent credentials: static service principal (client id + secret)
+ *  or workload-identity federation (app-registration client id + a federated
+ *  token used as the client assertion). */
+export type AzureCredentials =
+  | {spClientId: string; spClientSecret: string}
+  | {clientId: string; federatedToken: string};
+
+/** GCP cloud-agent credentials: static service account (email + credentials JSON)
+ *  or workload-identity federation (service account to impersonate + WIF provider
+ *  + a federated token exchanged for a GCP access token). */
+export type GcpCredentials =
+  | {serviceAccountEmail: string; serviceAccountCredentials: string}
+  | {
+      serviceAccountEmail: string;
+      workloadIdentityProvider: string;
+      federatedToken: string;
+    };
+
 /** Per-provider credentials for cloud-agent initialization (explicit — no env
- *  var reads). Only the providers whose agents you initialize are required. */
+ *  var reads). Only the providers whose agents you initialize are required.
+ *  Each of aws/azure/gcp accepts a static or a federated (OIDC) variant,
+ *  discriminated structurally. */
 export type ProviderCredentials = {
-  aws?: {accessKeyId: string; secretAccessKey: string; sessionToken?: string};
-  azure?: {spClientId: string; spClientSecret: string};
-  gcp?: {serviceAccountEmail: string; serviceAccountCredentials: string};
+  aws?: AwsCredentials;
+  azure?: AzureCredentials;
+  gcp?: GcpCredentials;
   oci?: {serviceAccountId: string; serviceAccountCredentials: string};
   hetzner?: {token: string};
 };
