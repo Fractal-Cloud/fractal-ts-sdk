@@ -110,6 +110,63 @@ describe('Storage domain on the locked Fractal model', () => {
     expect(byId['app-db'].dependencies).toContain('app-dbms');
   });
 
+  it('displayName defaults to the component id when not set, and is honored when set', () => {
+    // Unset → defaults to id, on both blueprint and live components (control
+    // plane requires a non-null displayName on every LiveSystemComponent).
+    const bp = authorFractal().blueprint.components.find(
+      c => c.id === 'uploads',
+    )!;
+    expect(bp.displayName).toBe('uploads');
+
+    const ls = authorFractal().toLiveSystem({
+      name: 'acme-prod',
+      environment,
+      select: fullSelect(),
+    });
+    const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
+    expect(byId['uploads'].displayName).toBe('uploads');
+    expect(byId['app-dbms'].displayName).toBe('app-dbms');
+    expect(byId['app-db'].displayName).toBe('app-db');
+
+    // Explicit displayName (factory cfg) flows through to the live component,
+    // including DBMS children emitted in the parent's vendor family.
+    const named = createFractal({
+      id: 'named-stack',
+      version: {major: 1, minor: 0, patch: 0},
+      boundedContextId,
+      blueprint: bp2 => {
+        const dbms = bp2.add(
+          RelationalDbms({
+            id: 'app-dbms',
+            displayName: 'Application DB Engine',
+          }),
+        );
+        return {dbms};
+      },
+      operations: s => ({
+        withDatabases: (names: string[]) => {
+          const adds = names.map(name =>
+            s.dbms.addChild(RelationalDatabase({id: name, displayName: name})),
+          );
+          return st => adds.reduce((acc, add) => add(acc), st);
+        },
+      }),
+    });
+    const namedLs = named
+      .specialize()
+      .withDatabases(['orders'])
+      .toLiveSystem({
+        name: 'named-prod',
+        environment,
+        select: {'app-dbms': AzurePostgresDbms({resourceGroup: 'rg'})},
+      });
+    const namedById = Object.fromEntries(
+      namedLs.components.map(c => [c.id, c]),
+    );
+    expect(namedById['app-dbms'].displayName).toBe('Application DB Engine');
+    expect(namedById['orders'].displayName).toBe('orders');
+  });
+
   it('selecting an offer that does not satisfy the Component is a type error AND throws', () => {
     expect(() =>
       authorFractal().toLiveSystem({

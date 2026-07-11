@@ -43,8 +43,11 @@ const workloadNode = <Id extends string>(s: NodeState): WorkloadNode<Id> => ({
 });
 export const Workload = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): WorkloadNode<Id> =>
-  workloadNode<Id>(newNode(cfg.id, 'CustomWorkloads.Workload'));
+  workloadNode<Id>(
+    newNode(cfg.id, 'CustomWorkloads.Workload', cfg.displayName),
+  );
 
 // ── Function ─────────────────────────────────────────────────────────────────
 export type FunctionNode<Id extends string = string> = ComponentNode<
@@ -71,5 +74,8 @@ const functionNode = <Id extends string>(s: NodeState): FunctionNode<Id> => ({
 });
 export const Function = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): FunctionNode<Id> =>
-  functionNode<Id>(newNode(cfg.id, 'CustomWorkloads.Function'));
+  functionNode<Id>(
+    newNode(cfg.id, 'CustomWorkloads.Function', cfg.displayName),
+  );

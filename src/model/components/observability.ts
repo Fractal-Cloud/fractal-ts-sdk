@@ -29,8 +29,11 @@ const monitoringNode = <Id extends string>(
 });
 export const Monitoring = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): MonitoringNode<Id> =>
-  monitoringNode<Id>(newNode(cfg.id, 'Observability.Monitoring'));
+  monitoringNode<Id>(
+    newNode(cfg.id, 'Observability.Monitoring', cfg.displayName),
+  );
 
 // ── Observability.Tracing ────────────────────────────────────────────────────
 export type TracingNode<Id extends string = string> = ComponentNode<
@@ -47,8 +50,9 @@ const tracingNode = <Id extends string>(s: NodeState): TracingNode<Id> => ({
 });
 export const Tracing = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): TracingNode<Id> =>
-  tracingNode<Id>(newNode(cfg.id, 'Observability.Tracing'));
+  tracingNode<Id>(newNode(cfg.id, 'Observability.Tracing', cfg.displayName));
 
 // ── Observability.Logging ────────────────────────────────────────────────────
 export type LoggingNode<Id extends string = string> = ComponentNode<
@@ -63,5 +67,6 @@ const loggingNode = <Id extends string>(s: NodeState): LoggingNode<Id> => ({
 });
 export const Logging = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): LoggingNode<Id> =>
-  loggingNode<Id>(newNode(cfg.id, 'Observability.Logging'));
+  loggingNode<Id>(newNode(cfg.id, 'Observability.Logging', cfg.displayName));

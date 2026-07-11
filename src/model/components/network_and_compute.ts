@@ -48,8 +48,11 @@ const virtualNetworkNode = <Id extends string>(
 });
 export const VirtualNetwork = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): VirtualNetworkNode<Id> =>
-  virtualNetworkNode<Id>(newNode(cfg.id, 'NetworkAndCompute.VirtualNetwork'));
+  virtualNetworkNode<Id>(
+    newNode(cfg.id, 'NetworkAndCompute.VirtualNetwork', cfg.displayName),
+  );
 
 // ── Subnet ───────────────────────────────────────────────────────────────────
 export type SubnetNode<Id extends string = string> = ComponentNode<
@@ -66,8 +69,9 @@ const subnetNode = <Id extends string>(s: NodeState): SubnetNode<Id> => ({
 });
 export const Subnet = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): SubnetNode<Id> =>
-  subnetNode<Id>(newNode(cfg.id, 'NetworkAndCompute.Subnet'));
+  subnetNode<Id>(newNode(cfg.id, 'NetworkAndCompute.Subnet', cfg.displayName));
 
 // ── SecurityGroup ────────────────────────────────────────────────────────────
 export type SecurityGroupNode<Id extends string = string> = ComponentNode<
@@ -88,8 +92,11 @@ const securityGroupNode = <Id extends string>(
 });
 export const SecurityGroup = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): SecurityGroupNode<Id> =>
-  securityGroupNode<Id>(newNode(cfg.id, 'NetworkAndCompute.SecurityGroup'));
+  securityGroupNode<Id>(
+    newNode(cfg.id, 'NetworkAndCompute.SecurityGroup', cfg.displayName),
+  );
 
 // ── VirtualMachine ───────────────────────────────────────────────────────────
 export type VirtualMachineNode<Id extends string = string> = ComponentNode<
@@ -112,8 +119,11 @@ const virtualMachineNode = <Id extends string>(
 });
 export const VirtualMachine = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): VirtualMachineNode<Id> =>
-  virtualMachineNode<Id>(newNode(cfg.id, 'NetworkAndCompute.VirtualMachine'));
+  virtualMachineNode<Id>(
+    newNode(cfg.id, 'NetworkAndCompute.VirtualMachine', cfg.displayName),
+  );
 
 // ── ContainerPlatform ────────────────────────────────────────────────────────
 export type ContainerPlatformNode<Id extends string = string> = ComponentNode<
@@ -139,9 +149,10 @@ const containerPlatformNode = <Id extends string>(
 });
 export const ContainerPlatform = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): ContainerPlatformNode<Id> =>
   containerPlatformNode<Id>(
-    newNode(cfg.id, 'NetworkAndCompute.ContainerPlatform'),
+    newNode(cfg.id, 'NetworkAndCompute.ContainerPlatform', cfg.displayName),
   );
 
 // ── LoadBalancer ─────────────────────────────────────────────────────────────
@@ -161,5 +172,8 @@ const loadBalancerNode = <Id extends string>(
 });
 export const LoadBalancer = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): LoadBalancerNode<Id> =>
-  loadBalancerNode<Id>(newNode(cfg.id, 'NetworkAndCompute.LoadBalancer'));
+  loadBalancerNode<Id>(
+    newNode(cfg.id, 'NetworkAndCompute.LoadBalancer', cfg.displayName),
+  );

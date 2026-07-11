@@ -23,6 +23,7 @@ const dbmsInstantiate =
   (ctx: InstantiationContext, config: unknown): LiveSystemComponent[] => [
     {
       id: ctx.id,
+      displayName: ctx.displayName,
       type: dbmsType,
       provider,
       deliveryModel: 'PaaS',
@@ -32,6 +33,7 @@ const dbmsInstantiate =
     },
     ...ctx.children.map(child => ({
       id: child.id,
+      displayName: child.displayName,
       type: databaseType,
       provider,
       deliveryModel: 'PaaS' as const,

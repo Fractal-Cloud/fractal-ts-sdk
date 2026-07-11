@@ -45,8 +45,11 @@ const objectStorageNode = <Id extends string>(
 });
 export const ObjectStorage = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): ObjectStorageNode<Id> =>
-  objectStorageNode<Id>(newNode(cfg.id, 'Storage.ObjectStorage'));
+  objectStorageNode<Id>(
+    newNode(cfg.id, 'Storage.ObjectStorage', cfg.displayName),
+  );
 
 // ── Storage.RelationalDbms ───────────────────────────────────────────────────
 export type RelationalDbmsNode<Id extends string = string> = ComponentNode<
@@ -74,8 +77,11 @@ const relationalDbmsNode = <Id extends string>(
 });
 export const RelationalDbms = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): RelationalDbmsNode<Id> =>
-  relationalDbmsNode<Id>(newNode(cfg.id, 'Storage.RelationalDbms'));
+  relationalDbmsNode<Id>(
+    newNode(cfg.id, 'Storage.RelationalDbms', cfg.displayName),
+  );
 
 // ── Storage.RelationalDatabase ───────────────────────────────────────────────
 export type RelationalDatabaseNode<Id extends string = string> = ComponentNode<
@@ -97,5 +103,8 @@ const relationalDatabaseNode = <Id extends string>(
 });
 export const RelationalDatabase = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): RelationalDatabaseNode<Id> =>
-  relationalDatabaseNode<Id>(newNode(cfg.id, 'Storage.RelationalDatabase'));
+  relationalDatabaseNode<Id>(
+    newNode(cfg.id, 'Storage.RelationalDatabase', cfg.displayName),
+  );

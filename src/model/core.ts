@@ -49,12 +49,14 @@ export type ComponentLink = {
  *  independently offer-selected; swapping the parent offer swaps the family. */
 export type ChildContext = {
   id: string;
+  displayName: string;
   parameters: Record<string, unknown>;
   dependencies: readonly string[];
   links: readonly ComponentLink[];
 };
 export type InstantiationContext = {
   id: string;
+  displayName: string;
   parameters: Record<string, unknown>;
   dependencies: readonly string[];
   links: readonly ComponentLink[];
@@ -63,6 +65,7 @@ export type InstantiationContext = {
 };
 export type LiveSystemComponent = {
   id: string;
+  displayName: string; // human-readable name; required by the control plane
   type: string; // 3-part offer type
   provider?: Provider; // absent for vendor-neutral self-hosted offers
   deliveryModel: DeliveryModel;
@@ -103,6 +106,7 @@ export const defineOffer =
         : [
             {
               id: ctx.id,
+              displayName: ctx.displayName,
               type: spec.offerType,
               provider: spec.provider,
               deliveryModel: spec.deliveryModel,
@@ -120,6 +124,7 @@ export const defineOffer =
 export type NodeState = {
   readonly id: string;
   readonly component: string; // Level-1 Component tag, e.g. 'Storage.ObjectStorage'
+  readonly displayName?: string; // human-readable name; defaults to id when unset
   readonly parameters: Readonly<Record<string, unknown>>;
   readonly locked: ReadonlySet<string>;
   readonly dependencies: readonly string[];
@@ -141,9 +146,14 @@ export type ComponentNode<
 export type AnyNode = ComponentNode;
 
 /** Authoring primitive: create a fresh node for a Component factory. */
-export const newNode = (id: string, component: string): NodeState => ({
+export const newNode = (
+  id: string,
+  component: string,
+  displayName?: string,
+): NodeState => ({
   id,
   component,
+  displayName,
   parameters: {},
   locked: new Set(),
   dependencies: [],
@@ -265,6 +275,7 @@ const slotOps = (id: string): SlotOps => ({
 const childrenFor = (st: FractalState, parentId: string): ChildContext[] =>
   (st.children[parentId] ?? []).map(c => ({
     id: c.id,
+    displayName: c.displayName ?? c.id,
     parameters: {...c.parameters},
     dependencies: [...c.dependencies, parentId],
     links: linksFor(st, c.id),
@@ -273,6 +284,7 @@ const childrenFor = (st: FractalState, parentId: string): ChildContext[] =>
 // ── Serialization + LiveSystem ───────────────────────────────────────────────
 export type SerializedComponent = {
   id: string;
+  displayName: string;
   component: string;
   parameters: Record<string, unknown>;
   locked: string[];
@@ -306,6 +318,7 @@ const serialize = (st: FractalState): Blueprint => ({
     const n = st.nodes[id];
     return {
       id,
+      displayName: n.displayName ?? id,
       component: n.component,
       parameters: {...n.parameters},
       locked: [...n.locked],
@@ -346,6 +359,7 @@ const toLiveSystem = (st: FractalState, args: ToLiveSystemArgs): LiveSystem => {
     const children = childrenFor(st, id);
     const emitted = offer.instantiate({
       id,
+      displayName: node.displayName ?? id,
       parameters: {...node.parameters},
       dependencies: node.dependencies,
       links: linksFor(st, id),

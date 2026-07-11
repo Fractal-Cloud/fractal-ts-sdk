@@ -30,8 +30,9 @@ const serviceMeshNode = <Id extends string>(
 });
 export const ServiceMesh = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): ServiceMeshNode<Id> =>
-  serviceMeshNode<Id>(newNode(cfg.id, 'Security.ServiceMesh'));
+  serviceMeshNode<Id>(newNode(cfg.id, 'Security.ServiceMesh', cfg.displayName));
 
 // ── Security.IdentityProvider ────────────────────────────────────────────────
 export type IdentityProviderNode<Id extends string = string> = ComponentNode<
@@ -62,5 +63,8 @@ const identityProviderNode = <Id extends string>(
 });
 export const IdentityProvider = <const Id extends string>(cfg: {
   id: Id;
+  displayName?: string;
 }): IdentityProviderNode<Id> =>
-  identityProviderNode<Id>(newNode(cfg.id, 'Security.IdentityProvider'));
+  identityProviderNode<Id>(
+    newNode(cfg.id, 'Security.IdentityProvider', cfg.displayName),
+  );
