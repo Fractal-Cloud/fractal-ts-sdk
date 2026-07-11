@@ -192,6 +192,22 @@ const missingCreds = (provider: string): Error =>
     `Cloud-agent initialization for ${provider} requires providerCredentials.${provider.toLowerCase()} but none were supplied.`,
   );
 
+/** Thrown when a provider's credentials carry both a static secret and a
+ *  federated (OIDC) token — the intent is ambiguous, so refuse rather than
+ *  silently pick one (and risk sending a secret the caller meant to suppress). */
+const mixedCreds = (provider: string): Error =>
+  new Error(
+    `Cloud-agent initialization for ${provider} received both static and federated ` +
+      `credentials in providerCredentials.${provider.toLowerCase()}; supply exactly one.`,
+  );
+
+/** True when `o` has a non-empty string value at `key`. Used to detect the
+ *  static-vs-federated variant (and mixed-credential misuse) at runtime. */
+const hasKey = (o: object, key: string): boolean => {
+  const v = (o as Record<string, unknown>)[key];
+  return typeof v === 'string' && v.length > 0;
+};
+
 /** Build the provider credential headers for an agent's initialize call. */
 const initHeaders = (
   agent: CloudAgent,
@@ -203,12 +219,28 @@ const initHeaders = (
       if (!c) {
         throw missingCreds('AWS');
       }
-      const headers: Record<string, string> = {
-        'X-AWS-Access-Key-ID': c.accessKeyId,
-        'X-AWS-Secret-Access-Key': c.secretAccessKey,
+      if (hasKey(c, 'accessKeyId') && hasKey(c, 'webIdentityToken')) {
+        throw mixedCreds('AWS');
+      }
+      // TODO: AWS federated (web-identity) init pending server support (FRA-3022)
+      if (hasKey(c, 'webIdentityToken')) {
+        const oidc = c as {roleArn: string; webIdentityToken: string};
+        return {
+          'X-AWS-Role-Arn': oidc.roleArn,
+          'X-AWS-Web-Identity-Token': oidc.webIdentityToken,
+        };
+      }
+      const sc = c as {
+        accessKeyId: string;
+        secretAccessKey: string;
+        sessionToken?: string;
       };
-      if (c.sessionToken) {
-        headers['X-AWS-Session-Token'] = c.sessionToken;
+      const headers: Record<string, string> = {
+        'X-AWS-Access-Key-ID': sc.accessKeyId,
+        'X-AWS-Secret-Access-Key': sc.secretAccessKey,
+      };
+      if (sc.sessionToken) {
+        headers['X-AWS-Session-Token'] = sc.sessionToken;
       }
       return headers;
     }
@@ -217,9 +249,22 @@ const initHeaders = (
       if (!c) {
         throw missingCreds('AZURE');
       }
+      if (hasKey(c, 'spClientSecret') && hasKey(c, 'federatedToken')) {
+        throw mixedCreds('AZURE');
+      }
+      // Workload-identity federation: forward the caller-minted token as the
+      // client assertion; the client id is the (public) app-registration id.
+      if (hasKey(c, 'federatedToken')) {
+        const oidc = c as {clientId: string; federatedToken: string};
+        return {
+          'X-Azure-SP-Client-ID': oidc.clientId,
+          'X-Azure-Client-Assertion': oidc.federatedToken,
+        };
+      }
+      const sp = c as {spClientId: string; spClientSecret: string};
       return {
-        'X-Azure-SP-Client-ID': c.spClientId,
-        'X-Azure-SP-Client-Secret': c.spClientSecret,
+        'X-Azure-SP-Client-ID': sp.spClientId,
+        'X-Azure-SP-Client-Secret': sp.spClientSecret,
       };
     }
     case 'GCP': {
@@ -227,9 +272,32 @@ const initHeaders = (
       if (!c) {
         throw missingCreds('GCP');
       }
+      if (
+        hasKey(c, 'serviceAccountCredentials') &&
+        hasKey(c, 'federatedToken')
+      ) {
+        throw mixedCreds('GCP');
+      }
+      // TODO: GCP workload-identity-federation init pending server support (FRA-3022)
+      if (hasKey(c, 'federatedToken')) {
+        const oidc = c as {
+          serviceAccountEmail: string;
+          workloadIdentityProvider: string;
+          federatedToken: string;
+        };
+        return {
+          'X-GCP-Service-Account-Email': oidc.serviceAccountEmail,
+          'X-GCP-Workload-Identity-Provider': oidc.workloadIdentityProvider,
+          'X-GCP-Federated-Token': oidc.federatedToken,
+        };
+      }
+      const sc = c as {
+        serviceAccountEmail: string;
+        serviceAccountCredentials: string;
+      };
       return {
-        'X-GCP-Service-Account-Email': c.serviceAccountEmail,
-        'X-GCP-Service-Account-Credentials': c.serviceAccountCredentials,
+        'X-GCP-Service-Account-Email': sc.serviceAccountEmail,
+        'X-GCP-Service-Account-Credentials': sc.serviceAccountCredentials,
       };
     }
     case 'OCI': {
