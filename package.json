@@ -1,6 +1,6 @@
 {
   "name": "@fractal_cloud/sdk",
-  "version": "2.2.0",
+  "version": "2.3.1",
   "description": "Typescript Fractal Cloud SDK",
   "license": "AGPL-3.0-or-later",
   "author": "Fractal Cloud",

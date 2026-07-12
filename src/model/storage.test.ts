@@ -94,7 +94,7 @@ describe('Storage domain on the locked Fractal model', () => {
     const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
 
     // ObjectStorage resolved to AWS S3.
-    expect(byId['uploads'].type).toBe('Storage.PaaS.S3');
+    expect(byId['uploads'].type).toBe('Storage.PaaS.AwsS3');
     expect(byId['uploads'].provider).toBe('AWS');
     // guardrail + vendor config both flowed into the live component.
     expect(byId['uploads'].parameters.encryption).toBe('at-rest');

@@ -52,7 +52,7 @@ describe('Locked Fractal model — APIManagement', () => {
       });
 
     const gw = ls.components.find(c => c.id === 'api-gateway')!;
-    expect(gw.type).toBe('APIManagement.PaaS.CloudFront');
+    expect(gw.type).toBe('APIManagement.PaaS.AwsCloudFront');
     expect(gw.provider).toBe('AWS');
     const routes = gw.parameters.routes as Route[];
     expect(routes).toContainEqual({path: '/orders', methods: ['GET']});

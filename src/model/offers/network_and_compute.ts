@@ -79,7 +79,7 @@ export const Ec2Instance = defineOffer<
   {amiId: string; instanceType: string}
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
-  offerType: 'NetworkAndCompute.IaaS.Ec2Instance',
+  offerType: 'NetworkAndCompute.IaaS.AwsEc2Instance',
   provider: 'AWS',
   deliveryModel: 'IaaS',
 });
@@ -120,19 +120,19 @@ export const OpenshiftVm = defineOffer<'NetworkAndCompute.VirtualMachine', {}>({
 // ── ContainerPlatform ────────────────────────────────────────────────────────
 export const Eks = defineOffer<'NetworkAndCompute.ContainerPlatform', {}>({
   satisfies: 'NetworkAndCompute.ContainerPlatform',
-  offerType: 'NetworkAndCompute.PaaS.Eks',
+  offerType: 'NetworkAndCompute.PaaS.AwsEks',
   provider: 'AWS',
   deliveryModel: 'PaaS',
 });
 export const Aks = defineOffer<'NetworkAndCompute.ContainerPlatform', {}>({
   satisfies: 'NetworkAndCompute.ContainerPlatform',
-  offerType: 'NetworkAndCompute.PaaS.Aks',
+  offerType: 'NetworkAndCompute.PaaS.AzureAks',
   provider: 'Azure',
   deliveryModel: 'PaaS',
 });
 export const Gke = defineOffer<'NetworkAndCompute.ContainerPlatform', {}>({
   satisfies: 'NetworkAndCompute.ContainerPlatform',
-  offerType: 'NetworkAndCompute.PaaS.Gke',
+  offerType: 'NetworkAndCompute.PaaS.GcpGke',
   provider: 'GCP',
   deliveryModel: 'PaaS',
 });

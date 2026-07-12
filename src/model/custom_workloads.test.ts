@@ -74,7 +74,7 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
     const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
 
     // Workload resolved to AWS ECS.
-    expect(byId['web'].type).toBe('CustomWorkloads.PaaS.EcsService');
+    expect(byId['web'].type).toBe('CustomWorkloads.PaaS.AwsEcsService');
     expect(byId['web'].provider).toBe('AWS');
     // dev-open params flowed into the live component.
     expect(byId['web'].parameters.image).toBe('registry/app:1');

@@ -15,7 +15,7 @@ export const EcsService = defineOffer<
   {launchType: string}
 >({
   satisfies: 'CustomWorkloads.Workload',
-  offerType: 'CustomWorkloads.PaaS.EcsService',
+  offerType: 'CustomWorkloads.PaaS.AwsEcsService',
   provider: 'AWS',
   deliveryModel: 'PaaS',
 });
@@ -24,7 +24,7 @@ export const CloudRun = defineOffer<
   {region: string}
 >({
   satisfies: 'CustomWorkloads.Workload',
-  offerType: 'CustomWorkloads.PaaS.CloudRun',
+  offerType: 'CustomWorkloads.PaaS.GcpCloudRun',
   provider: 'GCP',
   deliveryModel: 'PaaS',
 });

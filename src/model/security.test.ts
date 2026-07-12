@@ -87,7 +87,7 @@ describe('Security domain', () => {
     const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
     expect(byId['app-mesh'].type).toBe('Security.CaaS.Ocelot');
     expect(byId['app-mesh'].provider).toBeUndefined();
-    expect(byId['app-idp'].type).toBe('Security.PaaS.Cognito');
+    expect(byId['app-idp'].type).toBe('Security.PaaS.AwsCognito');
     expect(byId['app-idp'].provider).toBe('AWS');
     // guardrail flowed into the live component
     expect(byId['app-mesh'].parameters.mtlsMode).toBe('strict');
