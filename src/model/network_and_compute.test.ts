@@ -122,7 +122,7 @@ describe('NetworkAndCompute domain', () => {
     const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
     expect(byId['main-network'].type).toBe('NetworkAndCompute.IaaS.AwsVpc');
     expect(byId['main-network'].provider).toBe('AWS');
-    expect(byId['app-vm'].type).toBe('NetworkAndCompute.IaaS.Ec2Instance');
+    expect(byId['app-vm'].type).toBe('NetworkAndCompute.IaaS.AwsEc2Instance');
     expect(byId['app-vm'].parameters.amiId).toBe('ami-123');
     // guardrail flowed into the live component
     expect(byId['main-network'].parameters.cidrBlock).toBe('10.0.0.0/16');

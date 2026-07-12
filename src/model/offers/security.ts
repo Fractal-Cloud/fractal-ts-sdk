@@ -20,7 +20,7 @@ export const Ocelot = defineOffer<'Security.ServiceMesh', {namespace?: string}>(
 // ── Security.IdentityProvider offers ─────────────────────────────────────────
 export const Cognito = defineOffer<'Security.IdentityProvider', {}>({
   satisfies: 'Security.IdentityProvider',
-  offerType: 'Security.PaaS.Cognito',
+  offerType: 'Security.PaaS.AwsCognito',
   provider: 'AWS',
   deliveryModel: 'PaaS',
 });

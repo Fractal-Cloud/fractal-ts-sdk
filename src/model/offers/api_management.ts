@@ -13,7 +13,7 @@ export const AwsCloudFront = defineOffer<
   {region: string}
 >({
   satisfies: 'APIManagement.ApiGateway',
-  offerType: 'APIManagement.PaaS.CloudFront',
+  offerType: 'APIManagement.PaaS.AwsCloudFront',
   provider: 'AWS',
   deliveryModel: 'PaaS',
 });
@@ -22,7 +22,7 @@ export const AzureApiManagement = defineOffer<
   {publisherEmail: string; sku: string}
 >({
   satisfies: 'APIManagement.ApiGateway',
-  offerType: 'APIManagement.PaaS.ApiManagement',
+  offerType: 'APIManagement.PaaS.AzureApiManagement',
   provider: 'Azure',
   deliveryModel: 'PaaS',
 });

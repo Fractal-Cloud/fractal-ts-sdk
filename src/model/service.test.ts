@@ -113,7 +113,7 @@ describe('deploy()', () => {
       'Personal/00000000-0000-0000-0000-000000000001/reusable-templates/basic-storage:1.0.0',
     );
     // payload keyed by component id, carrying offer type + flowed guardrail param
-    expect(body.blueprintMap.uploads.type).toBe('Storage.PaaS.S3');
+    expect(body.blueprintMap.uploads.type).toBe('Storage.PaaS.AwsS3');
     expect(body.blueprintMap.uploads.provider).toBe('AWS');
     expect(body.blueprintMap.uploads.parameters.encryption).toBe('at-rest');
     expect(body.environment.id).toEqual({
@@ -206,7 +206,7 @@ describe('deploy()', () => {
     expect(bpBody.components).toHaveLength(1);
     expect(bpBody.components[0]).toMatchObject({
       id: 'uploads',
-      type: 'Storage.PaaS.S3',
+      type: 'Storage.PaaS.AwsS3',
       provider: 'AWS',
     });
     // The blueprint upsert precedes the live-system create.

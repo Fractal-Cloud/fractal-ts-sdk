@@ -49,7 +49,7 @@ export const AwsS3 = defineOffer<
   {bucketRegion: string}
 >({
   satisfies: 'Storage.ObjectStorage',
-  offerType: 'Storage.PaaS.S3',
+  offerType: 'Storage.PaaS.AwsS3',
   provider: 'AWS',
   deliveryModel: 'PaaS',
 });
@@ -67,7 +67,7 @@ export const GcsBucket = defineOffer<
   {location: string}
 >({
   satisfies: 'Storage.ObjectStorage',
-  offerType: 'Storage.PaaS.GcsBucket',
+  offerType: 'Storage.PaaS.GcpGcsBucket',
   provider: 'GCP',
   deliveryModel: 'PaaS',
 });
