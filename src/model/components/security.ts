@@ -68,3 +68,26 @@ export const IdentityProvider = <const Id extends string>(cfg: {
   identityProviderNode<Id>(
     newNode(cfg.id, 'Security.IdentityProvider', cfg.displayName),
   );
+
+/**
+ * Settings shape for a link from a consumer (a workload, a gateway, ...) to an
+ * `Security.IdentityProvider`. Each such link provisions exactly ONE app client
+ * on the identity provider, shaped by `clientType`:
+ *   - `web`     confidential client (login flow, issues a secret)
+ *   - `spa`     public single-page-app client (no secret)
+ *   - `machine` client-credentials / resource-server client (no redirect)
+ *
+ * Carries only consumer-side, vendor-neutral knobs. Connection facts (issuer
+ * URL, JWKS URI, the created client id/secret) are published by the identity
+ * provider as output fields and injected into the consumer at reconciliation
+ * time — they are never set on the link. Use with the generic `bp.link`:
+ *
+ *   bp.link(workload, idp, {clientType: 'web', redirectUris: ['https://app/cb']}
+ *     satisfies IdentityProviderClientLink);
+ */
+export type IdentityProviderClientLink = {
+  clientType: 'web' | 'spa' | 'machine';
+  redirectUris?: string[];
+  logoutUris?: string[];
+  scopes?: string[];
+};
