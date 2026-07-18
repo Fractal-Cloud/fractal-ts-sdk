@@ -11,8 +11,13 @@
  */
 import {describe, it, expect} from 'vitest';
 import {createFractal} from './core';
-import {ServiceMesh, IdentityProvider} from './components/security';
-import {Ocelot, Cognito, Keycloak} from './offers/security';
+import {
+  ServiceMesh,
+  IdentityProvider,
+  IdentityProviderClientLink,
+} from './components/security';
+import {Ocelot, Cognito, Keycloak, EntraExternalId} from './offers/security';
+import {Workload} from './components/custom_workloads';
 
 const environment = {};
 const boundedContextId = {id: 'security-templates'};
@@ -125,5 +130,64 @@ describe('Security domain', () => {
         },
       }),
     ).toThrow(/does not satisfy/);
+  });
+
+  it('Azure Entra External ID satisfies the same IdP blueprint (no fractal change)', () => {
+    const ls = authorFractal()
+      .specialize()
+      .withUserDirectory('acme')
+      .toLiveSystem({
+        name: 'acme-security',
+        environment,
+        select: {
+          'app-mesh': Ocelot({}),
+          'app-idp': EntraExternalId({
+            tenantName: 'acmeexternal',
+            resourceGroup: 'acme-rg',
+          }),
+        },
+      });
+
+    const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
+    expect(byId['app-idp'].type).toBe('Security.PaaS.AzureEntraExternalId');
+    expect(byId['app-idp'].provider).toBe('Azure');
+    // vendor plumbing from the offer config
+    expect(byId['app-idp'].parameters.tenantName).toBe('acmeexternal');
+    expect(byId['app-idp'].parameters.resourceGroup).toBe('acme-rg');
+    // the SAME agnostic guardrail flows in — proves the blueprint is unchanged
+    expect(byId['app-idp'].parameters.mfaConfiguration).toBe('ON');
+  });
+
+  it('a workload links to the IdP — one app client per link', () => {
+    const f = createFractal({
+      id: 'app-with-idp',
+      version: {major: 1, minor: 0, patch: 0},
+      boundedContextId,
+      blueprint: bp => {
+        const idp = bp.add(
+          IdentityProvider({id: 'app-idp'}).withMfaConfiguration('ON'),
+        );
+        const web = bp.add(Workload({id: 'web'}).withImage('acme/web:1'));
+        // The workload declares one app client on the IdP via the link.
+        bp.link(web, idp, {
+          clientType: 'web',
+          redirectUris: ['https://app.acme/callback'],
+          scopes: ['openid', 'profile'],
+        } satisfies IdentityProviderClientLink);
+        return {idp, web};
+      },
+    });
+
+    const web = f.blueprint.components.find(c => c.id === 'web')!;
+    expect(web.links).toEqual([
+      {
+        componentId: 'app-idp',
+        settings: {
+          clientType: 'web',
+          redirectUris: ['https://app.acme/callback'],
+          scopes: ['openid', 'profile'],
+        },
+      },
+    ]);
   });
 });

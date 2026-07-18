@@ -33,3 +33,15 @@ export const Keycloak = defineOffer<
   offerType: 'Security.CaaS.Keycloak',
   deliveryModel: 'CaaS',
 });
+// Microsoft Entra External ID (formerly Azure AD B2C) — the Azure competitor to
+// Cognito. Vendor plumbing only (tenant + resource group + optional region);
+// guardrails come from the IdentityProvider Component, app clients from links.
+export const EntraExternalId = defineOffer<
+  'Security.IdentityProvider',
+  {tenantName: string; resourceGroup: string; location?: string}
+>({
+  satisfies: 'Security.IdentityProvider',
+  offerType: 'Security.PaaS.AzureEntraExternalId',
+  provider: 'Azure',
+  deliveryModel: 'PaaS',
+});
