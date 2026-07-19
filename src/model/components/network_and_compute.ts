@@ -106,6 +106,12 @@ export type VirtualMachineNode<Id extends string = string> = ComponentNode<
   withOsType: (v: 'linux' | 'windows') => VirtualMachineNode<Id>;
   withSize: (v: string) => VirtualMachineNode<Id>;
   withTags: (v: Record<string, string>) => VirtualMachineNode<Id>;
+  /**
+   * OpenSSH public key material (e.g. `ssh-ed25519 AAAA...`) to authorize on the VM. Optional:
+   * when omitted, the agent generates an ed25519 key pair and stores the private half in the
+   * environment's secret store (the public key + secret name are published as output fields).
+   */
+  withPublicSSHKey: (v: string) => VirtualMachineNode<Id>;
   dependsOn: (other: AnyNode) => VirtualMachineNode<Id>;
 };
 const virtualMachineNode = <Id extends string>(
@@ -115,6 +121,8 @@ const virtualMachineNode = <Id extends string>(
   withOsType: v => virtualMachineNode<Id>(guardrail(s, 'osType', v)),
   withSize: v => virtualMachineNode<Id>(guardrail(s, 'size', v)),
   withTags: v => virtualMachineNode<Id>(guardrail(s, 'tags', v)),
+  withPublicSSHKey: v =>
+    virtualMachineNode<Id>(guardrail(s, 'publicSSHKey', v)),
   dependsOn: other => virtualMachineNode<Id>(addDependency(s, other.state.id)),
 });
 export const VirtualMachine = <const Id extends string>(cfg: {
