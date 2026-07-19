@@ -222,7 +222,7 @@ const initHeaders = (
       if (hasKey(c, 'accessKeyId') && hasKey(c, 'webIdentityToken')) {
         throw mixedCreds('AWS');
       }
-      // TODO: AWS federated (web-identity) init pending server support (FRA-3022)
+      // TODO: AWS federated (web-identity) init pending server support
       if (hasKey(c, 'webIdentityToken')) {
         const oidc = c as {roleArn: string; webIdentityToken: string};
         return {
@@ -278,7 +278,7 @@ const initHeaders = (
       ) {
         throw mixedCreds('GCP');
       }
-      // TODO: GCP workload-identity-federation init pending server support (FRA-3022)
+      // TODO: GCP workload-identity-federation init pending server support
       if (hasKey(c, 'federatedToken')) {
         const oidc = c as {
           serviceAccountEmail: string;
