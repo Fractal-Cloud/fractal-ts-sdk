@@ -76,7 +76,7 @@ export const GcpFirewall = defineOffer<'NetworkAndCompute.SecurityGroup', {}>({
 // ── VirtualMachine ───────────────────────────────────────────────────────────
 export const Ec2Instance = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {amiId: string; instanceType: string}
+  {amiId: string; instanceType: string; userData?: string}
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
   offerType: 'NetworkAndCompute.IaaS.AwsEc2Instance',
@@ -85,7 +85,7 @@ export const Ec2Instance = defineOffer<
 });
 export const AzureVm = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {vmSize: string}
+  {vmSize: string; userData?: string}
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
   offerType: 'NetworkAndCompute.IaaS.AzureVm',
@@ -94,7 +94,7 @@ export const AzureVm = defineOffer<
 });
 export const GcpVm = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {machineType: string}
+  {machineType: string; userData?: string}
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
   offerType: 'NetworkAndCompute.IaaS.GcpVm',
@@ -103,14 +103,17 @@ export const GcpVm = defineOffer<
 });
 export const VsphereVm = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {template: string}
+  {template: string; userData?: string}
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
   offerType: 'NetworkAndCompute.IaaS.VsphereVm',
   provider: 'VMware',
   deliveryModel: 'IaaS',
 });
-export const OpenshiftVm = defineOffer<'NetworkAndCompute.VirtualMachine', {}>({
+export const OpenshiftVm = defineOffer<
+  'NetworkAndCompute.VirtualMachine',
+  {userData?: string}
+>({
   satisfies: 'NetworkAndCompute.VirtualMachine',
   offerType: 'NetworkAndCompute.CaaS.OpenshiftVm',
   provider: 'RedHat',
@@ -184,7 +187,7 @@ export const OciSecurityList = defineOffer<
 });
 export const OciInstance = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {shape: string}
+  {shape: string; userData?: string}
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
   offerType: 'NetworkAndCompute.IaaS.OciInstance',
@@ -222,7 +225,7 @@ export const HetznerFirewall = defineOffer<
 });
 export const HetznerServer = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {serverType: string}
+  {serverType: string; userData?: string}
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
   offerType: 'NetworkAndCompute.IaaS.HetznerServer',
