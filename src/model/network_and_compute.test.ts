@@ -23,6 +23,7 @@ import {
   AwsSecurityGroup,
   Ec2Instance,
   Eks,
+  VsphereVm,
 } from './offers/network_and_compute';
 
 const environment = {};
@@ -129,6 +130,56 @@ describe('NetworkAndCompute domain', () => {
     // structure (dependency) preserved through specialization + selection
     expect(byId['app-subnet'].dependencies).toContain('main-network');
     expect(byId['app-vm'].dependencies).toContain('app-subnet');
+  });
+
+  it('optional userData on a VM offer flows through to live-component parameters', () => {
+    const script = '#!/bin/bash\necho hi';
+    const ls = authorFractal()
+      .specialize()
+      .toLiveSystem({
+        name: 'acme-net',
+        environment,
+        select: {
+          ...fullSelect(),
+          'app-vm': Ec2Instance({
+            amiId: 'ami-123',
+            instanceType: 't3.medium',
+            userData: script,
+          }),
+        },
+      });
+
+    const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
+    expect(byId['app-vm'].parameters.userData).toBe(script);
+  });
+
+  it('userData is absent from parameters when omitted', () => {
+    const ls = authorFractal()
+      .specialize()
+      .toLiveSystem({name: 'acme-net', environment, select: fullSelect()});
+
+    const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
+    expect(byId['app-vm'].parameters.userData).toBeUndefined();
+  });
+
+  it('userData passes through raw on every VM offer, including vSphere', () => {
+    const script = '#cloud-config\nruncmd:\n  - echo hi';
+    const ls = authorFractal()
+      .specialize()
+      .toLiveSystem({
+        name: 'acme-net',
+        environment,
+        select: {
+          ...fullSelect(),
+          'app-vm': VsphereVm({template: 'ubuntu-22', userData: script}),
+        },
+      });
+
+    const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
+    // SDK forwards the raw script under the uniform `userData` key for all
+    // vendors; each agent owns its own encoding (vSphere base64-encodes it).
+    expect(byId['app-vm'].parameters.userData).toBe(script);
+    expect(byId['app-vm'].parameters.template).toBe('ubuntu-22');
   });
 
   it('selecting a wrong offer is a type error AND throws', () => {
