@@ -35,7 +35,6 @@ export type VirtualNetworkNode<Id extends string = string> = ComponentNode<
   'NetworkAndCompute.VirtualNetwork'
 > & {
   withCidrBlock: (v: string) => VirtualNetworkNode<Id>;
-  withRegion: (v: string) => VirtualNetworkNode<Id>;
   withTags: (v: Record<string, string>) => VirtualNetworkNode<Id>;
 };
 const virtualNetworkNode = <Id extends string>(
@@ -43,7 +42,6 @@ const virtualNetworkNode = <Id extends string>(
 ): VirtualNetworkNode<Id> => ({
   state: s,
   withCidrBlock: v => virtualNetworkNode<Id>(guardrail(s, 'cidrBlock', v)),
-  withRegion: v => virtualNetworkNode<Id>(guardrail(s, 'region', v)),
   withTags: v => virtualNetworkNode<Id>(guardrail(s, 'tags', v)),
 });
 export const VirtualNetwork = <const Id extends string>(cfg: {

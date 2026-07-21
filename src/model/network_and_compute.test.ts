@@ -38,7 +38,6 @@ function authorFractal() {
       const network = bp.add(
         VirtualNetwork({id: 'main-network'})
           .withCidrBlock('10.0.0.0/16')
-          .withRegion('us-east-1')
           .withTags({team: 'platform'}),
       );
       const subnet = bp.add(
@@ -83,7 +82,7 @@ function authorFractal() {
 }
 
 const fullSelect = () => ({
-  'main-network': AwsVpc({}),
+  'main-network': AwsVpc({region: 'us-east-1'}),
   'app-subnet': AwsSubnet({}),
   'app-sg': AwsSecurityGroup({}),
   'app-vm': Ec2Instance({amiId: 'ami-123', instanceType: 't3.medium'}),
@@ -98,7 +97,6 @@ describe('NetworkAndCompute domain', () => {
     expect(net.parameters.tags).toEqual({team: 'platform'});
     expect(net.parameters.cidrBlock).toBe('10.0.0.0/16');
     expect(net.locked).toContain('cidrBlock');
-    expect(net.locked).toContain('region');
 
     const sg = authorFractal().blueprint.components.find(
       c => c.id === 'app-sg',

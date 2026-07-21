@@ -106,13 +106,11 @@ export type DatalakeNode<Id extends string = string> = ComponentNode<
   Id,
   'BigData.Datalake'
 > & {
-  withRegion: (v: string) => DatalakeNode<Id>;
   withVersioningEnabled: (v: boolean) => DatalakeNode<Id>;
   withRetentionDays: (v: number) => DatalakeNode<Id>;
 };
 const datalakeNode = <Id extends string>(s: NodeState): DatalakeNode<Id> => ({
   state: s,
-  withRegion: v => datalakeNode<Id>(guardrail(s, 'region', v)),
   withVersioningEnabled: v =>
     datalakeNode<Id>(guardrail(s, 'versioningEnabled', v)),
   withRetentionDays: v => datalakeNode<Id>(guardrail(s, 'retentionDays', v)),

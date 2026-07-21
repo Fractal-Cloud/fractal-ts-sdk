@@ -18,7 +18,10 @@ export const Ocelot = defineOffer<'Security.ServiceMesh', {namespace?: string}>(
 );
 
 // ── Security.IdentityProvider offers ─────────────────────────────────────────
-export const Cognito = defineOffer<'Security.IdentityProvider', {}>({
+export const Cognito = defineOffer<
+  'Security.IdentityProvider',
+  {region?: string}
+>({
   satisfies: 'Security.IdentityProvider',
   offerType: 'Security.PaaS.AwsCognito',
   provider: 'AWS',
@@ -38,7 +41,7 @@ export const Keycloak = defineOffer<
 // guardrails come from the IdentityProvider Component, app clients from links.
 export const EntraExternalId = defineOffer<
   'Security.IdentityProvider',
-  {tenantName: string; resourceGroup: string; location?: string}
+  {tenantName: string; resourceGroup: string; region?: string}
 >({
   satisfies: 'Security.IdentityProvider',
   offerType: 'Security.PaaS.AzureEntraExternalId',

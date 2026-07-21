@@ -69,7 +69,7 @@ function liveSystem() {
       ownerId: '00000000-0000-0000-0000-000000000001',
       name: 'dev',
     },
-    select: {uploads: AwsS3({bucketRegion: 'us-east-1'})},
+    select: {uploads: AwsS3({region: 'us-east-1'})},
   });
 }
 

@@ -44,10 +44,7 @@ const dbmsInstantiate =
   ];
 
 // ── Storage.ObjectStorage offers ─────────────────────────────────────────────
-export const AwsS3 = defineOffer<
-  'Storage.ObjectStorage',
-  {bucketRegion: string}
->({
+export const AwsS3 = defineOffer<'Storage.ObjectStorage', {region?: string}>({
   satisfies: 'Storage.ObjectStorage',
   offerType: 'Storage.PaaS.AwsS3',
   provider: 'AWS',
@@ -55,7 +52,7 @@ export const AwsS3 = defineOffer<
 });
 export const AzureBlob = defineOffer<
   'Storage.ObjectStorage',
-  {accountTier: string}
+  {region?: string; accountTier: string}
 >({
   satisfies: 'Storage.ObjectStorage',
   offerType: 'Storage.PaaS.AzureBlob',
@@ -64,7 +61,7 @@ export const AzureBlob = defineOffer<
 });
 export const GcsBucket = defineOffer<
   'Storage.ObjectStorage',
-  {location: string}
+  {region?: string}
 >({
   satisfies: 'Storage.ObjectStorage',
   offerType: 'Storage.PaaS.GcpGcsBucket',
@@ -84,7 +81,7 @@ export const MinIO = defineOffer<
 // ── Storage.RelationalDbms offers ────────────────────────────────────────────
 export const AzurePostgresDbms = defineOffer<
   'Storage.RelationalDbms',
-  {resourceGroup: string}
+  {region?: string; resourceGroup: string}
 >({
   satisfies: 'Storage.RelationalDbms',
   offerType: 'Storage.PaaS.AzurePostgresDbms',
@@ -98,7 +95,7 @@ export const AzurePostgresDbms = defineOffer<
 });
 export const GcpPostgresDbms = defineOffer<
   'Storage.RelationalDbms',
-  {tier: string}
+  {region?: string; tier: string}
 >({
   satisfies: 'Storage.RelationalDbms',
   offerType: 'Storage.PaaS.GcpPostgresDbms',
@@ -112,7 +109,7 @@ export const GcpPostgresDbms = defineOffer<
 });
 export const ArubaMySqlDbms = defineOffer<
   'Storage.RelationalDbms',
-  {region: string}
+  {region?: string}
 >({
   satisfies: 'Storage.RelationalDbms',
   offerType: 'Storage.PaaS.ArubaMySqlDbms',

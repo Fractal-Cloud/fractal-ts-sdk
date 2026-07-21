@@ -4,23 +4,38 @@
  * Each offer declares which abstract Component it satisfies, its 3-part offer
  * type, its vendor (provider) and delivery model, and carries vendor knobs in
  * its config type. Offers with no extra vendor knobs use config type `{}`.
+ *
+ * Region: every cloud-provider offer (AWS/Azure/GCP/OCI/Hetzner) carries an
+ * optional `region`. When omitted the agent falls back to the environment's
+ * region (unchanged behavior). The wire param key is uniformly `region`.
+ * Cluster-scoped offers (CaaS, self-hosted, vSphere/OpenShift) take their region
+ * from the underlying cluster and therefore do NOT expose it.
  */
 import {defineOffer} from '../core';
 
 // ── VirtualNetwork ───────────────────────────────────────────────────────────
-export const AwsVpc = defineOffer<'NetworkAndCompute.VirtualNetwork', {}>({
+export const AwsVpc = defineOffer<
+  'NetworkAndCompute.VirtualNetwork',
+  {region?: string}
+>({
   satisfies: 'NetworkAndCompute.VirtualNetwork',
   offerType: 'NetworkAndCompute.IaaS.AwsVpc',
   provider: 'AWS',
   deliveryModel: 'IaaS',
 });
-export const AzureVnet = defineOffer<'NetworkAndCompute.VirtualNetwork', {}>({
+export const AzureVnet = defineOffer<
+  'NetworkAndCompute.VirtualNetwork',
+  {region?: string}
+>({
   satisfies: 'NetworkAndCompute.VirtualNetwork',
   offerType: 'NetworkAndCompute.IaaS.AzureVnet',
   provider: 'Azure',
   deliveryModel: 'IaaS',
 });
-export const GcpVpc = defineOffer<'NetworkAndCompute.VirtualNetwork', {}>({
+export const GcpVpc = defineOffer<
+  'NetworkAndCompute.VirtualNetwork',
+  {region?: string}
+>({
   satisfies: 'NetworkAndCompute.VirtualNetwork',
   offerType: 'NetworkAndCompute.IaaS.GcpVpc',
   provider: 'GCP',
@@ -28,19 +43,28 @@ export const GcpVpc = defineOffer<'NetworkAndCompute.VirtualNetwork', {}>({
 });
 
 // ── Subnet ───────────────────────────────────────────────────────────────────
-export const AwsSubnet = defineOffer<'NetworkAndCompute.Subnet', {}>({
+export const AwsSubnet = defineOffer<
+  'NetworkAndCompute.Subnet',
+  {region?: string}
+>({
   satisfies: 'NetworkAndCompute.Subnet',
   offerType: 'NetworkAndCompute.IaaS.AwsSubnet',
   provider: 'AWS',
   deliveryModel: 'IaaS',
 });
-export const AzureSubnet = defineOffer<'NetworkAndCompute.Subnet', {}>({
+export const AzureSubnet = defineOffer<
+  'NetworkAndCompute.Subnet',
+  {region?: string}
+>({
   satisfies: 'NetworkAndCompute.Subnet',
   offerType: 'NetworkAndCompute.IaaS.AzureSubnet',
   provider: 'Azure',
   deliveryModel: 'IaaS',
 });
-export const GcpSubnet = defineOffer<'NetworkAndCompute.Subnet', {}>({
+export const GcpSubnet = defineOffer<
+  'NetworkAndCompute.Subnet',
+  {region?: string}
+>({
   satisfies: 'NetworkAndCompute.Subnet',
   offerType: 'NetworkAndCompute.IaaS.GcpSubnet',
   provider: 'GCP',
@@ -50,7 +74,7 @@ export const GcpSubnet = defineOffer<'NetworkAndCompute.Subnet', {}>({
 // ── SecurityGroup ────────────────────────────────────────────────────────────
 export const AwsSecurityGroup = defineOffer<
   'NetworkAndCompute.SecurityGroup',
-  {}
+  {region?: string}
 >({
   satisfies: 'NetworkAndCompute.SecurityGroup',
   offerType: 'NetworkAndCompute.IaaS.AwsSecurityGroup',
@@ -59,14 +83,17 @@ export const AwsSecurityGroup = defineOffer<
 });
 export const AzureNsg = defineOffer<
   'NetworkAndCompute.SecurityGroup',
-  {location: string; resourceGroup: string}
+  {region?: string; resourceGroup: string}
 >({
   satisfies: 'NetworkAndCompute.SecurityGroup',
   offerType: 'NetworkAndCompute.IaaS.AzureNsg',
   provider: 'Azure',
   deliveryModel: 'IaaS',
 });
-export const GcpFirewall = defineOffer<'NetworkAndCompute.SecurityGroup', {}>({
+export const GcpFirewall = defineOffer<
+  'NetworkAndCompute.SecurityGroup',
+  {region?: string}
+>({
   satisfies: 'NetworkAndCompute.SecurityGroup',
   offerType: 'NetworkAndCompute.IaaS.GcpFirewall',
   provider: 'GCP',
@@ -76,7 +103,7 @@ export const GcpFirewall = defineOffer<'NetworkAndCompute.SecurityGroup', {}>({
 // ── VirtualMachine ───────────────────────────────────────────────────────────
 export const Ec2Instance = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {amiId: string; instanceType: string; userData?: string}
+  {region?: string; amiId: string; instanceType: string; userData?: string}
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
   offerType: 'NetworkAndCompute.IaaS.AwsEc2Instance',
@@ -85,7 +112,7 @@ export const Ec2Instance = defineOffer<
 });
 export const AzureVm = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {vmSize: string; userData?: string}
+  {region?: string; vmSize: string; userData?: string}
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
   offerType: 'NetworkAndCompute.IaaS.AzureVm',
@@ -94,7 +121,7 @@ export const AzureVm = defineOffer<
 });
 export const GcpVm = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {machineType: string; userData?: string}
+  {region?: string; machineType: string; userData?: string}
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
   offerType: 'NetworkAndCompute.IaaS.GcpVm',
@@ -121,19 +148,28 @@ export const OpenshiftVm = defineOffer<
 });
 
 // ── ContainerPlatform ────────────────────────────────────────────────────────
-export const Eks = defineOffer<'NetworkAndCompute.ContainerPlatform', {}>({
+export const Eks = defineOffer<
+  'NetworkAndCompute.ContainerPlatform',
+  {region?: string}
+>({
   satisfies: 'NetworkAndCompute.ContainerPlatform',
   offerType: 'NetworkAndCompute.PaaS.AwsEks',
   provider: 'AWS',
   deliveryModel: 'PaaS',
 });
-export const Aks = defineOffer<'NetworkAndCompute.ContainerPlatform', {}>({
+export const Aks = defineOffer<
+  'NetworkAndCompute.ContainerPlatform',
+  {region?: string}
+>({
   satisfies: 'NetworkAndCompute.ContainerPlatform',
   offerType: 'NetworkAndCompute.PaaS.AzureAks',
   provider: 'Azure',
   deliveryModel: 'PaaS',
 });
-export const Gke = defineOffer<'NetworkAndCompute.ContainerPlatform', {}>({
+export const Gke = defineOffer<
+  'NetworkAndCompute.ContainerPlatform',
+  {region?: string}
+>({
   satisfies: 'NetworkAndCompute.ContainerPlatform',
   offerType: 'NetworkAndCompute.PaaS.GcpGke',
   provider: 'GCP',
@@ -141,19 +177,28 @@ export const Gke = defineOffer<'NetworkAndCompute.ContainerPlatform', {}>({
 });
 
 // ── LoadBalancer ─────────────────────────────────────────────────────────────
-export const AwsLb = defineOffer<'NetworkAndCompute.LoadBalancer', {}>({
+export const AwsLb = defineOffer<
+  'NetworkAndCompute.LoadBalancer',
+  {region?: string}
+>({
   satisfies: 'NetworkAndCompute.LoadBalancer',
   offerType: 'NetworkAndCompute.IaaS.AwsLb',
   provider: 'AWS',
   deliveryModel: 'IaaS',
 });
-export const AzureLb = defineOffer<'NetworkAndCompute.LoadBalancer', {}>({
+export const AzureLb = defineOffer<
+  'NetworkAndCompute.LoadBalancer',
+  {region?: string}
+>({
   satisfies: 'NetworkAndCompute.LoadBalancer',
   offerType: 'NetworkAndCompute.IaaS.AzureLb',
   provider: 'Azure',
   deliveryModel: 'IaaS',
 });
-export const GcpGlb = defineOffer<'NetworkAndCompute.LoadBalancer', {}>({
+export const GcpGlb = defineOffer<
+  'NetworkAndCompute.LoadBalancer',
+  {region?: string}
+>({
   satisfies: 'NetworkAndCompute.LoadBalancer',
   offerType: 'NetworkAndCompute.IaaS.GcpGlb',
   provider: 'GCP',
@@ -161,7 +206,10 @@ export const GcpGlb = defineOffer<'NetworkAndCompute.LoadBalancer', {}>({
 });
 
 // ── OCI ──────────────────────────────────────────────────────────────────────
-export const OciVcn = defineOffer<'NetworkAndCompute.VirtualNetwork', {}>({
+export const OciVcn = defineOffer<
+  'NetworkAndCompute.VirtualNetwork',
+  {region?: string}
+>({
   satisfies: 'NetworkAndCompute.VirtualNetwork',
   offerType: 'NetworkAndCompute.IaaS.OciVcn',
   provider: 'OCI',
@@ -169,7 +217,7 @@ export const OciVcn = defineOffer<'NetworkAndCompute.VirtualNetwork', {}>({
 });
 export const OciSubnet = defineOffer<
   'NetworkAndCompute.Subnet',
-  {availabilityDomain?: string}
+  {region?: string; availabilityDomain?: string}
 >({
   satisfies: 'NetworkAndCompute.Subnet',
   offerType: 'NetworkAndCompute.IaaS.OciSubnet',
@@ -178,7 +226,7 @@ export const OciSubnet = defineOffer<
 });
 export const OciSecurityList = defineOffer<
   'NetworkAndCompute.SecurityGroup',
-  {compartmentId: string}
+  {region?: string; compartmentId: string}
 >({
   satisfies: 'NetworkAndCompute.SecurityGroup',
   offerType: 'NetworkAndCompute.IaaS.OciSecurityList',
@@ -187,7 +235,7 @@ export const OciSecurityList = defineOffer<
 });
 export const OciInstance = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {shape: string; userData?: string}
+  {region?: string; shape: string; userData?: string}
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
   offerType: 'NetworkAndCompute.IaaS.OciInstance',
@@ -198,7 +246,7 @@ export const OciInstance = defineOffer<
 // ── Hetzner ──────────────────────────────────────────────────────────────────
 export const HetznerNetwork = defineOffer<
   'NetworkAndCompute.VirtualNetwork',
-  {}
+  {region?: string}
 >({
   satisfies: 'NetworkAndCompute.VirtualNetwork',
   offerType: 'NetworkAndCompute.IaaS.HetznerNetwork',
@@ -207,7 +255,7 @@ export const HetznerNetwork = defineOffer<
 });
 export const HetznerSubnet = defineOffer<
   'NetworkAndCompute.Subnet',
-  {networkZone?: string}
+  {region?: string; networkZone?: string}
 >({
   satisfies: 'NetworkAndCompute.Subnet',
   offerType: 'NetworkAndCompute.IaaS.HetznerSubnet',
@@ -216,7 +264,7 @@ export const HetznerSubnet = defineOffer<
 });
 export const HetznerFirewall = defineOffer<
   'NetworkAndCompute.SecurityGroup',
-  {}
+  {region?: string}
 >({
   satisfies: 'NetworkAndCompute.SecurityGroup',
   offerType: 'NetworkAndCompute.IaaS.HetznerFirewall',
@@ -225,7 +273,7 @@ export const HetznerFirewall = defineOffer<
 });
 export const HetznerServer = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {serverType: string; userData?: string}
+  {region?: string; serverType: string; userData?: string}
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
   offerType: 'NetworkAndCompute.IaaS.HetznerServer',
