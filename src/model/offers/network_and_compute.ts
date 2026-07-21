@@ -12,6 +12,43 @@
  * from the underlying cluster and therefore do NOT expose it.
  */
 import {defineOffer} from '../core';
+import type {
+  InstantiationContext,
+  LiveSystemComponent,
+  Provider,
+} from '../core';
+
+/**
+ * A ContainerPlatform offer emits itself PLUS one Workload live component per
+ * child the application added under it (e.g. a workload added via a
+ * `withStatefulService` operation). Workloads on a cluster are vendor-neutral
+ * Kubernetes workloads (`CustomWorkloads.CaaS.K8sWorkload`) regardless of the
+ * cluster's cloud — swapping AKS↔EKS↔GKE keeps the workload portable. Children
+ * carry their own dependencies (on this platform) and links (e.g. → a database).
+ */
+const containerPlatformInstantiate =
+  (platformType: string, provider: Provider) =>
+  (ctx: InstantiationContext, config: unknown): LiveSystemComponent[] => [
+    {
+      id: ctx.id,
+      displayName: ctx.displayName,
+      type: platformType,
+      provider,
+      deliveryModel: 'PaaS',
+      parameters: {...ctx.parameters, ...(config as Record<string, unknown>)},
+      dependencies: [...ctx.dependencies],
+      links: [...ctx.links],
+    },
+    ...ctx.children.map(child => ({
+      id: child.id,
+      displayName: child.displayName,
+      type: 'CustomWorkloads.CaaS.K8sWorkload',
+      deliveryModel: 'CaaS' as const,
+      parameters: {...child.parameters},
+      dependencies: [...child.dependencies],
+      links: [...child.links],
+    })),
+  ];
 
 // ── VirtualNetwork ───────────────────────────────────────────────────────────
 export const AwsVpc = defineOffer<
@@ -156,6 +193,10 @@ export const Eks = defineOffer<
   offerType: 'NetworkAndCompute.PaaS.AwsEks',
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  instantiate: containerPlatformInstantiate(
+    'NetworkAndCompute.PaaS.AwsEks',
+    'AWS',
+  ),
 });
 export const Aks = defineOffer<
   'NetworkAndCompute.ContainerPlatform',
@@ -165,6 +206,10 @@ export const Aks = defineOffer<
   offerType: 'NetworkAndCompute.PaaS.AzureAks',
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  instantiate: containerPlatformInstantiate(
+    'NetworkAndCompute.PaaS.AzureAks',
+    'Azure',
+  ),
 });
 export const Gke = defineOffer<
   'NetworkAndCompute.ContainerPlatform',
@@ -174,6 +219,10 @@ export const Gke = defineOffer<
   offerType: 'NetworkAndCompute.PaaS.GcpGke',
   provider: 'GCP',
   deliveryModel: 'PaaS',
+  instantiate: containerPlatformInstantiate(
+    'NetworkAndCompute.PaaS.GcpGke',
+    'GCP',
+  ),
 });
 
 // ── LoadBalancer ─────────────────────────────────────────────────────────────
