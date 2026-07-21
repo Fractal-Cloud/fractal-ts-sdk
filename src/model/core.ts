@@ -245,6 +245,8 @@ const appendOpen = (
 
 /** Dev-facing handle exposed to the `operations` author; produces pure transforms. */
 export type SlotOps = {
+  /** The blueprint component id this handle drives (usable as a link endpoint). */
+  readonly id: string;
   set: (key: string, value: unknown) => Transform;
   append: (key: string, value: unknown) => Transform;
   /**
@@ -254,6 +256,27 @@ export type SlotOps = {
    * child's family too. The child depends on this parent.
    */
   addChild: (child: AnyNode) => Transform;
+};
+/**
+ * A link endpoint an operation may reference: either a node it just created
+ * (e.g. a child component) or an existing blueprint slot handle.
+ */
+export type LinkEndpoint = AnyNode | SlotOps;
+const endpointId = (e: LinkEndpoint): string =>
+  'state' in e ? e.state.id : e.id;
+/**
+ * The second argument passed to the `operations` author. Exposes link authoring
+ * to the Fractal Interface: an operation may declare a runtime link between two
+ * components (e.g. a workload it added → the database it added). Links stay a
+ * Fractal-level concern — only the architect-authored operation can create them —
+ * which is why link authoring lives here and not on the consuming dev's surface.
+ */
+export type OperationContext = {
+  link: (
+    source: LinkEndpoint,
+    target: LinkEndpoint,
+    settings?: Record<string, unknown>,
+  ) => Transform;
 };
 const addChild = (
   st: FractalState,
@@ -267,9 +290,20 @@ const addChild = (
   },
 });
 const slotOps = (id: string): SlotOps => ({
+  id,
   set: (k, v) => st => setOpen(st, id, k, v),
   append: (k, v) => st => appendOpen(st, id, k, v),
   addChild: child => st => addChild(st, id, child.state),
+});
+/** Append a runtime link record (used by both bp.link and operation-authored links). */
+const addLink = (
+  st: FractalState,
+  sourceId: string,
+  targetId: string,
+  settings: Record<string, unknown>,
+): FractalState => ({
+  ...st,
+  links: [...st.links, {sourceId, targetId, settings}],
 });
 /** Collect a parent's child components in instantiation-context shape. */
 const childrenFor = (st: FractalState, parentId: string): ChildContext[] =>
@@ -474,7 +508,10 @@ export function createFractal<
       settings?: Record<string, unknown>,
     ) => void;
   }) => Slots;
-  operations?: (slots: {[K in keyof Slots]: SlotOps}) => Ops;
+  operations?: (
+    slots: {[K in keyof Slots]: SlotOps},
+    ctx: OperationContext,
+  ) => Ops;
 }): Fractal<Slots, Ops> {
   const order: string[] = [];
   const linkRecords: LinkRecord[] = [];
@@ -521,9 +558,18 @@ export function createFractal<
   for (const key of Object.keys(slotToId)) {
     slotOpsMap[key] = slotOps(slotToId[key]);
   }
+  const operationContext: OperationContext = {
+    link:
+      (source, target, settings = {}) =>
+      st =>
+        addLink(st, endpointId(source), endpointId(target), settings),
+  };
   const ops = (
     def.operations
-      ? def.operations(slotOpsMap as {[K in keyof Slots]: SlotOps})
+      ? def.operations(
+          slotOpsMap as {[K in keyof Slots]: SlotOps},
+          operationContext,
+        )
       : {}
   ) as Ops;
 

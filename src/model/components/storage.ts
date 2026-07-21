@@ -108,3 +108,22 @@ export const RelationalDatabase = <const Id extends string>(cfg: {
   relationalDatabaseNode<Id>(
     newNode(cfg.id, 'Storage.RelationalDatabase', cfg.displayName),
   );
+
+/**
+ * Settings shape for a link from a consumer (a workload, a function, ...) to a
+ * `Storage.RelationalDatabase`. The link declares "I use this database"; the
+ * agent grants the consumer a database role scoped by `access` and injects
+ * vendor-neutral connection env (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`,
+ * `DB_PASSWORD_REF`) into the consumer at reconciliation time.
+ *
+ * Connection facts are NOT carried on the link — they are published by the
+ * database as output fields and injected downstream, mirroring the identity
+ * provider client link. The raw password is never placed in output fields:
+ * `DB_PASSWORD_REF` carries only a secret-store reference the runtime resolves
+ * at launch. Use with the generic `bp.link` / operation `link`:
+ *
+ *   link(workload, db, {access: 'read-write'} satisfies RelationalDatabaseLink);
+ */
+export type RelationalDatabaseLink = {
+  access: 'read-write' | 'read-only';
+};
