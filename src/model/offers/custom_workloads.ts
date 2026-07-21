@@ -12,7 +12,7 @@ import {defineOffer} from '../core';
 // ── Workload offers ──────────────────────────────────────────────────────────
 export const EcsService = defineOffer<
   'CustomWorkloads.Workload',
-  {launchType: string}
+  {region?: string; launchType: string}
 >({
   satisfies: 'CustomWorkloads.Workload',
   offerType: 'CustomWorkloads.PaaS.AwsEcsService',
@@ -21,7 +21,7 @@ export const EcsService = defineOffer<
 });
 export const CloudRun = defineOffer<
   'CustomWorkloads.Workload',
-  {region: string}
+  {region?: string}
 >({
   satisfies: 'CustomWorkloads.Workload',
   offerType: 'CustomWorkloads.PaaS.GcpCloudRun',
@@ -30,7 +30,7 @@ export const CloudRun = defineOffer<
 });
 export const AzureContainerApp = defineOffer<
   'CustomWorkloads.Workload',
-  {resourceGroup: string}
+  {region?: string; resourceGroup: string}
 >({
   satisfies: 'CustomWorkloads.Workload',
   offerType: 'CustomWorkloads.PaaS.AzureContainerApp',
@@ -59,7 +59,7 @@ export const K8sWorkload = defineOffer<
 // ── Function offers ──────────────────────────────────────────────────────────
 export const AwsLambda = defineOffer<
   'CustomWorkloads.Function',
-  {roleArn: string; handler: string}
+  {region?: string; roleArn: string; handler: string}
 >({
   satisfies: 'CustomWorkloads.Function',
   offerType: 'CustomWorkloads.FaaS.AwsLambda',
@@ -68,7 +68,7 @@ export const AwsLambda = defineOffer<
 });
 export const AzureFunction = defineOffer<
   'CustomWorkloads.Function',
-  Record<string, never>
+  {region?: string}
 >({
   satisfies: 'CustomWorkloads.Function',
   offerType: 'CustomWorkloads.FaaS.AzureFunction',
@@ -77,7 +77,7 @@ export const AzureFunction = defineOffer<
 });
 export const GcpFunction = defineOffer<
   'CustomWorkloads.Function',
-  {entryPoint: string}
+  {region?: string; entryPoint: string}
 >({
   satisfies: 'CustomWorkloads.Function',
   offerType: 'CustomWorkloads.FaaS.GcpFunction',

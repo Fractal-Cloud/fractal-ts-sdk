@@ -22,10 +22,7 @@ function authorFractal() {
     boundedContextId,
     blueprint: bp => {
       const broker = bp.add(
-        Broker({id: 'broker'})
-          .withTier('premium')
-          .withRegion('westeurope')
-          .withEncryption('at-rest'),
+        Broker({id: 'broker'}).withTier('premium').withEncryption('at-rest'),
       );
       const ordersTopic = bp.add(
         MessagingEntity({id: 'orders-topic'})
@@ -52,7 +49,7 @@ function authorFractal() {
 }
 
 const fullSelect = () => ({
-  broker: AzureServiceBus({resourceGroup: 'acme'}),
+  broker: AzureServiceBus({resourceGroup: 'acme', region: 'westeurope'}),
   'orders-topic': AzureServiceBusTopic({}),
   'shipments-topic': AzureServiceBusTopic({}),
 });

@@ -10,21 +10,19 @@ import {defineOffer} from '../core';
 // ── Broker offers (satisfy 'Messaging.Broker') ───────────────────────────────
 export const AzureServiceBus = defineOffer<
   'Messaging.Broker',
-  {resourceGroup: string}
+  {region?: string; resourceGroup: string}
 >({
   satisfies: 'Messaging.Broker',
   offerType: 'Messaging.PaaS.AzureServiceBus',
   provider: 'Azure',
   deliveryModel: 'PaaS',
 });
-export const GcpPubSub = defineOffer<'Messaging.Broker', Record<string, never>>(
-  {
-    satisfies: 'Messaging.Broker',
-    offerType: 'Messaging.PaaS.GcpPubSub',
-    provider: 'GCP',
-    deliveryModel: 'PaaS',
-  },
-);
+export const GcpPubSub = defineOffer<'Messaging.Broker', {region?: string}>({
+  satisfies: 'Messaging.Broker',
+  offerType: 'Messaging.PaaS.GcpPubSub',
+  provider: 'GCP',
+  deliveryModel: 'PaaS',
+});
 /** Vendor-neutral self-hosted Kafka — no `provider`. */
 export const Kafka = defineOffer<'Messaging.Broker', {namespace?: string}>({
   satisfies: 'Messaging.Broker',

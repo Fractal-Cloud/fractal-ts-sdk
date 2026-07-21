@@ -48,7 +48,6 @@ function authorFractal() {
       );
       const lake = bp.add(
         Datalake({id: 'lake'})
-          .withRegion('us-east-1')
           .withVersioningEnabled(true)
           .withRetentionDays(365),
       );
@@ -66,7 +65,7 @@ const fullSelect = () => ({
   cluster: AwsDatabricksCluster({}),
   'etl-job': AwsDatabricksJob({}),
   experiment: AwsDatabricksMlflow({}),
-  lake: AwsS3Datalake({bucket: 'acme-lake'}),
+  lake: AwsS3Datalake({bucket: 'acme-lake', region: 'us-east-1'}),
 });
 
 describe('BigData domain — data-platform Fractal', () => {

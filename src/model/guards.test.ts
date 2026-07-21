@@ -33,7 +33,7 @@ describe('toLiveSystem guards', () => {
         .toLiveSystem({
           name: 'x',
           environment,
-          select: {bucket: AwsS3({bucketRegion: 'us-east-1'})},
+          select: {bucket: AwsS3({region: 'us-east-1'})},
         }),
     ).toThrow(/does not emit its child/);
   });
@@ -50,9 +50,9 @@ describe('toLiveSystem guards', () => {
         name: 'x',
         environment,
         select: {
-          bucket: AwsS3({bucketRegion: 'us-east-1'}),
+          bucket: AwsS3({region: 'us-east-1'}),
           // @ts-expect-error 'buckets' is not a component in this fractal
-          buckets: AwsS3({bucketRegion: 'us-east-1'}),
+          buckets: AwsS3({region: 'us-east-1'}),
         },
       }),
     ).toThrow(/does not match any component/);

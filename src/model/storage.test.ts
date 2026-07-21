@@ -55,7 +55,7 @@ function authorFractal() {
 }
 
 const fullSelect = () => ({
-  uploads: AwsS3({bucketRegion: 'us-east-1'}),
+  uploads: AwsS3({region: 'us-east-1'}),
   'app-dbms': AzurePostgresDbms({resourceGroup: 'rg'}),
   'app-db': AzurePostgresDatabase({}),
 });
@@ -98,7 +98,7 @@ describe('Storage domain on the locked Fractal model', () => {
     expect(byId['uploads'].provider).toBe('AWS');
     // guardrail + vendor config both flowed into the live component.
     expect(byId['uploads'].parameters.encryption).toBe('at-rest');
-    expect(byId['uploads'].parameters.bucketRegion).toBe('us-east-1');
+    expect(byId['uploads'].parameters.region).toBe('us-east-1');
 
     // Mixed vendor: Postgres on Azure alongside S3 on AWS.
     expect(byId['app-dbms'].type).toBe('Storage.PaaS.AzurePostgresDbms');
@@ -108,6 +108,19 @@ describe('Storage domain on the locked Fractal model', () => {
     // dev-open param flowed; dependency wiring survived.
     expect(byId['app-db'].parameters.collation).toBe('en_US.utf8');
     expect(byId['app-db'].dependencies).toContain('app-dbms');
+  });
+
+  it('omits the region param when the offer does not select one (env fallback)', () => {
+    // Region is optional on every cloud offer. When omitted, the SDK emits no
+    // `region` param and the agent falls back to the environment region — the
+    // behavior that predates per-offer region selection.
+    const ls = authorFractal().toLiveSystem({
+      name: 'acme-prod',
+      environment,
+      select: {...fullSelect(), uploads: AwsS3({})},
+    });
+    const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
+    expect('region' in byId['uploads'].parameters).toBe(false);
   });
 
   it('displayName defaults to the component id when not set, and is honored when set', () => {

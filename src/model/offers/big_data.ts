@@ -5,13 +5,17 @@
  * delivery model and (for cloud offers) its vendor. Vendor-neutral CaaS offers
  * OMIT `provider` — they run on any cluster and are identified by deliveryModel
  * + offerType. Vendor knobs live in each offer's config type.
+ *
+ * Region: cloud-provider offers carry an optional `region`; omit it to inherit
+ * the environment region (unchanged behavior). Vendor-neutral CaaS offers run
+ * on a cluster and take their region from it, so they do NOT expose `region`.
  */
 import {defineOffer} from '../core';
 
 // ── ComputeCluster offers ────────────────────────────────────────────────────
 export const AwsDatabricksCluster = defineOffer<
   'BigData.ComputeCluster',
-  Record<string, never>
+  {region?: string}
 >({
   satisfies: 'BigData.ComputeCluster',
   offerType: 'BigData.PaaS.AwsDatabricksCluster',
@@ -20,7 +24,7 @@ export const AwsDatabricksCluster = defineOffer<
 });
 export const AzureDatabricksCluster = defineOffer<
   'BigData.ComputeCluster',
-  Record<string, never>
+  {region?: string}
 >({
   satisfies: 'BigData.ComputeCluster',
   offerType: 'BigData.PaaS.AzureDatabricksCluster',
@@ -29,7 +33,7 @@ export const AzureDatabricksCluster = defineOffer<
 });
 export const GcpDatabricksCluster = defineOffer<
   'BigData.ComputeCluster',
-  Record<string, never>
+  {region?: string}
 >({
   satisfies: 'BigData.ComputeCluster',
   offerType: 'BigData.PaaS.GcpDatabricksCluster',
@@ -48,7 +52,7 @@ export const CaaSSparkCluster = defineOffer<
 // ── DataProcessingJob offers ─────────────────────────────────────────────────
 export const AwsDatabricksJob = defineOffer<
   'BigData.DataProcessingJob',
-  Record<string, never>
+  {region?: string}
 >({
   satisfies: 'BigData.DataProcessingJob',
   offerType: 'BigData.PaaS.AwsDatabricksJob',
@@ -57,7 +61,7 @@ export const AwsDatabricksJob = defineOffer<
 });
 export const AzureDatabricksJob = defineOffer<
   'BigData.DataProcessingJob',
-  Record<string, never>
+  {region?: string}
 >({
   satisfies: 'BigData.DataProcessingJob',
   offerType: 'BigData.PaaS.AzureDatabricksJob',
@@ -66,7 +70,7 @@ export const AzureDatabricksJob = defineOffer<
 });
 export const GcpDatabricksJob = defineOffer<
   'BigData.DataProcessingJob',
-  Record<string, never>
+  {region?: string}
 >({
   satisfies: 'BigData.DataProcessingJob',
   offerType: 'BigData.PaaS.GcpDatabricksJob',
@@ -85,7 +89,7 @@ export const CaaSSparkJob = defineOffer<
 // ── MlExperiment offers ──────────────────────────────────────────────────────
 export const AwsDatabricksMlflow = defineOffer<
   'BigData.MlExperiment',
-  Record<string, never>
+  {region?: string}
 >({
   satisfies: 'BigData.MlExperiment',
   offerType: 'BigData.PaaS.AwsDatabricksMlflow',
@@ -94,7 +98,7 @@ export const AwsDatabricksMlflow = defineOffer<
 });
 export const AzureDatabricksMlflow = defineOffer<
   'BigData.MlExperiment',
-  Record<string, never>
+  {region?: string}
 >({
   satisfies: 'BigData.MlExperiment',
   offerType: 'BigData.PaaS.AzureDatabricksMlflow',
@@ -103,7 +107,7 @@ export const AzureDatabricksMlflow = defineOffer<
 });
 export const GcpDatabricksMlflow = defineOffer<
   'BigData.MlExperiment',
-  Record<string, never>
+  {region?: string}
 >({
   satisfies: 'BigData.MlExperiment',
   offerType: 'BigData.PaaS.GcpDatabricksMlflow',
@@ -120,7 +124,10 @@ export const CaaSMlflow = defineOffer<
 });
 
 // ── Datalake offers ──────────────────────────────────────────────────────────
-export const AwsS3Datalake = defineOffer<'BigData.Datalake', {bucket: string}>({
+export const AwsS3Datalake = defineOffer<
+  'BigData.Datalake',
+  {region?: string; bucket: string}
+>({
   satisfies: 'BigData.Datalake',
   offerType: 'BigData.PaaS.AwsS3Datalake',
   provider: 'AWS',
@@ -128,7 +135,7 @@ export const AwsS3Datalake = defineOffer<'BigData.Datalake', {bucket: string}>({
 });
 export const AzureDatalake = defineOffer<
   'BigData.Datalake',
-  {resourceGroup: string}
+  {region?: string; resourceGroup: string}
 >({
   satisfies: 'BigData.Datalake',
   offerType: 'BigData.PaaS.AzureDatalake',
@@ -137,7 +144,7 @@ export const AzureDatalake = defineOffer<
 });
 export const GcpDatalake = defineOffer<
   'BigData.Datalake',
-  {bucketName: string}
+  {region?: string; bucketName: string}
 >({
   satisfies: 'BigData.Datalake',
   offerType: 'BigData.PaaS.GcpDatalake',
@@ -148,7 +155,7 @@ export const GcpDatalake = defineOffer<
 // ── DistributedDataProcessing offers ─────────────────────────────────────────
 export const AwsDatabricks = defineOffer<
   'BigData.DistributedDataProcessing',
-  {pricingTier: string}
+  {region?: string; pricingTier: string}
 >({
   satisfies: 'BigData.DistributedDataProcessing',
   offerType: 'BigData.PaaS.AwsDatabricks',
@@ -157,7 +164,7 @@ export const AwsDatabricks = defineOffer<
 });
 export const AzureDatabricks = defineOffer<
   'BigData.DistributedDataProcessing',
-  {pricingTier: string}
+  {region?: string; pricingTier: string}
 >({
   satisfies: 'BigData.DistributedDataProcessing',
   offerType: 'BigData.PaaS.AzureDatabricks',
@@ -166,7 +173,7 @@ export const AzureDatabricks = defineOffer<
 });
 export const GcpDatabricks = defineOffer<
   'BigData.DistributedDataProcessing',
-  {pricingTier: string}
+  {region?: string; pricingTier: string}
 >({
   satisfies: 'BigData.DistributedDataProcessing',
   offerType: 'BigData.PaaS.GcpDatabricks',

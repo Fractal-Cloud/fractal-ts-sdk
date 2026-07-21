@@ -20,13 +20,11 @@ export type BrokerNode<Id extends string = string> = ComponentNode<
   'Messaging.Broker'
 > & {
   withTier: (v: string) => BrokerNode<Id>;
-  withRegion: (v: string) => BrokerNode<Id>;
   withEncryption: (v: 'at-rest' | 'none') => BrokerNode<Id>;
 };
 const brokerNode = <Id extends string>(s: NodeState): BrokerNode<Id> => ({
   state: s,
   withTier: v => brokerNode<Id>(guardrail(s, 'tier', v)),
-  withRegion: v => brokerNode<Id>(guardrail(s, 'region', v)),
   withEncryption: v => brokerNode<Id>(guardrail(s, 'encryption', v)),
 });
 export const Broker = <const Id extends string>(cfg: {

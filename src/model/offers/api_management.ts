@@ -10,7 +10,7 @@ import {defineOffer} from '../core';
 // ── ApiGateway ───────────────────────────────────────────────────────────────
 export const AwsCloudFront = defineOffer<
   'APIManagement.ApiGateway',
-  {region: string}
+  {region?: string}
 >({
   satisfies: 'APIManagement.ApiGateway',
   offerType: 'APIManagement.PaaS.AwsCloudFront',
@@ -19,14 +19,17 @@ export const AwsCloudFront = defineOffer<
 });
 export const AzureApiManagement = defineOffer<
   'APIManagement.ApiGateway',
-  {publisherEmail: string; sku: string}
+  {region?: string; publisherEmail: string; sku: string}
 >({
   satisfies: 'APIManagement.ApiGateway',
   offerType: 'APIManagement.PaaS.AzureApiManagement',
   provider: 'Azure',
   deliveryModel: 'PaaS',
 });
-export const GcpApiGateway = defineOffer<'APIManagement.ApiGateway', {}>({
+export const GcpApiGateway = defineOffer<
+  'APIManagement.ApiGateway',
+  {region?: string}
+>({
   satisfies: 'APIManagement.ApiGateway',
   offerType: 'APIManagement.PaaS.GcpApiGateway',
   provider: 'GCP',
