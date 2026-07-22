@@ -67,7 +67,8 @@ const toLiveSystemState = (body: LiveSystemBody): LiveSystemState => {
     const outputFields: Record<string, string> = {};
     for (const [key, value] of Object.entries(c.outputFields ?? {})) {
       // Output fields are string-valued by contract; coerce defensively so the typed shape holds.
-      outputFields[key] = value == null ? '' : String(value);
+      outputFields[key] =
+        value === null || value === undefined ? '' : String(value);
     }
     components[c.id] = {status: c.status ?? '', outputFields};
   }
