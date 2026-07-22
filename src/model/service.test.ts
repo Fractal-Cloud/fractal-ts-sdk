@@ -46,7 +46,7 @@ vi.mock('superagent', () => {
 import {createFractal} from './core';
 import {ObjectStorage} from './components/storage';
 import {AwsS3} from './offers/storage';
-import {deploy} from './service';
+import {deploy, getLiveSystemOutputs} from './service';
 
 const creds = {clientId: 'cid', clientSecret: 'secret'};
 
@@ -123,7 +123,7 @@ describe('deploy()', () => {
     });
   });
 
-  it('wait: submits then polls until Active', async () => {
+  it('wait: submits, polls until Active, and resolves to the LiveSystem state', async () => {
     h.state.queue = [
       {status: 404}, // blueprint existence
       {status: 201}, // blueprint create
@@ -131,15 +131,69 @@ describe('deploy()', () => {
       {status: 201}, // LS create
       {status: 200, body: {status: 'Provisioning'}}, // poll 1
       {status: 200, body: {status: 'Active'}}, // poll 2
+      {
+        status: 200,
+        body: {
+          status: 'Active',
+          components: [
+            {
+              id: 'uploads',
+              status: 'Active',
+              outputFields: {privateIp: '10.0.0.5', sshPort: '22'},
+            },
+          ],
+        },
+      }, // wait-resolve: read output fields
     ];
-    await deploy(liveSystem(), creds, {
+    const state = await deploy(liveSystem(), creds, {
       mode: 'wait',
       quiet: true,
       pollIntervalMs: 1,
       timeoutMs: 5000,
     });
     const methods = h.requests.map(r => r.method);
-    expect(methods).toEqual(['GET', 'POST', 'GET', 'POST', 'GET', 'GET']);
+    expect(methods).toEqual([
+      'GET',
+      'POST',
+      'GET',
+      'POST',
+      'GET',
+      'GET',
+      'GET',
+    ]);
+    expect(state?.status).toBe('Active');
+    expect(state?.components.uploads.outputFields).toEqual({
+      privateIp: '10.0.0.5',
+      sshPort: '22',
+    });
+  });
+
+  it('getLiveSystemOutputs: reads per-component output fields (vendor-neutral shape)', async () => {
+    h.state.queue = [
+      {
+        status: 200,
+        body: {
+          status: 'Active',
+          components: [
+            {
+              id: 'vllm-host',
+              status: 'Active',
+              // numbers coerce to strings so the typed Record<string,string> holds
+              outputFields: {privateIp: '10.0.1.9', sshPort: 22, publicIp: ''},
+            },
+          ],
+        },
+      },
+    ];
+    const state = await getLiveSystemOutputs(liveSystem(), creds);
+    expect(state.status).toBe('Active');
+    expect(state.components['vllm-host'].status).toBe('Active');
+    expect(state.components['vllm-host'].outputFields).toEqual({
+      privateIp: '10.0.1.9',
+      sshPort: '22',
+      publicIp: '',
+    });
+    expect(h.requests.map(r => r.method)).toEqual(['GET']);
   });
 
   it('wait: throws on terminal failure status', async () => {

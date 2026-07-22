@@ -26,6 +26,55 @@ export type DeployOptions = {
   timeoutMs?: number;
 };
 
+/** Reconciliation state + published output fields of a single deployed component. */
+export type ComponentState = {
+  status: string;
+  /**
+   * Output fields the agent published for this component — vendor-agnostic and identical in shape
+   * across clouds. For a VM this includes `privateIp`, `publicIp`, `region`, `machineType`, etc.
+   * (see the VM output-field contract). Never contains raw secrets — only references.
+   */
+  outputFields: Record<string, string>;
+};
+
+/**
+ * A deployed LiveSystem's state: its overall status plus every component's status and output
+ * fields, keyed by component id. The shape is identical regardless of vendor — a consumer reads
+ * `state.components['vllm-host'].outputFields.privateIp` without knowing the cloud.
+ */
+export type LiveSystemState = {
+  status: string;
+  components: Record<string, ComponentState>;
+};
+
+// Control-plane GET /livesystems/{id} body shape (authoritative: mirrors the agent's LiveSystem /
+// LiveComponent serialization — `components[]` each carrying `id`, `status`, `outputFields`).
+type LiveSystemBody = {
+  status?: string;
+  components?: Array<{
+    id?: string;
+    status?: string;
+    outputFields?: Record<string, unknown>;
+  }>;
+};
+
+const toLiveSystemState = (body: LiveSystemBody): LiveSystemState => {
+  const components: Record<string, ComponentState> = {};
+  for (const c of body.components ?? []) {
+    if (!c.id) {
+      continue;
+    }
+    const outputFields: Record<string, string> = {};
+    for (const [key, value] of Object.entries(c.outputFields ?? {})) {
+      // Output fields are string-valued by contract; coerce defensively so the typed shape holds.
+      outputFields[key] =
+        value === null || value === undefined ? '' : String(value);
+    }
+    components[c.id] = {status: c.status ?? '', outputFields};
+  }
+  return {status: body.status ?? '', components};
+};
+
 // ── id formatting (matches the Fractal Cloud API contract) ───────────────────
 const bcString = (bc: OwnerRef): string =>
   `${bc.ownerType ?? 'Personal'}/${bc.ownerId ?? ''}/${bc.name ?? ''}`;
@@ -129,11 +178,18 @@ const submit = async (ls: LiveSystem, creds: Credentials): Promise<void> => {
   }
 };
 
-const getStatus = async (id: string, creds: Credentials): Promise<string> => {
+const fetchLiveSystem = async (
+  id: string,
+  creds: Credentials,
+): Promise<LiveSystemBody> => {
   const res = await superagent
     .get(`${FRACTAL_API_URL}/livesystems/${id}`)
     .set(authHeaders(creds));
-  return res.body.status as string;
+  return res.body as LiveSystemBody;
+};
+
+const getStatus = async (id: string, creds: Credentials): Promise<string> => {
+  return (await fetchLiveSystem(id, creds)).status ?? '';
 };
 
 const pollUntilActive = async (
@@ -199,16 +255,18 @@ const pollUntilActive = async (
 };
 
 // ── public API ───────────────────────────────────────────────────────────────
-/** Deploy (create or update) a LiveSystem. `fire-and-forget` submits and returns;
- *  `wait` polls until Active (or failure/timeout) emitting wait-mode log lines. */
+/** Deploy (create or update) a LiveSystem. `fire-and-forget` submits and returns `undefined`;
+ *  `wait` polls until Active (or failure/timeout) emitting wait-mode log lines, then resolves to
+ *  the deployed {@link LiveSystemState} so callers can read component output fields (e.g. a VM's
+ *  `privateIp`) without a second round-trip. */
 export async function deploy(
   ls: LiveSystem,
   creds: Credentials,
   opts: DeployOptions = {mode: 'fire-and-forget'},
-): Promise<void> {
+): Promise<LiveSystemState | undefined> {
   if (opts.mode === 'fire-and-forget') {
     await submit(ls, creds);
-    return;
+    return undefined;
   }
   const quiet = opts.quiet ?? false;
   const startMs = Date.now();
@@ -222,6 +280,22 @@ export async function deploy(
     system: liveSystemId(ls),
     elapsed: elapsedSec(startMs),
   });
+  return getLiveSystemOutputs(ls, creds);
+}
+
+/**
+ * Read a deployed LiveSystem's per-component output fields (vendor-neutral). Use this after a
+ * `fire-and-forget` deploy to poll for outputs, or any time to re-read the current state. The
+ * returned shape is identical regardless of vendor.
+ *
+ * @param target the model LiveSystem, or its live-system id string.
+ */
+export async function getLiveSystemOutputs(
+  target: LiveSystem | string,
+  creds: Credentials,
+): Promise<LiveSystemState> {
+  const id = typeof target === 'string' ? target : liveSystemId(target);
+  return toLiveSystemState(await fetchLiveSystem(id, creds));
 }
 
 /** Destroy a deployed LiveSystem. */
