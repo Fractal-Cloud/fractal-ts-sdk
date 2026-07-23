@@ -24,6 +24,7 @@ import {
   Ec2Instance,
   Eks,
   VsphereVm,
+  GcpVm,
 } from './offers/network_and_compute';
 
 const environment = {};
@@ -178,6 +179,55 @@ describe('NetworkAndCompute domain', () => {
     // vendors; each agent owns its own encoding (vSphere base64-encodes it).
     expect(byId['app-vm'].parameters.userData).toBe(script);
     expect(byId['app-vm'].parameters.template).toBe('ubuntu-22');
+  });
+
+  it('optional boot image flows through under the vendor image key', () => {
+    const imageLink =
+      'projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts';
+    const ls = authorFractal()
+      .specialize()
+      .toLiveSystem({
+        name: 'acme-net',
+        environment,
+        select: {
+          ...fullSelect(),
+          'app-vm': GcpVm({machineType: 'e2-medium', imageLink}),
+        },
+      });
+
+    const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
+    // Property name IS the wire key: GcpVm emits `imageLink`, matching the agent param.
+    expect(byId['app-vm'].parameters.imageLink).toBe(imageLink);
+  });
+
+  it('optional workload identity flows through as a nested object', () => {
+    const identity = {
+      serviceAccount: 'eval@project.iam.gserviceaccount.com',
+      scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+    };
+    const ls = authorFractal()
+      .specialize()
+      .toLiveSystem({
+        name: 'acme-net',
+        environment,
+        select: {
+          ...fullSelect(),
+          'app-vm': GcpVm({machineType: 'e2-medium', identity}),
+        },
+      });
+
+    const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
+    // The whole identity object is forwarded intact under the uniform `identity` key.
+    expect(byId['app-vm'].parameters.identity).toEqual(identity);
+  });
+
+  it('workload identity is absent from parameters when omitted', () => {
+    const ls = authorFractal()
+      .specialize()
+      .toLiveSystem({name: 'acme-net', environment, select: fullSelect()});
+
+    const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
+    expect(byId['app-vm'].parameters.identity).toBeUndefined();
   });
 
   it('selecting a wrong offer is a type error AND throws', () => {

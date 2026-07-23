@@ -138,9 +138,40 @@ export const GcpFirewall = defineOffer<
 });
 
 // ── VirtualMachine ───────────────────────────────────────────────────────────
+
+/**
+ * Vendor-agnostic VM workload identity. Attach an identity so software on the VM reaches cloud
+ * resources (object storage, secret store, …) WITHOUT injected keys. Each vendor reads only the
+ * fields it understands; the whole object is forwarded to the agent under the uniform `identity`
+ * param key.
+ *
+ * Least-privilege is the default — broad grants (e.g. GCP `cloud-platform`) are opt-in via `scopes`
+ * / `policyStatements`. Never place raw credentials on a VM; attach an identity instead.
+ */
+export interface VmIdentity {
+  /** GCP: service-account email to attach to the instance. */
+  serviceAccount?: string;
+  /** GCP: OAuth scopes. Omit and the agent falls back to `cloud-platform` (IAM then governs). */
+  scopes?: string[];
+  /** AWS: IAM instance-profile name to attach. */
+  instanceProfile?: string;
+  /** Azure: `"system"` for a system-assigned identity, or a user-assigned identity resource id. */
+  managedIdentity?: string;
+  /** OCI: enable an instance principal (agent creates a dynamic group matching the instance). */
+  instancePrincipal?: boolean;
+  /** OCI: IAM policy statements granted to the instance's dynamic group. */
+  policyStatements?: string[];
+}
+
 export const Ec2Instance = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {region?: string; amiId: string; instanceType: string; userData?: string}
+  {
+    region?: string;
+    amiId?: string;
+    instanceType: string;
+    userData?: string;
+    identity?: VmIdentity;
+  }
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
   offerType: 'NetworkAndCompute.IaaS.AwsEc2Instance',
@@ -149,7 +180,13 @@ export const Ec2Instance = defineOffer<
 });
 export const AzureVm = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {region?: string; vmSize: string; userData?: string}
+  {
+    region?: string;
+    vmSize: string;
+    userData?: string;
+    imageId?: string;
+    identity?: VmIdentity;
+  }
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
   offerType: 'NetworkAndCompute.IaaS.AzureVm',
@@ -158,7 +195,13 @@ export const AzureVm = defineOffer<
 });
 export const GcpVm = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {region?: string; machineType: string; userData?: string}
+  {
+    region?: string;
+    machineType: string;
+    userData?: string;
+    imageLink?: string;
+    identity?: VmIdentity;
+  }
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
   offerType: 'NetworkAndCompute.IaaS.GcpVm',
@@ -284,7 +327,13 @@ export const OciSecurityList = defineOffer<
 });
 export const OciInstance = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {region?: string; shape: string; userData?: string}
+  {
+    region?: string;
+    shape: string;
+    userData?: string;
+    imageId?: string;
+    identity?: VmIdentity;
+  }
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
   offerType: 'NetworkAndCompute.IaaS.OciInstance',
