@@ -274,6 +274,24 @@ The blueprint references the **Component** in the left column; a Live System sel
 | `ServiceMesh` | — | `Ocelot` |
 | `IdentityProvider` | `Cognito` | `Keycloak` |
 
+### Unmanaged (external / SaaS)
+
+A single generic `Unmanaged` component models a third-party service Fractal does not provision, satisfied by per-domain SaaS offers.
+
+| Component | Offer |
+|---|---|
+| `Unmanaged` | `UnmanagedAi` (`AI.SaaS.Unmanaged`) |
+
+Its `secret` references an environment secret by short name via `secretRef('...')` — the raw value never travels in the blueprint. `secretRef` works in **any** component parameter or link setting:
+
+```typescript
+import {UnmanagedAi, secretRef} from '@fractal_cloud/sdk';
+
+select: {openai: UnmanagedAi({secret: secretRef('openai-api-key')})};
+// serializes as { secret: { $envSecret: 'openai-api-key' } }; the agent
+// resolves it from the environment secret store at reconciliation time.
+```
+
 ## Extending the catalogue
 
 Both Components and Offers are plain values — you can add your own without forking.
@@ -335,6 +353,7 @@ The package root and the `./model` subpath export the same surface.
 src/model/
   core.ts          # Engine: createFractal, defineOffer, ComponentNode, typed Selection,
                    #         guardrails/locking, links, child components, fluent .specialize()
+  secret.ts        # secretRef: env-secret references for params + link settings
   service.ts       # deploy / destroy a LiveSystem (HTTP + poll + wait-mode log contract)
   index.ts         # Public barrel
   components/      # Abstract Component factories (Level 1, vendor-agnostic)
@@ -348,8 +367,9 @@ src/model/
     api_management.ts        # ApiGateway
     observability.ts         # Monitoring, Tracing, Logging
     security.ts              # ServiceMesh, IdentityProvider
+    unmanaged.ts             # Unmanaged (external / SaaS)
   offers/          # Concrete Offers (Level 3) declaring what Component they satisfy
-    <domain>.ts    # one file per domain, mirroring components/
+    <domain>.ts    # one file per domain, mirroring components/ (incl. unmanaged.ts)
   *.test.ts        # vitest specs — the executable regression suite
 ```
 
