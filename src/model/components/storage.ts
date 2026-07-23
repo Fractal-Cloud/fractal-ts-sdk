@@ -51,6 +51,24 @@ export const ObjectStorage = <const Id extends string>(cfg: {
     newNode(cfg.id, 'Storage.ObjectStorage', cfg.displayName),
   );
 
+/**
+ * Settings shape for a link from a compute consumer (a VM, a workload, ...) to a
+ * `Storage.ObjectStorage`. The link declares "I use this bucket"; the agent
+ * ensures the consumer has an identity, grants that identity a bucket role
+ * SCOPED by `access` (least-privilege — no broad `cloud-platform`), and
+ * publishes the bucket URI to the consumer so it resolves it at runtime.
+ *
+ * The bucket URI is NOT carried on the link — it is published by the storage
+ * component as an output field and delivered to the consumer at reconciliation
+ * time, mirroring the relational-database and identity-provider links. Use with
+ * the generic `bp.link` / operation `link`:
+ *
+ *   link(vm, bucket, {access: 'read-write'} satisfies ObjectStorageLink);
+ */
+export type ObjectStorageLink = {
+  access: 'read' | 'write' | 'read-write';
+};
+
 // ── Storage.RelationalDbms ───────────────────────────────────────────────────
 export type RelationalDbmsNode<Id extends string = string> = ComponentNode<
   Id,

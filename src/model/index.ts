@@ -9,6 +9,9 @@
 // Engine
 export * from './core';
 
+// Environment-secret references (usable in component params + link settings)
+export * from './secret';
+
 // Shared HTTP contract (credentials type surfaced publicly)
 export type {Credentials} from './http';
 
@@ -28,6 +31,7 @@ export * from './components/api_management';
 export * from './components/observability';
 export * from './components/security';
 export * from './components/custom_workloads';
+export * from './components/unmanaged';
 
 // Offer catalogue (concrete — vendor or vendor-neutral)
 export * from './offers/network_and_compute';
@@ -38,3 +42,4 @@ export * from './offers/api_management';
 export * from './offers/observability';
 export * from './offers/security';
 export * from './offers/custom_workloads';
+export * from './offers/unmanaged';
