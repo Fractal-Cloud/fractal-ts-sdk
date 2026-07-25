@@ -1,10 +1,13 @@
 /**
- * service.test.ts — deploy() unit tests with a mocked HTTP client.
+ * service.test.ts — LiveSystem operations with a mocked HTTP client.
  *
  * Proves the API contract WITHOUT a live API: payload shape (blueprintMap keyed
  * by component id, links as {componentId,settings}, environment.id), create-vs-
  * update selection, wait-mode polling to Active, failure propagation, and
  * fire-and-forget (submit without polling).
+ *
+ * Blueprint registration is a SEPARATE entity operation and is specified in
+ * client.test.ts — nothing here should ever touch `/blueprints`.
  */
 import {describe, it, expect, beforeEach, vi} from 'vitest';
 
@@ -46,9 +49,14 @@ vi.mock('superagent', () => {
 import {createFractal} from './core';
 import {ObjectStorage} from './components/storage';
 import {AwsS3} from './offers/storage';
-import {deploy, getLiveSystemOutputs} from './service';
+import {createFractalCloudClient} from './client';
 
-const creds = {clientId: 'cid', clientSecret: 'secret'};
+const cloud = createFractalCloudClient({
+  clientId: 'cid',
+  clientSecret: 'secret',
+});
+const OWNER = '00000000-0000-0000-0000-000000000001';
+const LS_URL = `https://api.fractal.cloud/livesystems/Personal/${OWNER}/reusable-templates/acme-storage`;
 
 function liveSystem() {
   return createFractal({
@@ -56,7 +64,7 @@ function liveSystem() {
     version: {major: 1, minor: 0, patch: 0},
     boundedContextId: {
       ownerType: 'Personal',
-      ownerId: '00000000-0000-0000-0000-000000000001',
+      ownerId: OWNER,
       name: 'reusable-templates',
     },
     blueprint: bp => ({
@@ -64,39 +72,28 @@ function liveSystem() {
     }),
   }).toLiveSystem({
     name: 'acme-storage',
-    environment: {
-      ownerType: 'Personal',
-      ownerId: '00000000-0000-0000-0000-000000000001',
-      name: 'dev',
-    },
+    environment: {ownerType: 'Personal', ownerId: OWNER, name: 'dev'},
     select: {uploads: AwsS3({region: 'us-east-1'})},
   });
 }
 
-describe('deploy()', () => {
+describe('liveSystems.deploy()', () => {
   beforeEach(() => {
     h.requests.length = 0;
     h.state.queue = [];
   });
 
   it('fire-and-forget: creates (POST) and returns without polling', async () => {
-    // blueprint GET (404) + POST, then live-system GET (404) + POST.
-    h.state.queue = [
-      {status: 404},
-      {status: 201},
-      {status: 404},
-      {status: 201},
-    ];
-    await deploy(liveSystem(), creds); // default mode
+    h.state.queue = [{status: 404}, {status: 201}];
+    await cloud.liveSystems.deploy(liveSystem()); // default mode
 
     const methods = h.requests.map(r => r.method);
-    expect(methods).toEqual(['GET', 'POST', 'GET', 'POST']); // blueprint upsert + LS create, no poll
+    expect(methods).toEqual(['GET', 'POST']); // existence probe + create, no poll
     const post = h.requests.find(
       r =>
         r.method === 'POST' &&
         r.url === 'https://api.fractal.cloud/livesystems',
     )!;
-    expect(post.url).toBe('https://api.fractal.cloud/livesystems');
     const body = post.body as {
       liveSystemId: string;
       fractalId: string;
@@ -107,26 +104,24 @@ describe('deploy()', () => {
       environment: {id: {type: string; ownerId: string; shortName: string}};
     };
     expect(body.liveSystemId).toBe(
-      'Personal/00000000-0000-0000-0000-000000000001/reusable-templates/acme-storage',
+      `Personal/${OWNER}/reusable-templates/acme-storage`,
     );
     expect(body.fractalId).toBe(
-      'Personal/00000000-0000-0000-0000-000000000001/reusable-templates/basic-storage:1.0.0',
+      `Personal/${OWNER}/reusable-templates/basic-storage:1.0.0`,
     );
-    // payload keyed by component id, carrying offer type + flowed guardrail param
+    // payload keyed by component id, carrying the RESOLVED offer + flowed guardrail
     expect(body.blueprintMap.uploads.type).toBe('Storage.PaaS.AwsS3');
     expect(body.blueprintMap.uploads.provider).toBe('AWS');
     expect(body.blueprintMap.uploads.parameters.encryption).toBe('at-rest');
     expect(body.environment.id).toEqual({
       type: 'Personal',
-      ownerId: '00000000-0000-0000-0000-000000000001',
+      ownerId: OWNER,
       shortName: 'dev',
     });
   });
 
   it('wait: submits, polls until Active, and resolves to the LiveSystem state', async () => {
     h.state.queue = [
-      {status: 404}, // blueprint existence
-      {status: 201}, // blueprint create
       {status: 404}, // LS existence
       {status: 201}, // LS create
       {status: 200, body: {status: 'Provisioning'}}, // poll 1
@@ -145,16 +140,13 @@ describe('deploy()', () => {
         },
       }, // wait-resolve: read output fields
     ];
-    const state = await deploy(liveSystem(), creds, {
+    const state = await cloud.liveSystems.deploy(liveSystem(), {
       mode: 'wait',
       quiet: true,
       pollIntervalMs: 1,
       timeoutMs: 5000,
     });
-    const methods = h.requests.map(r => r.method);
-    expect(methods).toEqual([
-      'GET',
-      'POST',
+    expect(h.requests.map(r => r.method)).toEqual([
       'GET',
       'POST',
       'GET',
@@ -168,7 +160,7 @@ describe('deploy()', () => {
     });
   });
 
-  it('getLiveSystemOutputs: reads per-component output fields (vendor-neutral shape)', async () => {
+  it('outputs: reads per-component output fields (vendor-neutral shape)', async () => {
     h.state.queue = [
       {
         status: 200,
@@ -185,7 +177,7 @@ describe('deploy()', () => {
         },
       },
     ];
-    const state = await getLiveSystemOutputs(liveSystem(), creds);
+    const state = await cloud.liveSystems.outputs(liveSystem());
     expect(state.status).toBe('Active');
     expect(state.components['vllm-host'].status).toBe('Active');
     expect(state.components['vllm-host'].outputFields).toEqual({
@@ -198,14 +190,12 @@ describe('deploy()', () => {
 
   it('wait: throws on terminal failure status', async () => {
     h.state.queue = [
-      {status: 404}, // blueprint existence
-      {status: 201}, // blueprint create
       {status: 404}, // LS existence
       {status: 201}, // LS create
       {status: 200, body: {status: 'FailedMutation'}}, // poll
     ];
     await expect(
-      deploy(liveSystem(), creds, {
+      cloud.liveSystems.deploy(liveSystem(), {
         mode: 'wait',
         quiet: true,
         pollIntervalMs: 1,
@@ -215,55 +205,19 @@ describe('deploy()', () => {
   });
 
   it('updates (PUT) when the live system already exists', async () => {
-    // blueprint exists (200 → PUT), then LS exists (200 → PUT).
-    h.state.queue = [
-      {status: 200},
-      {status: 200},
-      {status: 200},
-      {status: 200},
-    ];
-    await deploy(liveSystem(), creds);
-    const methods = h.requests.map(r => r.method);
-    expect(methods).toEqual(['GET', 'PUT', 'GET', 'PUT']);
-    const put = h.requests.find(
-      r =>
-        r.method === 'PUT' &&
-        r.url ===
-          'https://api.fractal.cloud/livesystems/Personal/00000000-0000-0000-0000-000000000001/reusable-templates/acme-storage',
-    )!;
-    expect(put.url).toBe(
-      'https://api.fractal.cloud/livesystems/Personal/00000000-0000-0000-0000-000000000001/reusable-templates/acme-storage',
-    );
+    h.state.queue = [{status: 200}, {status: 200}];
+    await cloud.liveSystems.deploy(liveSystem());
+    expect(h.requests.map(r => `${r.method} ${r.url}`)).toEqual([
+      `GET ${LS_URL}`,
+      `PUT ${LS_URL}`,
+    ]);
   });
 
-  it('publishes the blueprint (Fractal) before the live system', async () => {
-    // blueprint GET (404) → POST; LS GET (404) → POST.
-    h.state.queue = [
-      {status: 404},
-      {status: 201},
-      {status: 404},
-      {status: 201},
-    ];
-    await deploy(liveSystem(), creds);
-
-    // First two requests target the blueprint endpoint at the fractal path.
-    const bpUrl =
-      'https://api.fractal.cloud/blueprints/Personal/00000000-0000-0000-0000-000000000001/reusable-templates/basic-storage/1.0.0';
-    expect(h.requests[0]).toMatchObject({method: 'GET', url: bpUrl});
-    expect(h.requests[1].method).toBe('POST');
-    expect(h.requests[1].url).toBe(bpUrl);
-    const bpBody = h.requests[1].body as {
-      isPrivate: boolean;
-      components: {type: string; id: string; provider?: string}[];
-    };
-    expect(bpBody.isPrivate).toBe(false);
-    expect(bpBody.components).toHaveLength(1);
-    expect(bpBody.components[0]).toMatchObject({
-      id: 'uploads',
-      type: 'Storage.PaaS.AwsS3',
-      provider: 'AWS',
-    });
-    // The blueprint upsert precedes the live-system create.
-    expect(h.requests[3].url).toBe('https://api.fractal.cloud/livesystems');
+  it('destroy: deletes the live system and leaves its blueprint registered', async () => {
+    h.state.queue = [{status: 202}];
+    await cloud.liveSystems.destroy(liveSystem());
+    expect(h.requests.map(r => `${r.method} ${r.url}`)).toEqual([
+      `DELETE ${LS_URL}`,
+    ]);
   });
 });

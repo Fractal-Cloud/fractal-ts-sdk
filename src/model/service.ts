@@ -1,19 +1,35 @@
 /**
- * service.ts — deploy a model LiveSystem to the Fractal Cloud API.
+ * service.ts — LiveSystem operations against the Fractal Cloud API.
  *
- * Self-contained (the interim SDK service is unproven and not reused). Builds the
- * API payload from the model LiveSystem, submits (create or update), and — in
- * `wait` mode — polls to Active, emitting the canonical SDK wait-mode log lines
- * (see ~/Projects/CLAUDE.md "SDK — Wait Mode Log Format").
+ * Builds the API payload from the model LiveSystem, submits (create or update),
+ * and — in `wait` mode — polls to Active, emitting the canonical SDK wait-mode log
+ * lines (see ~/Projects/CLAUDE.md "SDK — Wait Mode Log Format").
+ *
+ * A LiveSystem is a different entity from a Blueprint, so these operations touch
+ * `/livesystems` ONLY. Registering the blueprint a LiveSystem instantiates is a
+ * separate operation (`cloud.blueprints.create`, see client.ts) — deploying must
+ * never publish one as a side effect, because a LiveSystem knows only resolved
+ * Offers and would therefore register a vendor-locked blueprint.
+ *
+ * Reached through the client (client.ts), which holds credentials and base URL.
  *
  * NOTE: not runtime-verified here (no Fractal Cloud credentials) — covered by
- * mocked-HTTP unit tests in service.test.ts; smoke against the live API with real
+ * mocked-HTTP unit tests in client.test.ts; smoke against the live API with real
  * credentials before release.
  */
 import superagent from 'superagent';
-import type {LiveSystem, OwnerRef} from './core';
-import {FRACTAL_API_URL, authHeaders, sleep, elapsedSec, log} from './http';
-import type {Credentials} from './http';
+import type {LiveSystem} from './core';
+import {
+  apiUrl,
+  authHeaders,
+  bcString,
+  pathSegment,
+  versionString,
+  sleep,
+  elapsedSec,
+  log,
+} from './http';
+import type {ApiConfig} from './http';
 
 const DEFAULT_POLL_INTERVAL_MS = 5_000;
 const DEFAULT_TIMEOUT_MS = 600_000;
@@ -76,12 +92,12 @@ const toLiveSystemState = (body: LiveSystemBody): LiveSystemState => {
 };
 
 // ── id formatting (matches the Fractal Cloud API contract) ───────────────────
-const bcString = (bc: OwnerRef): string =>
-  `${bc.ownerType ?? 'Personal'}/${bc.ownerId ?? ''}/${bc.name ?? ''}`;
 const liveSystemId = (ls: LiveSystem): string =>
-  `${bcString(ls.boundedContext)}/${ls.name}`;
+  `${bcString(ls.boundedContext)}/${pathSegment(ls.name)}`;
+/** The Fractal (blueprint) this LiveSystem instantiates. Referenced by id only —
+ *  the blueprint itself is registered by a separate operation. */
 const fractalApiId = (ls: LiveSystem): string =>
-  `${bcString(ls.boundedContext)}/${ls.fractalName}:${ls.version.major}.${ls.version.minor}.${ls.version.patch}`;
+  `${bcString(ls.boundedContext)}/${pathSegment(ls.fractalName)}:${versionString(ls.version)}`;
 
 // ── payload ──────────────────────────────────────────────────────────────────
 const buildBody = (ls: LiveSystem) => ({
@@ -116,85 +132,68 @@ const buildBody = (ls: LiveSystem) => ({
   },
 });
 
-// ── blueprint (Fractal) registration ─────────────────────────────────────────
+// ── HTTP ─────────────────────────────────────────────────────────────────────
 // The API rejects a LiveSystem whose Fractal (blueprint) is not registered
-// (`reasonCode: BlueprintDoesNotExist`). `createFractal` authors the blueprint
-// locally only; deploying must first upsert it to the control plane. The
-// blueprint URL is the fractal id with `:` → `/`
-// (`/blueprints/Personal/<ownerId>/<shortName>/<name>/<version>`).
-const buildBlueprintBody = (ls: LiveSystem) => ({
-  description: `${ls.fractalName} — authored via the Fractal Cloud TypeScript SDK`,
-  isPrivate: false,
-  components: ls.components.map(c => ({
-    type: c.type,
-    id: c.id,
-    displayName: c.displayName,
-    provider: c.provider,
-    deliveryModel: c.deliveryModel,
-    parameters: c.parameters,
-    dependencies: [...c.dependencies],
-    links: c.links.map(l => ({
-      componentId: l.componentId,
-      settings: l.settings,
-    })),
-  })),
-});
-
-const publishBlueprint = async (
-  ls: LiveSystem,
-  creds: Credentials,
-): Promise<void> => {
-  const url = `${FRACTAL_API_URL}/blueprints/${fractalApiId(ls).replace(':', '/')}`;
-  const existing = await superagent
-    .get(url)
-    .ok(res => res.status === 200 || res.status === 404)
-    .set(authHeaders(creds));
-  const body = buildBlueprintBody(ls);
-  if (existing.status === 200) {
-    await superagent.put(url).set(authHeaders(creds)).send(body);
-  } else {
-    await superagent.post(url).set(authHeaders(creds)).send(body);
+// (`reasonCode: BlueprintDoesNotExist`). Registering it is the caller's separate
+// step — `cloud.blueprints.create(fractal)` — not something deploy does for them.
+/**
+ * Deploying no longer registers the blueprint, so "Fractal not registered" is now
+ * a reachable first-run failure. The API reports it as `BlueprintDoesNotExist`,
+ * which surfaces as an opaque HTTP error — rethrow it naming the call the caller
+ * is missing.
+ */
+const withBlueprintHint = (err: unknown, ls: LiveSystem): unknown => {
+  const res = (err as {response?: {body?: {reasonCode?: string}}}).response;
+  if (res?.body?.reasonCode !== 'BlueprintDoesNotExist') {
+    return err;
   }
+  return new Error(
+    `Fractal '${fractalApiId(ls)}' is not registered, so the Live System cannot ` +
+      'reference it. A blueprint and a Live System are separate entities: register ' +
+      'the blueprint first with `cloud.blueprints.create(fractal)`.',
+    {cause: err},
+  );
 };
 
-// ── HTTP ─────────────────────────────────────────────────────────────────────
-const submit = async (ls: LiveSystem, creds: Credentials): Promise<void> => {
-  // Ensure the Fractal (blueprint) exists before the LiveSystem references it.
-  await publishBlueprint(ls, creds);
+const submit = async (ls: LiveSystem, cfg: ApiConfig): Promise<void> => {
   const id = liveSystemId(ls);
-  const url = `${FRACTAL_API_URL}/livesystems/${id}`;
+  const url = apiUrl(cfg, `/livesystems/${id}`);
   const existing = await superagent
     .get(url)
     .ok(res => res.status === 200 || res.status === 404)
-    .set(authHeaders(creds));
+    .set(authHeaders(cfg));
   const body = buildBody(ls);
-  if (existing.status === 200) {
-    await superagent.put(url).set(authHeaders(creds)).send(body);
-  } else {
-    await superagent
-      .post(`${FRACTAL_API_URL}/livesystems`)
-      .set(authHeaders(creds))
-      .send(body);
+  try {
+    if (existing.status === 200) {
+      await superagent.put(url).set(authHeaders(cfg)).send(body);
+    } else {
+      await superagent
+        .post(apiUrl(cfg, '/livesystems'))
+        .set(authHeaders(cfg))
+        .send(body);
+    }
+  } catch (err) {
+    throw withBlueprintHint(err, ls);
   }
 };
 
 const fetchLiveSystem = async (
   id: string,
-  creds: Credentials,
+  cfg: ApiConfig,
 ): Promise<LiveSystemBody> => {
   const res = await superagent
-    .get(`${FRACTAL_API_URL}/livesystems/${id}`)
-    .set(authHeaders(creds));
+    .get(apiUrl(cfg, `/livesystems/${id}`))
+    .set(authHeaders(cfg));
   return res.body as LiveSystemBody;
 };
 
-const getStatus = async (id: string, creds: Credentials): Promise<string> => {
-  return (await fetchLiveSystem(id, creds)).status ?? '';
+const getStatus = async (id: string, cfg: ApiConfig): Promise<string> => {
+  return (await fetchLiveSystem(id, cfg)).status ?? '';
 };
 
 const pollUntilActive = async (
   ls: LiveSystem,
-  creds: Credentials,
+  cfg: ApiConfig,
   opts: DeployOptions,
   startMs: number,
 ): Promise<void> => {
@@ -208,7 +207,7 @@ const pollUntilActive = async (
     round++;
     let status: string;
     try {
-      status = await getStatus(id, creds);
+      status = await getStatus(id, cfg);
     } catch (err) {
       const code = (err as {status?: number}).status;
       // 4xx will not self-heal (auth/not-found/etc.) — fail fast.
@@ -254,18 +253,18 @@ const pollUntilActive = async (
   throw new Error('Live system deployment timed out');
 };
 
-// ── public API ───────────────────────────────────────────────────────────────
+// ── operations (reached via the client's `liveSystems` namespace) ────────────
 /** Deploy (create or update) a LiveSystem. `fire-and-forget` submits and returns `undefined`;
  *  `wait` polls until Active (or failure/timeout) emitting wait-mode log lines, then resolves to
  *  the deployed {@link LiveSystemState} so callers can read component output fields (e.g. a VM's
  *  `privateIp`) without a second round-trip. */
-export async function deploy(
+export async function deployLiveSystem(
   ls: LiveSystem,
-  creds: Credentials,
+  cfg: ApiConfig,
   opts: DeployOptions = {mode: 'fire-and-forget'},
 ): Promise<LiveSystemState | undefined> {
   if (opts.mode === 'fire-and-forget') {
-    await submit(ls, creds);
+    await submit(ls, cfg);
     return undefined;
   }
   const quiet = opts.quiet ?? false;
@@ -274,13 +273,13 @@ export async function deploy(
     system: liveSystemId(ls),
     fractal: fractalApiId(ls),
   });
-  await submit(ls, creds);
-  await pollUntilActive(ls, creds, opts, startMs);
+  await submit(ls, cfg);
+  await pollUntilActive(ls, cfg, opts, startMs);
   log(quiet, 'INFO', 'Live System Active', {
     system: liveSystemId(ls),
     elapsed: elapsedSec(startMs),
   });
-  return getLiveSystemOutputs(ls, creds);
+  return liveSystemOutputs(ls, cfg);
 }
 
 /**
@@ -290,20 +289,20 @@ export async function deploy(
  *
  * @param target the model LiveSystem, or its live-system id string.
  */
-export async function getLiveSystemOutputs(
+export async function liveSystemOutputs(
   target: LiveSystem | string,
-  creds: Credentials,
+  cfg: ApiConfig,
 ): Promise<LiveSystemState> {
   const id = typeof target === 'string' ? target : liveSystemId(target);
-  return toLiveSystemState(await fetchLiveSystem(id, creds));
+  return toLiveSystemState(await fetchLiveSystem(id, cfg));
 }
 
-/** Destroy a deployed LiveSystem. */
-export async function destroy(
+/** Destroy a deployed LiveSystem. The blueprint it instantiated is untouched. */
+export async function destroyLiveSystem(
   ls: LiveSystem,
-  creds: Credentials,
+  cfg: ApiConfig,
 ): Promise<void> {
   await superagent
-    .delete(`${FRACTAL_API_URL}/livesystems/${liveSystemId(ls)}`)
-    .set(authHeaders(creds));
+    .delete(apiUrl(cfg, `/livesystems/${liveSystemId(ls)}`))
+    .set(authHeaders(cfg));
 }

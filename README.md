@@ -151,30 +151,51 @@ Every component id must map to an offer whose `satisfies` matches its Component.
 ### 3. Deploy (`index.ts`)
 
 ```typescript
-import {deploy} from '@fractal_cloud/sdk';
+import {createFractalCloudClient} from '@fractal_cloud/sdk';
+import {authorFractal} from './fractal';
 import {liveSystem} from './aws_live_system';
 
-const credentials = {
+const cloud = createFractalCloudClient({
   clientId: process.env['SERVICE_ACCOUNT_ID']!,
   clientSecret: process.env['SERVICE_ACCOUNT_SECRET']!,
-};
+});
 
-await deploy(liveSystem, credentials, {mode: 'wait'});
+await cloud.blueprints.create(authorFractal());
+await cloud.liveSystems.deploy(liveSystem, {mode: 'wait'});
 ```
 
-`deploy` submits the Live System (create or update) to Fractal Cloud; the Automation Engine reconciles cloud resources to match it.
+## The client
+
+`createFractalCloudClient({clientId, clientSecret, baseUrl?})` holds your credentials once — no operation takes them as an argument. Operations are grouped by the entity they act on:
+
+| Namespace | Operations |
+|---|---|
+| `cloud.blueprints` | `create(fractal)` |
+| `cloud.liveSystems` | `deploy(ls, opts?)`, `outputs(ls)`, `destroy(ls)` |
+| `cloud.environments` | `deploy(management, opts?)` |
+
+Pass `baseUrl` to target a non-production control plane.
+
+## Blueprint and Live System are separate
+
+A **Blueprint** and a **Live System** are different entities, registered by different calls:
+
+- `cloud.blueprints.create(fractal)` registers the **abstract** blueprint — Level-1 Component contracts (`Storage.ObjectStorage`) carrying no vendor identity. It stays satisfiable by any vendor's Offer, which is what makes a Fractal reusable.
+- `cloud.liveSystems.deploy(liveSystem)` deploys one **vendor-resolved** instantiation — Offer types (`Storage.PaaS.AwsS3`) plus `provider`/`deliveryModel`.
+
+Deploying never registers a blueprint as a side effect. The API rejects a Live System whose Fractal is not registered, so register it first — or once, ahead of time, from wherever you govern your Fractals. `blueprints.create` accepts a **base** Fractal only; a specialized one carries application-level intent and is rejected at compile time.
 
 ## Deployment modes
 
-`deploy(liveSystem, credentials, options)` supports two modes.
+`cloud.liveSystems.deploy(liveSystem, options)` supports two modes.
 
 ### Fire and forget (default)
 
 Submits the live system and returns immediately. Provisioning happens asynchronously. This is the default when no options are passed.
 
 ```typescript
-await deploy(liveSystem, credentials);
-await deploy(liveSystem, credentials, {mode: 'fire-and-forget'}); // equivalent
+await cloud.liveSystems.deploy(liveSystem);
+await cloud.liveSystems.deploy(liveSystem, {mode: 'fire-and-forget'}); // equivalent
 ```
 
 Best for: **applications, CLIs, scripts** where infrastructure deployment is a background concern.
@@ -184,7 +205,7 @@ Best for: **applications, CLIs, scripts** where infrastructure deployment is a b
 Submits, then polls until the live system reaches `Active`. Throws on terminal failure (`FailedMutation`, `Error`) or timeout.
 
 ```typescript
-await deploy(liveSystem, credentials, {
+await cloud.liveSystems.deploy(liveSystem, {
   mode: 'wait',
   pollIntervalMs: 10_000, // check every 10 s  (default: 5 s)
   timeoutMs: 900_000,     // give up after 15 min (default: 10 min)
@@ -198,9 +219,10 @@ Best for: **CI/CD pipelines** that must not advance until infrastructure is prov
 ### Destroy
 
 ```typescript
-import {destroy} from '@fractal_cloud/sdk';
-await destroy(liveSystem, credentials);
+await cloud.liveSystems.destroy(liveSystem);
 ```
+
+Tears down that instantiation; the registered blueprint stays put.
 
 ---
 

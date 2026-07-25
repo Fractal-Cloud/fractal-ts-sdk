@@ -19,12 +19,12 @@
  */
 import superagent from 'superagent';
 import {
-  FRACTAL_API_URL,
+  apiUrl,
   authHeaders,
   sleep,
   elapsedSec,
   log,
-  type Credentials,
+  type ApiConfig,
 } from '../http';
 import type {
   CiCdProfile,
@@ -40,7 +40,8 @@ import {
   type ResolvedEnvironment,
 } from './environment';
 
-const ENVIRONMENTS_URL = `${FRACTAL_API_URL}/environments`;
+const environmentsUrl = (cfg: ApiConfig): string =>
+  apiUrl(cfg, '/environments');
 const DEFAULT_AGENT_POLL_INTERVAL_MS = 30_000;
 const DEFAULT_AGENT_TIMEOUT_MS = 55 * 60_000;
 
@@ -85,32 +86,36 @@ const idDto = (id: EnvironmentId): EnvironmentIdDto => ({
   shortName: id.shortName,
 });
 
-const envUri = (env: ResolvedEnvironment, path = ''): string => {
-  const base = `${ENVIRONMENTS_URL}/${formatEnvironmentId(env.id)}`;
+const envUri = (
+  cfg: ApiConfig,
+  env: ResolvedEnvironment,
+  path = '',
+): string => {
+  const base = `${environmentsUrl(cfg)}/${formatEnvironmentId(env.id)}`;
   return path ? `${base}/${path}` : base;
 };
 
 // ── low-level HTTP ─────────────────────────────────────────────────────────────
 const fetchEnvironment = async (
   env: ResolvedEnvironment,
-  creds: Credentials,
+  cfg: ApiConfig,
 ): Promise<EnvironmentResponse | null> => {
   const res = await superagent
-    .get(envUri(env))
+    .get(envUri(cfg, env))
     .ok(r => r.status === 200 || r.status === 404)
-    .set(authHeaders(creds));
+    .set(authHeaders(cfg));
   return res.status === 200 ? (res.body as EnvironmentResponse) : null;
 };
 
 const createEnvironment = async (
   env: ResolvedEnvironment,
   isManagement: boolean,
-  creds: Credentials,
+  cfg: ApiConfig,
 ): Promise<void> => {
   await superagent
-    .post(envUri(env))
+    .post(envUri(cfg, env))
     .ok(r => r.status === 201)
-    .set(authHeaders(creds))
+    .set(authHeaders(cfg))
     .send({
       managementEnvironmentId: isManagement ? null : idDto(env.managementId),
       name: env.name,
@@ -121,13 +126,13 @@ const createEnvironment = async (
 
 const updateEnvironment = async (
   env: ResolvedEnvironment,
-  creds: Credentials,
+  cfg: ApiConfig,
   defaultCiCdProfileShortName: string | null,
 ): Promise<void> => {
   await superagent
-    .put(envUri(env))
+    .put(envUri(cfg, env))
     .ok(r => r.status === 200)
-    .set(authHeaders(creds))
+    .set(authHeaders(cfg))
     .send({
       managementEnvironmentId: idDto(env.managementId),
       name: env.name,
@@ -139,21 +144,21 @@ const updateEnvironment = async (
 
 const manageSecrets = async (
   env: ResolvedEnvironment,
-  creds: Credentials,
+  cfg: ApiConfig,
 ): Promise<void> => {
   if (env.secrets.length === 0) {
     return;
   }
   await superagent
-    .post(envUri(env, 'secrets/bulk'))
+    .post(envUri(cfg, env, 'secrets/bulk'))
     .ok(r => r.status === 201 || r.status === 404)
-    .set(authHeaders(creds))
+    .set(authHeaders(cfg))
     .send(env.secrets as Secret[]);
 };
 
 const manageCiCdProfiles = async (
   env: ResolvedEnvironment,
-  creds: Credentials,
+  cfg: ApiConfig,
   currentDefault: string | null,
 ): Promise<void> => {
   if (env.defaultCiCdProfile === undefined) {
@@ -163,18 +168,18 @@ const manageCiCdProfiles = async (
       currentDefault !== undefined &&
       currentDefault !== ''
     ) {
-      await updateEnvironment(env, creds, null);
+      await updateEnvironment(env, cfg, null);
     }
     return;
   }
   const profiles: CiCdProfile[] = [env.defaultCiCdProfile, ...env.ciCdProfiles];
   await superagent
-    .post(envUri(env, 'ci-cd-profiles/bulk'))
+    .post(envUri(cfg, env, 'ci-cd-profiles/bulk'))
     .ok(r => r.status === 201 || r.status === 404)
-    .set(authHeaders(creds))
+    .set(authHeaders(cfg))
     .send(profiles);
   if (env.defaultCiCdProfile.shortName !== currentDefault) {
-    await updateEnvironment(env, creds, env.defaultCiCdProfile.shortName);
+    await updateEnvironment(env, cfg, env.defaultCiCdProfile.shortName);
   }
 };
 
@@ -364,12 +369,12 @@ const initBody = (
 const fetchInitializationStatus = async (
   env: ResolvedEnvironment,
   provider: CloudAgent['provider'],
-  creds: Credentials,
+  cfg: ApiConfig,
 ): Promise<InitializationRun | null> => {
   const res = await superagent
-    .get(envUri(env, `initializer/${providerPath[provider]}/status`))
+    .get(envUri(cfg, env, `initializer/${providerPath[provider]}/status`))
     .ok(r => r.status === 200 || r.status === 404)
-    .set(authHeaders(creds));
+    .set(authHeaders(cfg));
   if (res.status === 404 || res.body === undefined || res.body === null) {
     return null;
   }
@@ -423,7 +428,7 @@ const failureMessage = (provider: string, run: InitializationRun): string => {
 const initializeAgent = async (
   env: ResolvedEnvironment,
   agent: CloudAgent,
-  creds: Credentials,
+  cfg: ApiConfig,
   opts: {
     agentInit: 'wait' | 'fire-and-forget';
     pollIntervalMs: number;
@@ -436,7 +441,7 @@ const initializeAgent = async (
   const provider = agent.provider;
 
   // (Re)start only if there is no current run or the last one failed/cancelled.
-  const current = await fetchInitializationStatus(env, provider, creds);
+  const current = await fetchInitializationStatus(env, provider, cfg);
   const needsStart =
     current === null ||
     current.status === 'Failed' ||
@@ -448,9 +453,11 @@ const initializeAgent = async (
       provider,
     });
     await superagent
-      .post(envUri(env, `initializer/${providerPath[provider]}/initialize`))
+      .post(
+        envUri(cfg, env, `initializer/${providerPath[provider]}/initialize`),
+      )
       .ok(r => r.status === 202)
-      .set(authHeaders(creds))
+      .set(authHeaders(cfg))
       .set(initHeaders(agent, opts.providerCredentials))
       .send(initBody(agent, env));
   }
@@ -464,7 +471,7 @@ const initializeAgent = async (
   let round = 0;
   while (Date.now() < deadline) {
     round++;
-    const run = await fetchInitializationStatus(env, provider, creds);
+    const run = await fetchInitializationStatus(env, provider, cfg);
     if (run !== null) {
       logSteps(opts.quiet, envId, provider, run);
       switch (run.status) {
@@ -559,14 +566,14 @@ const needsUpdate = (
 const createOrUpdateEnvironment = async (
   env: ResolvedEnvironment,
   isManagement: boolean,
-  creds: Credentials,
+  cfg: ApiConfig,
   quiet: boolean,
 ): Promise<EnvironmentResponse | null> => {
   const id = formatEnvironmentId(env.id);
-  const existing = await fetchEnvironment(env, creds);
+  const existing = await fetchEnvironment(env, cfg);
   if (existing === null || existing.status.toLowerCase() === 'deleted') {
     log(quiet, 'INFO', 'Creating environment', {env: id});
-    await createEnvironment(env, isManagement, creds);
+    await createEnvironment(env, isManagement, cfg);
     return null;
   }
   if (needsUpdate(env, existing)) {
@@ -574,7 +581,7 @@ const createOrUpdateEnvironment = async (
     // Preserve the existing default CI/CD profile; profiles are managed later.
     await updateEnvironment(
       env,
-      creds,
+      cfg,
       existing.defaultCiCdProfileShortName ?? null,
     );
   } else {
@@ -591,7 +598,7 @@ const createOrUpdateEnvironment = async (
  */
 export async function deployEnvironment(
   management: ManagementEnvironmentNode,
-  creds: Credentials,
+  cfg: ApiConfig,
   opts: DeployEnvironmentOptions = {},
 ): Promise<void> {
   const tree = resolveEnvironment(management);
@@ -610,13 +617,13 @@ export async function deployEnvironment(
   for (const {env, isManagement} of ordered) {
     existingById.set(
       formatEnvironmentId(env.id),
-      await createOrUpdateEnvironment(env, isManagement, creds, quiet),
+      await createOrUpdateEnvironment(env, isManagement, cfg, quiet),
     );
   }
 
   // 2. secrets
   for (const {env} of ordered) {
-    await manageSecrets(env, creds);
+    await manageSecrets(env, cfg);
   }
 
   // 3. CI/CD profiles (+ default)
@@ -624,7 +631,7 @@ export async function deployEnvironment(
     const existing = existingById.get(formatEnvironmentId(env.id)) ?? null;
     await manageCiCdProfiles(
       env,
-      creds,
+      cfg,
       existing?.defaultCiCdProfileShortName ?? null,
     );
   }
@@ -639,7 +646,7 @@ export async function deployEnvironment(
   };
   for (const {env} of ordered) {
     for (const agent of env.cloudAgents) {
-      await initializeAgent(env, agent, creds, agentOpts);
+      await initializeAgent(env, agent, cfg, agentOpts);
     }
   }
 }

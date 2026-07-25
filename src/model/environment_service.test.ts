@@ -1,5 +1,5 @@
 /**
- * environment_service.test.ts — deployEnvironment() with a mocked HTTP client.
+ * environment_service.test.ts — cloud.environments.deploy() with a mocked HTTP client.
  *
  * Proves the orchestration WITHOUT a live API: create-vs-update, management-first
  * ordering, operational env carrying the management id, cloud-agent initialize
@@ -58,10 +58,13 @@ vi.mock('superagent', () => {
 import {
   ManagementEnvironment,
   OperationalEnvironment,
-  deployEnvironment,
 } from './environment/index';
+import {createFractalCloudClient} from './client';
 
-const creds = {clientId: 'cid', clientSecret: 'secret'};
+const cloud = createFractalCloudClient({
+  clientId: 'cid',
+  clientSecret: 'secret',
+});
 const OWNER = '2e114308-14ec-4d77-b610-490324fa1844';
 const rg = (name: string) => `Personal/${OWNER}/${name}`;
 const providerCredentials = {
@@ -78,7 +81,7 @@ const mgmtOnly = () =>
     subscriptionId: 'sub-mgmt',
   });
 
-describe('deployEnvironment()', () => {
+describe('cloud.environments.deploy()', () => {
   beforeEach(() => {
     h.requests.length = 0;
     h.state.queue = [];
@@ -91,7 +94,7 @@ describe('deployEnvironment()', () => {
       {status: 404}, // agent init status → needs start
       {status: 202}, // initialize
     ];
-    await deployEnvironment(mgmtOnly(), creds, {
+    await cloud.environments.deploy(mgmtOnly(), {
       quiet: true,
       providerCredentials,
     });
@@ -141,7 +144,7 @@ describe('deployEnvironment()', () => {
         body: {initializationRun: {status: 'Completed', steps: []}},
       },
     ];
-    await deployEnvironment(mgmtOnly(), creds, {
+    await cloud.environments.deploy(mgmtOnly(), {
       quiet: true,
       agentInit: 'wait',
       pollIntervalMs: 1,
@@ -175,7 +178,7 @@ describe('deployEnvironment()', () => {
       },
     ];
     await expect(
-      deployEnvironment(mgmtOnly(), creds, {
+      cloud.environments.deploy(mgmtOnly(), {
         quiet: true,
         agentInit: 'wait',
         pollIntervalMs: 1,
@@ -201,7 +204,7 @@ describe('deployEnvironment()', () => {
       {status: 404}, // agent status
       {status: 202}, // initialize
     ];
-    await deployEnvironment(mgmtOnly(), creds, {
+    await cloud.environments.deploy(mgmtOnly(), {
       quiet: true,
       providerCredentials,
     });
@@ -234,7 +237,7 @@ describe('deployEnvironment()', () => {
       {status: 404}, // agent status
       {status: 202}, // initialize
     ];
-    await deployEnvironment(mgmtOnly(), creds, {
+    await cloud.environments.deploy(mgmtOnly(), {
       quiet: true,
       providerCredentials,
     });
@@ -262,7 +265,7 @@ describe('deployEnvironment()', () => {
       {status: 404}, // prod azure status
       {status: 202}, // prod azure init
     ];
-    await deployEnvironment(mgmt, creds, {quiet: true, providerCredentials});
+    await cloud.environments.deploy(mgmt, {quiet: true, providerCredentials});
 
     const posts = h.requests.filter(r => r.method === 'POST');
     // create mgmt, create prod, then two initializes
@@ -287,7 +290,7 @@ describe('deployEnvironment()', () => {
       {status: 404}, // agent status → needs start (then headers throw)
     ];
     await expect(
-      deployEnvironment(mgmtOnly(), creds, {quiet: true}), // no providerCredentials
+      cloud.environments.deploy(mgmtOnly(), {quiet: true}), // no providerCredentials
     ).rejects.toThrow(/requires providerCredentials/);
   });
 
@@ -298,7 +301,7 @@ describe('deployEnvironment()', () => {
       {status: 404}, // agent status → needs start
       {status: 202}, // initialize
     ];
-    await deployEnvironment(mgmtOnly(), creds, {
+    await cloud.environments.deploy(mgmtOnly(), {
       quiet: true,
       providerCredentials: {
         azure: {clientId: 'app-reg-id', federatedToken: 'gh.oidc.jwt'},
@@ -319,7 +322,7 @@ describe('deployEnvironment()', () => {
       federatedToken: 'jwt',
     };
     await expect(
-      deployEnvironment(mgmtOnly(), creds, {
+      cloud.environments.deploy(mgmtOnly(), {
         quiet: true,
         providerCredentials: {azure: mixed as never},
       }),
@@ -340,7 +343,7 @@ describe('deployEnvironment()', () => {
       spClientSecret: 'sp-secret',
       federatedToken: '',
     };
-    await deployEnvironment(mgmtOnly(), creds, {
+    await cloud.environments.deploy(mgmtOnly(), {
       quiet: true,
       providerCredentials: {azure: creds2 as never},
     });
@@ -358,7 +361,7 @@ describe('deployEnvironment()', () => {
       {status: 404},
       {status: 202},
     ];
-    await deployEnvironment(mgmtOnly(), creds, {
+    await cloud.environments.deploy(mgmtOnly(), {
       quiet: false, // logging ON — assert the token still never appears
       providerCredentials: {
         azure: {clientId: 'app-reg-id', federatedToken: 'super-secret-jwt'},

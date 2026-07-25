@@ -13,13 +13,19 @@ export * from './core';
 export * from './secret';
 
 // Shared HTTP contract (credentials type surfaced publicly)
-export type {Credentials} from './http';
+export type {Credentials, ApiConfig} from './http';
 
-// Deploy service (deploy/destroy a LiveSystem to the Fractal Cloud API)
-export * from './service';
+// The API client — holds credentials + base URL once, and groups operations by
+// the entity they act on (blueprints / liveSystems / environments). Registering a
+// blueprint and deploying a LiveSystem are separate operations on separate
+// entities; deploying never publishes a blueprint as a side effect.
+export * from './client';
 
-// Environment management (control-plane: management + operational envs,
-// cloud agents, secrets, CI/CD profiles, deployEnvironment)
+// LiveSystem operation options + results (the operations live on the client).
+export type {DeployOptions, ComponentState, LiveSystemState} from './service';
+
+// Environment authoring (management + operational envs, cloud agents, secrets,
+// CI/CD profiles). Deploying them is `cloud.environments.deploy`.
 export * from './environment';
 
 // Component catalogue (abstract — vendor-agnostic)

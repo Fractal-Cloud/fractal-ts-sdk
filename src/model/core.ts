@@ -479,9 +479,26 @@ const fluent = <Slots, Ops extends OpFactories>(
 };
 
 // ── createFractal ────────────────────────────────────────────────────────────
-export type Fractal<Slots, Ops extends OpFactories> = {
-  readonly fractalId: string;
+/**
+ * The registrable identity of a Fractal: its owner-scoped coordinates plus the
+ * ABSTRACT component contracts of its blueprint.
+ *
+ * A specialized fractal deliberately does NOT satisfy this shape. Specialization
+ * is application-level intent — operation-added child components and dev-set
+ * parameters — while a blueprint is the architect's reusable artifact. Registering
+ * a specialization would bake one application's choices into every future reuse,
+ * so only a base Fractal can be published.
+ */
+export type PublishableFractal = {
+  readonly fractalName: string;
+  readonly version: Version;
+  readonly boundedContext: OwnerRef;
+  readonly description: string;
   readonly blueprint: Blueprint;
+};
+
+export type Fractal<Slots, Ops extends OpFactories> = PublishableFractal & {
+  readonly fractalId: string;
   readonly ops: Ops;
   specialize: () => Specialized<Slots, Ops>;
   toLiveSystem: (args: TypedToLiveSystemArgs<Slots>) => LiveSystem;
@@ -575,6 +592,10 @@ export function createFractal<
 
   return {
     fractalId,
+    fractalName: def.id,
+    version: def.version,
+    boundedContext: def.boundedContextId,
+    description: def.description ?? '',
     blueprint: serialize(state),
     ops,
     specialize: () => fluent<Slots, Ops>(ops, state),
