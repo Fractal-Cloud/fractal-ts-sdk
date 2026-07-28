@@ -8,14 +8,48 @@
 import {defineOffer} from '../core';
 
 // ── Broker offers (satisfy 'Messaging.Broker') ───────────────────────────────
+/** Service Bus namespace SKU. Basic namespaces support queues ONLY — they cannot
+ *  host topics, and ARM rejects the topic create with 400 SubCode=40000. */
+export type AzureServiceBusSkuTier = 'Basic' | 'Standard' | 'Premium';
 export const AzureServiceBus = defineOffer<
   'Messaging.Broker',
-  {region?: string; resourceGroup: string}
+  {
+    region?: string;
+    resourceGroup: string;
+    /** Namespace SKU; defaults to Standard. See {@link AzureServiceBusSkuTier}. */
+    skuTier?: AzureServiceBusSkuTier;
+  }
 >({
   satisfies: 'Messaging.Broker',
   offerType: 'Messaging.PaaS.AzureServiceBus',
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  // Default to Standard rather than deferring to the agent, whose default is
+  // Basic. `AzureServiceBusTopic` below is the only Azure MessagingEntity in this
+  // catalogue — there is no queue offer — so a Basic namespace cannot host any
+  // entity this SDK is able to create. Shipping a namespace default that its own
+  // sibling offer cannot use is an internal inconsistency, not a user error.
+  // `skuTier` is the flat alias the agent accepts alongside the nested ARM-shaped
+  // `sku` map, and it is published in the agent's parameter contract for this
+  // offer type, so it survives contract pruning.
+  instantiate: (ctx, cfg) => [
+    {
+      id: ctx.id,
+      displayName: ctx.displayName,
+      type: 'Messaging.PaaS.AzureServiceBus',
+      provider: 'Azure',
+      deliveryModel: 'PaaS',
+      // `skuTier` last so an explicit vendor knob always beats the default, and
+      // an explicitly-passed `undefined` still falls back to Standard.
+      parameters: {
+        ...ctx.parameters,
+        ...cfg,
+        skuTier: cfg.skuTier ?? 'Standard',
+      },
+      dependencies: ctx.dependencies,
+      links: ctx.links,
+    },
+  ],
 });
 export const GcpPubSub = defineOffer<'Messaging.Broker', {region?: string}>({
   satisfies: 'Messaging.Broker',

@@ -119,6 +119,36 @@ describe('Messaging domain — event-backbone', () => {
     expect(byId['orders-topic'].dependencies).toContain('broker');
   });
 
+  // The Azure catalogue ships NO ServiceBus *queue* offer — `AzureServiceBusTopic`
+  // is the only Azure `Messaging.MessagingEntity`. A Basic-tier namespace cannot
+  // host topics at all (ARM 400, SubCode=40000), so the agent's Basic default can
+  // never serve any entity this SDK is able to create. The namespace offer must
+  // therefore ship a tier that works with its own sibling offer.
+  it('namespace defaults to a tier that can host topics, and stays overridable', () => {
+    const brokerOf = (broker: ReturnType<typeof AzureServiceBus>) =>
+      authorFractal()
+        .toLiveSystem({
+          name: 'acme-prod',
+          environment,
+          select: {...fullSelect(), broker},
+        })
+        .components.find(c => c.id === 'broker')!;
+
+    const asShipped = brokerOf(AzureServiceBus({resourceGroup: 'acme'}));
+    expect(asShipped.parameters.skuTier).toBe('Standard');
+    // The default must not smother the offer's other vendor knobs.
+    expect(asShipped.parameters.resourceGroup).toBe('acme');
+
+    // An explicit tier always wins over the default — including Basic, which
+    // stays reachable for a queue-only namespace driven outside this SDK.
+    for (const tier of ['Basic', 'Standard', 'Premium'] as const) {
+      expect(
+        brokerOf(AzureServiceBus({resourceGroup: 'acme', skuTier: tier}))
+          .parameters.skuTier,
+      ).toBe(tier);
+    }
+  });
+
   it('selecting an offer that does not satisfy the Component is a type error AND throws', () => {
     expect(() =>
       authorFractal().toLiveSystem({
