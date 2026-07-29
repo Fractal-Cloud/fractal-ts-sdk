@@ -30,6 +30,7 @@ import {
   log,
 } from './http';
 import type {ApiConfig} from './http';
+import {FractalApiError, sanitizeApiError, send} from './api-error';
 
 const DEFAULT_POLL_INTERVAL_MS = 5_000;
 const DEFAULT_TIMEOUT_MS = 600_000;
@@ -142,38 +143,54 @@ const buildBody = (ls: LiveSystem) => ({
  * which surfaces as an opaque HTTP error — rethrow it naming the call the caller
  * is missing.
  */
-const withBlueprintHint = (err: unknown, ls: LiveSystem): unknown => {
-  const res = (err as {response?: {body?: {reasonCode?: string}}}).response;
-  if (res?.body?.reasonCode !== 'BlueprintDoesNotExist') {
+const withBlueprintHint = (
+  err: FractalApiError,
+  ls: LiveSystem,
+): FractalApiError | Error => {
+  // Reads the sanitized `reasonCode`, not `err.response.body`: by the time an
+  // error reaches here it has been through the boundary in api-error.ts, which
+  // drops the response object because it holds the credential header block.
+  if (err.reasonCode !== 'BlueprintDoesNotExist') {
     return err;
   }
+  // No `cause: err` — inspection follows cause chains, and a cause is one more
+  // place a future refactor could reintroduce request state. Nothing is lost: the
+  // sanitized error's own message is folded in instead.
   return new Error(
     `Fractal '${fractalApiId(ls)}' is not registered, so the Live System cannot ` +
       'reference it. A blueprint and a Live System are separate entities: register ' +
-      'the blueprint first with `cloud.blueprints.create(fractal)`.',
-    {cause: err},
+      `the blueprint first with \`cloud.blueprints.create(fractal)\`. (${err.message})`,
   );
 };
 
 const submit = async (ls: LiveSystem, cfg: ApiConfig): Promise<void> => {
   const id = liveSystemId(ls);
   const url = apiUrl(cfg, `/livesystems/${id}`);
-  const existing = await superagent
-    .get(url)
-    .ok(res => res.status === 200 || res.status === 404)
-    .set(authHeaders(cfg));
+  const existing = await send(
+    cfg,
+    superagent
+      .get(url)
+      .ok(res => res.status === 200 || res.status === 404)
+      .set(authHeaders(cfg)),
+  );
   const body = buildBody(ls);
   try {
     if (existing.status === 200) {
-      await superagent.put(url).set(authHeaders(cfg)).send(body);
+      await send(cfg, superagent.put(url).set(authHeaders(cfg)).send(body));
     } else {
-      await superagent
-        .post(apiUrl(cfg, '/livesystems'))
-        .set(authHeaders(cfg))
-        .send(body);
+      await send(
+        cfg,
+        superagent
+          .post(apiUrl(cfg, '/livesystems'))
+          .set(authHeaders(cfg))
+          .send(body),
+      );
     }
   } catch (err) {
-    throw withBlueprintHint(err, ls);
+    // Sanitize here as well as inside `send`: a request builder that throws
+    // SYNCHRONOUSLY (a bad URL, a mocked client) never reaches `send`'s try, so
+    // this is the only place that would see the raw object.
+    throw withBlueprintHint(sanitizeApiError(err, cfg), ls);
   }
 };
 
@@ -181,9 +198,10 @@ const fetchLiveSystem = async (
   id: string,
   cfg: ApiConfig,
 ): Promise<LiveSystemBody> => {
-  const res = await superagent
-    .get(apiUrl(cfg, `/livesystems/${id}`))
-    .set(authHeaders(cfg));
+  const res = await send(
+    cfg,
+    superagent.get(apiUrl(cfg, `/livesystems/${id}`)).set(authHeaders(cfg)),
+  );
   return res.body as LiveSystemBody;
 };
 
@@ -302,7 +320,10 @@ export async function destroyLiveSystem(
   ls: LiveSystem,
   cfg: ApiConfig,
 ): Promise<void> {
-  await superagent
-    .delete(apiUrl(cfg, `/livesystems/${liveSystemId(ls)}`))
-    .set(authHeaders(cfg));
+  await send(
+    cfg,
+    superagent
+      .delete(apiUrl(cfg, `/livesystems/${liveSystemId(ls)}`))
+      .set(authHeaders(cfg)),
+  );
 }

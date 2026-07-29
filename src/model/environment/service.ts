@@ -18,6 +18,7 @@
  * HTTP unit tests; smoke against the live API before release.
  */
 import superagent from 'superagent';
+import {collectSecrets, send} from '../api-error';
 import {
   apiUrl,
   authHeaders,
@@ -25,6 +26,7 @@ import {
   elapsedSec,
   log,
   type ApiConfig,
+  type LabeledSecret,
 } from '../http';
 import type {
   CiCdProfile,
@@ -100,10 +102,13 @@ const fetchEnvironment = async (
   env: ResolvedEnvironment,
   cfg: ApiConfig,
 ): Promise<EnvironmentResponse | null> => {
-  const res = await superagent
-    .get(envUri(cfg, env))
-    .ok(r => r.status === 200 || r.status === 404)
-    .set(authHeaders(cfg));
+  const res = await send(
+    cfg,
+    superagent
+      .get(envUri(cfg, env))
+      .ok(r => r.status === 200 || r.status === 404)
+      .set(authHeaders(cfg)),
+  );
   return res.status === 200 ? (res.body as EnvironmentResponse) : null;
 };
 
@@ -112,16 +117,19 @@ const createEnvironment = async (
   isManagement: boolean,
   cfg: ApiConfig,
 ): Promise<void> => {
-  await superagent
-    .post(envUri(cfg, env))
-    .ok(r => r.status === 201)
-    .set(authHeaders(cfg))
-    .send({
-      managementEnvironmentId: isManagement ? null : idDto(env.managementId),
-      name: env.name,
-      resourceGroups: env.resourceGroups,
-      parameters: env.parameters,
-    });
+  await send(
+    cfg,
+    superagent
+      .post(envUri(cfg, env))
+      .ok(r => r.status === 201)
+      .set(authHeaders(cfg))
+      .send({
+        managementEnvironmentId: isManagement ? null : idDto(env.managementId),
+        name: env.name,
+        resourceGroups: env.resourceGroups,
+        parameters: env.parameters,
+      }),
+  );
 };
 
 const updateEnvironment = async (
@@ -129,17 +137,20 @@ const updateEnvironment = async (
   cfg: ApiConfig,
   defaultCiCdProfileShortName: string | null,
 ): Promise<void> => {
-  await superagent
-    .put(envUri(cfg, env))
-    .ok(r => r.status === 200)
-    .set(authHeaders(cfg))
-    .send({
-      managementEnvironmentId: idDto(env.managementId),
-      name: env.name,
-      resourceGroups: env.resourceGroups,
-      parameters: env.parameters,
-      defaultCiCdProfileShortName,
-    });
+  await send(
+    cfg,
+    superagent
+      .put(envUri(cfg, env))
+      .ok(r => r.status === 200)
+      .set(authHeaders(cfg))
+      .send({
+        managementEnvironmentId: idDto(env.managementId),
+        name: env.name,
+        resourceGroups: env.resourceGroups,
+        parameters: env.parameters,
+        defaultCiCdProfileShortName,
+      }),
+  );
 };
 
 const manageSecrets = async (
@@ -149,11 +160,21 @@ const manageSecrets = async (
   if (env.secrets.length === 0) {
     return;
   }
-  await superagent
-    .post(envUri(cfg, env, 'secrets/bulk'))
-    .ok(r => r.status === 201 || r.status === 404)
-    .set(authHeaders(cfg))
-    .send(env.secrets as Secret[]);
+  await send(
+    cfg,
+    superagent
+      .post(envUri(cfg, env, 'secrets/bulk'))
+      .ok(r => r.status === 201 || r.status === 404)
+      .set(authHeaders(cfg))
+      .send(env.secrets as Secret[]),
+    // This request body IS the customer's secret values. Dropping the request
+    // object covers the request itself; these entries cover a server that quotes
+    // an offending value back in its error body.
+    (env.secrets as Secret[]).map(s => ({
+      label: `secret:${s.shortName}`,
+      value: s.value,
+    })),
+  );
 };
 
 const manageCiCdProfiles = async (
@@ -173,11 +194,28 @@ const manageCiCdProfiles = async (
     return;
   }
   const profiles: CiCdProfile[] = [env.defaultCiCdProfile, ...env.ciCdProfiles];
-  await superagent
-    .post(envUri(cfg, env, 'ci-cd-profiles/bulk'))
-    .ok(r => r.status === 201 || r.status === 404)
-    .set(authHeaders(cfg))
-    .send(profiles);
+  await send(
+    cfg,
+    superagent
+      .post(envUri(cfg, env, 'ci-cd-profiles/bulk'))
+      .ok(r => r.status === 201 || r.status === 404)
+      .set(authHeaders(cfg))
+      .send(profiles),
+    // SSH private keys and their passphrases. A PEM key contains newlines, which
+    // is exactly the shape that defeated one-level escape matching in the samples
+    // repo — hence the fixed-point spellings in api-error.ts.
+    profiles.flatMap(p => [
+      {label: `ciCdProfile:${p.shortName}`, value: p.sshPrivateKeyData},
+      ...(p.sshPrivateKeyPassphrase === undefined
+        ? []
+        : [
+            {
+              label: `ciCdProfilePassphrase:${p.shortName}`,
+              value: p.sshPrivateKeyPassphrase,
+            },
+          ]),
+    ]),
+  );
   if (env.defaultCiCdProfile.shortName !== currentDefault) {
     await updateEnvironment(env, cfg, env.defaultCiCdProfile.shortName);
   }
@@ -371,10 +409,13 @@ const fetchInitializationStatus = async (
   provider: CloudAgent['provider'],
   cfg: ApiConfig,
 ): Promise<InitializationRun | null> => {
-  const res = await superagent
-    .get(envUri(cfg, env, `initializer/${providerPath[provider]}/status`))
-    .ok(r => r.status === 200 || r.status === 404)
-    .set(authHeaders(cfg));
+  const res = await send(
+    cfg,
+    superagent
+      .get(envUri(cfg, env, `initializer/${providerPath[provider]}/status`))
+      .ok(r => r.status === 200 || r.status === 404)
+      .set(authHeaders(cfg)),
+  );
   if (res.status === 404 || res.body === undefined || res.body === null) {
     return null;
   }
@@ -452,14 +493,30 @@ const initializeAgent = async (
       env: envId,
       provider,
     });
-    await superagent
-      .post(
-        envUri(cfg, env, `initializer/${providerPath[provider]}/initialize`),
-      )
-      .ok(r => r.status === 202)
-      .set(authHeaders(cfg))
-      .set(initHeaders(agent, opts.providerCredentials))
-      .send(initBody(agent, env));
+    // This request carries the PROVIDER's credentials as headers (`initHeaders`):
+    // an Azure SP secret, a GCP service-account JSON key, AWS keys. Two distinct
+    // exposures, and they need two distinct answers:
+    //   - the REQUEST object holding the raw header block — covered structurally,
+    //     because `send` drops it;
+    //   - the RESPONSE body, which this endpoint of all endpoints may quote the
+    //     offending credential back in, since validating it is its job. That needs
+    //     the values in the redaction set, which is what `secretsFromHeaders`
+    //     supplies. Header names carrying identifiers (role ARN, client id,
+    //     service-account email) are deliberately excluded so they still show up in
+    //     a diagnostic.
+    const providerHeaders = initHeaders(agent, opts.providerCredentials);
+    await send(
+      cfg,
+      superagent
+        .post(
+          envUri(cfg, env, `initializer/${providerPath[provider]}/initialize`),
+        )
+        .ok(r => r.status === 202)
+        .set(authHeaders(cfg))
+        .set(providerHeaders)
+        .send(initBody(agent, env)),
+      collectSecrets(providerHeaders),
+    );
   }
 
   if (opts.agentInit === 'fire-and-forget') {
@@ -612,18 +669,52 @@ export async function deployEnvironment(
     ...tree.operationals.map(env => ({env, isManagement: false})),
   ];
 
+  // Every secret THIS deployment sends, collected once and attached to the config
+  // so it covers every request the deployment makes — not only the request that
+  // carried each value.
+  //
+  // Scoping it per call site was measurably not enough: a server can quote a
+  // provider credential back from a LATER call that never sent it. Probing this
+  // flow against a listener that echoed an Azure SP secret, the leak surfaced on
+  // the initialization-STATUS poll — a plausible place for a real control plane to
+  // report "the credentials you provided are invalid: <value>".
+  const deploymentSecrets: LabeledSecret[] = [
+    ...collectSecrets(opts.providerCredentials, 'providerCredentials'),
+    ...ordered.flatMap(({env}) => [
+      ...env.secrets.map(s => ({
+        label: `secret:${s.shortName}`,
+        value: s.value,
+      })),
+      ...[
+        ...(env.defaultCiCdProfile ? [env.defaultCiCdProfile] : []),
+        ...env.ciCdProfiles,
+      ].flatMap(p => [
+        {label: `ciCdProfile:${p.shortName}`, value: p.sshPrivateKeyData},
+        ...(p.sshPrivateKeyPassphrase === undefined
+          ? []
+          : [
+              {
+                label: `ciCdPassphrase:${p.shortName}`,
+                value: p.sshPrivateKeyPassphrase,
+              },
+            ]),
+      ]),
+    ]),
+  ];
+  const scopedCfg: ApiConfig = {...cfg, extraSecrets: deploymentSecrets};
+
   // 1. create/update every environment
   const existingById = new Map<string, EnvironmentResponse | null>();
   for (const {env, isManagement} of ordered) {
     existingById.set(
       formatEnvironmentId(env.id),
-      await createOrUpdateEnvironment(env, isManagement, cfg, quiet),
+      await createOrUpdateEnvironment(env, isManagement, scopedCfg, quiet),
     );
   }
 
   // 2. secrets
   for (const {env} of ordered) {
-    await manageSecrets(env, cfg);
+    await manageSecrets(env, scopedCfg);
   }
 
   // 3. CI/CD profiles (+ default)
@@ -631,7 +722,7 @@ export async function deployEnvironment(
     const existing = existingById.get(formatEnvironmentId(env.id)) ?? null;
     await manageCiCdProfiles(
       env,
-      cfg,
+      scopedCfg,
       existing?.defaultCiCdProfileShortName ?? null,
     );
   }
@@ -646,7 +737,7 @@ export async function deployEnvironment(
   };
   for (const {env} of ordered) {
     for (const agent of env.cloudAgents) {
-      await initializeAgent(env, agent, cfg, agentOpts);
+      await initializeAgent(env, agent, scopedCfg, agentOpts);
     }
   }
 }

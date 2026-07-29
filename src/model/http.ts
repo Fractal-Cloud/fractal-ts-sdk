@@ -20,10 +20,33 @@ export type Credentials = {clientId: string; clientSecret: string};
  * control plane. Held once by the client (see client.ts) rather than passed to
  * each operation.
  */
+/**
+ * A secret value the SDK sent, with the label used in its redaction marker.
+ * Declared here rather than in api-error.ts because {@link ApiConfig} carries it
+ * and api-error.ts already imports from this module.
+ */
+export type LabeledSecret = {label: string; value: string};
+
 export type ApiConfig = Credentials & {
   /** Override the control-plane base URL (staging, a local control plane, …).
    *  Defaults to the production API. */
   baseUrl?: string;
+  /**
+   * Extra secret values that must never appear in an error this SDK throws, on TOP
+   * of the client credentials — the provider credentials, environment secret values
+   * and CI/CD private keys a single `environments.deploy` sends.
+   *
+   * Scoped to the whole OPERATION on purpose, not to the one request that carried
+   * the value. A credential submitted to `initializer/…/initialize` can be quoted
+   * back by a LATER call in the same flow: the initialization-STATUS poll is a
+   * natural place for a server to report "the credentials you provided are invalid:
+   * <value>", and that request sends no credential of its own. Measured — scoping
+   * the set per-call-site let exactly that case print an Azure SP secret. Attaching
+   * it to the config covers every request the operation makes.
+   *
+   * Populated internally by `deployEnvironment`; callers need not set it.
+   */
+  extraSecrets?: readonly LabeledSecret[];
 };
 
 /** Absolute URL for an API path, honoring a `baseUrl` override. A trailing slash

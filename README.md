@@ -68,6 +68,15 @@ npm install @fractal_cloud/sdk
 
 Requires Node.js 18+ and TypeScript 5+.
 
+> [!IMPORTANT]
+> **Upgrading from 2.4.4 or earlier and using `AzureServiceBus`?** 2.4.5 changed the
+> default Service Bus namespace SKU from the agent's Basic to `Standard`. Deploying
+> an existing Basic namespace on 2.4.5 or later **deletes that namespace** and
+> everything in it, because the agent has no in-place SKU update path. Pin
+> `skuTier: 'Basic'` to keep it. Full detail in
+> [`CHANGELOG.md`](./CHANGELOG.md) (shipped inside the package) and under
+> [Service Bus namespace SKU](#service-bus-namespace-sku-skutier).
+
 ## Quick start
 
 The following defines a cloud-agnostic blueprint (a VPC, a subnet, a security group, two VMs, and a container platform), then specializes it and selects AWS offers to build and deploy a Live System.
@@ -176,6 +185,58 @@ await cloud.liveSystems.deploy(liveSystem, {mode: 'wait'});
 
 Pass `baseUrl` to target a non-production control plane.
 
+### Errors — safe to log
+
+Every operation throws **`FractalApiError`**, never the underlying HTTP client's
+error object:
+
+```ts
+import {FractalApiError} from '@fractal_cloud/sdk';
+
+try {
+  await cloud.liveSystems.deploy(liveSystem);
+} catch (err) {
+  if (err instanceof FractalApiError) {
+    console.error(err.status, err.reasonCode, err.responseBody);
+  }
+  // Logging the error object itself is safe — see below.
+  console.error(err);
+  process.exit(1);
+}
+```
+
+| Field | |
+|---|---|
+| `status` | HTTP status, when the failure was a response |
+| `method` / `url` | the request that failed, query string removed |
+| `reasonCode` | the API's error code, e.g. `BlueprintDoesNotExist` |
+| `responseBody` | redacted, length-bounded preview of the response body |
+
+**What is covered.** Two layers, because the two exposures are different:
+
+1. **The request** — dropped, structurally. The error carries no request or response
+   object, so nothing that held a header can be printed. This covers the client
+   credentials *and* the provider credentials an `environments.deploy` sends (Azure
+   SP secret, GCP service-account key, AWS keys), plus environment secret values and
+   CI/CD private keys in request bodies.
+2. **The response body**, which the SDK does quote — every secret it sent for that
+   operation is redacted out of it first, matching the raw value and its
+   JSON-escaped spellings to arbitrary nesting depth, before any length clip.
+
+Known limit, stated so the guarantee is not read as wider than it is: redaction
+matches raw and JSON-escaped spellings. A server that echoed a credential back
+**percent-encoded or base64'd** would not match, and no redactor can enumerate every
+encoding — which is why layer 1, not layer 2, is what protects the request.
+
+**Why this type exists.** Your credentials travel as request headers. The HTTP
+client's error object carries the raw request header block, so `console.error(err)`
+on it printed your client secret — 84,937 bytes of output containing the secret, on
+the most ordinary failure there is: a mistyped credential returning 403.
+`FractalApiError` carries no request or response object and no `cause` chain leading
+back to one, so `console.error(err)` is safe to leave in your `catch`. A caller who
+previously read `err.response.body` should read `err.responseBody` (or
+`err.reasonCode`).
+
 ## Blueprint and Live System are separate
 
 A **Blueprint** and a **Live System** are different entities, registered by different calls:
@@ -264,6 +325,42 @@ The blueprint references the **Component** in the left column; a Live System sel
 |---|---|---|---|
 | `Broker` | `AzureServiceBus` | `GcpPubSub` | `Kafka` |
 | `MessagingEntity` | `AzureServiceBusTopic` | `GcpPubSubTopic` | `KafkaTopic` |
+
+#### Service Bus namespace SKU (`skuTier`)
+
+`AzureServiceBus` accepts `skuTier?: 'Basic' | 'Standard' | 'Premium'` and **defaults
+to `Standard`** as of 2.4.5. Read this before upgrading across that version.
+
+> [!WARNING]
+> **Changing the SKU of a namespace that is already deployed DELETES it.** The Azure
+> agent treats any difference between the requested tier and the live namespace's
+> tier as an unrecoverable state: it issues an ARM delete and re-creates on the next
+> reconcile pass. The namespace and every queue, topic, subscription and enqueued
+> message go with it. There is no in-place SKU update path.
+>
+> A namespace created before 2.4.5 sits at the agent's own default, **Basic**. The
+> first deploy after upgrading therefore destroys it unless you pin the tier:
+>
+> ```ts
+> AzureServiceBus({resourceGroup: 'acme', skuTier: 'Basic'})
+> ```
+
+Why the default is `Standard`: a Basic namespace cannot host a topic at all (ARM
+rejects the create with 400 SubCode=40000), and `AzureServiceBusTopic` is the only
+Azure `MessagingEntity` in this catalogue. Basic namespaces do support **queues**,
+but the platform's queue implementation always sets `autoDeleteOnIdle`, which Basic
+does not support — so no entity the platform itself creates can live on Basic.
+
+Basic is still the right choice for one shape: provisioning the namespace as
+infrastructure and creating queues at runtime from the application
+(`ServiceBusAdministrationClient.createQueue`, or framework auto-creation). Basic
+carries no monthly base fee where Standard does, so pass `skuTier: 'Basic'`
+explicitly for that shape — otherwise the default adds a per-namespace charge.
+
+If an architect locks the tier on the `Broker` component
+(`Broker({id: 'broker'}).withTier('Basic')`), that locked guardrail decides the SKU,
+and an offer-level `skuTier` contradicting it throws rather than silently discarding
+one of the two intents.
 
 ### BigData
 

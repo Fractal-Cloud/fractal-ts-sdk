@@ -24,6 +24,7 @@ import {
   versionString,
 } from './http';
 import type {ApiConfig} from './http';
+import {send} from './api-error';
 import {
   deployLiveSystem,
   destroyLiveSystem,
@@ -107,14 +108,17 @@ const createBlueprint = async (
   // control plane even as a probe.
   const body = blueprintBody(f, opts);
   const url = blueprintUrl(cfg, f);
-  const existing = await superagent
-    .get(url)
-    .ok(res => res.status === 200 || res.status === 404)
-    .set(authHeaders(cfg));
+  const existing = await send(
+    cfg,
+    superagent
+      .get(url)
+      .ok(res => res.status === 200 || res.status === 404)
+      .set(authHeaders(cfg)),
+  );
   if (existing.status === 200) {
-    await superagent.put(url).set(authHeaders(cfg)).send(body);
+    await send(cfg, superagent.put(url).set(authHeaders(cfg)).send(body));
   } else {
-    await superagent.post(url).set(authHeaders(cfg)).send(body);
+    await send(cfg, superagent.post(url).set(authHeaders(cfg)).send(body));
   }
 };
 
