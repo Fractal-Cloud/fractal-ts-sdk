@@ -15,6 +15,12 @@ export * from './secret';
 // Shared HTTP contract (credentials type surfaced publicly)
 export type {Credentials, ApiConfig} from './http';
 
+// The error every API operation throws. Exported so a caller can branch on it
+// (`err instanceof FractalApiError`, `err.status`, `err.reasonCode`) — necessary
+// because it deliberately does NOT carry the superagent request/response objects,
+// which is what used to print the client secret when an error was logged.
+export {FractalApiError, redactSecrets, REDACTED} from './api-error';
+
 // The API client — holds credentials + base URL once, and groups operations by
 // the entity they act on (blueprints / liveSystems / environments). Registering a
 // blueprint and deploying a LiveSystem are separate operations on separate

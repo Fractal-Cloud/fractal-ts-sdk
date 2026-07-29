@@ -58,6 +58,19 @@ export type InstantiationContext = {
   id: string;
   displayName: string;
   parameters: Record<string, unknown>;
+  /**
+   * Names of the neutral parameters that are LOCKED guardrails on this component
+   * (set at design time via `guardrail()` / a `withXxx()` setter). `parameters`
+   * alone cannot tell a guardrail from a dev-open value, so an offer that would
+   * otherwise emit a vendor key contradicting a locked neutral one has no way to
+   * detect the conflict. `AzureServiceBus` uses this to let a locked `tier`
+   * decide the namespace SKU instead of silently shipping both.
+   *
+   * OPTIONAL so that adding it is strictly additive for a caller who CONSTRUCTS a
+   * context — e.g. a unit test exercising a custom offer's `instantiate`. Read it
+   * as `ctx.locked ?? []`.
+   */
+  locked?: readonly string[];
   dependencies: readonly string[];
   links: readonly ComponentLink[];
   /** Child components the application added under this component. */
@@ -80,6 +93,17 @@ export type Offer<C extends string = string, Cfg = unknown> = {
   readonly deliveryModel: DeliveryModel;
   readonly config: Cfg; // VENDOR KNOBS live here, and only here
   readonly instantiate: (ctx: InstantiationContext) => LiveSystemComponent[];
+  /**
+   * Optional cross-component invariant, run by `toLiveSystem` once EVERY component
+   * has been emitted. `instantiate` sees only its own component, so an offer cannot
+   * otherwise detect that the Live System it is part of is unbuildable — e.g. a
+   * Service Bus namespace on a SKU that cannot host the topics depending on it.
+   * Throw to refuse the Live System; the message reaches the caller unchanged.
+   */
+  readonly validate?: (
+    self: LiveSystemComponent,
+    all: readonly LiveSystemComponent[],
+  ) => void;
 };
 
 /** Build an offer constructor (pure). Default instantiate merges neutral params + vendor config. */
@@ -93,6 +117,11 @@ export const defineOffer =
       ctx: InstantiationContext,
       config: Cfg,
     ) => LiveSystemComponent[];
+    validate?: (
+      self: LiveSystemComponent,
+      all: readonly LiveSystemComponent[],
+      config: Cfg,
+    ) => void;
   }) =>
   (config: Cfg): Offer<C, Cfg> => ({
     satisfies: spec.satisfies,
@@ -100,6 +129,9 @@ export const defineOffer =
     provider: spec.provider,
     deliveryModel: spec.deliveryModel,
     config,
+    validate: spec.validate
+      ? (self, all) => spec.validate!(self, all, config)
+      : undefined,
     instantiate: ctx =>
       spec.instantiate
         ? spec.instantiate(ctx, config)
@@ -377,6 +409,9 @@ const toLiveSystem = (st: FractalState, args: ToLiveSystemArgs): LiveSystem => {
   }
 
   const components: LiveSystemComponent[] = [];
+  const pendingValidations: Array<
+    [Offer<string, unknown>, LiveSystemComponent[]]
+  > = [];
   for (const id of st.order) {
     const node = st.nodes[id];
     const offer = args.select[id];
@@ -395,6 +430,7 @@ const toLiveSystem = (st: FractalState, args: ToLiveSystemArgs): LiveSystem => {
       id,
       displayName: node.displayName ?? id,
       parameters: {...node.parameters},
+      locked: [...node.locked],
       dependencies: node.dependencies,
       links: linksFor(st, id),
       children,
@@ -413,6 +449,17 @@ const toLiveSystem = (st: FractalState, args: ToLiveSystemArgs): LiveSystem => {
       }
     }
     components.push(...emitted);
+    if (offer.validate) {
+      pendingValidations.push([offer, emitted]);
+    }
+  }
+  // Cross-component invariants run only once every component exists, so an offer
+  // can refuse a Live System that is unbuildable as a whole even though its own
+  // component is well-formed in isolation.
+  for (const [offer, emitted] of pendingValidations) {
+    for (const component of emitted) {
+      offer.validate!(component, components);
+    }
   }
   return {
     name: args.name,
