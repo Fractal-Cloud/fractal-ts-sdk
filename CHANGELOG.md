@@ -9,11 +9,29 @@ The version published for a release is the GitHub release tag: `release.yml` run
 `npm version <tag>` at publish time, so `package.json` on `main` is not the source
 of truth for what is on npm.
 
-## Unreleased — must ship as a MAJOR (3.0.0)
+## 2.5.0
 
-Two new `toLiveSystem()` throws and a changed thrown-error shape make this
-breaking. It was drafted as a minor; that was wrong by the same argument this file
-makes against 2.4.5 being a patch.
+### What you may need to change
+
+**The thrown error has a different shape.** Every API operation now throws
+`FractalApiError` — exported from the package root — instead of the underlying
+superagent error:
+
+| Read this before | Read this now |
+|---|---|
+| `err.response.body.reasonCode` | `err.reasonCode` |
+| `err.response.body` | `err.responseBody` (redacted, length-bounded preview) |
+| `err.status` | `err.status` — unchanged |
+
+```ts
+import {FractalApiError} from '@fractal_cloud/sdk';
+```
+
+**`toLiveSystem()` has two new throws.** It now rejects an offer config that
+contradicts an exact locked SKU, and a Basic Service Bus namespace that a topic in
+the same Live System depends on. Both are detailed under *Added* below; each
+replaces a call that previously either discarded one of two stated intents or
+shipped a request the cloud was certain to reject.
 
 ### Security — **the client secret no longer reaches a log**
 
@@ -36,11 +54,9 @@ makes against 2.4.5 being a patch.
   account key, AWS keys), plus environment-secret and CI/CD private-key request
   bodies. All are covered by the same change.
 
-  **Migration.** `FractalApiError` carries `status`, `method`, `url`, `reasonCode`
-  and `responseBody` (redacted, length-bounded). A caller who read
-  `err.response.body.reasonCode` must read `err.reasonCode`; a caller who read
-  `err.response.body` must read `err.responseBody`. `err.status` is unchanged.
-  `FractalApiError` is exported from the package root.
+  `FractalApiError` carries `status`, `method`, `url`, `reasonCode` and
+  `responseBody` (redacted, length-bounded). The field-by-field mapping from the old
+  error is in *What you may need to change* at the top of this entry.
 
   **Why the error is replaced rather than scrubbed.** Two string-based approaches
   were tried in the sibling samples repository and both failed review: literal-byte
@@ -122,7 +138,7 @@ makes against 2.4.5 being a patch.
   the SKU would attach a recurring charge and a destroy-and-recreate to an ordinary
   `.set('tier', …)` call.
 
-### Added — **BREAKING**
+### Added
 
 - **`toLiveSystem()` now throws when an offer config contradicts an exact locked
   SKU.** A caller with `withTier('Basic')` plus `skuTier: 'Premium'` deploys today
@@ -156,7 +172,7 @@ makes against 2.4.5 being a patch.
 
 ## 2.4.5
 
-Published as a **patch**. It should have been a **minor (2.5.0) at minimum**, with a
+Published as a **patch**. It should have been a **minor at minimum**, with a
 defensible case for a major:
 
 - it added public API surface — the exported type `AzureServiceBusSkuTier` and the
@@ -217,7 +233,7 @@ requires npm publish rights.
 
    Until this is run, 2.4.5 remains `latest` and undeprecated, and today's consumers
    of it receive no warning through any channel.
-3. **Ship the pending fix as 3.0.0.** Tag shape is not enforced anywhere:
+3. **Ship the pending fix as 2.5.0.** Tag shape is not enforced anywhere:
    `release.yml` runs `npm version ${{ github.event.release.tag_name }}
    --allow-same-version` on `release: created`, with no version-shape check and no
    test gate, so a human tagging `2.4.6` publishes a patch again. Treat the tag as
