@@ -40,12 +40,14 @@ export const GcpDatabricksCluster = defineOffer<
   provider: 'GCP',
   deliveryModel: 'PaaS',
 });
+// Symbol keeps the `CaaS` prefix (public API); the wire value is the
+// catalogue offer id the caas-k8s handler registry is keyed on.
 export const CaaSSparkCluster = defineOffer<
   'BigData.ComputeCluster',
   Record<string, never>
 >({
   satisfies: 'BigData.ComputeCluster',
-  offerType: 'BigData.CaaS.CaaSSparkCluster',
+  offerType: 'BigData.CaaS.SparkCluster',
   deliveryModel: 'CaaS',
 });
 
@@ -77,12 +79,13 @@ export const GcpDatabricksJob = defineOffer<
   provider: 'GCP',
   deliveryModel: 'PaaS',
 });
+// Symbol vs wire value: see CaaSSparkCluster above.
 export const CaaSSparkJob = defineOffer<
   'BigData.DataProcessingJob',
   Record<string, never>
 >({
   satisfies: 'BigData.DataProcessingJob',
-  offerType: 'BigData.CaaS.CaaSSparkJob',
+  offerType: 'BigData.CaaS.SparkJob',
   deliveryModel: 'CaaS',
 });
 
@@ -114,12 +117,14 @@ export const GcpDatabricksMlflow = defineOffer<
   provider: 'GCP',
   deliveryModel: 'PaaS',
 });
+// MLflow is published by the catalogue as `BigData.CaaS.SparkMlExperiment`
+// (displayName 'MLflow Experiment'); `BigData.CaaS.MLflow` is its service type.
 export const CaaSMlflow = defineOffer<
   'BigData.MlExperiment',
   Record<string, never>
 >({
   satisfies: 'BigData.MlExperiment',
-  offerType: 'BigData.CaaS.CaaSMlflow',
+  offerType: 'BigData.CaaS.SparkMlExperiment',
   deliveryModel: 'CaaS',
 });
 

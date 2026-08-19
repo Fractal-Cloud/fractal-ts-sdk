@@ -98,7 +98,9 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
       });
 
     const web = ls.components.find(c => c.id === 'web')!;
-    expect(web.type).toBe('CustomWorkloads.CaaS.K8sWorkload');
+    // Spelled out on purpose: importing the constant would make this pass after
+    // any rename. The literal is what pins the wire contract.
+    expect(web.type).toBe('CustomWorkloads.CaaS.KubernetesWorkload');
     expect(web.provider).toBeUndefined();
   });
 

@@ -8,6 +8,7 @@
  * + offerType. Vendor knobs live in each offer's config type.
  */
 import {defineOffer} from '../core';
+import {KUBERNETES_WORKLOAD_OFFER_TYPE} from './offer_type_ids';
 
 // ── Workload offers ──────────────────────────────────────────────────────────
 export const EcsService = defineOffer<
@@ -52,7 +53,9 @@ export const K8sWorkload = defineOffer<
   {namespace?: string}
 >({
   satisfies: 'CustomWorkloads.Workload',
-  offerType: 'CustomWorkloads.CaaS.K8sWorkload',
+  // Exported symbol name is public API and stays `K8sWorkload`; only the wire
+  // value is pinned to the id the catalogue and the caas-k8s agent agree on.
+  offerType: KUBERNETES_WORKLOAD_OFFER_TYPE,
   deliveryModel: 'CaaS',
 });
 

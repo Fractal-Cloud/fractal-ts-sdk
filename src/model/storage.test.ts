@@ -18,6 +18,7 @@ import {
   AwsS3,
   AzurePostgresDbms,
   AzurePostgresDatabase,
+  MinIO,
 } from './offers/storage';
 
 const environment = {};
@@ -178,6 +179,21 @@ describe('Storage domain on the locked Fractal model', () => {
     );
     expect(namedById['app-dbms'].displayName).toBe('Application DB Engine');
     expect(namedById['orders'].displayName).toBe('orders');
+  });
+
+  it('MinIO emits the offer id the caas-k8s registry is keyed on', () => {
+    // Spelled out on purpose: importing a constant would make this pass after
+    // any rename. The literal is what pins the wire contract. `Storage.CaaS.MinIO`
+    // is the catalogue service type, not an offer id — no handler is keyed on it.
+    const ls = authorFractal().toLiveSystem({
+      name: 'acme-prod',
+      environment,
+      select: {...fullSelect(), uploads: MinIO({storageClass: 'gp3'})},
+    });
+    const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
+    expect(byId['uploads'].type).toBe('Storage.CaaS.MinioTenant');
+    expect(byId['uploads'].provider).toBeUndefined();
+    expect(byId['uploads'].parameters.storageClass).toBe('gp3');
   });
 
   it('selecting an offer that does not satisfy the Component is a type error AND throws', () => {

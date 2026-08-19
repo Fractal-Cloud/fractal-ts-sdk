@@ -19,6 +19,9 @@ import {
   AwsDatabricksJob,
   AwsDatabricksMlflow,
   AwsS3Datalake,
+  CaaSSparkCluster,
+  CaaSSparkJob,
+  CaaSMlflow,
 } from './offers/big_data';
 
 const environment = {id: 'test-env'};
@@ -119,6 +122,31 @@ describe('BigData domain — data-platform Fractal', () => {
     expect(byId['lake'].parameters.bucket).toBe('acme-lake');
     // blueprint structure preserved: job dependencies include cluster id
     expect(byId['etl-job'].dependencies).toContain('cluster');
+  });
+
+  it('vendor-neutral CaaS offers emit the offer ids the caas-k8s registry is keyed on', () => {
+    // Spelled out on purpose: importing a constant would make this pass after
+    // any rename. The literals are what pin the wire contract. A component
+    // whose type matches no registered handler is skipped in silence.
+    const ls = authorFractal().toLiveSystem({
+      name: 'acme-data',
+      environment,
+      select: {
+        ...fullSelect(),
+        cluster: CaaSSparkCluster({}),
+        'etl-job': CaaSSparkJob({}),
+        experiment: CaaSMlflow({}),
+      },
+    });
+
+    const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
+    expect(byId['cluster'].type).toBe('BigData.CaaS.SparkCluster');
+    expect(byId['etl-job'].type).toBe('BigData.CaaS.SparkJob');
+    expect(byId['experiment'].type).toBe('BigData.CaaS.SparkMlExperiment');
+    // Vendor-neutral: they run on any cluster, so no provider is emitted.
+    expect(byId['cluster'].provider).toBeUndefined();
+    expect(byId['etl-job'].provider).toBeUndefined();
+    expect(byId['experiment'].provider).toBeUndefined();
   });
 
   it('selecting an offer that does not satisfy the cluster Component is a type error AND throws', () => {

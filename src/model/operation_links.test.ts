@@ -80,7 +80,7 @@ describe('links authored in Fractal Interface operations', () => {
 
     // ContainerPlatform emits the workload child as a portable K8s workload.
     const workload = ls.components.find(c => c.id === 'orders')!;
-    expect(workload.type).toBe('CustomWorkloads.CaaS.K8sWorkload');
+    expect(workload.type).toBe('CustomWorkloads.CaaS.KubernetesWorkload');
     expect(workload.dependencies).toContain('app-platform'); // auto-wired child dep
     expect(workload.parameters.image).toBe('acme/web:1.4.0');
     expect(workload.parameters.maxReplicas).toBe(5);
@@ -120,7 +120,7 @@ describe('links authored in Fractal Interface operations', () => {
     const platform = ls.components.find(c => c.id === 'app-platform')!;
     expect(platform.type).toBe('NetworkAndCompute.PaaS.AwsEks');
     const workload = ls.components.find(c => c.id === 'orders')!;
-    expect(workload.type).toBe('CustomWorkloads.CaaS.K8sWorkload');
+    expect(workload.type).toBe('CustomWorkloads.CaaS.KubernetesWorkload');
     expect(workload.links).toContainEqual({
       componentId: 'orders-db',
       settings: {access: 'read-write'},
