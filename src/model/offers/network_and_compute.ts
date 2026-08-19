@@ -12,6 +12,7 @@
  * from the underlying cluster and therefore do NOT expose it.
  */
 import {defineOffer} from '../core';
+import {KUBERNETES_WORKLOAD_OFFER_TYPE} from './offer_type_ids';
 import type {
   InstantiationContext,
   LiveSystemComponent,
@@ -22,9 +23,10 @@ import type {
  * A ContainerPlatform offer emits itself PLUS one Workload live component per
  * child the application added under it (e.g. a workload added via a
  * `withStatefulService` operation). Workloads on a cluster are vendor-neutral
- * Kubernetes workloads (`CustomWorkloads.CaaS.K8sWorkload`) regardless of the
- * cluster's cloud — swapping AKS↔EKS↔GKE keeps the workload portable. Children
- * carry their own dependencies (on this platform) and links (e.g. → a database).
+ * Kubernetes workloads (`CustomWorkloads.CaaS.KubernetesWorkload`) regardless
+ * of the cluster's cloud — swapping AKS↔EKS↔GKE keeps the workload portable.
+ * Children carry their own dependencies (on this platform) and links (e.g. → a
+ * database).
  */
 const containerPlatformInstantiate =
   (platformType: string, provider: Provider) =>
@@ -42,7 +44,7 @@ const containerPlatformInstantiate =
     ...ctx.children.map(child => ({
       id: child.id,
       displayName: child.displayName,
-      type: 'CustomWorkloads.CaaS.K8sWorkload',
+      type: KUBERNETES_WORKLOAD_OFFER_TYPE,
       deliveryModel: 'CaaS' as const,
       parameters: {...child.parameters},
       dependencies: [...child.dependencies],

@@ -69,12 +69,15 @@ export const GcsBucket = defineOffer<
   deliveryModel: 'PaaS',
 });
 // Vendor-neutral self-hosted — runs on any cluster, so no `provider`.
+// Exported symbol stays `MinIO`; the wire value is the catalogue offer id
+// `Storage.CaaS.MinioTenant`. `Storage.CaaS.MinIO` is the catalogue *service
+// type* the offer fills, not an offer id, so no handler is keyed on it.
 export const MinIO = defineOffer<
   'Storage.ObjectStorage',
   {storageClass?: string}
 >({
   satisfies: 'Storage.ObjectStorage',
-  offerType: 'Storage.CaaS.MinIO',
+  offerType: 'Storage.CaaS.MinioTenant',
   deliveryModel: 'CaaS',
 });
 

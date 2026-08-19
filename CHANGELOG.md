@@ -9,6 +9,100 @@ The version published for a release is the GitHub release tag: `release.yml` run
 `npm version <tag>` at publish time, so `package.json` on `main` is not the source
 of truth for what is on npm.
 
+## Unreleased
+
+The version is the release tag's decision, not this file's — see *Choosing the
+version* at the end of this entry.
+
+### What you may need to change
+
+**Nothing in your code.** No exported identifier was added, removed, renamed or
+retyped. `K8sWorkload`, `MinIO`, `CaaSSparkCluster`, `CaaSSparkJob` and `CaaSMlflow`
+are imported, called and typed exactly as before, and the published `.d.ts`
+declarations are byte-identical to 2.5.0's. Nothing can fail to compile.
+
+**What changed is the string those five offers put on the wire** — the `type` of the
+component the SDK sends to the platform:
+
+| Offer (exported symbol) | Emitted before (≤ 2.5.0) | Emits now |
+|---|---|---|
+| `K8sWorkload`, and the workload child `withStatefulService` adds to a ContainerPlatform | `CustomWorkloads.CaaS.K8sWorkload` | `CustomWorkloads.CaaS.KubernetesWorkload` |
+| `MinIO` | `Storage.CaaS.MinIO` | `Storage.CaaS.MinioTenant` |
+| `CaaSSparkCluster` | `BigData.CaaS.CaaSSparkCluster` | `BigData.CaaS.SparkCluster` |
+| `CaaSSparkJob` | `BigData.CaaS.CaaSSparkJob` | `BigData.CaaS.SparkJob` |
+| `CaaSMlflow` | `BigData.CaaS.CaaSMlflow` | `BigData.CaaS.SparkMlExperiment` |
+
+Act only if one of these applies:
+
+- **You read `offerType` at runtime.** `SomeOffer({}).offerType` is a live field on
+  the exported `Offer` type and now returns the new string. It cannot break a build;
+  it will break a hand-written string comparison.
+- **You have a Live System stuck in `Mutating`** with a component of one of these
+  kinds. That is this bug. Redeploy with this version and the component becomes
+  claimable. Nothing needs deleting first — see below for why.
+- **You pinned an old version to work around a stuck deployment.** Unpin.
+
+### Fixed — **five offer types were unroutable; those components never deployed**
+
+- **The SDK emitted five offer type strings that no agent in the estate registers, so
+  those components were silently skipped and never deployed.** This is a fix for a
+  silent non-deployment, not a cosmetic rename.
+
+  **What went wrong.** An agent keys its handler registry on the offer type with a
+  plain exact map lookup and skips any component it finds no handler for — in the
+  Kubernetes agent, `if !registry.CanHandle(component.Type) { continue }`, with no
+  normalization, no alias, and no error. The five strings above matched no handler
+  key anywhere, so:
+
+  1. the component was skipped by every agent that saw it;
+  2. no cloud resource was ever created for it;
+  3. the component never left its initial state, so the **Live System stayed in
+     `Mutating` indefinitely** and the deploy eventually timed out at the poll cap;
+  4. nothing said why. The HTTP calls all returned 200 and the agent logged its
+     "components handled" count at debug level, so the failure presented as a hang,
+     not as an error.
+
+  Any Live System containing `MinIO`, `CaaSSparkCluster`, `CaaSSparkJob` or
+  `CaaSMlflow` could not deploy that component at all. `K8sWorkload` is the same
+  defect and is the wider one, because `withStatefulService` emits a Kubernetes
+  workload child on a ContainerPlatform without the caller naming the offer — so a
+  Live System could hit this without importing `K8sWorkload` at all.
+
+  **Where the new strings come from.** Each is the offer id the platform catalogue
+  publishes *and* the exact key the handling agent registers — the two already agreed
+  with each other on all five; the SDK was the only side out of step. Two of the old
+  values were not arbitrary typos but the wrong *kind* of identifier:
+  `Storage.CaaS.MinIO` is the catalogue's **service type** (the slot), while
+  `Storage.CaaS.MinioTenant` is the **offer** that fills it — only the offer id is
+  ever a component type.
+
+  **Upgrading is safe, and no cleanup is required.** Because these components were
+  never claimed by an agent, no provider resource was ever created for them. There is
+  no live resource to replace, recreate or orphan when the type string changes — the
+  situation is the opposite of 2.4.5's Service Bus SKU change below. A component that
+  previously did nothing starts working; nothing that previously worked changes.
+
+### Changed
+
+- The five offers now emit the ids above. Vendor-neutral CaaS offers continue to emit
+  no `provider` — correct, and now asserted by tests.
+
+### Added
+
+- Tests pinning all five emitted strings as literals. There were none before: the
+  suite covered each component's PaaS/cloud offers and never instantiated the
+  vendor-neutral CaaS ones, which is why every one of the five wrong values passed CI.
+
+### Choosing the version
+
+Not a semver-major: no exported identifier changed and the type declarations are
+byte-identical, so no consumer source can fail to compile. Between patch and minor
+this file's own precedent applies — 2.4.5 below is the entry arguing that a release
+which changes what an unchanged caller deploys should not hide in a patch number.
+This release changes what an unchanged caller deploys for five offers, which argues
+for a **minor**; that it is purely corrective, adds no API surface, and cannot damage
+a live resource argues for a patch. The tag decides, as it always does here.
+
 ## 2.5.0
 
 ### What you may need to change
