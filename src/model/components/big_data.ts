@@ -25,6 +25,7 @@ export type ComputeClusterNode<Id extends string = string> = ComponentNode<
   withMaxWorkers: (v: number) => ComputeClusterNode<Id>;
   withAutoTerminationMinutes: (v: number) => ComputeClusterNode<Id>;
   withDataSecurityMode: (v: string) => ComputeClusterNode<Id>;
+  dependsOn: (other: AnyNode) => ComputeClusterNode<Id>;
 };
 const computeClusterNode = <Id extends string>(
   s: NodeState,
@@ -39,6 +40,7 @@ const computeClusterNode = <Id extends string>(
     computeClusterNode<Id>(guardrail(s, 'autoTerminationMinutes', v)),
   withDataSecurityMode: v =>
     computeClusterNode<Id>(guardrail(s, 'dataSecurityMode', v)),
+  dependsOn: other => computeClusterNode<Id>(addDependency(s, other.state.id)),
 });
 export const ComputeCluster = <const Id extends string>(cfg: {
   id: Id;
@@ -85,6 +87,7 @@ export type MlExperimentNode<Id extends string = string> = ComponentNode<
   'BigData.MlExperiment'
 > & {
   withExperimentName: (v: string) => MlExperimentNode<Id>;
+  dependsOn: (other: AnyNode) => MlExperimentNode<Id>;
 };
 const mlExperimentNode = <Id extends string>(
   s: NodeState,
@@ -92,6 +95,7 @@ const mlExperimentNode = <Id extends string>(
   state: s,
   withExperimentName: v =>
     mlExperimentNode<Id>(guardrail(s, 'experimentName', v)),
+  dependsOn: other => mlExperimentNode<Id>(addDependency(s, other.state.id)),
 });
 export const MlExperiment = <const Id extends string>(cfg: {
   id: Id;
@@ -125,6 +129,7 @@ export const Datalake = <const Id extends string>(cfg: {
 export type DistributedDataProcessingNode<Id extends string = string> =
   ComponentNode<Id, 'BigData.DistributedDataProcessing'> & {
     withWorkspaceName: (v: string) => DistributedDataProcessingNode<Id>;
+    dependsOn: (other: AnyNode) => DistributedDataProcessingNode<Id>;
   };
 const distributedDataProcessingNode = <Id extends string>(
   s: NodeState,
@@ -132,6 +137,8 @@ const distributedDataProcessingNode = <Id extends string>(
   state: s,
   withWorkspaceName: v =>
     distributedDataProcessingNode<Id>(guardrail(s, 'workspaceName', v)),
+  dependsOn: other =>
+    distributedDataProcessingNode<Id>(addDependency(s, other.state.id)),
 });
 export const DistributedDataProcessing = <const Id extends string>(cfg: {
   id: Id;

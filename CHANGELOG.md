@@ -42,6 +42,48 @@ Act only if one of these applies:
   claimable. Nothing needs deleting first — see below for why.
 - **You pinned an old version to work around a stuck deployment.** Unpin.
 
+**If you deploy a Databricks or Spark workspace, wire the workspace edge.**
+`ComputeCluster`, `MlExperiment` and `DistributedDataProcessing` gained a
+`dependsOn` method (see *Added*). A cluster, a job and an MLflow experiment each
+need an explicit dependency on the workspace component they live in — the agent
+resolves the workspace from that edge and fails the component with
+`REQUIRED_PARAMETER_MISSING` when it is absent. A workspace merely present in the
+same Live System, or attached with `bp.link`, does not satisfy it. Until now the
+edge could not be authored at all for the cluster and the experiment, so any Live
+System with a Databricks cluster failed; add `.dependsOn(workspace)` to each
+tenant.
+
+Three shapes this can break. Anything that goes through the factories and does none
+of them is unaffected.
+
+- **You construct one of those node values yourself** — a hand-rolled
+  `ComputeClusterNode`, `MlExperimentNode` or `DistributedDataProcessingNode`
+  literal, or a test double — instead of calling the `ComputeCluster()` /
+  `MlExperiment()` / `DistributedDataProcessing()` factory. Such a literal is now
+  missing `dependsOn` and fails to compile (`TS2322`).
+
+- **You key an exhaustive mapped type off one of those node types**, e.g.
+  `Record<keyof ComputeClusterNode<'c'>, string>`. The new method adds a key the
+  object literal does not supply, so it fails to compile — with `TS2741`, not
+  `TS2322`, and at the lookup table rather than at a node.
+
+- **You duck-type on `dependsOn` to tell these nodes apart.** This one keeps
+  compiling and silently changes its answer. `dependsOn` used to be the only
+  structural difference between a `DataProcessingJobNode` and a `ComputeClusterNode`,
+  which made `'dependsOn' in node` a working discriminator:
+
+  | Node | `'dependsOn' in node` before | now |
+  |---|---|---|
+  | `DataProcessingJob` | `true` | `true` |
+  | `ComputeCluster` | `false` | **`true`** |
+  | `MlExperiment` | `false` | **`true`** |
+  | `DistributedDataProcessing` | `false` | **`true`** |
+  | `Datalake` | `false` | `false` |
+
+  A branch that used it to identify a job now takes the job path for all four. The
+  probe typechecks identically before and after, so neither the compiler nor a type
+  test flags it. Discriminate on `node.state.type` instead.
+
 ### Fixed — **five offer types were unroutable; those components never deployed**
 
 - **The SDK emitted five offer type strings that no agent in the estate registers, so
@@ -82,6 +124,26 @@ Act only if one of these applies:
   situation is the opposite of 2.4.5's Service Bus SKU change below. A component that
   previously did nothing starts working; nothing that previously worked changes.
 
+### Fixed — **a Databricks cluster or MLflow experiment could not be authored at all**
+
+- **Three abstract BigData components could not express the dependency the agent
+  requires, so the components they model always failed.** A Databricks cluster, job
+  and MLflow experiment are tenants of a workspace, and the agent resolves that
+  workspace from the tenant's own dependency list —
+  `getDependenciesByTypes(component, DATABRICKS_TYPE, <Provider>DatabricksOfferType)`
+  — throwing `REQUIRED_PARAMETER_MISSING` on an empty result. Only
+  `DataProcessingJob` exposed `dependsOn`; `ComputeCluster` and `MlExperiment` did
+  not, and no other route reaches `dependencies[]`: `bp` offers `add` and `link`
+  only, `link` writes `links[]` which this check never reads, `SlotOps` offers
+  `set`/`append`/`addChild`, and the workspace offers emit no children so `addChild`
+  throws. A cluster and an experiment were therefore unauthorable through this SDK
+  on every provider, and the failure surfaced only at deploy time as
+  `"DatabricksCluster requires a Databricks workspace dependency"`.
+
+  `DistributedDataProcessing` — the workspace itself — gained `dependsOn` for the
+  same reason one level up: on Azure the workspace reads an optional subnet
+  dependency to decide VNet injection, which was likewise unauthorable.
+
 ### Changed
 
 - The five offers now emit the ids above. Vendor-neutral CaaS offers continue to emit
@@ -93,15 +155,29 @@ Act only if one of these applies:
   suite covered each component's PaaS/cloud offers and never instantiated the
   vendor-neutral CaaS ones, which is why every one of the five wrong values passed CI.
 
+- `dependsOn(other)` on `ComputeCluster`, `MlExperiment` and
+  `DistributedDataProcessing`, with the same signature and semantics as the existing
+  `DataProcessingJob.dependsOn` — append-only, one id per call, order preserved.
+
+- Tests building a Databricks platform end to end and asserting that the cluster, the
+  job and the experiment each carry the workspace id in their Live System
+  `dependencies`, and that the far end of the edge emits a workspace offer type —
+  the two halves the agent's check actually tests.
+
 ### Choosing the version
 
-Not a semver-major: no exported identifier changed and the type declarations are
-byte-identical, so no consumer source can fail to compile. Between patch and minor
-this file's own precedent applies — 2.4.5 below is the entry arguing that a release
-which changes what an unchanged caller deploys should not hide in a patch number.
-This release changes what an unchanged caller deploys for five offers, which argues
-for a **minor**; that it is purely corrective, adds no API surface, and cannot damage
-a live resource argues for a patch. The tag decides, as it always does here.
+Not a semver-major: no exported identifier was removed, renamed or retyped. The
+offer-type fix leaves the declarations byte-identical; the `dependsOn` additions
+widen three exported node types, which is source-breaking for the three shapes listed
+under *What you may need to change* — constructing such a node value, keying an
+exhaustive mapped type off one, or duck-typing on `dependsOn`, that last one
+compiling cleanly while changing behavior. No sample and no known consumer does any
+of them.
+
+Between patch and minor, this release now argues squarely for a **minor**: it adds
+public API surface (three methods) and it changes what an unchanged caller deploys
+for five offers — and 2.4.5 below is this file's own precedent that such a release
+should not hide in a patch number. The tag decides, as it always does here.
 
 ## 2.5.0
 

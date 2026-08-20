@@ -13,6 +13,7 @@ import {
   DataProcessingJob,
   MlExperiment,
   Datalake,
+  DistributedDataProcessing,
 } from './components/big_data';
 import {
   AwsDatabricksCluster,
@@ -22,6 +23,10 @@ import {
   CaaSSparkCluster,
   CaaSSparkJob,
   CaaSMlflow,
+  AzureDatabricks,
+  AzureDatabricksCluster,
+  AzureDatabricksJob,
+  AzureDatabricksMlflow,
 } from './offers/big_data';
 
 const environment = {id: 'test-env'};
@@ -161,5 +166,88 @@ describe('BigData domain — data-platform Fractal', () => {
         },
       }),
     ).toThrow(/does not satisfy/);
+  });
+});
+
+// ── A Databricks platform: every dependent carries the workspace edge. ────────
+// The agent resolves the workspace with getDependenciesByTypes(component,
+// DATABRICKS_TYPE, <Provider>_DATABRICKS_OFFER_TYPE) and throws
+// REQUIRED_PARAMETER_MISSING when the list is empty, so the cluster, the job and
+// the experiment each need the workspace id in their own dependencies AND the
+// far end must emit a workspace offer type. Links do not count: the agent reads
+// getDependencies(), never getLinks().
+function authorDatabricksPlatform() {
+  return createFractal({
+    id: 'databricks-platform',
+    version: {major: 1, minor: 0, patch: 0},
+    boundedContextId,
+    blueprint: bp => {
+      const workspace = bp.add(
+        DistributedDataProcessing({id: 'workspace'}).withWorkspaceName(
+          'acme-analytics',
+        ),
+      );
+      const cluster = bp.add(
+        ComputeCluster({id: 'cluster'})
+          .withSparkVersion('14.3.x-scala2.12')
+          .dependsOn(workspace),
+      );
+      const job = bp.add(
+        DataProcessingJob({id: 'etl-job'})
+          .dependsOn(cluster)
+          .dependsOn(workspace),
+      );
+      const experiment = bp.add(
+        MlExperiment({id: 'experiment'})
+          .withExperimentName('fraud-model')
+          .dependsOn(workspace),
+      );
+      return {workspace, cluster, job, experiment};
+    },
+  });
+}
+
+describe('BigData domain — Databricks workspace dependency edges', () => {
+  it('cluster, job and experiment all depend on the workspace in the blueprint', () => {
+    const byId = Object.fromEntries(
+      authorDatabricksPlatform().blueprint.components.map(c => [c.id, c]),
+    );
+    expect(byId['cluster'].dependencies).toContain('workspace');
+    expect(byId['experiment'].dependencies).toContain('workspace');
+    expect(byId['etl-job'].dependencies).toEqual(['cluster', 'workspace']);
+    // The workspace itself is a root here — it may depend on a subnet for VNet
+    // injection, but nothing forces it to.
+    expect(byId['workspace'].dependencies).toEqual([]);
+  });
+
+  it('the workspace edges survive into the LiveSystem, pointing at a workspace offer type', () => {
+    const ls = authorDatabricksPlatform().toLiveSystem({
+      name: 'acme-analytics',
+      environment,
+      select: {
+        workspace: AzureDatabricks({pricingTier: 'premium'}),
+        cluster: AzureDatabricksCluster({}),
+        'etl-job': AzureDatabricksJob({}),
+        experiment: AzureDatabricksMlflow({}),
+      },
+    });
+
+    const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
+    expect(byId['workspace'].type).toBe('BigData.PaaS.AzureDatabricks');
+    for (const id of ['cluster', 'etl-job', 'experiment']) {
+      expect(byId[id].dependencies).toContain('workspace');
+      // What the agent actually asserts: the far end of the edge is a workspace.
+      const workspaceDeps = byId[id].dependencies.filter(
+        d => byId[d].type === 'BigData.PaaS.AzureDatabricks',
+      );
+      expect(workspaceDeps).toHaveLength(1);
+    }
+  });
+
+  it('dependsOn is additive, not replacing: repeated calls accumulate', () => {
+    const lake = Datalake({id: 'lake'});
+    const workspace = DistributedDataProcessing({id: 'ws'});
+    const cluster = ComputeCluster({id: 'c'}).dependsOn(workspace).dependsOn(lake);
+    expect(cluster.state.dependencies).toEqual(['ws', 'lake']);
   });
 });
