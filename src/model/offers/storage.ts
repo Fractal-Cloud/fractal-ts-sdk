@@ -110,6 +110,55 @@ export const GcpPostgresDbms = defineOffer<
     'Storage.PaaS.GcpPostgresDatabase',
   ),
 });
+/**
+ * Amazon RDS for PostgreSQL. One offer covers both shapes RDS provides, selected
+ * by `mode`: an Aurora cluster with Serverless v2 members (`aurora-serverless`,
+ * the default) or a single Multi-AZ provisioned instance
+ * (`provisioned-instance`). Both expose the same connection facts downstream, so
+ * moving between them does not change what a linked workload reads.
+ *
+ * Encryption at rest, private-only networking, IAM database authentication and
+ * log export are applied by the agent and are deliberately not configurable.
+ *
+ * A DB subnet group spans at least two Availability Zones, so the Subnets this
+ * DBMS lives in are declared on the blueprint component — the agent will not
+ * pick them.
+ */
+export const AwsRdsPostgresDbms = defineOffer<
+  'Storage.RelationalDbms',
+  {
+    region?: string;
+    mode?: 'aurora-serverless' | 'provisioned-instance';
+    version?: string;
+    instanceClass?: string;
+    administratorLogin?: string;
+    /** Provisioned mode only. */
+    allocatedStorageGb?: number;
+    /** Provisioned mode only — the ceiling storage autoscaling grows to. */
+    maxAllocatedStorageGb?: number;
+    /** Aurora Serverless v2 only. */
+    minAcu?: number;
+    /** Aurora Serverless v2 only. */
+    maxAcu?: number;
+    /** Aurora mode only. Defaults to 1 so losing the writer's AZ needs no operator. */
+    readerCount?: number;
+    /** Provisioned mode only. Defaults to true. */
+    multiAz?: boolean;
+    backupRetentionDays?: number;
+    deletionProtection?: boolean;
+    port?: number;
+  }
+>({
+  satisfies: 'Storage.RelationalDbms',
+  offerType: 'Storage.PaaS.AwsRdsPostgres',
+  provider: 'AWS',
+  deliveryModel: 'PaaS',
+  instantiate: dbmsInstantiate(
+    'Storage.PaaS.AwsRdsPostgres',
+    'AWS',
+    'Storage.PaaS.AwsRdsPostgresDatabase',
+  ),
+});
 export const ArubaMySqlDbms = defineOffer<
   'Storage.RelationalDbms',
   {region?: string}
@@ -142,6 +191,20 @@ export const GcpPostgresDatabase = defineOffer<
   satisfies: 'Storage.RelationalDatabase',
   offerType: 'Storage.PaaS.GcpPostgresDatabase',
   provider: 'GCP',
+  deliveryModel: 'PaaS',
+});
+
+export const AwsRdsPostgresDatabase = defineOffer<
+  'Storage.RelationalDatabase',
+  {
+    /** Defaults to the component id mapped onto a legal PostgreSQL identifier. */
+    databaseName?: string;
+    schema?: string;
+  }
+>({
+  satisfies: 'Storage.RelationalDatabase',
+  offerType: 'Storage.PaaS.AwsRdsPostgresDatabase',
+  provider: 'AWS',
   deliveryModel: 'PaaS',
 });
 

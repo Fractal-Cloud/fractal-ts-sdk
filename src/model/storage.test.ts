@@ -16,6 +16,8 @@ import {
 } from './components/storage';
 import {
   AwsS3,
+  AwsRdsPostgresDbms,
+  AwsRdsPostgresDatabase,
   AzurePostgresDbms,
   AzurePostgresDatabase,
   MinIO,
@@ -59,6 +61,67 @@ const fullSelect = () => ({
   uploads: AwsS3({region: 'us-east-1'}),
   'app-dbms': AzurePostgresDbms({resourceGroup: 'rg'}),
   'app-db': AzurePostgresDatabase({}),
+});
+
+describe('Amazon RDS offers', () => {
+  const awsSelect = () => ({
+    uploads: AwsS3({region: 'eu-central-1'}),
+    'app-dbms': AwsRdsPostgresDbms({region: 'eu-central-1'}),
+    'app-db': AwsRdsPostgresDatabase({}),
+  });
+
+  it('resolves the RelationalDbms Component onto the RDS offer', () => {
+    const ls = authorFractal().toLiveSystem({
+      name: 'acme-prod',
+      environment,
+      select: awsSelect(),
+    });
+    const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
+
+    expect(byId['app-dbms'].type).toBe('Storage.PaaS.AwsRdsPostgres');
+    expect(byId['app-dbms'].provider).toBe('AWS');
+    expect(byId['app-db'].type).toBe('Storage.PaaS.AwsRdsPostgresDatabase');
+    expect(byId['app-db'].dependencies).toContain('app-dbms');
+    // Blueprint guardrails still reach the vendor component.
+    expect(byId['app-dbms'].parameters.backupRetentionDays).toBe(30);
+  });
+
+  it('carries the mode selection through to the live component', () => {
+    const ls = authorFractal().toLiveSystem({
+      name: 'acme-prod',
+      environment,
+      select: {
+        ...awsSelect(),
+        'app-dbms': AwsRdsPostgresDbms({
+          mode: 'provisioned-instance',
+          instanceClass: 'db.m6g.large',
+          allocatedStorageGb: 50,
+        }),
+      },
+    });
+    const dbms = ls.components.find(c => c.id === 'app-dbms')!;
+
+    // One offer, two shapes: the agent reads `mode` to decide whether to build an
+    // Aurora cluster or a single provisioned instance.
+    expect(dbms.parameters.mode).toBe('provisioned-instance');
+    expect(dbms.parameters.instanceClass).toBe('db.m6g.large');
+    expect(dbms.parameters.allocatedStorageGb).toBe(50);
+  });
+
+  it('omits every unset knob so the agent applies its own defaults', () => {
+    const ls = authorFractal().toLiveSystem({
+      name: 'acme-prod',
+      environment,
+      select: awsSelect(),
+    });
+    const dbms = ls.components.find(c => c.id === 'app-dbms')!;
+
+    // The agent owns the defaults (aurora-serverless, one reader, Multi-AZ). Emitting
+    // them here would freeze today's values into every LiveSystem ever submitted.
+    expect(dbms.parameters.mode).toBeUndefined();
+    expect(dbms.parameters.readerCount).toBeUndefined();
+    expect(dbms.parameters.multiAz).toBeUndefined();
+  });
 });
 
 describe('Storage domain on the locked Fractal model', () => {

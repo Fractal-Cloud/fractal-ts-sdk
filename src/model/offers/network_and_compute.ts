@@ -84,7 +84,20 @@ export const GcpVpc = defineOffer<
 // ── Subnet ───────────────────────────────────────────────────────────────────
 export const AwsSubnet = defineOffer<
   'NetworkAndCompute.Subnet',
-  {region?: string}
+  {
+    region?: string;
+    /**
+     * Availability Zone to place the subnet in (e.g. `eu-central-1b`). Omit to let
+     * the agent choose.
+     *
+     * Only matters when something placed in these subnets needs a known zone
+     * spread — an RDS DB subnet group must span at least two. Without it the
+     * agent's default placement (the environment spoke's per-AZ private subnets)
+     * is the one that guarantees the spread, so this is the knob for the operator
+     * who is overriding that deliberately.
+     */
+    availabilityZone?: string;
+  }
 >({
   satisfies: 'NetworkAndCompute.Subnet',
   offerType: 'NetworkAndCompute.IaaS.AwsSubnet',
