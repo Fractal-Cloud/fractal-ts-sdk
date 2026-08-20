@@ -211,6 +211,129 @@ describe('cloud.environments.deploy()', () => {
     const methods = h.requests.map(r => r.method);
     expect(methods).toEqual(['GET', 'PUT', 'GET', 'POST']);
   });
+  // Regression: the server rejects a PUT that names the environment as its own
+  // management environment (reasonCode=SelfReferentialManagementEnvironment), so
+  // create-of-management sending null is not enough — update must send null too.
+  // Without this, a management env deploys once and fails on every re-run.
+  it('update of a management env sends a null managementEnvironmentId', async () => {
+    h.state.queue = [
+      {
+        status: 200, // fetch existing → differs (stale name)
+        body: {
+          id: {type: 'Personal', ownerId: OWNER, shortName: 'mgmt'},
+          name: 'stale',
+          resourceGroups: [],
+          parameters: {},
+          status: 'Active',
+        },
+      },
+      {status: 200}, // PUT update
+      {status: 404}, // agent status
+      {status: 202}, // initialize
+    ];
+    await cloud.environments.deploy(mgmtOnly(), {
+      quiet: true,
+      providerCredentials,
+    });
+    const put = h.requests.find(r => r.method === 'PUT');
+    expect(put).toBeDefined();
+    expect(put!.url).toBe(
+      `https://api.fractal.cloud/environments/Personal/${OWNER}/mgmt`,
+    );
+    expect(
+      (put!.body as {managementEnvironmentId: unknown}).managementEnvironmentId,
+    ).toBeNull();
+  });
+
+  it('update of an operational env still carries the management id', async () => {
+    const prod = OperationalEnvironment({
+      shortName: 'prod',
+      resourceGroups: [rg('prod-rg')],
+    }).withAzureSubscription({
+      region: 'northeurope',
+      subscriptionId: 'sub-prod',
+    });
+    const mgmt = mgmtOnly().withOperationalEnvironments([prod]);
+
+    h.state.queue = [
+      {status: 404}, // fetch mgmt → create
+      {status: 201}, // create mgmt
+      {
+        status: 200, // fetch prod → differs
+        body: {
+          id: {type: 'Personal', ownerId: OWNER, shortName: 'prod'},
+          name: 'stale',
+          resourceGroups: [],
+          parameters: {},
+          status: 'Active',
+        },
+      },
+      {status: 200}, // PUT prod
+      {status: 404}, // mgmt agent status
+      {status: 202}, // mgmt initialize
+      {status: 404}, // prod agent status
+      {status: 202}, // prod initialize
+    ];
+    await cloud.environments.deploy(mgmt, {quiet: true, providerCredentials});
+
+    const put = h.requests.find(r => r.method === 'PUT');
+    expect(put).toBeDefined();
+    expect(put!.url).toBe(
+      `https://api.fractal.cloud/environments/Personal/${OWNER}/prod`,
+    );
+    expect(
+      (put!.body as {managementEnvironmentId: unknown}).managementEnvironmentId,
+    ).toEqual({type: 'Personal', ownerId: OWNER, shortName: 'mgmt'});
+  });
+
+  // The default-CI/CD-profile PUT goes through the same updateEnvironment DTO, on a
+  // path that never had an isManagement flag to pass — it must be self-reference
+  // safe too.
+  it('the default-CI/CD-profile PUT on a management env sends null too', async () => {
+    const withProfile = mgmtOnly().withDefaultCiCdProfile({
+      shortName: 'gh',
+      displayName: 'GitHub',
+      sshPrivateKeyData: 'key-data',
+    });
+    h.state.queue = [
+      {
+        status: 200, // fetch existing → up-to-date apart from the profile default
+        body: {
+          id: {type: 'Personal', ownerId: OWNER, shortName: 'mgmt'},
+          name: 'mgmt',
+          resourceGroups: [rg('mgmt-rg')],
+          parameters: {
+            agents: [
+              {
+                provider: 'AZURE',
+                region: 'westeurope',
+                tenantId: 'tenant-1',
+                subscriptionId: 'sub-mgmt',
+              },
+            ],
+          },
+          status: 'Active',
+          defaultCiCdProfileShortName: null,
+        },
+      },
+      {status: 201}, // ci-cd-profiles/bulk
+      {status: 200}, // PUT setting the default profile
+      {status: 404}, // agent status
+      {status: 202}, // initialize
+    ];
+    await cloud.environments.deploy(withProfile, {
+      quiet: true,
+      providerCredentials,
+    });
+    const put = h.requests.find(r => r.method === 'PUT');
+    expect(put).toBeDefined();
+    const body = put!.body as {
+      managementEnvironmentId: unknown;
+      defaultCiCdProfileShortName: string;
+    };
+    expect(body.defaultCiCdProfileShortName).toBe('gh');
+    expect(body.managementEnvironmentId).toBeNull();
+  });
 
   it('skips PUT when only param key order / server-added keys differ', async () => {
     h.state.queue = [

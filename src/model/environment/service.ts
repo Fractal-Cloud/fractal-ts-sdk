@@ -88,6 +88,23 @@ const idDto = (id: EnvironmentId): EnvironmentIdDto => ({
   shortName: id.shortName,
 });
 
+/**
+ * The management-environment reference to submit for an environment.
+ *
+ * A management environment has no management environment of its own, and the API
+ * rejects a body that names an environment as its own management environment
+ * (reasonCode=SelfReferentialManagementEnvironment). Derived from the resolved
+ * environment rather than passed in, so every request body that carries the field
+ * — create, update, and the CI/CD-profile default update — is self-reference safe
+ * by construction. Passing it explicitly is what let update-of-management ship
+ * broken: creating a management env worked, updating one always failed, so a
+ * management env deployed once and then failed on every re-run.
+ */
+const managementIdDto = (env: ResolvedEnvironment): EnvironmentIdDto | null =>
+  formatEnvironmentId(env.id) === formatEnvironmentId(env.managementId)
+    ? null
+    : idDto(env.managementId);
+
 const envUri = (
   cfg: ApiConfig,
   env: ResolvedEnvironment,
@@ -114,7 +131,6 @@ const fetchEnvironment = async (
 
 const createEnvironment = async (
   env: ResolvedEnvironment,
-  isManagement: boolean,
   cfg: ApiConfig,
 ): Promise<void> => {
   await send(
@@ -124,7 +140,7 @@ const createEnvironment = async (
       .ok(r => r.status === 201)
       .set(authHeaders(cfg))
       .send({
-        managementEnvironmentId: isManagement ? null : idDto(env.managementId),
+        managementEnvironmentId: managementIdDto(env),
         name: env.name,
         resourceGroups: env.resourceGroups,
         parameters: env.parameters,
@@ -144,7 +160,7 @@ const updateEnvironment = async (
       .ok(r => r.status === 200)
       .set(authHeaders(cfg))
       .send({
-        managementEnvironmentId: idDto(env.managementId),
+        managementEnvironmentId: managementIdDto(env),
         name: env.name,
         resourceGroups: env.resourceGroups,
         parameters: env.parameters,
@@ -622,7 +638,6 @@ const needsUpdate = (
 
 const createOrUpdateEnvironment = async (
   env: ResolvedEnvironment,
-  isManagement: boolean,
   cfg: ApiConfig,
   quiet: boolean,
 ): Promise<EnvironmentResponse | null> => {
@@ -630,7 +645,7 @@ const createOrUpdateEnvironment = async (
   const existing = await fetchEnvironment(env, cfg);
   if (existing === null || existing.status.toLowerCase() === 'deleted') {
     log(quiet, 'INFO', 'Creating environment', {env: id});
-    await createEnvironment(env, isManagement, cfg);
+    await createEnvironment(env, cfg);
     return null;
   }
   if (needsUpdate(env, existing)) {
@@ -664,9 +679,10 @@ export async function deployEnvironment(
   const pollIntervalMs = opts.pollIntervalMs ?? DEFAULT_AGENT_POLL_INTERVAL_MS;
   const timeoutMs = opts.timeoutMs ?? DEFAULT_AGENT_TIMEOUT_MS;
 
-  const ordered: {env: ResolvedEnvironment; isManagement: boolean}[] = [
-    {env: tree.management, isManagement: true},
-    ...tree.operationals.map(env => ({env, isManagement: false})),
+  // Management first: operational agents inherit its identity.
+  const ordered: ResolvedEnvironment[] = [
+    tree.management,
+    ...tree.operationals,
   ];
 
   // Every secret THIS deployment sends, collected once and attached to the config
@@ -680,7 +696,7 @@ export async function deployEnvironment(
   // report "the credentials you provided are invalid: <value>".
   const deploymentSecrets: LabeledSecret[] = [
     ...collectSecrets(opts.providerCredentials, 'providerCredentials'),
-    ...ordered.flatMap(({env}) => [
+    ...ordered.flatMap(env => [
       ...env.secrets.map(s => ({
         label: `secret:${s.shortName}`,
         value: s.value,
@@ -705,20 +721,20 @@ export async function deployEnvironment(
 
   // 1. create/update every environment
   const existingById = new Map<string, EnvironmentResponse | null>();
-  for (const {env, isManagement} of ordered) {
+  for (const env of ordered) {
     existingById.set(
       formatEnvironmentId(env.id),
-      await createOrUpdateEnvironment(env, isManagement, scopedCfg, quiet),
+      await createOrUpdateEnvironment(env, scopedCfg, quiet),
     );
   }
 
   // 2. secrets
-  for (const {env} of ordered) {
+  for (const env of ordered) {
     await manageSecrets(env, scopedCfg);
   }
 
   // 3. CI/CD profiles (+ default)
-  for (const {env} of ordered) {
+  for (const env of ordered) {
     const existing = existingById.get(formatEnvironmentId(env.id)) ?? null;
     await manageCiCdProfiles(
       env,
@@ -735,7 +751,7 @@ export async function deployEnvironment(
     quiet,
     providerCredentials: opts.providerCredentials,
   };
-  for (const {env} of ordered) {
+  for (const env of ordered) {
     for (const agent of env.cloudAgents) {
       await initializeAgent(env, agent, scopedCfg, agentOpts);
     }
