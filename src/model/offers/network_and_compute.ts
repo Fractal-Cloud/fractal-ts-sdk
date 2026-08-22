@@ -386,7 +386,24 @@ export const HetznerFirewall = defineOffer<
 });
 export const HetznerServer = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {region?: string; serverType: string; userData?: string}
+  {
+    region?: string;
+    serverType: string;
+    userData?: string;
+    /**
+     * Give the server a public IPv4 and IPv6. Defaults to `false`.
+     *
+     * Hetzner assigns both address families when the posture is left unstated,
+     * so the agent now always states it. The AWS and Azure *agents* likewise
+     * default their VMs to no public address; note that `Ec2Instance` and
+     * `AzureVm` expose no equivalent SDK field yet, so this is not parity at
+     * the offer level.
+     *
+     * A server without a public interface must be attached to a
+     * `HetznerNetwork` to have any interface at all.
+     */
+    associatePublicIp?: boolean;
+  }
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
   offerType: 'NetworkAndCompute.IaaS.HetznerServer',
