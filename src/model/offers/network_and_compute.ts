@@ -232,14 +232,6 @@ export const AzureVm = defineOffer<
   provider: 'Azure',
   deliveryModel: 'IaaS',
 });
-/**
- * Note the absence of `associatePublicIp`, which `Ec2Instance`, `AzureVm` and
- * `HetznerServer` all expose. The omission is deliberate: the GCP agent builds the
- * instance's `NetworkInterface` from a subnetwork only and never adds an
- * `AccessConfig`, so a GCP VM is private-only today and a boolean here would be
- * silently ignored. Adding the field belongs with the agent-side create path, not
- * before it.
- */
 export const GcpVm = defineOffer<
   'NetworkAndCompute.VirtualMachine',
   {
@@ -248,6 +240,24 @@ export const GcpVm = defineOffer<
     userData?: string;
     imageLink?: string;
     identity?: VmIdentity;
+    /**
+     * Give the VM an external IPv4 address. Defaults to `false`.
+     *
+     * An external address on GCP is not a field on the instance: it is an
+     * `AccessConfig` of type `ONE_TO_ONE_NAT` on the instance's primary network
+     * interface. The GCP agent adds one at create time when this is set, and
+     * reports the address in the `publicIp` output field.
+     *
+     * The address is ephemeral, and `networkTier` is left to the project default.
+     * Attaching a reserved (static) `Address` resource is not expressible here —
+     * it has its own lifecycle, region and quota — and the agent's create path has
+     * no code for it.
+     *
+     * Unlike a service account, an access config can be added to or removed from a
+     * running instance, so flipping this on an existing VM is honored on the next
+     * reconcile. Turning it off releases the ephemeral address permanently.
+     */
+    associatePublicIp?: boolean;
   }
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
