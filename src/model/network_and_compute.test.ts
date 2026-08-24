@@ -25,6 +25,8 @@ import {
   Eks,
   VsphereVm,
   GcpVm,
+  AzureVm,
+  HetznerServer,
 } from './offers/network_and_compute';
 
 const environment = {};
@@ -228,6 +230,52 @@ describe('NetworkAndCompute domain', () => {
 
     const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
     expect(byId['app-vm'].parameters.identity).toBeUndefined();
+  });
+
+  it('associatePublicIp flows through on every VM offer that exposes it', () => {
+    // The agents read a boolean under the uniform `associatePublicIp` param key
+    // (AWS Ec2Config, Azure AzureVirtualMachineConfig, Hetzner PublicNet), and
+    // each publishes it in its param contract, so the key survives to the agent.
+    for (const offer of [
+      Ec2Instance({instanceType: 't3.medium', associatePublicIp: true}),
+      AzureVm({vmSize: 'Standard_B1s', associatePublicIp: true}),
+      HetznerServer({serverType: 'cx22', associatePublicIp: true}),
+    ]) {
+      const ls = authorFractal()
+        .specialize()
+        .toLiveSystem({
+          name: 'acme-net',
+          environment,
+          select: {...fullSelect(), 'app-vm': offer},
+        });
+
+      const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
+      expect(byId['app-vm'].parameters.associatePublicIp).toBe(true);
+    }
+  });
+
+  it('associatePublicIp is absent from parameters when omitted (agents default it to false)', () => {
+    const ls = authorFractal()
+      .specialize()
+      .toLiveSystem({
+        name: 'acme-net',
+        environment,
+        select: {
+          ...fullSelect(),
+          'app-vm': AzureVm({vmSize: 'Standard_B1s'}),
+        },
+      });
+
+    const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
+    expect(byId['app-vm'].parameters.associatePublicIp).toBeUndefined();
+  });
+
+  it('GcpVm exposes no associatePublicIp — the GCP agent has no create path for one', () => {
+    // Deliberate asymmetry, not an oversight: GcpComputeService builds its
+    // NetworkInterface with setSubnetwork only and never adds an AccessConfig, so
+    // a boolean here would be silently ignored. See the GCP note in the offer file.
+    // @ts-expect-error GcpVm has no associatePublicIp field
+    GcpVm({machineType: 'e2-medium', associatePublicIp: true});
   });
 
   it('selecting a wrong offer is a type error AND throws', () => {

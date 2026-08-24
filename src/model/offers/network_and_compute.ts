@@ -186,6 +186,19 @@ export const Ec2Instance = defineOffer<
     instanceType: string;
     userData?: string;
     identity?: VmIdentity;
+    /**
+     * Give the instance an auto-assigned public IPv4 address. Defaults to `false`.
+     *
+     * The AWS agent forwards this to `associatePublicIpAddress` on the instance's
+     * primary network-interface spec, and reports the result in the `publicIp`
+     * output field. The address is assigned regardless of routing, so it is only
+     * reachable when the subnet the instance lands in routes to an internet
+     * gateway.
+     *
+     * The address is ephemeral. Attaching an existing Elastic IP is not
+     * expressible here, and the agent's EC2 create path has no code for it.
+     */
+    associatePublicIp?: boolean;
   }
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
@@ -201,6 +214,17 @@ export const AzureVm = defineOffer<
     userData?: string;
     imageId?: string;
     identity?: VmIdentity;
+    /**
+     * Give the VM a public IPv4 address. Defaults to `false`.
+     *
+     * The Azure agent creates a Public IP resource and attaches it to the VM's
+     * primary NIC, and reports the address in the `publicIp` output field.
+     *
+     * The address is dynamic and Azure-allocated. Attaching an existing static or
+     * reserved Public IP is not expressible here, and the agent's VM create path
+     * has no code for it.
+     */
+    associatePublicIp?: boolean;
   }
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
@@ -208,6 +232,14 @@ export const AzureVm = defineOffer<
   provider: 'Azure',
   deliveryModel: 'IaaS',
 });
+/**
+ * Note the absence of `associatePublicIp`, which `Ec2Instance`, `AzureVm` and
+ * `HetznerServer` all expose. The omission is deliberate: the GCP agent builds the
+ * instance's `NetworkInterface` from a subnetwork only and never adds an
+ * `AccessConfig`, so a GCP VM is private-only today and a boolean here would be
+ * silently ignored. Adding the field belongs with the agent-side create path, not
+ * before it.
+ */
 export const GcpVm = defineOffer<
   'NetworkAndCompute.VirtualMachine',
   {
@@ -394,10 +426,7 @@ export const HetznerServer = defineOffer<
      * Give the server a public IPv4 and IPv6. Defaults to `false`.
      *
      * Hetzner assigns both address families when the posture is left unstated,
-     * so the agent now always states it. The AWS and Azure *agents* likewise
-     * default their VMs to no public address; note that `Ec2Instance` and
-     * `AzureVm` expose no equivalent SDK field yet, so this is not parity at
-     * the offer level.
+     * so the agent now always states it.
      *
      * A server without a public interface must be attached to a
      * `HetznerNetwork` to have any interface at all.
