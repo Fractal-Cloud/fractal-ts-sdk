@@ -9,10 +9,9 @@ The version published for a release is the GitHub release tag: `release.yml` run
 `npm version <tag>` at publish time, so `package.json` on `main` is not the source
 of truth for what is on npm.
 
-## Unreleased
+## 2.6.0
 
-The version is the release tag's decision, not this file's — see *Choosing the
-version* at the end of this entry.
+Minor, for the reason set out under *Choosing the version* at the end of this entry.
 
 ### What you may need to change
 
