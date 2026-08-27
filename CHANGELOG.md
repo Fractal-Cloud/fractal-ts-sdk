@@ -16,10 +16,71 @@ version* at the end of this entry.
 
 ### What you may need to change
 
+**One thing, and only if you deploy `AzureBlob`:** its config key `accountTier` is
+gone, replaced by `sku` and `accessTier`. Rename `AzureBlob({accountTier: 'X'})` to
+`AzureBlob({sku: 'X'})` — see *Fixed* below for what the old key did (nothing) and
+what the new ones do. Nothing else in this entry can fail to compile.
+
+### Fixed — **`AzureBlob`'s only knob reached no agent**
+
+`AzureBlob` declared a **required** config key `accountTier: string`. The Azure cloud
+agent's published parameter contract for the storage-account offer
+(`AzureStorageAccountParameters.paramSpecs()`) declares `sku` and `accessTier` and
+has no `accountTier` at all, and `fromComponent` never reads that key. Every value
+callers passed was serialized onto the component, accepted by the platform and read
+by nobody.
+
+It stayed invisible because both samples that use the offer pass `'Standard_LRS'` —
+which is a SKU *name*, not an account tier, and which is what `sku` defaults to on
+every path this offer can reach (the agent defaults `sku` to `Premium_LRS` only for
+`kind: BlockBlobStorage`, and this offer exposes no `kind`). The account came out
+right for the wrong reason. `'Premium_LRS'`, or a literal `'Premium'`, would have been
+dropped without a word and produced a Standard_LRS account.
+
+`accountTier` is removed. `sku` (a `SkuName`, e.g. `Standard_LRS`, `Premium_LRS`) and
+`accessTier` (`Hot` / `Cool` / `Cold` / `Premium`) take its place, both optional,
+matching the agent's contract — which marks every storage-account parameter optional,
+about half of them with a non-null default.
+
+Found while investigating a `basic_environment` sweep failure, where it was ruled out
+as the cause: because every storage-account parameter is optional, the dropped key
+could not have wedged the component. It is a silent-no-op bug on its own.
+
+**`region` on this offer is a separate, still-open no-op.** The agent's storage-account
+offer resolves its location from the legacy `azureRegion` key, not the canonical
+`region` the SDK emits, so `AzureBlob({region: 'northeurope'})` still produces a
+`westeurope` account. That fix belongs agent-side and is not in this release.
+
+### Choosing the version
+
+One offer is retyped: a required config key is removed and two optional ones are
+added, so `AzureBlob({accountTier: …})` stops compiling. Strict semver reads a removed
+required property as a major. Weighed against what the key actually was — inert, read
+by no agent, with a one-word migration and no runtime behavior to preserve — this
+argues for a **minor**. A caller who never touches `AzureBlob` is unaffected, and a
+JavaScript caller or an already-submitted blueprint still passing `accountTier` is
+unaffected at runtime: the key rides through as an inert parameter and does not become
+`sku`, which the test suite pins.
+
+Nothing else here is source-breaking. The tag decides, as it always does here.
+
+## 2.5.1
+
+Shipped in 2.5.1; the `dependsOn` widening described below completed in 2.5.3. **This
+entry sat under *Unreleased* through 2.5.1, 2.5.2, 2.5.3 and 2.5.4** — it was not
+rolled over when those releases were cut, so the version headings below are
+reconstructed from the published packages rather than recorded at release time.
+
+The version reasoning kept at the end of this entry is the reasoning as written before
+the release, left as-is — and it argued for a minor. It shipped as **2.5.1, a patch**,
+which is the same mismatch this file calls out for 2.4.5 below: a release that changes
+what an unchanged caller deploys should not hide in a patch number.
+
+### What you may need to change
+
 **Nothing in your code.** No exported identifier was added, removed, renamed or
-retyped. `K8sWorkload`, `MinIO`, `CaaSSparkCluster`, `CaaSSparkJob` and `CaaSMlflow`
-are imported, called and typed exactly as before, and the published `.d.ts`
-declarations are byte-identical to 2.5.0's. Nothing can fail to compile.
+retyped. `K8sWorkload`, `MinIO`, `CaaSSparkCluster`, `CaaSSparkJob` and
+`CaaSMlflow` are imported, called and typed exactly as before.
 
 **What changed is the string those five offers put on the wire** — the `type` of the
 component the SDK sends to the platform:
@@ -149,7 +210,15 @@ of them is unaffected.
 - The five offers now emit the ids above. Vendor-neutral CaaS offers continue to emit
   no `provider` — correct, and now asserted by tests.
 
+- `AzureBlob`'s config is now `{region?, sku?, accessTier?}` — see *Fixed* above.
+
 ### Added
+
+- Tests pinning `AzureBlob`'s emitted parameters as literals — that `sku` and
+  `accessTier` land in `parameters`, and that a caller who reaches past the types and
+  passes `accountTier` anyway gets a component that does not carry `sku`. The type
+  system stops a TypeScript caller; that test is what would fail if `accountTier` were
+  ever quietly re-added as a real key.
 
 - Tests pinning all five emitted strings as literals. There were none before: the
   suite covered each component's PaaS/cloud offers and never instantiated the
@@ -166,15 +235,15 @@ of them is unaffected.
 
 ### Choosing the version
 
-Not a semver-major: no exported identifier was removed, renamed or retyped. The
-offer-type fix leaves the declarations byte-identical; the `dependsOn` additions
+No exported identifier was removed, renamed or retyped. The offer-type fix leaves the
+declarations byte-identical; the `dependsOn` additions
 widen three exported node types, which is source-breaking for the three shapes listed
 under *What you may need to change* — constructing such a node value, keying an
 exhaustive mapped type off one, or duck-typing on `dependsOn`, that last one
 compiling cleanly while changing behavior. No sample and no known consumer does any
 of them.
 
-Between patch and minor, this release now argues squarely for a **minor**: it adds
+Between patch and minor, this release argues squarely for a **minor**: it adds
 public API surface (three methods) and it changes what an unchanged caller deploys
 for five offers — and 2.4.5 below is this file's own precedent that such a release
 should not hide in a patch number. The tag decides, as it always does here.

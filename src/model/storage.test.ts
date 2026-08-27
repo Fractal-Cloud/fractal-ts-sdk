@@ -20,6 +20,7 @@ import {
   AwsRdsPostgresDatabase,
   AzurePostgresDbms,
   AzurePostgresDatabase,
+  AzureBlob,
   MinIO,
 } from './offers/storage';
 
@@ -257,6 +258,51 @@ describe('Storage domain on the locked Fractal model', () => {
     expect(byId['uploads'].type).toBe('Storage.CaaS.MinioTenant');
     expect(byId['uploads'].provider).toBeUndefined();
     expect(byId['uploads'].parameters.storageClass).toBe('gp3');
+  });
+
+  it('AzureBlob emits the storage-account parameters the Azure agent reads', () => {
+    // Spelled out on purpose. The Azure agent's storage-account parameter
+    // contract declares `sku` (SkuName) and `accessTier` (Hot/Cool/Cold/Premium)
+    // and nothing named `accountTier`, so the key this offer used to declare —
+    // required, and set to `'Standard_LRS'` by both samples that use it — was
+    // stored on the component and read by nobody. It looked correct only because
+    // `Standard_LRS` is what `sku` defaults to; any other value was dropped in
+    // silence.
+    const ls = authorFractal().toLiveSystem({
+      name: 'acme-prod',
+      environment,
+      select: {
+        ...fullSelect(),
+        uploads: AzureBlob({sku: 'Premium_LRS', accessTier: 'Cool'}),
+      },
+    });
+    const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
+    expect(byId['uploads'].type).toBe('Storage.PaaS.AzureBlob');
+    expect(byId['uploads'].provider).toBe('Azure');
+    expect(byId['uploads'].parameters.sku).toBe('Premium_LRS');
+    expect(byId['uploads'].parameters.accessTier).toBe('Cool');
+    expect(byId['uploads'].parameters.accountTier).toBeUndefined();
+  });
+
+  it('a caller reaching past the types with accountTier gets no sku from it', () => {
+    // TypeScript stops `AzureBlob({accountTier: …})` — but the type system is not
+    // what this asserts, because test files are outside `tsconfig`'s `include` and
+    // a `@ts-expect-error` here would never be evaluated. What is pinned is the
+    // runtime a JavaScript caller or an already-submitted blueprint can still
+    // reach: `accountTier` rides through as an inert parameter and does NOT become
+    // `sku`, so the agent applies its own `sku` default. This fails the moment
+    // anyone quietly reintroduces `accountTier` as a real key or an alias.
+    const legacyConfig = {accountTier: 'Standard_LRS'} as unknown as {
+      sku?: string;
+    };
+    const ls = authorFractal().toLiveSystem({
+      name: 'acme-prod',
+      environment,
+      select: {...fullSelect(), uploads: AzureBlob(legacyConfig)},
+    });
+    const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
+    expect(byId['uploads'].parameters.sku).toBeUndefined();
+    expect(byId['uploads'].parameters.accountTier).toBe('Standard_LRS');
   });
 
   it('selecting an offer that does not satisfy the Component is a type error AND throws', () => {

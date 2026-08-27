@@ -50,9 +50,27 @@ export const AwsS3 = defineOffer<'Storage.ObjectStorage', {region?: string}>({
   provider: 'AWS',
   deliveryModel: 'PaaS',
 });
+/**
+ * Azure Storage account (blob). `sku` (a SkuName, e.g. `Standard_LRS`,
+ * `Premium_LRS`) and `accessTier` (`Hot` / `Cool` / `Cold` / `Premium`) are named
+ * for the parameters the Azure cloud agent actually reads, per its published
+ * parameter contract.
+ *
+ * `region` is emitted for consistency with the other object-storage offers, but
+ * the agent's storage-account offer resolves its location from the legacy
+ * `azureRegion` key, so `region` does not currently move the account.
+ *
+ * This used to declare a required `accountTier`, a key no agent reads: the
+ * agent's storage-account contract declares `sku` and `accessTier` and no
+ * `accountTier`, so the value was accepted by the API, stored on the component
+ * and silently ignored. It went unnoticed because every sample passed
+ * `'Standard_LRS'`, which is what `sku` defaults to anyway — the account came
+ * out right for the wrong reason, and any other value would have been dropped
+ * without a word.
+ */
 export const AzureBlob = defineOffer<
   'Storage.ObjectStorage',
-  {region?: string; accountTier: string}
+  {region?: string; sku?: string; accessTier?: string}
 >({
   satisfies: 'Storage.ObjectStorage',
   offerType: 'Storage.PaaS.AzureBlob',
