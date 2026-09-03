@@ -16,6 +16,7 @@ import {
   DistributedDataProcessing,
 } from './components/big_data';
 import {
+  AwsDatabricks,
   AwsDatabricksCluster,
   AwsDatabricksJob,
   AwsDatabricksMlflow,
@@ -242,6 +243,34 @@ describe('BigData domain — Databricks workspace dependency edges', () => {
       );
       expect(workspaceDeps).toHaveLength(1);
     }
+  });
+
+  // The AWS workspace needs two Databricks account-level artifacts the agent
+  // reads with requireStringFromMap: without them AwsDatabricks fails every
+  // reconcile with REQUIRED_PARAMETER_MISSING. Assert they reach the emitted
+  // component's parameters under the exact keys the agent reads
+  // (AwsDatabricksConfig.CREDENTIALS_ID_PARAM_KEY / STORAGE_CONFIGURATION_ID_PARAM_KEY).
+  it('AwsDatabricks emits credentialsId and storageConfigurationId as parameters', () => {
+    const ls = authorDatabricksPlatform().toLiveSystem({
+      name: 'acme-analytics',
+      environment,
+      select: {
+        workspace: AwsDatabricks({
+          pricingTier: 'premium',
+          credentialsId: 'cred-cfg-1',
+          storageConfigurationId: 'storage-cfg-1',
+        }),
+        cluster: AwsDatabricksCluster({}),
+        'etl-job': AwsDatabricksJob({}),
+        experiment: AwsDatabricksMlflow({}),
+      },
+    });
+
+    const workspace = ls.components.find(c => c.id === 'workspace')!;
+    expect(workspace.type).toBe('BigData.PaaS.AwsDatabricks');
+    expect(workspace.parameters.credentialsId).toBe('cred-cfg-1');
+    expect(workspace.parameters.storageConfigurationId).toBe('storage-cfg-1');
+    expect(workspace.parameters.pricingTier).toBe('premium');
   });
 
   it('dependsOn is additive, not replacing: repeated calls accumulate', () => {

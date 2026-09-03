@@ -9,6 +9,54 @@ The version published for a release is the GitHub release tag: `release.yml` run
 `npm version <tag>` at publish time, so `package.json` on `main` is not the source
 of truth for what is on npm.
 
+## Unreleased
+
+### What you may need to change
+
+**One thing, and only if you deploy `AwsDatabricks`:** its config gained two required
+keys, `credentialsId` and `storageConfigurationId`. `AwsDatabricks({pricingTier: 'X'})`
+stops compiling until you add them. Nothing else in this entry can fail to compile.
+
+### Fixed — **`AwsDatabricks` could never have deployed from this SDK**
+
+`AwsDatabricks` declared `{region?, pricingTier}`. The AWS cloud agent's config for
+that offer (`AwsDatabricksConfig.fromParams`) reads two more keys with
+`requireStringFromMap`:
+
+```java
+ParamSpec.required(CREDENTIALS_ID_PARAM_KEY, "string"),        // "credentialsId"
+ParamSpec.required(STORAGE_CONFIGURATION_ID_PARAM_KEY, "string"), // "storageConfigurationId"
+```
+
+`requireStringFromMap` throws `REQUIRED_PARAMETER_MISSING` when a key is absent or
+blank, and this SDK had no way to put either on the wire. Every `AwsDatabricks`
+component authored with this SDK failed on its first reconcile, always — the offer
+was unusable, not merely misconfigurable. The `basic_big_data` sample could not have
+passed on AWS.
+
+Both keys are now required config on the offer. They are **not** defaulted and cannot
+be: unlike a bucket name, they identify a Databricks *account-level* credential
+configuration and storage configuration created in the Databricks account console, so
+neither the agent nor this SDK can derive or invent them. They are environment inputs
+and the caller supplies them.
+
+The sibling `accountId` needs no config key: the agent declares it
+`ParamSpec.conditional` and falls back to the workspace's published `accountId` output
+field after the first reconcile.
+
+`AzureDatabricks` and `GcpDatabricks` are unaffected — their agents require no
+equivalent account-level artifacts.
+
+### Choosing the version
+
+Two required config properties are added to one offer, so
+`AwsDatabricks({pricingTier: …})` stops compiling. That is source-breaking on strict
+semver. Weighed against what the offer was before — a call that type-checked and then
+failed every deployment it was used in — no working caller exists to break: the change
+turns a guaranteed runtime failure into a compile error that names the two values the
+platform was always going to demand. A caller who never touches `AwsDatabricks` is
+unaffected. The tag decides, as it always does here.
+
 ## 2.6.0
 
 Minor, for the reason set out under *Choosing the version* at the end of this entry.

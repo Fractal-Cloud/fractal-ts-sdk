@@ -158,9 +158,23 @@ export const GcpDatalake = defineOffer<
 });
 
 // ── DistributedDataProcessing offers ─────────────────────────────────────────
+/**
+ * `credentialsId` and `storageConfigurationId` are the Databricks *account-level*
+ * credential configuration and storage configuration the workspace is created
+ * from. The agent reads both with `requireStringFromMap` and fails the component
+ * with `REQUIRED_PARAMETER_MISSING` when either is absent or blank, and neither
+ * can be derived: they name artifacts created in the Databricks account console,
+ * outside anything the agent or this SDK can see. They are environment inputs,
+ * so they are required config here rather than defaulted.
+ */
 export const AwsDatabricks = defineOffer<
   'BigData.DistributedDataProcessing',
-  {region?: string; pricingTier: string}
+  {
+    region?: string;
+    pricingTier: string;
+    credentialsId: string;
+    storageConfigurationId: string;
+  }
 >({
   satisfies: 'BigData.DistributedDataProcessing',
   offerType: 'BigData.PaaS.AwsDatabricks',
