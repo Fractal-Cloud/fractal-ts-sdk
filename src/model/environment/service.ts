@@ -54,6 +54,21 @@ export type DeployEnvironmentOptions = {
   /** `wait` polls each cloud-agent initialization to completion; `fire-and-forget`
    *  starts them and returns. Default `fire-and-forget`. */
   agentInit?: 'wait' | 'fire-and-forget';
+  /**
+   * Send `POST .../initialize` even when a stored initialization run already
+   * reads `Completed`. Default `false` — every existing caller keeps today's
+   * behavior exactly.
+   *
+   * A stored `Completed` run is evidence that an initialization once finished,
+   * NOT evidence that the agent is still alive. When the management plane is
+   * destroyed out of band (a cleanup job deleting the agent's resource groups),
+   * the run stays `Completed` forever, no initialize is ever sent again, and the
+   * environment is deadlocked while every deploy reports success. There is no
+   * agent-liveness endpoint to consult, so the decision belongs to the caller:
+   * a harness that knows its plane is disposable sets this, a caller deploying
+   * into a long-lived environment does not.
+   */
+  reinitializeAgents?: boolean;
   quiet?: boolean;
   pollIntervalMs?: number;
   timeoutMs?: number;
@@ -488,6 +503,7 @@ const initializeAgent = async (
   cfg: ApiConfig,
   opts: {
     agentInit: 'wait' | 'fire-and-forget';
+    reinitializeAgents: boolean;
     pollIntervalMs: number;
     timeoutMs: number;
     quiet: boolean;
@@ -497,17 +513,35 @@ const initializeAgent = async (
   const envId = formatEnvironmentId(env.id);
   const provider = agent.provider;
 
-  // (Re)start only if there is no current run or the last one failed/cancelled.
+  // (Re)start only if there is no current run or the last one failed/cancelled —
+  // unless the caller demanded a re-initialization, which overrides the stored
+  // status entirely (`reinitializeAgents`; a `Completed` run does not prove the
+  // agent still exists).
   const current = await fetchInitializationStatus(env, provider, cfg);
   const needsStart =
+    opts.reinitializeAgents ||
     current === null ||
     current.status === 'Failed' ||
     current.status === 'Cancelled';
+
+  // A forced start over an existing run has a second short-circuit to clear: the
+  // status endpoint keeps serving that OLD run until the server picks the new one
+  // up, so the poll loop below would read the pre-existing terminal status and
+  // return success without anything having happened. Remember the run we forced
+  // over and refuse to accept a verdict from it; the first status that differs
+  // releases the guard.
+  const forcedOver =
+    opts.reinitializeAgents && current !== null
+      ? stableStringify(current)
+      : null;
 
   if (needsStart) {
     log(opts.quiet, 'INFO', 'Starting cloud-agent initialization', {
       env: envId,
       provider,
+      // Only when forced: an unset `reinitializeAgents` must not change a single
+      // byte of what existing callers see.
+      ...(opts.reinitializeAgents ? {forced: 'true'} : {}),
     });
     // This request carries the PROVIDER's credentials as headers (`initHeaders`):
     // an Azure SP secret, a GCP service-account JSON key, AWS keys. Two distinct
@@ -542,9 +576,31 @@ const initializeAgent = async (
   const startMs = Date.now();
   const deadline = startMs + opts.timeoutMs;
   let round = 0;
+  let staleRun = forcedOver;
   while (Date.now() < deadline) {
     round++;
     const run = await fetchInitializationStatus(env, provider, cfg);
+    if (
+      run !== null &&
+      staleRun !== null &&
+      stableStringify(run) === staleRun
+    ) {
+      log(
+        opts.quiet,
+        'CHECK',
+        'Waiting for the forced cloud-agent re-initialization to be picked up',
+        {
+          env: envId,
+          provider,
+          round,
+          status: run.status,
+          elapsed: elapsedSec(startMs),
+        },
+      );
+      await sleep(opts.pollIntervalMs);
+      continue;
+    }
+    staleRun = null;
     if (run !== null) {
       logSteps(opts.quiet, envId, provider, run);
       switch (run.status) {
@@ -676,6 +732,7 @@ export async function deployEnvironment(
   const tree = resolveEnvironment(management);
   const quiet = opts.quiet ?? false;
   const agentInit = opts.agentInit ?? 'fire-and-forget';
+  const reinitializeAgents = opts.reinitializeAgents ?? false;
   const pollIntervalMs = opts.pollIntervalMs ?? DEFAULT_AGENT_POLL_INTERVAL_MS;
   const timeoutMs = opts.timeoutMs ?? DEFAULT_AGENT_TIMEOUT_MS;
 
@@ -746,6 +803,7 @@ export async function deployEnvironment(
   // 4. cloud-agent initialization
   const agentOpts = {
     agentInit,
+    reinitializeAgents,
     pollIntervalMs,
     timeoutMs,
     quiet,

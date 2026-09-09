@@ -495,3 +495,183 @@ describe('cloud.environments.deploy()', () => {
     spy.mockRestore();
   });
 });
+
+/**
+ * A finished initialization is not proof of a live agent.
+ *
+ * The status endpoint stores the last initialization RUN. When a management
+ * plane is destroyed out of band (the nightly Azure cleanup deleted
+ * `basic_environment`'s plane on 2026-08-24, agent web app included), that run
+ * still reads `Completed`, so `needsStart` was false forever: no initialize was
+ * ever sent again, the poll loop read the same `Completed` and reported success,
+ * and `createOrUpdateEnvironment` reported "Environment up-to-date" because the
+ * environment RECORD was intact. Sixteen days of green deploys over an agent
+ * that did not exist. There is no liveness endpoint to consult, so the escape is
+ * explicit and opt-in: `reinitializeAgents`.
+ */
+describe('cloud.environments.deploy() — reinitializeAgents', () => {
+  /** The body the SDK sends on create — fed back as the GET response it makes an
+   *  environment look already up-to-date (name, resource groups and every
+   *  managed parameter equal), which is the state the deadlock needs. */
+  const upToDateEnvBody = async () => {
+    h.requests.length = 0;
+    h.state.queue = [{status: 404}, {status: 201}, {status: 404}, {status: 202}];
+    await cloud.environments.deploy(mgmtOnly(), {
+      quiet: true,
+      providerCredentials,
+    });
+    const created = h.requests[1].body as {
+      name: string;
+      resourceGroups: string[];
+      parameters: Record<string, unknown>;
+    };
+    h.requests.length = 0;
+    h.state.queue = [];
+    return {
+      status: 200,
+      body: {
+        id: {type: 'Personal', ownerId: OWNER, shortName: 'mgmt'},
+        name: created.name,
+        resourceGroups: created.resourceGroups,
+        parameters: created.parameters,
+        status: 'Active',
+      },
+    };
+  };
+
+  const completed = {
+    status: 200,
+    body: {initializationRun: {status: 'Completed', steps: []}},
+  };
+
+  beforeEach(() => {
+    h.requests.length = 0;
+    h.state.queue = [];
+  });
+
+  it('option unset: a stored Completed run still short-circuits (today’s behavior)', async () => {
+    const existing = await upToDateEnvBody();
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    // Pre-start read, then the poll loop's own read: the same stored run twice.
+    h.state.queue = [existing, completed, completed];
+    await cloud.environments.deploy(mgmtOnly(), {
+      agentInit: 'wait',
+      pollIntervalMs: 1,
+      timeoutMs: 5000,
+      providerCredentials,
+    });
+    const logged = spy.mock.calls.map(c => c.join(' ')).join('\n');
+    spy.mockRestore();
+
+    // No initialize sent, and both "nothing to do" reports still emitted verbatim.
+    expect(h.requests.map(r => r.method)).toEqual(['GET', 'GET', 'GET']);
+    expect(h.requests.some(r => r.url.endsWith('/initialize'))).toBe(false);
+    expect(logged).toContain('Environment up-to-date');
+    expect(logged).toContain('Cloud-agent initialization completed');
+    expect(logged).not.toContain('forced=');
+  });
+
+  it('option unset with no stored run: unchanged, and never reports a forced start', async () => {
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    h.state.queue = [{status: 404}, {status: 201}, {status: 404}, {status: 202}];
+    await cloud.environments.deploy(mgmtOnly(), {providerCredentials});
+    const logged = spy.mock.calls.map(c => c.join(' ')).join('\n');
+    spy.mockRestore();
+
+    expect(h.requests.map(r => r.method)).toEqual(['GET', 'POST', 'GET', 'POST']);
+    expect(logged).toContain('Starting cloud-agent initialization');
+    expect(logged).not.toContain('forced=');
+  });
+
+  it('reinitializeAgents: initializes despite a stored Completed run', async () => {
+    const existing = await upToDateEnvBody();
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    h.state.queue = [existing, completed, {status: 202}];
+    await cloud.environments.deploy(mgmtOnly(), {
+      reinitializeAgents: true,
+      providerCredentials,
+    });
+    const logged = spy.mock.calls.map(c => c.join(' ')).join('\n');
+    spy.mockRestore();
+
+    expect(h.requests.map(r => r.method)).toEqual(['GET', 'GET', 'POST']);
+    const init = h.requests[2];
+    expect(init.url).toBe(
+      `https://api.fractal.cloud/environments/Personal/${OWNER}/mgmt/initializer/azure/initialize`,
+    );
+    // The "Environment up-to-date" short-circuit is upstream of agent
+    // initialization and must not swallow the forced run.
+    expect(logged).toContain('Environment up-to-date');
+    expect(logged).toContain('forced=true');
+  });
+
+  it('reinitializeAgents + wait: the run it forced over is not accepted as the verdict', async () => {
+    const existing = await upToDateEnvBody();
+    h.state.queue = [
+      existing,
+      completed, // pre-start read → force anyway
+      {status: 202}, // initialize
+      completed, // stale: the server still serves the OLD run
+      completed, // still stale
+      {
+        status: 200,
+        body: {initializationRun: {status: 'InProgress', steps: []}},
+      }, // the new run appears
+      completed, // and finishes
+    ];
+    await cloud.environments.deploy(mgmtOnly(), {
+      quiet: true,
+      agentInit: 'wait',
+      reinitializeAgents: true,
+      pollIntervalMs: 1,
+      timeoutMs: 5000,
+      providerCredentials,
+    });
+    // Had the stale Completed been accepted, the deploy would have returned after
+    // request 4 and left the last three responses in the queue.
+    expect(h.requests.map(r => r.method)).toEqual([
+      'GET',
+      'GET',
+      'POST',
+      'GET',
+      'GET',
+      'GET',
+      'GET',
+    ]);
+    expect(h.state.queue).toHaveLength(0);
+  });
+
+  it('reinitializeAgents + wait: a genuinely new failure is still reported', async () => {
+    const existing = await upToDateEnvBody();
+    h.state.queue = [
+      existing,
+      completed,
+      {status: 202},
+      {
+        status: 200,
+        body: {
+          initializationRun: {
+            status: 'Failed',
+            steps: [
+              {
+                status: 'Failed',
+                resourceName: 'kv',
+                lastOperationStatusMessage: 'boom',
+              },
+            ],
+          },
+        },
+      },
+    ];
+    await expect(
+      cloud.environments.deploy(mgmtOnly(), {
+        quiet: true,
+        agentInit: 'wait',
+        reinitializeAgents: true,
+        pollIntervalMs: 1,
+        timeoutMs: 5000,
+        providerCredentials,
+      }),
+    ).rejects.toThrow(/initialization failed/);
+  });
+});

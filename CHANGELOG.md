@@ -9,6 +9,47 @@ The version published for a release is the GitHub release tag: `release.yml` run
 `npm version <tag>` at publish time, so `package.json` on `main` is not the source
 of truth for what is on npm.
 
+## Unreleased
+
+Additive. Nothing existing changes behavior; no caller has to change anything.
+
+### Added — **`reinitializeAgents`, because a finished initialization is not a live agent**
+
+`environments.deploy` skipped `POST .../initializer/{provider}/initialize` whenever the
+stored initialization run read `Completed`, and there was no way to ask for it anyway.
+That treats a run that once finished as proof the agent still exists. It is not.
+
+When a management plane is destroyed out of band, the stored run stays `Completed`
+forever: no initialize is ever sent again, the `agentInit: 'wait'` poll re-reads that
+same run and logs *"Cloud-agent initialization completed"*, and the environment record
+itself is intact so create/update logs *"Environment up-to-date"*. The deploy returns
+green over an agent that no longer exists, permanently. This is not hypothetical — the
+`basic_environment` sample's plane was deleted by an unrelated cleanup job on
+2026-08-24 and the sample then failed identically for 16 days, every component
+`Unknown`, while every deploy reported success.
+
+There is no agent-liveness endpoint to consult, so the SDK cannot detect this on its
+own and does not try. The decision belongs to the caller:
+
+```ts
+await cloud.environments.deploy(management, {
+  agentInit: 'wait',
+  reinitializeAgents: true, // send initialize even if the stored run says Completed
+  providerCredentials: {...},
+});
+```
+
+Set it when the plane is disposable and you would rather re-initialize than trust a
+stored status — a CI harness that rebuilds its own environments. Leave it unset when
+deploying into a long-lived environment, which is the default: unset, every request,
+log line and short-circuit is exactly as before.
+
+Forcing also clears a second short-circuit that would otherwise swallow it. The status
+endpoint keeps serving the OLD run until the server picks the new one up, so
+`agentInit: 'wait'` could read the pre-existing `Completed` and return success with
+nothing having happened. A forced deploy therefore refuses a verdict from the run it
+forced over, and waits for a status that differs from it.
+
 ## 2.7.0
 
 Minor, for the reason set out under *Choosing the version* at the end of this entry.
