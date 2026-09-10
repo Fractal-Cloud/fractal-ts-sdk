@@ -9,7 +9,37 @@ The version published for a release is the GitHub release tag: `release.yml` run
 `npm version <tag>` at publish time, so `package.json` on `main` is not the source
 of truth for what is on npm.
 
-## Unreleased
+## 2.7.2
+
+Patch. A bug fix; no API change and no caller has to change anything.
+
+### Fixed — **a `KubernetesWorkload` never received the image it was given**
+
+`Workload().withImage(v)` wrote the parameter key `image`. The caas-k8s
+`KubernetesWorkload` contract declares only `containerImage`, so the value was pruned
+before it reached the agent, and the agent then correctly refused a workload with
+neither `containerImage` nor `manifestUri`. The sample and the agent were both right;
+the SDK was dropping the field.
+
+`image` is not universally wrong — it is the key OpenShift *requires* and the key the
+Azure Container App offer reads — so the translation lives at the offers that emit
+`CustomWorkloads.CaaS.KubernetesWorkload`, and `withImage` keeps its name and signature.
+No caller changes.
+
+There are two such paths, and the second is where the defect actually lived: a top-level
+`Workload` selecting the `K8sWorkload` offer, and a workload added as a **child** of a
+container platform, which is never offer-selected. The child's component is emitted by
+the container platform offer, which spread `child.parameters` verbatim. That is the path
+`app_with_identity` takes. Both now translate, so all three container platform offers
+carry it.
+
+Where a workload sets `containerImage` explicitly, that value wins and is neither
+clobbered nor duplicated. Because `withImage` is a locked guardrail while `containerImage`
+is not, an application-authored override of an architect's locked image is now detected
+through the instantiation context's locked set and reported rather than silently winning;
+a blank override no longer suppresses the guardrail image.
+
+## 2.7.1
 
 Additive. Nothing existing changes behavior; no caller has to change anything.
 
