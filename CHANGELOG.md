@@ -9,9 +9,19 @@ The version published for a release is the GitHub release tag: `release.yml` run
 `npm version <tag>` at publish time, so `package.json` on `main` is not the source
 of truth for what is on npm.
 
+## Unreleased
+
+Nothing yet.
+
 ## 2.7.2
 
-Patch. A bug fix; no API change and no caller has to change anything.
+Patch. A bug fix; no API change. One narrow authoring combination does change: a
+locked `withImage()` together with an explicit `containerImage` on the same workload
+now throws at instantiation instead of letting the unlocked key silently override the
+lock. That combination previously built and deployed — `image` was pruned by the
+contract and `containerImage` reached the agent — so a blueprint doing both must drop
+one of them. Setting `containerImage` alone, which is how the existing workarounds are
+written, is unaffected.
 
 ### Fixed — **a `KubernetesWorkload` never received the image it was given**
 
@@ -41,7 +51,9 @@ a blank override no longer suppresses the guardrail image.
 
 ## 2.7.1
 
-Additive. Nothing existing changes behavior; no caller has to change anything.
+Additive. Nothing existing changes behavior; no caller has to change anything. It added
+an optional field to a public type, which is a minor under semver, and it shipped as
+2.7.1 — a patch. That is the same mismatch this file calls out for 2.4.5 and 2.5.1.
 
 ### Added — **`reinitializeAgents`, because a finished initialization is not a live agent**
 
