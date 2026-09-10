@@ -121,6 +121,9 @@ export const withContractImageName = (
   const explicit = rest[KUBERNETES_WORKLOAD_IMAGE_PARAM];
   if (isSupplied(explicit)) {
     if (locked.includes(NEUTRAL_IMAGE_PARAM)) {
+      // TODO: this throw breaks a blueprint that built before 2.7.2 — a locked
+      // withImage() plus an explicit containerImage used to deploy, because the
+      // contract pruned the neutral key (FRA-3248)
       throw new Error(
         `Parameter '${NEUTRAL_IMAGE_PARAM}' on '${componentId}' is a locked ` +
           `guardrail, and '${KUBERNETES_WORKLOAD_IMAGE_PARAM}' is the same value ` +
