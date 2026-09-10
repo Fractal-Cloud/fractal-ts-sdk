@@ -51,6 +51,17 @@ export type ChildContext = {
   id: string;
   displayName: string;
   parameters: Record<string, unknown>;
+  /**
+   * Names of this child's LOCKED guardrail parameters, carried for the same
+   * reason `InstantiationContext.locked` is: an offer emitting a child cannot
+   * otherwise tell an architect's design-time guardrail from a dev-open value,
+   * so it cannot detect that a vendor key it is about to emit contradicts one.
+   * `ContainerPlatform` offers use it to refuse a workload whose locked image
+   * is being overridden by a dev-open `containerImage`.
+   *
+   * OPTIONAL for the same additive reason — read it as `child.locked ?? []`.
+   */
+  locked?: readonly string[];
   dependencies: readonly string[];
   links: readonly ComponentLink[];
 };
@@ -343,6 +354,7 @@ const childrenFor = (st: FractalState, parentId: string): ChildContext[] =>
     id: c.id,
     displayName: c.displayName ?? c.id,
     parameters: {...c.parameters},
+    locked: [...c.locked],
     dependencies: [...c.dependencies, parentId],
     links: linksFor(st, c.id),
   }));

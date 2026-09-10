@@ -82,7 +82,13 @@ describe('links authored in Fractal Interface operations', () => {
     const workload = ls.components.find(c => c.id === 'orders')!;
     expect(workload.type).toBe('CustomWorkloads.CaaS.KubernetesWorkload');
     expect(workload.dependencies).toContain('app-platform'); // auto-wired child dep
-    expect(workload.parameters.image).toBe('acme/web:1.4.0');
+    // The child is emitted under the caas-k8s offer type, so it carries the
+    // image under the name that agent's contract declares. This assertion used
+    // to read `parameters.image` and passed while the sweep failed: the child
+    // path is never offer-selected, so it was the last place still emitting the
+    // neutral name.
+    expect(workload.parameters.containerImage).toBe('acme/web:1.4.0');
+    expect(workload.parameters.image).toBeUndefined();
     expect(workload.parameters.maxReplicas).toBe(5);
 
     // Both operation-authored links flow onto the workload.
