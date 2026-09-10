@@ -9,6 +9,7 @@
  */
 import {defineOffer} from '../core';
 import {KUBERNETES_WORKLOAD_OFFER_TYPE} from './offer_type_ids';
+import {withContractImageName} from './kubernetes_workload_contract';
 
 // ── Workload offers ──────────────────────────────────────────────────────────
 export const EcsService = defineOffer<
@@ -47,7 +48,26 @@ export const OpenshiftWorkload = defineOffer<
   provider: 'RedHat',
   deliveryModel: 'CaaS',
 });
-// Vendor-neutral: runs on any Kubernetes cluster, so `provider` is omitted.
+/**
+ * Vendor-neutral: runs on any Kubernetes cluster, so `provider` is omitted.
+ *
+ * The neutral `Workload` component records a container image under `image`.
+ * Of the five offers that satisfy this component, only two claim a strategy
+ * that reads an image at all — `OpenshiftWorkload`, which REQUIRES `image`,
+ * and `AzureContainerApp`, which reads `image`. `EcsService` and `CloudRun`
+ * both map to a phantom strategy whose declared parameter contract is empty,
+ * so they consume nothing. This offer is the lone outlier: the caas-k8s agent
+ * reads `containerImage` and nothing else. Translating at the outlier is
+ * therefore right, and renaming the neutral parameter would break OpenShift.
+ *
+ * Emitting `image` was a silent data loss, not a visible error: the parameter
+ * contract prunes names it does not declare, so the value never reached the
+ * agent, `containerImage` arrived empty and the handler correctly refused the
+ * component with `containerImage is required when manifestUri is not set`.
+ *
+ * A `Workload` added as a CHILD of a ContainerPlatform never reaches this
+ * `instantiate` — see `withContractImageName`, which both paths share.
+ */
 export const K8sWorkload = defineOffer<
   'CustomWorkloads.Workload',
   {namespace?: string}
@@ -57,6 +77,24 @@ export const K8sWorkload = defineOffer<
   // value is pinned to the id the catalogue and the caas-k8s agent agree on.
   offerType: KUBERNETES_WORKLOAD_OFFER_TYPE,
   deliveryModel: 'CaaS',
+  instantiate: (ctx, cfg) => [
+    {
+      id: ctx.id,
+      displayName: ctx.displayName,
+      type: KUBERNETES_WORKLOAD_OFFER_TYPE,
+      // `provider` is deliberately absent: this offer is vendor-neutral. If one
+      // is ever added to the spec above it must be added here too — a custom
+      // `instantiate` does not inherit the default path's `provider`.
+      deliveryModel: 'CaaS',
+      parameters: withContractImageName(
+        {...ctx.parameters, ...cfg},
+        ctx.id,
+        ctx.locked ?? [],
+      ),
+      dependencies: ctx.dependencies,
+      links: ctx.links,
+    },
+  ],
 });
 
 // ── Function offers ──────────────────────────────────────────────────────────

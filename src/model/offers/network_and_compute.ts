@@ -13,6 +13,7 @@
  */
 import {defineOffer} from '../core';
 import {KUBERNETES_WORKLOAD_OFFER_TYPE} from './offer_type_ids';
+import {withContractImageName} from './kubernetes_workload_contract';
 import type {
   InstantiationContext,
   LiveSystemComponent,
@@ -46,7 +47,17 @@ const containerPlatformInstantiate =
       displayName: child.displayName,
       type: KUBERNETES_WORKLOAD_OFFER_TYPE,
       deliveryModel: 'CaaS' as const,
-      parameters: {...child.parameters},
+      // The child is emitted under the caas-k8s offer type without ever being
+      // offer-selected, so `K8sWorkload.instantiate` never runs for it and this
+      // is the only place its parameters are named. It needs the same neutral
+      // `image` → `containerImage` translation the selected path gets; without
+      // it a child workload ships a key the agent's contract does not declare
+      // and fails with `containerImage is required when manifestUri is not set`.
+      parameters: withContractImageName(
+        {...child.parameters},
+        child.id,
+        child.locked ?? [],
+      ),
       dependencies: [...child.dependencies],
       links: [...child.links],
     })),
