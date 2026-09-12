@@ -8,7 +8,10 @@
  * + offerType. Vendor knobs live in each offer's config type.
  */
 import {defineOffer} from '../core';
-import {KUBERNETES_WORKLOAD_OFFER_TYPE} from './offer_type_ids';
+import {
+  AZURE_CONTAINER_APPS_ENVIRONMENT_OFFER_TYPE,
+  KUBERNETES_WORKLOAD_OFFER_TYPE,
+} from './offer_type_ids';
 import {withContractImageName} from './kubernetes_workload_contract';
 
 // ── Workload offers ──────────────────────────────────────────────────────────
@@ -30,6 +33,19 @@ export const CloudRun = defineOffer<
   provider: 'GCP',
   deliveryModel: 'PaaS',
 });
+/**
+ * A Container App runs INSIDE a managed environment, and the agent will not
+ * create one implicitly: it resolves an `AzureContainerAppsEnvironment`
+ * dependency by type and reads the provisioned `environmentId` off that peer's
+ * output fields. A workload without one fails in the agent, mid-deployment,
+ * with `has no AzureContainerAppsEnvironment dependency` — so the selection is
+ * refused here instead, while the author is still looking at the blueprint.
+ *
+ * The dependency is matched on the emitted offer type rather than the component
+ * id so it holds however the environment is named, and it is checked against the
+ * emitted Live System rather than the blueprint because only the former knows
+ * which offer a `ContainerPlatform` component was given.
+ */
 export const AzureContainerApp = defineOffer<
   'CustomWorkloads.Workload',
   {region?: string; resourceGroup: string}
@@ -38,6 +54,22 @@ export const AzureContainerApp = defineOffer<
   offerType: 'CustomWorkloads.PaaS.AzureContainerApp',
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  validate: (self, all) => {
+    const hasEnvironment = all.some(
+      c =>
+        self.dependencies.includes(c.id) &&
+        c.type === AZURE_CONTAINER_APPS_ENVIRONMENT_OFFER_TYPE,
+    );
+    if (!hasEnvironment) {
+      throw new Error(
+        `AzureContainerApp '${self.id}' has no ${AZURE_CONTAINER_APPS_ENVIRONMENT_OFFER_TYPE} ` +
+          'dependency. An Azure Container App can only run inside a managed ' +
+          'environment: add a ContainerPlatform component to the blueprint, ' +
+          `select AzureContainerAppsEnvironment for it, and make '${self.id}' ` +
+          'depend on it.',
+      );
+    }
+  },
 });
 export const OpenshiftWorkload = defineOffer<
   'CustomWorkloads.Workload',

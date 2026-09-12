@@ -11,7 +11,47 @@ of truth for what is on npm.
 
 ## Unreleased
 
-Nothing yet.
+### Added — **`AzureContainerAppsEnvironment`, the platform a Container App needs**
+
+`AzureContainerApp` cannot run on its own: the agent resolves an
+`AzureContainerAppsEnvironment` dependency by type and reads the provisioned
+`environmentId` off that peer's output fields. The catalogue and the agent have both
+carried that offer all along; this SDK exported no symbol for it, so the dependency was
+unexpressible and every Container App authored here failed mid-deployment with
+`Component [x] has no AzureContainerAppsEnvironment dependency`.
+
+It satisfies `NetworkAndCompute.ContainerPlatform` — where the catalogue files it —
+and emits `NetworkAndCompute.PaaS.AzureContainerAppsEnvironment`.
+
+`location` is required, and spelled `location` rather than `region`. The agent reads
+only `location` for this component, and hands it to ARM unguarded — unlike its sibling
+`AzureContainerApp`, which falls back to the resolved component region — so an omitted
+one is an empty region and a failed deployment, not a default. `region` is a parameter
+every Azure offer declares, but this component never consults it.
+
+There is no `resourceGroup` knob: the agent resolves the group from the
+`azureResourceGroup` map parameter, falling back to the LiveSystem's group, and a flat
+`resourceGroup` string would have read back to the author while provisioning elsewhere.
+`logAnalyticsWorkspaceId` and `logAnalyticsSharedKey` are optional and take effect only
+together.
+
+```ts
+const platform = bp.add(ContainerPlatform({id: 'app-platform'}));
+const api = bp.add(Workload({id: 'api-workload'}).dependsOn(platform));
+// ...
+select: {
+  'app-platform': AzureContainerAppsEnvironment({location: 'westeurope'}),
+  'api-workload': AzureContainerApp({resourceGroup: 'rg-cp'}),
+}
+```
+
+### Changed — **a Container App without an environment is refused at author time**
+
+`AzureContainerApp` now throws from `toLiveSystem` when the component declares no
+dependency emitted as `NetworkAndCompute.PaaS.AzureContainerAppsEnvironment`, naming
+the fix. Previously such a Live System deployed and the agent failed it minutes later.
+A blueprint that was already deploying Container Apps successfully has that dependency
+and is unaffected; one that was failing in the agent now fails immediately instead.
 
 ## 2.7.2
 
