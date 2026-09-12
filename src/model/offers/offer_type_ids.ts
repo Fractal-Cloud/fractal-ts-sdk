@@ -12,3 +12,18 @@
  */
 export const KUBERNETES_WORKLOAD_OFFER_TYPE =
   'CustomWorkloads.CaaS.KubernetesWorkload';
+
+/**
+ * The managed environment an `AzureContainerApp` runs in. Two offer modules name
+ * it: the offer itself lives in `network_and_compute.ts` (it satisfies
+ * `NetworkAndCompute.ContainerPlatform`, which is where the catalogue files it),
+ * while the workload that REQUIRES one as a dependency lives in
+ * `custom_workloads.ts` and refuses a Live System without it.
+ *
+ * The agent matches this dependency on the full 3-part string, case-insensitively
+ * (`LiveSystem.getDependenciesByTypes`), and dispatches on the third segment alone
+ * within the PaaS tier (`AzureNetworkAndComputeInstantiatorStrategy`). Both
+ * segments must therefore stay exactly as written here.
+ */
+export const AZURE_CONTAINER_APPS_ENVIRONMENT_OFFER_TYPE =
+  'NetworkAndCompute.PaaS.AzureContainerAppsEnvironment';

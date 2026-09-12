@@ -12,7 +12,10 @@
  * from the underlying cluster and therefore do NOT expose it.
  */
 import {defineOffer} from '../core';
-import {KUBERNETES_WORKLOAD_OFFER_TYPE} from './offer_type_ids';
+import {
+  AZURE_CONTAINER_APPS_ENVIRONMENT_OFFER_TYPE,
+  KUBERNETES_WORKLOAD_OFFER_TYPE,
+} from './offer_type_ids';
 import {withContractImageName} from './kubernetes_workload_contract';
 import type {
   InstantiationContext,
@@ -335,6 +338,73 @@ export const Gke = defineOffer<
     'GCP',
   ),
 });
+
+/**
+ * The managed environment Azure Container Apps run in.
+ *
+ * The catalogue files it under `ContainerPlatform` — it is a platform that hosts
+ * containers, not a Kubernetes cluster — and `AzureContainerApp` REQUIRES one:
+ * the agent resolves it as a dependency by type and reads the provisioned
+ * `environmentId` off its output fields. Without this offer that dependency was
+ * unexpressible from TypeScript, and every Container App failed in the agent
+ * with `has no AzureContainerAppsEnvironment dependency`. Declare one and point
+ * each Container App at it with `.dependsOn(...)`.
+ *
+ * `location` is REQUIRED, and spelled `location` rather than this file's uniform
+ * `region`. Both halves are forced by the agent: its config reads `location` and
+ * nothing else, and unlike its sibling `AzureContainerApp` — which falls back to
+ * the resolved component region when its own is blank — the environment hands
+ * `config.location()` straight to ARM's `withRegion(...)` with no guard. An
+ * omitted `location` is therefore not a default, it is an empty region string and
+ * a failed deployment. `region` is a real parameter every Azure offer declares,
+ * but this component never consults it, so setting it would deploy nothing.
+ *
+ * `resourceGroup` is deliberately ABSENT. The agent never reads a flat
+ * `resourceGroup` key: it resolves the group from the `azureResourceGroup` map
+ * parameter (a map with a `name` key), falling back to the LiveSystem's group.
+ * Offering the flat string here would provision into the LiveSystem's group while
+ * the author read their own value back. The other two knobs are genuinely
+ * optional — supply both to attach Log Analytics, or neither. `name` is not a
+ * parameter at all; the agent uses the component id.
+ *
+ * Unlike `Eks`/`Aks`/`Gke` this offer does NOT use `containerPlatformInstantiate`.
+ * That helper emits each app-added child as a Kubernetes workload, which is right
+ * for a cluster and wrong here: this platform's children are Container Apps, a
+ * path no offer emits yet. With the default `instantiate` a child is not silently
+ * mis-typed — `toLiveSystem` refuses the selection outright.
+ */
+export const AzureContainerAppsEnvironment = defineOffer<
+  'NetworkAndCompute.ContainerPlatform',
+  {
+    location: string;
+    logAnalyticsWorkspaceId?: string;
+    logAnalyticsSharedKey?: string;
+  }
+>({
+  satisfies: 'NetworkAndCompute.ContainerPlatform',
+  offerType: AZURE_CONTAINER_APPS_ENVIRONMENT_OFFER_TYPE,
+  provider: 'Azure',
+  deliveryModel: 'PaaS',
+});
+
+/**
+ * The config `AzureContainerAppsEnvironment` takes — and the guard that keeps
+ * `location` required.
+ *
+ * `RequiresLocation` constrains its argument to `{location: string}`, so if the
+ * offer's config ever loosens `location` to optional this alias stops compiling.
+ * That matters more than it looks: an omitted `location` reaches ARM as an empty
+ * region, and the agent has no fallback for this component.
+ *
+ * The guard lives HERE, next to the offer, rather than as a `@ts-expect-error` in
+ * the spec, because `tsconfig.json` excludes every `.test.ts` file — `tsc` never
+ * reads one, vitest strips types without checking them, and `gts lint` is not
+ * type-aware, so a type assertion written in a spec is evaluated by nothing at all.
+ */
+type RequiresLocation<T extends {location: string}> = T;
+export type AzureContainerAppsEnvironmentConfig = RequiresLocation<
+  Parameters<typeof AzureContainerAppsEnvironment>[0]
+>;
 
 // ── LoadBalancer ─────────────────────────────────────────────────────────────
 export const AwsLb = defineOffer<
