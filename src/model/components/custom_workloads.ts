@@ -29,6 +29,10 @@ export type WorkloadNode<Id extends string = string> = ComponentNode<
   withHealthCheck: (v: {path: string; port: number}) => WorkloadNode<Id>;
   dependsOn: (other: AnyNode) => WorkloadNode<Id>;
 };
+// TODO: port, cpuRequest, memoryRequest, maxReplicas and healthCheck emit names the
+// caas-k8s contract does not declare, so they are pruned before the agent sees them.
+// Each has an agent-side default, so the component deploys green on our value while the
+// blueprint says otherwise (FRA-3284).
 const workloadNode = <Id extends string>(s: NodeState): WorkloadNode<Id> => ({
   state: s,
   withImage: v => workloadNode<Id>(guardrail(s, 'image', v)),
