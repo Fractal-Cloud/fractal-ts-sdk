@@ -129,6 +129,54 @@ export const GcpPostgresDbms = defineOffer<
   ),
 });
 /**
+ * Google Cloud SQL for MySQL, DBMS tier only.
+ *
+ * **Child components are not supported, and selecting this offer for a DBMS that
+ * has any is an error.** Every other DBMS offer here emits one Database live
+ * component per child added via `withDatabases`; this one has no Database offer
+ * to emit them as, because `Storage.PaaS.GcpMySqlDatabase` does not exist yet.
+ * It therefore omits `instantiate` — and `toLiveSystem`'s child-drop guard turns
+ * that into a thrown error naming this offer and every dropped child, at
+ * authoring time, before anything reaches a cloud. That is the loud failure, and
+ * it is why omitting `instantiate` beats emitting a database type no agent
+ * handles: that alternative builds a Live System successfully and leaves the
+ * child component Instantiating forever. Adding `instantiate` once the Database
+ * offer lands is additive and non-breaking; removing it later would not be.
+ *
+ * The config keys are spelled the way the GCP agent reads them. `tier` on the
+ * PostgreSQL offer above is not one of them — the agent reads `instanceTier` and
+ * has never read `tier` — so do not copy that spelling here. A parameter the
+ * published contract does not declare is pruned before it reaches the agent, so
+ * a differently-spelled key is not merely ignored, it is silently deleted.
+ *
+ * `network` is REQUIRED, and that is the difference from the PostgreSQL offer
+ * above. The agent throws "Network parameter is missing" when it is blank, and it
+ * is the only parameter here it refuses to default. It cannot come from anywhere
+ * else: the blueprint declares vendor-neutral Components and has no VPC setter,
+ * and the environment's spoke network name reaches the agent but not this code
+ * path, which reads the component's own parameters and nothing else. Leaving it
+ * off the config type — as the PostgreSQL offer does — leaves an author no way to
+ * supply it at all. Required here means the omission is a type error at authoring
+ * time instead of a failed create in the cloud; no value is seeded, because a VPC
+ * name is environment-specific and a plausible wrong one passes every lint and
+ * fails only against the vendor.
+ */
+export const GcpMySqlDbms = defineOffer<
+  'Storage.RelationalDbms',
+  {
+    network: string;
+    region?: string;
+    instanceTier?: string;
+    instanceEdition?: string;
+    instanceDataDiskSizeGb?: number;
+  }
+>({
+  satisfies: 'Storage.RelationalDbms',
+  offerType: 'Storage.PaaS.GcpMySqlDbms',
+  provider: 'GCP',
+  deliveryModel: 'PaaS',
+});
+/**
  * Amazon RDS for PostgreSQL. One offer covers both shapes RDS provides, selected
  * by `mode`: an Aurora cluster with Serverless v2 members (`aurora-serverless`,
  * the default) or a single Multi-AZ provisioned instance
