@@ -149,22 +149,35 @@ export const GcpPostgresDbms = defineOffer<
  * published contract does not declare is pruned before it reaches the agent, so
  * a differently-spelled key is not merely ignored, it is silently deleted.
  *
- * `network` is REQUIRED, and that is the difference from the PostgreSQL offer
- * above. The agent throws "Network parameter is missing" when it is blank, and it
- * is the only parameter here it refuses to default. It cannot come from anywhere
- * else: the blueprint declares vendor-neutral Components and has no VPC setter,
- * and the environment's spoke network name reaches the agent but not this code
- * path, which reads the component's own parameters and nothing else. Leaving it
- * off the config type — as the PostgreSQL offer does — leaves an author no way to
- * supply it at all. Required here means the omission is a type error at authoring
- * time instead of a failed create in the cloud; no value is seeded, because a VPC
- * name is environment-specific and a plausible wrong one passes every lint and
- * fails only against the vendor.
+ * `network` is OPTIONAL, and is declared here where the PostgreSQL offer above
+ * omits it entirely — the difference that remains between the two.
+ *
+ * It was required until the agent learned to derive it. Omitting it now selects
+ * the environment's spoke network: `GcpDatabaseInstance.getFromComponent` reads
+ * this component parameter first and, when it is blank, falls back to
+ * `CloudSqlNetworkFallback`, built from the spoke network that
+ * `GcpInfrastructureComponent` resolves for every GCP component before any
+ * parameter of this Offer is read. The published contract agrees —
+ * `GcpMySqlInstantiatorStrategy` declares it `ParamSpec.derived(..., "defaults to
+ * the environment's spoke network when absent")`, not `required` — so a config
+ * that omits it is neither pruned nor rejected.
+ *
+ * Declaring it anyway, rather than dropping it as the PostgreSQL offer does, is
+ * the point: an author-supplied value WINS over the derivation, and it is the
+ * only route for a component whose `projectId` overrides the environment's.
+ * `CloudSqlNetworkFallback.forComponent` refuses to derive across projects —
+ * the spoke name is environment-scoped while the create path is composed from
+ * the overridden `projectId`, so deriving would name a VPC that does not exist
+ * there — and fails with a message telling the author to supply this key. The
+ * PostgreSQL offer, which omits it, leaves that author no route at all.
+ *
+ * No value is seeded, because a VPC name is environment-specific and a plausible
+ * wrong one passes every lint and fails only against the vendor.
  */
 export const GcpMySqlDbms = defineOffer<
   'Storage.RelationalDbms',
   {
-    network: string;
+    network?: string;
     region?: string;
     instanceTier?: string;
     instanceEdition?: string;

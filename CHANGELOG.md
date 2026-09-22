@@ -53,6 +53,34 @@ the fix. Previously such a Live System deployed and the agent failed it minutes 
 A blueprint that was already deploying Container Apps successfully has that dependency
 and is unaffected; one that was failing in the agent now fails immediately instead.
 
+### Changed — **`GcpMySqlDbms.network` is optional, because the agent now derives it**
+
+`network` was the one key this offer required. It is now optional, and omitting it
+selects the environment's spoke network.
+
+Both halves of the original justification stopped being true in
+`fractal-cloud-agents#751`:
+
+- the runtime no longer demands the value. `GcpDatabaseInstance.getFromComponent`
+  reads the component parameter first and, when it is blank, falls back to
+  `CloudSqlNetworkFallback` — the environment's spoke network, already resolved for
+  every GCP component before any parameter of this Offer is read;
+- the published parameter contract no longer marks it required.
+  `GcpMySqlInstantiatorStrategy` declares
+  `ParamSpec.derived(NETWORK_PARAM_KEY, "string", "defaults to the environment's spoke
+  network when absent")`.
+
+**Nothing you have written breaks.** A supplied `network` still typechecks and still
+WINS over the derivation. Keep supplying it when the component's `projectId`
+overrides the environment's: `CloudSqlNetworkFallback.forComponent` refuses to derive
+across projects, because the spoke name is environment-scoped while the create path is
+composed from the overridden project, and it fails telling you to name a VPC in that
+project. Supplying it is the only route for that case.
+
+The offer still declares the key, rather than dropping it the way `GcpPostgreSqlDbms`
+does — that offer omits `network` entirely and so leaves a cross-project author no way
+to supply one at all.
+
 ## 2.7.2
 
 Patch. A bug fix; no API change. One narrow authoring combination does change: a
