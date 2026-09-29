@@ -12,19 +12,37 @@
 import {GcpMySqlDbms} from './storage';
 
 /**
- * `network` is required on this offer's config where the PostgreSQL one omits it. It is the one
- * parameter the GCP agent refuses to default — `GcpDatabaseInstance.getFromComponent` throws
- * `Network parameter is missing` on a blank value, and the published contract marks it
- * `required: true` — so an author who cannot supply it here has no route to it at all, and the
- * create call fails cloud-side. Relaxing this to `network?: string` to match the PostgreSQL offer
- * reintroduces exactly that hole; these directives turn that into a compile error.
+ * `network` is OPTIONAL on this offer's config, matching the PostgreSQL one.
+ *
+ * It was required until the agent learned to derive it. Both halves of the old justification are
+ * now false at the source, which is why these assertions are inverted rather than merely relaxed:
+ *
+ *   - the runtime no longer demands it. `GcpDatabaseInstance.getFromComponent` reads the component
+ *     parameter first and, when it is blank, falls back to `CloudSqlNetworkFallback` — the
+ *     environment's spoke network, which `GcpInfrastructureComponent` resolves for every GCP
+ *     component before any parameter of this Offer is read;
+ *   - the published contract no longer marks it `required: true`. `GcpMySqlInstantiatorStrategy`
+ *     declares `ParamSpec.derived(NETWORK_PARAM_KEY, "string", "defaults to the environment's spoke
+ *     network when absent")`.
+ *
+ * Requiring it here now costs an author the ordinary case — a Cloud SQL instance in the
+ * environment's own project, where the spoke network is exactly the right answer — to buy nothing.
  */
-// @ts-expect-error `network` is required: an empty config must not typecheck.
+// An empty config must typecheck: the agent derives the network.
 GcpMySqlDbms({});
 
-// @ts-expect-error `network` is required: supplying only the optional keys must not typecheck.
+// Supplying only the optional keys must typecheck, for the same reason.
 GcpMySqlDbms({instanceTier: 'db-perf-optimized-N-4'});
 
-// Positive control: with `network` supplied, the same call typechecks. Without this, the two
-// directives above would also be satisfied by an offer that rejects every config.
+/**
+ * An author-supplied `network` must still typecheck, and is not merely decorative: the component
+ * parameter wins over the derived fallback, and it is the ONLY route for a component whose
+ * `projectId` overrides the environment's — `CloudSqlNetworkFallback.forComponent` refuses to
+ * derive across projects and directs the author to supply this key.
+ */
 GcpMySqlDbms({network: 'acme-vpc', instanceTier: 'db-perf-optimized-N-4'});
+
+// Negative control. Without it, the assertions above would also be satisfied by a config type that
+// accepts anything at all, which is the failure mode relaxing a required key invites.
+// @ts-expect-error `tier` is not a key of this config — the agent reads `instanceTier`.
+GcpMySqlDbms({tier: 'db-perf-optimized-N-4'});
