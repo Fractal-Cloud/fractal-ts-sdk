@@ -11,6 +11,81 @@ of truth for what is on npm.
 
 ## Unreleased
 
+### Added — **per-environment provider credentials**
+
+`environments.deploy(mgmt, {providerCredentials})` used one credential set for the
+management environment and every operational environment, so a tree spanning
+several cloud accounts could not be initialized in one deploy. `providerCredentials`
+now also accepts a function:
+
+```ts
+providerCredentials: ({environment, tier, provider, accountId, region}) =>
+  byShortName[environment.shortName], // or Promise<ProviderCredentials>
+```
+
+It is called once per cloud agent, right before that agent's `initialize` request
+and only when one is sent, so an already-initialized environment never has its
+credentials requested, and short-lived credentials can be minted just in time.
+Returning nothing for the agent's provider fails with an error naming the
+environment. The credentials it returns join the deployment's redaction set before
+the request that carries them. The single-object form is unchanged.
+
+### Added — **`withNetworkTier` and `withParameter` on both environment tiers**
+
+`.withNetworkTier('prod' | 'nonprod')` declares the `networkTier` parameter the AWS
+initializer reads; `.withParameter(key, value)` declares any other key, and
+`withParameter(key, null)` declares it absent. `agents`, `tags` and `dnsZones` stay
+owned by their typed builders (`withParameter` accepts them only as `null`).
+
+The control plane resolves an operational environment's tier from its management
+environment first, so a management tier silently overrides every operational one.
+A tree declaring two different tiers is therefore refused at resolve time, and a
+`networkTier` other than `prod`/`nonprod` is refused too — the server would fail
+the initialization on it minutes later.
+
+### Added — **`environments.list({type, ownerId})` and `environments.get(id)`**
+
+`list` calls `GET /environments/{type}/{ownerId}` and returns
+`{id, name, status, resourceGroups, initializedClouds}` per environment
+(`initializedClouds` spelled as the server spells providers: `Aws`, `Azure`, ...).
+`get` returns one environment with all of its stored parameters, or `null`.
+
+### Changed — **updating an environment merges its parameters instead of replacing them**
+
+The API's `PUT` replaces `parameters` wholesale, and the SDK sent only the keys it
+declared — so any re-deploy that updated an environment wiped every other key: a
+`networkTier` set in the web UI, entries the server records itself. A deploy now
+starts from the server's current parameters and overlays only the declared keys
+(a declared key also replaces a differently-cased spelling of it, since the server
+matches keys case-insensitively). The default-CI/CD-profile `PUT` carries the same
+merged set.
+
+Drift detection follows the same rule: an environment is updated only when
+applying the declared keys would change what is stored.
+
+One consequence to know: a key you stop declaring is no longer removed by the next
+update that happens to run. Removing a `withTags` call leaves the stored tags in
+place; `withParameter('tags', null)` clears them. `mergeEnvironmentParameters` is
+exported so a caller can predict exactly what a deploy writes.
+
+### Changed — **an operational initialization that cannot succeed is refused before it is sent**
+
+The control plane rejects an operational environment's agent initialization until
+its management environment's initialization for that provider has Completed
+(`ManagementEnvironmentNotInitialized`). Under `agentInit: 'fire-and-forget'`, a
+deploy that has just started the management initialization now throws before the
+first operational one, naming `agentInit: 'wait'`, instead of sending a request
+the server refuses. Re-running once management is initialized proceeds as before;
+with `wait` nothing changes.
+
+### Documented — **which AWS credentials the control plane honors**
+
+Only three-part session credentials (`accessKeyId` + `secretAccessKey` +
+`sessionToken`) are used as inline credentials by the AWS initializer today. Static
+keys without a `sessionToken`, and `{roleArn, webIdentityToken}` (sent as
+`X-AWS-Role-Arn` / `X-AWS-Web-Identity-Token`), are still sent but ignored; the SDK
+now logs a `WARN` line for both.
+
 ### Added — **`AzureContainerAppsEnvironment`, the platform a Container App needs**
 
 `AzureContainerApp` cannot run on its own: the agent resolves an
