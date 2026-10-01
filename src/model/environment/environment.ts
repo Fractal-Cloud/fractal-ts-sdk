@@ -33,6 +33,7 @@ import {
   validateEnvironmentShortName,
   validateSecret,
 } from './types';
+import {findParameter} from './parameters';
 import {
   agentParams,
   resolveOperationalAgent,
@@ -70,6 +71,26 @@ const emptyCommon = (): CommonState => ({
   parameters: {},
 });
 
+/**
+ * Set one declared parameter, replacing any differently-cased spelling of the
+ * same key: the control plane matches parameter keys case-insensitively, so
+ * declaring both `networkTier` and `NetworkTier` would leave it picking one.
+ */
+const setParameter = (
+  parameters: Readonly<Record<string, unknown>>,
+  key: string,
+  value: unknown,
+): Record<string, unknown> => {
+  const next: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(parameters)) {
+    if (k.toLowerCase() !== key.toLowerCase()) {
+      next[k] = v;
+    }
+  }
+  next[key] = value;
+  return next;
+};
+
 /** Validate a `withParameter` key at the call site, where the mistake is.
  *  A builder-owned key may only be declared ABSENT (`null`) — the one thing its
  *  typed builder cannot express, since an empty one declares nothing. */
@@ -77,7 +98,10 @@ const checkParameterKey = (key: string, value: unknown): void => {
   if (key === undefined || key === null || key.trim().length === 0) {
     throw new Error('Environment parameter key must not be blank.');
   }
-  if (RESERVED_ENVIRONMENT_PARAMETERS.includes(key) && value !== null) {
+  const reserved = RESERVED_ENVIRONMENT_PARAMETERS.find(
+    r => r.toLowerCase() === key.toLowerCase(),
+  );
+  if (reserved !== undefined && (reserved !== key || value !== null)) {
     throw new Error(
       `Environment parameter '${key}' is managed by the builder; use ` +
         "withTags / withDnsZones / the cloud-agent and cloud-account methods instead of withParameter('" +
@@ -184,10 +208,12 @@ const operationalNode = (s: OperationalState): OperationalEnvironmentNode => {
       next({ciCdProfiles: [...s.ciCdProfiles, profile]}),
     withParameter: (key, value) => {
       checkParameterKey(key, value);
-      return next({parameters: {...s.parameters, [key]: value}});
+      return next({parameters: setParameter(s.parameters, key, value)});
     },
     withNetworkTier: tier =>
-      next({parameters: {...s.parameters, [NETWORK_TIER_PARAMETER]: tier}}),
+      next({
+        parameters: setParameter(s.parameters, NETWORK_TIER_PARAMETER, tier),
+      }),
     withAwsAccount: cfg => addAccount({provider: 'AWS', ...cfg}),
     withAzureSubscription: cfg => addAccount({provider: 'AZURE', ...cfg}),
     withGcpProject: cfg => addAccount({provider: 'GCP', ...cfg}),
@@ -327,10 +353,12 @@ const managementNode = (s: ManagementState): ManagementEnvironmentNode => {
       next({ciCdProfiles: [...s.ciCdProfiles, profile]}),
     withParameter: (key, value) => {
       checkParameterKey(key, value);
-      return next({parameters: {...s.parameters, [key]: value}});
+      return next({parameters: setParameter(s.parameters, key, value)});
     },
     withNetworkTier: tier =>
-      next({parameters: {...s.parameters, [NETWORK_TIER_PARAMETER]: tier}}),
+      next({
+        parameters: setParameter(s.parameters, NETWORK_TIER_PARAMETER, tier),
+      }),
     withAwsCloudAgent: cfg => addAgent({provider: 'AWS', ...cfg}),
     withAzureCloudAgent: cfg => addAgent({provider: 'AZURE', ...cfg}),
     withGcpCloudAgent: cfg => addAgent({provider: 'GCP', ...cfg}),
@@ -416,7 +444,7 @@ const buildParameters = (
 
 /** The declared tier, if any — `undefined` when unset or declared absent. */
 const declaredNetworkTier = (c: CommonState): unknown =>
-  c.parameters[NETWORK_TIER_PARAMETER] ?? undefined;
+  findParameter(c.parameters, NETWORK_TIER_PARAMETER) ?? undefined;
 
 const validateCommon = (label: string, c: CommonState): string[] => {
   const errors: string[] = [];

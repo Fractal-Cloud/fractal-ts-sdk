@@ -1298,3 +1298,130 @@ describe('cloud.environments.list() / get()', () => {
     expect(env?.defaultCiCdProfileShortName).toBeNull();
   });
 });
+
+describe('cloud.environments.deploy() — review hardening', () => {
+  beforeEach(() => {
+    h.requests.length = 0;
+    h.state.queue = [];
+  });
+
+  const AGENT = {
+    provider: 'AZURE',
+    region: 'westeurope',
+    tenantId: 'tenant-1',
+    subscriptionId: 'sub-mgmt',
+  };
+  const opTree = () =>
+    mgmtOnly().withOperationalEnvironment(
+      OperationalEnvironment({shortName: 'prod', resourceGroups: [rg('prod-rg')]})
+        .withAzureSubscription({region: 'northeurope', subscriptionId: 'sub-p'})
+        .withNetworkTier('prod'),
+    );
+  const storedMgmt = (parameters: Record<string, unknown>) => ({
+    status: 200,
+    body: {
+      id: {type: 'Personal', ownerId: OWNER, shortName: 'mgmt'},
+      name: 'mgmt',
+      resourceGroups: [rg('mgmt-rg')],
+      parameters,
+      status: 'Active',
+    },
+  });
+
+  it('refuses an operational tier the STORED management tier overrides, before writing it', async () => {
+    h.state.queue = [storedMgmt({agents: [AGENT], NetworkTier: 'nonprod'})];
+    await expect(
+      cloud.environments.deploy(opTree(), {quiet: true, providerCredentials}),
+    ).rejects.toThrow(
+      /'prod' would be ignored .* stores networkTier 'nonprod'.*withParameter\('networkTier', null\)/s,
+    );
+    // Only the management env was read; nothing was written for prod.
+    expect(h.requests.map(r => r.method)).toEqual(['GET']);
+  });
+
+  it('accepts an operational tier once the management tier is declared absent', async () => {
+    h.state.queue = [
+      storedMgmt({agents: [AGENT], networkTier: 'nonprod'}),
+      {status: 200}, // PUT mgmt removing networkTier
+      {status: 404}, // fetch prod
+      {status: 201}, // create prod
+      {status: 200, body: {initializationRun: {status: 'Completed'}}}, // mgmt
+      {status: 404}, // prod status
+      {status: 202}, // prod initialize
+    ];
+    await cloud.environments.deploy(
+      opTree().withParameter('networkTier', null),
+      {quiet: true, providerCredentials},
+    );
+    const put = h.requests.find(r => r.method === 'PUT');
+    expect((put!.body as {parameters: unknown}).parameters).toEqual({
+      agents: [AGENT],
+    });
+  });
+
+  it('reinitializeAgents under fire-and-forget refuses operational inits it knows will fail', async () => {
+    h.state.queue = [
+      storedMgmt({agents: [AGENT]}),
+      {
+        status: 200, // fetch prod → up to date
+        body: {
+          id: {type: 'Personal', ownerId: OWNER, shortName: 'prod'},
+          name: 'prod',
+          resourceGroups: [rg('prod-rg')],
+          parameters: {
+            agents: [
+              {...AGENT, region: 'northeurope', subscriptionId: 'sub-p'},
+            ],
+            networkTier: 'prod',
+          },
+          status: 'Active',
+        },
+      },
+      {status: 200, body: {initializationRun: {status: 'Completed'}}}, // mgmt
+      {status: 202}, // forced mgmt initialize
+      {status: 200, body: {initializationRun: {status: 'Completed'}}}, // prod
+    ];
+    await expect(
+      cloud.environments.deploy(opTree(), {
+        quiet: true,
+        providerCredentials,
+        reinitializeAgents: true,
+      }),
+    ).rejects.toThrow(/agentInit: 'wait'/);
+    const inits = h.requests.filter(r => r.url.endsWith('/initialize'));
+    expect(inits).toHaveLength(1);
+  });
+
+  it('wraps a throwing resolver with the environment id', async () => {
+    h.state.queue = [{status: 404}, {status: 201}, {status: 404}];
+    await expect(
+      cloud.environments.deploy(mgmtOnly(), {
+        quiet: true,
+        providerCredentials: () => {
+          throw new Error('sts:AssumeRole denied');
+        },
+      }),
+    ).rejects.toThrow(
+      /resolver failed for the AZURE agent of environment 'Personal\/[^']+\/mgmt': sts:AssumeRole denied/,
+    );
+  });
+
+  it('logs which stored builder-owned keys it keeps', async () => {
+    const lines: string[] = [];
+    const spy = vi.spyOn(console, 'log').mockImplementation((m: string) => {
+      lines.push(m);
+    });
+    try {
+      h.state.queue = [
+        storedMgmt({agents: [AGENT], tags: {team: 'x'}}),
+        {status: 200, body: {initializationRun: {status: 'Completed'}}},
+      ];
+      await cloud.environments.deploy(mgmtOnly(), {providerCredentials});
+    } finally {
+      spy.mockRestore();
+    }
+    expect(
+      lines.some(l => /Keeping stored parameters .* keys=tags/.test(l)),
+    ).toBe(true);
+  });
+});

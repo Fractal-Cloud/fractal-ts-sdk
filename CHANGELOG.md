@@ -41,7 +41,12 @@ The control plane resolves an operational environment's tier from its management
 environment first, so a management tier silently overrides every operational one.
 A tree declaring two different tiers is therefore refused at resolve time, and a
 `networkTier` other than `prod`/`nonprod` is refused too — the server would fail
-the initialization on it minutes later.
+the initialization on it minutes later. At deploy time the same refusal covers a
+tier the management environment only STORES (set in the web UI, say): the
+operational environment is not written, and the error names
+`withParameter('networkTier', null)` on the management environment as the fix.
+Parameter keys are matched case-insensitively throughout, as the server matches
+them.
 
 ### Added — **`environments.list({type, ownerId})` and `environments.get(id)`**
 
@@ -65,7 +70,8 @@ applying the declared keys would change what is stored.
 
 One consequence to know: a key you stop declaring is no longer removed by the next
 update that happens to run. Removing a `withTags` call leaves the stored tags in
-place; `withParameter('tags', null)` clears them. `mergeEnvironmentParameters` is
+place (an `INFO` line names the kept keys); `withParameter('tags', null)` clears
+them. `mergeEnvironmentParameters` is
 exported so a caller can predict exactly what a deploy writes.
 
 ### Changed — **an operational initialization that cannot succeed is refused before it is sent**

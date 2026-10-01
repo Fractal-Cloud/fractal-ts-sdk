@@ -40,7 +40,8 @@ import type {
   ProviderCredentialsResolver,
   Secret,
 } from './types';
-import {formatEnvironmentId} from './types';
+import {formatEnvironmentId, NETWORK_TIER_PARAMETER} from './types';
+import {findParameter} from './parameters';
 import type {CloudAgent} from './cloud_agents';
 import {
   resolveEnvironment,
@@ -866,6 +867,21 @@ const createOrUpdateEnvironment = async (
     existing.parameters,
     env.parameters,
   );
+  // Removing the last tag / DNS zone from code no longer clears it (undeclared
+  // keys are preserved), so say which builder-owned keys were kept — a quiet
+  // change in convergence is worse than a noisy one.
+  const kept = ['tags', 'dnsZones'].filter(
+    k =>
+      findParameter(env.parameters, k) === undefined &&
+      findParameter(existing.parameters, k) !== undefined,
+  );
+  if (kept.length > 0) {
+    log(quiet, 'INFO', 'Keeping stored parameters this tree does not declare', {
+      env: id,
+      keys: kept.join(','),
+      clearWith: "withParameter('<key>', null)",
+    });
+  }
   if (needsUpdate(env, existing)) {
     log(quiet, 'INFO', 'Updating environment', {env: id});
     // Preserve the existing default CI/CD profile; profiles are managed later.
@@ -879,6 +895,44 @@ const createOrUpdateEnvironment = async (
     log(quiet, 'INFO', 'Environment up-to-date', {env: id});
   }
   return {existing, parameters};
+};
+
+/**
+ * Refuse an operational `networkTier` the control plane would ignore because the
+ * management environment STORES a different one (set in the web UI, or by an
+ * earlier deploy) without this tree declaring it. Resolution already refuses the
+ * case where both are declared; this covers the stored half, which is only
+ * knowable once the management env has been read. Runs before the operational
+ * env is written.
+ */
+const assertTierApplies = (
+  env: ResolvedEnvironment,
+  management: ResolvedEnvironment,
+  writtenById: ReadonlyMap<string, EnvironmentWriteResult>,
+): void => {
+  const mgmtId = formatEnvironmentId(management.id);
+  if (formatEnvironmentId(env.id) === mgmtId) {
+    return;
+  }
+  const opTier = findParameter(env.parameters, NETWORK_TIER_PARAMETER);
+  const stored = writtenById.get(mgmtId)?.parameters;
+  const mgmtTier = findParameter(stored, NETWORK_TIER_PARAMETER);
+  if (
+    opTier === undefined ||
+    opTier === null ||
+    mgmtTier === undefined ||
+    mgmtTier === null ||
+    String(mgmtTier).trim().toLowerCase() === String(opTier).toLowerCase()
+  ) {
+    return;
+  }
+  throw new Error(
+    `Operational environment '${formatEnvironmentId(env.id)}': networkTier '${String(opTier)}' ` +
+      `would be ignored — management environment '${mgmtId}' stores networkTier ` +
+      `'${String(mgmtTier)}', which the control plane reads first. Declare ` +
+      "withParameter('networkTier', null) on the management environment to tier " +
+      'operational environments individually, or drop the operational tier.',
+  );
 };
 
 // ── public API ───────────────────────────────────────────────────────────────
@@ -951,6 +1005,7 @@ export async function deployEnvironment(
   // 1. create/update every environment
   const writtenById = new Map<string, EnvironmentWriteResult>();
   for (const env of ordered) {
+    assertTierApplies(env, tree.management, writtenById);
     writtenById.set(
       formatEnvironmentId(env.id),
       await createOrUpdateEnvironment(env, scopedCfg, quiet),
@@ -984,13 +1039,23 @@ export async function deployEnvironment(
       return resolveCredentials;
     }
     const envId = formatEnvironmentId(env.id);
-    const resolved = await resolveCredentials({
-      environment: {...env.id},
-      tier: envId === managementEnvId ? 'management' : 'operational',
-      provider: agent.provider,
-      accountId: agentAccountId(agent),
-      region: agent.region,
-    });
+    let resolved: ProviderCredentials | undefined;
+    try {
+      resolved = await resolveCredentials({
+        environment: {...env.id},
+        tier: envId === managementEnvId ? 'management' : 'operational',
+        provider: agent.provider,
+        accountId: agentAccountId(agent),
+        region: agent.region,
+      });
+    } catch (err) {
+      // Name the environment; the message is the caller's own error, and no
+      // `cause` is attached so nothing the resolver held rides along.
+      throw new Error(
+        `The providerCredentials resolver failed for the ${agent.provider} agent of ` +
+          `environment '${envId}': ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
     // Register before the request that carries them is built.
     deploymentSecrets.push(
       ...collectSecrets(resolved, `providerCredentials[${envId}]`),
@@ -1012,7 +1077,10 @@ export async function deployEnvironment(
     if (formatEnvironmentId(env.id) === managementEnvId) {
       return;
     }
-    if (managementOutcome.get(agent.provider) === 'Completed') {
+    // Refuse only what this deploy KNOWS will fail: it handled the management
+    // agent for this provider and did not observe a Completed run. Anything
+    // else is left to the control plane's own check.
+    if (managementOutcome.get(agent.provider) !== 'NotCompleted') {
       return;
     }
     // The server would reject this with ManagementEnvironmentNotInitialized; say

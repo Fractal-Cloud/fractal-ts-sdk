@@ -276,3 +276,39 @@ describe('mergeEnvironmentParameters', () => {
     });
   });
 });
+
+describe('environment parameters — key case', () => {
+  it('a differently-cased key replaces the earlier spelling', () => {
+    const m = baseMgmt()
+      .withParameter('NetworkTier', 'nonprod')
+      .withNetworkTier('prod');
+    expect(m.state.parameters).toEqual({networkTier: 'prod'});
+  });
+
+  it('validates networkTier under any spelling', () => {
+    expect(() =>
+      resolveEnvironment(baseMgmt().withParameter('NETWORKTIER', 'staging')),
+    ).toThrow(/networkTier must be one of/);
+  });
+
+  it('refuses a reserved key under any spelling', () => {
+    expect(() => baseMgmt().withParameter('Agents', [])).toThrow(
+      /managed by the builder/,
+    );
+    expect(() => baseMgmt().withParameter('TAGS', null)).toThrow(
+      /managed by the builder/,
+    );
+  });
+
+  it('detects a tier conflict under any spelling', () => {
+    const tree = baseMgmt()
+      .withParameter('NetworkTier', 'nonprod')
+      .withOperationalEnvironment(
+        OperationalEnvironment({
+          shortName: 'prod',
+          resourceGroups: [rg('prod-rg')],
+        }).withNetworkTier('prod'),
+      );
+    expect(() => resolveEnvironment(tree)).toThrow(/would be ignored/);
+  });
+});

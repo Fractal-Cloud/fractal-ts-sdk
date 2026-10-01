@@ -423,7 +423,10 @@ Things to know:
   `withParameter('networkTier', null)`.
 - **`networkTier`** (`'prod'` / `'nonprod'`, unset means `nonprod`) is read when the
   AWS agent is initialized. The management environment's tier wins over an
-  operational one's; declaring two different tiers is refused at resolve time.
+  operational one's. Declaring two different tiers is refused at resolve time, and
+  an operational tier that a tier STORED on the management environment would
+  override is refused at deploy time, before the operational environment is
+  written.
 
 ---
 
