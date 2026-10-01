@@ -922,6 +922,9 @@ const assertTierApplies = (
     opTier === null ||
     mgmtTier === undefined ||
     mgmtTier === null ||
+    // The server treats a blank tier as unset (IsNullOrWhiteSpace) and falls
+    // back to the operational value, so a blank one overrides nothing.
+    String(mgmtTier).trim().length === 0 ||
     String(mgmtTier).trim().toLowerCase() === String(opTier).toLowerCase()
   ) {
     return;
