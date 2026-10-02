@@ -10,8 +10,12 @@ import {agentIdOf} from './cloud_agents';
 import type {CloudAccount, CloudAgent} from './cloud_agents';
 import type {DnsZone, DnsZoneAgent} from './types';
 
-/** `{type}` or `{type}:{shortName}`: a name without whitespace, commas or colons, optionally a second one. */
-const AGENT_ID = /^[a-z][a-z0-9_-]*(:[a-z0-9][a-z0-9._-]*)?$/;
+/**
+ * `{type}` or `{type}:{shortName}`: a type name (letters, digits, `_`, `-`) and
+ * optionally a short name without whitespace, commas or colons. Agent ids
+ * compare ignoring case, so they are sent in lower case.
+ */
+const AGENT_ID = /^[a-z][a-z0-9_-]*(:[^\s,:]+)?$/;
 
 /**
  * The id a selection entry names, in the form the control plane keys agents by

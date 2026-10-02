@@ -28,7 +28,12 @@ on several hosts is served unsigned). `dnsZoneType` is deprecated. New `withClou
 `withCloudAccount(account)` add a declared agent or account value, so a zone can reference it.
 
 `environments.dnsZones()` results carry the reporting `agent` and are one per agent (two agents of
-one type each get theirs); `provider` stays, as the agent's type.
+one type each get theirs); `provider` stays, as the agent's type. `DnsZoneProviderResult.agent` is
+a new required field (code that builds results, such as test doubles, must set it), and `problems`
+name the agent (`zone (aws): ...`).
+
+Needs fractal-environments 3.32.0 or later: an older control plane ignores `agents`, so a narrowed
+zone would be hosted by every agent.
 
 ### Added — **`environments.dnsZones()`: read an environment's DNS zone results**
 

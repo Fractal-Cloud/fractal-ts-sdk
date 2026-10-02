@@ -51,11 +51,11 @@ describe('DNS zone agents', () => {
 
   it('sends the selected agents by id, however they are referenced', () => {
     const {management} = resolveEnvironment(
-      mgmt().withDnsZones([zone({agents: [gcp, ' Azure ']}), zone({name: 'aruba.cloud', agents: ['aria:Aruba']})]),
+      mgmt().withDnsZones([zone({agents: [gcp, ' Azure ']}), zone({name: 'aruba.cloud', agents: ['aria:Aruba', 'aria:_edge.1']})]),
     );
     expect(management.parameters.dnsZones).toEqual([
       {name: 'fractal.cloud', agents: ['gcp', 'azure']},
-      {name: 'aruba.cloud', agents: ['aria:aruba']},
+      {name: 'aruba.cloud', agents: ['aria:aruba', 'aria:_edge.1']},
     ]);
   });
 

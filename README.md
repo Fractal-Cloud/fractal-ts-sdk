@@ -442,7 +442,7 @@ copy, with the same records.
 
 ```ts
 mgmt
-  .withAwsCloudAgent({region: 'eu-central-1', organizationId: ORG_ID, accountId: ACCOUNT})
+  .withAwsCloudAgent({region: 'eu-central-1', organizationId: 'o-abc123', accountId: '123456789012'})
   .withDnsZones([{name: 'fractal.cloud'}, {name: 'yanchware.com'}]);
 ```
 
@@ -454,7 +454,9 @@ declared agent itself, or its id (`aws`, `gcp`, `azure`, see `agentIdOf`; an age
 bound by name, such as an ARIA agent, is `{type}:{shortName}`, e.g. `aria:caas-k8s`):
 
 ```ts
-const gcp: CloudAgent = {provider: 'GCP', region: 'europe-west1', organizationId: ORG_ID, projectId: 'mgmt'};
+import type {CloudAgent} from '@fractal_cloud/sdk';
+
+const gcp: CloudAgent = {provider: 'GCP', region: 'europe-west1', organizationId: '123456789', projectId: 'mgmt'};
 mgmt
   .withCloudAgent(gcp)
   .withDnsZones([{name: 'internal.fractal.cloud', agents: [gcp], dnssec: 'required'}]);
