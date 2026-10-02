@@ -1,0 +1,34 @@
+name: Plan environments
+
+on:
+  pull_request:
+    branches: [main]
+
+# No id-token: a pull request never gets AWS credentials. The roles trust only
+# the default branch, so it could not assume them anyway.
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.x'
+      - run: npm ci --ignore-scripts
+      - run: npx tsc --noEmit
+      # Read-only preview against the control plane: create / update / unchanged.
+      # Skipped where no secrets are available: pull requests from forks, and
+      # Dependabot's (which get Dependabot secrets, not repository secrets).
+      # NOTE: this step runs the pull request's own code with the Fractal
+      # service-account secret — see "Security notes" in the guide.
+      - if: >-
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.actor != 'dependabot[bot]'
+        run: npx tsx src/plan.ts
+        env:
+          SERVICE_ACCOUNT_ID: ${{ secrets.SERVICE_ACCOUNT_PLAN_ID || secrets.SERVICE_ACCOUNT_ID }}
+          SERVICE_ACCOUNT_SECRET: ${{ secrets.SERVICE_ACCOUNT_PLAN_SECRET || secrets.SERVICE_ACCOUNT_SECRET }}
+          FRACTAL_OWNER_ID: ${{ vars.FRACTAL_OWNER_ID }}

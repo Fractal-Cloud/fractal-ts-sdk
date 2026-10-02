@@ -1,0 +1,102 @@
+name: Deploy environments
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Deny by default; only the deploy jobs get an OIDC token.
+permissions:
+  contents: read
+
+# Never two deploys at once: a second run would race the first one's
+# initialization. A running deploy is never cancelled; the NEWEST pending push
+# waits behind it (an older pending one is superseded, which is fine — it would
+# deploy an older tree).
+concurrency:
+  group: environments-deploy
+  cancel-in-progress: false
+
+jobs:
+  # Install + typecheck without an id-token, so no dependency code ever runs
+  # where an AWS role can be assumed.
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.x'
+      - run: npm ci --ignore-scripts
+      - run: npx tsc --noEmit
+
+  # Management first: operational initializations are refused until it has
+  # Completed.
+  management:
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    # One initialization (SDK default wait: 55 min) inside a 2h session.
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.x'
+      - run: npm ci --ignore-scripts
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+        id: mgmt
+        with:
+          role-to-assume: arn:aws:iam::111111111111:role/FractalLandingZoneDeployer
+          aws-region: eu-central-1
+          role-duration-seconds: 7200
+          output-credentials: true
+      - run: npx tsx src/deploy.ts mgmt
+        env:
+          SERVICE_ACCOUNT_ID: ${{ secrets.SERVICE_ACCOUNT_ID }}
+          SERVICE_ACCOUNT_SECRET: ${{ secrets.SERVICE_ACCOUNT_SECRET }}
+          FRACTAL_OWNER_ID: ${{ vars.FRACTAL_OWNER_ID }}
+          TARGET_AWS_ACCESS_KEY_ID: ${{ steps.mgmt.outputs.aws-access-key-id }}
+          TARGET_AWS_SECRET_ACCESS_KEY: ${{ steps.mgmt.outputs.aws-secret-access-key }}
+          TARGET_AWS_SESSION_TOKEN: ${{ steps.mgmt.outputs.aws-session-token }}
+
+  # One job per operational account, each minting its OWN credentials when it
+  # starts — so no session has to outlive another environment's initialization.
+  operational:
+    needs: management
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - environment: prod
+            account: '222222222222'
+          - environment: dev
+            account: '333333333333'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.x'
+      - run: npm ci --ignore-scripts
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+        id: target
+        with:
+          role-to-assume: arn:aws:iam::${{ matrix.account }}:role/FractalLandingZoneDeployer
+          aws-region: eu-central-1
+          role-duration-seconds: 7200
+          output-credentials: true
+      - run: npx tsx src/deploy.ts ${{ matrix.environment }}
+        env:
+          SERVICE_ACCOUNT_ID: ${{ secrets.SERVICE_ACCOUNT_ID }}
+          SERVICE_ACCOUNT_SECRET: ${{ secrets.SERVICE_ACCOUNT_SECRET }}
+          FRACTAL_OWNER_ID: ${{ vars.FRACTAL_OWNER_ID }}
+          TARGET_AWS_ACCESS_KEY_ID: ${{ steps.target.outputs.aws-access-key-id }}
+          TARGET_AWS_SECRET_ACCESS_KEY: ${{ steps.target.outputs.aws-secret-access-key }}
+          TARGET_AWS_SESSION_TOKEN: ${{ steps.target.outputs.aws-session-token }}

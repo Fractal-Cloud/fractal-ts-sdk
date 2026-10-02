@@ -20,15 +20,20 @@ import type {
   CiCdProfile,
   DnsZone,
   EnvironmentId,
+  NetworkTier,
   ResourceGroupId,
   Secret,
 } from './types';
 import {
   formatEnvironmentId,
+  NETWORK_TIER_PARAMETER,
+  NETWORK_TIERS,
+  RESERVED_ENVIRONMENT_PARAMETERS,
   validateCiCdProfile,
   validateEnvironmentShortName,
   validateSecret,
 } from './types';
+import {findParameter} from './parameters';
 import {
   agentParams,
   resolveOperationalAgent,
@@ -51,6 +56,10 @@ type CommonState = {
   secrets: readonly Secret[];
   defaultCiCdProfile?: CiCdProfile;
   ciCdProfiles: readonly CiCdProfile[];
+  /** Free-form parameters declared via `withParameter` / `withNetworkTier`.
+   *  A `null` value declares the key ABSENT: deploy removes it from the
+   *  server's parameters instead of leaving whatever is there. */
+  parameters: Readonly<Record<string, unknown>>;
 };
 
 const emptyCommon = (): CommonState => ({
@@ -59,7 +68,50 @@ const emptyCommon = (): CommonState => ({
   dnsZones: [],
   secrets: [],
   ciCdProfiles: [],
+  parameters: {},
 });
+
+/**
+ * Set one declared parameter, replacing any differently-cased spelling of the
+ * same key: the control plane matches parameter keys case-insensitively, so
+ * declaring both `networkTier` and `NetworkTier` would leave it picking one.
+ */
+const setParameter = (
+  parameters: Readonly<Record<string, unknown>>,
+  key: string,
+  value: unknown,
+): Record<string, unknown> => {
+  const next: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(parameters)) {
+    if (k.toLowerCase() !== key.toLowerCase()) {
+      next[k] = v;
+    }
+  }
+  next[key] = value;
+  return next;
+};
+
+/** Validate a `withParameter` key at the call site, where the mistake is.
+ *  A builder-owned key may only be declared ABSENT (`null`) — the one thing its
+ *  typed builder cannot express, since an empty one declares nothing. */
+const checkParameterKey = (key: string, value: unknown): void => {
+  if (key === undefined || key === null || key.trim().length === 0) {
+    throw new Error('Environment parameter key must not be blank.');
+  }
+  const reserved = RESERVED_ENVIRONMENT_PARAMETERS.find(
+    r => r.toLowerCase() === key.toLowerCase(),
+  );
+  if (reserved !== undefined && (reserved !== key || value !== null)) {
+    throw new Error(
+      `Environment parameter '${key}' is managed by the builder; use ` +
+        "withTags / withDnsZones / the cloud-agent and cloud-account methods instead of withParameter('" +
+        key +
+        "', ...). Only withParameter('" +
+        key +
+        "', null), which removes the stored value, is accepted.",
+    );
+  }
+};
 
 // ── Operational environment ────────────────────────────────────────────────────
 type OperationalState = CommonState & {
@@ -86,6 +138,24 @@ export type OperationalEnvironmentNode = {
     profiles: readonly CiCdProfile[],
   ): OperationalEnvironmentNode;
   withCiCdProfile(profile: CiCdProfile): OperationalEnvironmentNode;
+  /**
+   * Declare an arbitrary environment parameter. Deploy overlays only the keys you
+   * declare onto the server's current parameters, so keys you never declare
+   * (including ones set in the web UI) are preserved. Pass `null` to remove a
+   * key. `agents`, `tags` and `dnsZones` take only `null` (to clear a stored
+   * value) — set them with their typed builders.
+   */
+  withParameter(key: string, value: unknown): OperationalEnvironmentNode;
+  /**
+   * Declare the network provisioning tier (`networkTier` parameter).
+   *
+   * The control plane resolves an operational environment's tier from its
+   * MANAGEMENT environment first and falls back to the operational env's own
+   * value only when the management env has none — so set it here only when the
+   * management environment does not declare one. Read at agent-initialization
+   * time.
+   */
+  withNetworkTier(tier: NetworkTier): OperationalEnvironmentNode;
   withAwsAccount(cfg: {
     region: string;
     accountId: string;
@@ -136,6 +206,14 @@ const operationalNode = (s: OperationalState): OperationalEnvironmentNode => {
       next({ciCdProfiles: [...s.ciCdProfiles, ...profiles]}),
     withCiCdProfile: profile =>
       next({ciCdProfiles: [...s.ciCdProfiles, profile]}),
+    withParameter: (key, value) => {
+      checkParameterKey(key, value);
+      return next({parameters: setParameter(s.parameters, key, value)});
+    },
+    withNetworkTier: tier =>
+      next({
+        parameters: setParameter(s.parameters, NETWORK_TIER_PARAMETER, tier),
+      }),
     withAwsAccount: cfg => addAccount({provider: 'AWS', ...cfg}),
     withAzureSubscription: cfg => addAccount({provider: 'AZURE', ...cfg}),
     withGcpProject: cfg => addAccount({provider: 'GCP', ...cfg}),
@@ -194,6 +272,23 @@ export type ManagementEnvironmentNode = {
   withDefaultCiCdProfile(profile: CiCdProfile): ManagementEnvironmentNode;
   withCiCdProfiles(profiles: readonly CiCdProfile[]): ManagementEnvironmentNode;
   withCiCdProfile(profile: CiCdProfile): ManagementEnvironmentNode;
+  /**
+   * Declare an arbitrary environment parameter. Deploy overlays only the keys you
+   * declare onto the server's current parameters, so keys you never declare
+   * (including ones set in the web UI) are preserved. Pass `null` to remove a
+   * key. `agents`, `tags` and `dnsZones` take only `null` (to clear a stored
+   * value) — set them with their typed builders.
+   */
+  withParameter(key: string, value: unknown): ManagementEnvironmentNode;
+  /**
+   * Declare the network provisioning tier (`networkTier` parameter).
+   *
+   * A management environment's tier is inherited by EVERY operational
+   * environment under it and takes precedence over theirs. To give operational
+   * environments different tiers, leave it unset here and set it on each of
+   * them. Read at agent-initialization time.
+   */
+  withNetworkTier(tier: NetworkTier): ManagementEnvironmentNode;
   withAwsCloudAgent(cfg: {
     region: string;
     organizationId: string;
@@ -256,6 +351,14 @@ const managementNode = (s: ManagementState): ManagementEnvironmentNode => {
       next({ciCdProfiles: [...s.ciCdProfiles, ...profiles]}),
     withCiCdProfile: profile =>
       next({ciCdProfiles: [...s.ciCdProfiles, profile]}),
+    withParameter: (key, value) => {
+      checkParameterKey(key, value);
+      return next({parameters: setParameter(s.parameters, key, value)});
+    },
+    withNetworkTier: tier =>
+      next({
+        parameters: setParameter(s.parameters, NETWORK_TIER_PARAMETER, tier),
+      }),
     withAwsCloudAgent: cfg => addAgent({provider: 'AWS', ...cfg}),
     withAzureCloudAgent: cfg => addAgent({provider: 'AZURE', ...cfg}),
     withGcpCloudAgent: cfg => addAgent({provider: 'GCP', ...cfg}),
@@ -323,7 +426,10 @@ const buildParameters = (
   common: CommonState,
   agents: readonly CloudAgent[],
 ): Record<string, unknown> => {
-  const parameters: Record<string, unknown> = {};
+  // Free-form keys first. The structural keys below are reserved: withParameter
+  // accepts them only as `null` (clear), and a non-empty typed declaration below
+  // wins over that.
+  const parameters: Record<string, unknown> = {...common.parameters};
   if (agents.length > 0) {
     parameters.agents = agents.map(agentParams);
   }
@@ -336,8 +442,20 @@ const buildParameters = (
   return parameters;
 };
 
+/** The declared tier, if any — `undefined` when unset or declared absent. */
+const declaredNetworkTier = (c: CommonState): unknown =>
+  findParameter(c.parameters, NETWORK_TIER_PARAMETER) ?? undefined;
+
 const validateCommon = (label: string, c: CommonState): string[] => {
   const errors: string[] = [];
+  // `withParameter('networkTier', ...)` bypasses the typed builder; the control
+  // plane fails initialization on any other value, minutes later.
+  const tier = declaredNetworkTier(c);
+  if (tier !== undefined && !NETWORK_TIERS.includes(tier as NetworkTier)) {
+    errors.push(
+      `${label}: networkTier must be one of [${NETWORK_TIERS.join(', ')}], got ${JSON.stringify(tier)}.`,
+    );
+  }
   if (c.resourceGroups.length === 0) {
     errors.push(`${label}: at least one resourceGroup is required.`);
   }
@@ -434,6 +552,18 @@ export const resolveEnvironment = (
       errors.push(`${label}: ${e}`);
     }
     errors.push(...validateCommon(label, os));
+    // The control plane reads the MANAGEMENT env's tier first, so an operational
+    // tier that disagrees with a declared management tier would be silently
+    // ignored. Refuse it instead of letting the author believe it applies.
+    const mgmtTier = declaredNetworkTier(s);
+    const opTier = declaredNetworkTier(os);
+    if (mgmtTier !== undefined && opTier !== undefined && opTier !== mgmtTier) {
+      errors.push(
+        `${label}: networkTier '${String(opTier)}' would be ignored — the management ` +
+          `environment declares networkTier '${String(mgmtTier)}', which takes precedence. ` +
+          'Remove it from the management environment to set a tier per operational environment.',
+      );
+    }
 
     const opAgents: CloudAgent[] = [];
     for (const account of os.cloudAccounts) {

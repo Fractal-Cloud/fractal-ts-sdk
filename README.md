@@ -181,7 +181,7 @@ await cloud.liveSystems.deploy(liveSystem, {mode: 'wait'});
 |---|---|
 | `cloud.blueprints` | `create(fractal)` |
 | `cloud.liveSystems` | `deploy(ls, opts?)`, `outputs(ls)`, `destroy(ls)` |
-| `cloud.environments` | `deploy(management, opts?)` |
+| `cloud.environments` | `deploy(management, opts?)`, `list({type, ownerId})`, `get(id)` |
 
 Pass `baseUrl` to target a non-production control plane.
 
@@ -284,6 +284,154 @@ await cloud.liveSystems.destroy(liveSystem);
 ```
 
 Tears down that instantiation; the registered blueprint stays put.
+
+## Environments as code
+
+An environment is a control-plane resource a Live System is deployed into: a
+**management** environment owns the cloud agents, and each **operational**
+environment declares the cloud account its workloads land in. Declare the tree,
+then `cloud.environments.deploy(...)` creates or updates every environment, pushes
+secrets and CI/CD profiles, and initializes the cloud agents — management first.
+
+The example below is a landing zone with the management environment in one AWS
+account and two operational environments in two more, deployed from GitHub
+Actions with a separate credential set per account.
+
+```ts
+import {
+  createFractalCloudClient,
+  ManagementEnvironment,
+  OperationalEnvironment,
+  type ProviderCredentials,
+} from '@fractal_cloud/sdk';
+
+const ORG = process.env.FRACTAL_ORG_ID!; // Organizational owner id (a GUID)
+const rg = (name: string) => `Organizational/${ORG}/${name}`;
+
+const management = ManagementEnvironment({
+  id: {type: 'Organizational', ownerId: ORG, shortName: 'mgmt'},
+  name: 'Management',
+  resourceGroups: [rg('platform')],
+})
+  .withAwsCloudAgent({
+    region: 'eu-central-1',
+    organizationId: 'o-abc123def4',
+    accountId: '111111111111',
+  })
+  // No networkTier here: a management tier is inherited by EVERY operational
+  // environment and overrides theirs. Leave it unset to tier them individually.
+  .withOperationalEnvironment(
+    OperationalEnvironment({shortName: 'prod', resourceGroups: [rg('prod')]})
+      .withAwsAccount({region: 'eu-central-1', accountId: '222222222222'})
+      .withNetworkTier('prod'),
+  )
+  .withOperationalEnvironment(
+    OperationalEnvironment({shortName: 'dev', resourceGroups: [rg('dev')]})
+      .withAwsAccount({region: 'eu-central-1', accountId: '333333333333'})
+      .withNetworkTier('nonprod'),
+  );
+
+// One credential set per AWS account, exported by the workflow (below).
+const awsFor = (prefix: string): ProviderCredentials => ({
+  aws: {
+    accessKeyId: process.env[`${prefix}_AWS_ACCESS_KEY_ID`]!,
+    secretAccessKey: process.env[`${prefix}_AWS_SECRET_ACCESS_KEY`]!,
+    sessionToken: process.env[`${prefix}_AWS_SESSION_TOKEN`]!,
+  },
+});
+const byEnvironment: Record<string, ProviderCredentials> = {
+  mgmt: awsFor('MGMT'),
+  prod: awsFor('PROD'),
+  dev: awsFor('DEV'),
+};
+
+const cloud = createFractalCloudClient({
+  clientId: process.env.SERVICE_ACCOUNT_ID!,
+  clientSecret: process.env.SERVICE_ACCOUNT_SECRET!,
+});
+
+await cloud.environments.deploy(management, {
+  // A function is asked per environment, right before that environment's agent is
+  // initialized (and only if it needs to be). It receives
+  // {environment, tier, provider, accountId, region} and may be async — e.g. to
+  // call sts:AssumeRole into `accountId` just in time.
+  providerCredentials: ({environment}) => byEnvironment[environment.shortName],
+  // Required for a new tree: the control plane refuses an operational
+  // initialization until the management one has Completed.
+  agentInit: 'wait',
+});
+
+// What is there now?
+for (const env of await cloud.environments.list({
+  type: 'Organizational',
+  ownerId: ORG,
+})) {
+  console.log(env.id.shortName, env.status, env.initializedClouds.join(','));
+}
+const prod = await cloud.environments.get({
+  type: 'Organizational',
+  ownerId: ORG,
+  shortName: 'prod',
+});
+console.log(prod?.parameters.networkTier); // 'prod'
+```
+
+```yaml
+# .github/workflows/environments.yml (excerpt)
+permissions:
+  id-token: write
+  contents: read
+steps:
+  - uses: aws-actions/configure-aws-credentials@v4
+    id: mgmt
+    with:
+      role-to-assume: arn:aws:iam::111111111111:role/fractal-init
+      aws-region: eu-central-1
+      output-credentials: true
+  # ...same for `prod` (222222222222) and `dev` (333333333333)
+  - run: npx tsx environments.ts
+    env:
+      MGMT_AWS_ACCESS_KEY_ID: ${{ steps.mgmt.outputs.aws-access-key-id }}
+      MGMT_AWS_SECRET_ACCESS_KEY: ${{ steps.mgmt.outputs.aws-secret-access-key }}
+      MGMT_AWS_SESSION_TOKEN: ${{ steps.mgmt.outputs.aws-session-token }}
+      # PROD_AWS_..., DEV_AWS_... likewise
+```
+
+**Recommended setup:** run this from GitHub Actions with GitHub OIDC, one deployer
+role per AWS account, and no static AWS keys. See
+[guides/github-actions](guides/github-actions/README.md) for the role trust
+policy, deploy and pull-request workflows, and sample scripts.
+
+Things to know:
+
+- **`providerCredentials`** is either one object, used for every environment in the
+  tree (as before), or a function asked per environment and agent. Credentials a
+  function returns are redacted from errors like static ones.
+- **AWS credentials must be three-part session credentials** — `accessKeyId`,
+  `secretAccessKey` *and* `sessionToken`. That is what the control plane uses
+  today. Without a `sessionToken`, or as `{roleArn, webIdentityToken}`, the
+  credentials are sent but not used (the server falls back to a credential it
+  already holds, if any), and the SDK logs a `WARN`. Exchange a GitHub OIDC token
+  for session credentials first, as above.
+- **Order.** Management is initialized first, then each operational environment.
+  With `agentInit: 'wait'` each initialization is awaited before the next starts.
+  With the default `fire-and-forget`, a deploy that has just started the management
+  initialization stops with an error before the operational ones, naming
+  `agentInit: 'wait'`; re-running once management is initialized continues.
+- **Parameters merge on update.** The API replaces an environment's parameters
+  wholesale on update, so a deploy starts from what the server holds and writes
+  only the keys this tree declares (agents, tags, DNS zones, `withNetworkTier`,
+  `withParameter`). A key set elsewhere — a `networkTier` chosen in the web UI,
+  entries the server records itself — is kept. Removing a `withTags` or
+  `withNetworkTier` call from your code therefore does **not** clear the stored
+  value: declare it absent with `withParameter('tags', null)` /
+  `withParameter('networkTier', null)`.
+- **`networkTier`** (`'prod'` / `'nonprod'`, unset means `nonprod`) is read when the
+  AWS agent is initialized. The management environment's tier wins over an
+  operational one's. Declaring two different tiers is refused at resolve time, and
+  an operational tier that a tier STORED on the management environment would
+  override is refused at deploy time, before the operational environment is
+  written.
 
 ---
 
