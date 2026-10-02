@@ -120,7 +120,7 @@ type EnvironmentResponse = {
   defaultCiCdProfileShortName?: string | null;
   status: string;
 };
-export type InitializationStep = {
+type InitializationStep = {
   order?: number;
   resourceName?: string;
   resourceType?: string;
@@ -846,7 +846,7 @@ const initializeAgent = async (
 // ── create/update one environment ──────────────────────────────────────────────
 /** Deterministic JSON with recursively key-sorted objects, so property insertion
  *  order does not affect equality (the API may return keys in a different order). */
-export const stableStringify = (value: unknown): string => {
+const stableStringify = (value: unknown): string => {
   if (Array.isArray(value)) {
     return `[${value.map(stableStringify).join(',')}]`;
   }
@@ -989,16 +989,20 @@ const assertTierApplies = (
  * (the redaction set every later request is covered by) BEFORE the request that
  * carries them is built.
  */
-export const providerCredentialsFor = (
-  source: ProviderCredentials | ProviderCredentialsResolver | undefined,
-  managementEnvId: string,
-  secrets: LabeledSecret[],
-  operation: AgentOperation = 'initialization',
-) => {
-  return async (
+export const providerCredentialsFor =
+  (
+    source: ProviderCredentials | ProviderCredentialsResolver | undefined,
+    managementEnvId: string,
+    secrets: LabeledSecret[],
+    operation: AgentOperation = 'initialization',
+    /** What a resolver returning nothing for the agent's provider means:
+     *  `throw` (initialize needs credentials) or `none` (send none). */
+    whenNone: 'throw' | 'none' = 'throw',
+  ): ((
     env: ResolvedEnvironment,
     agent: CloudAgent,
-  ): Promise<ProviderCredentials | undefined> => {
+  ) => Promise<ProviderCredentials | undefined>) =>
+  async (env, agent) => {
     if (typeof source !== 'function') {
       return source;
     }
@@ -1024,6 +1028,9 @@ export const providerCredentialsFor = (
     secrets.push(...collectSecrets(resolved, `providerCredentials[${envId}]`));
     const key = agent.provider.toLowerCase() as keyof ProviderCredentials;
     if (resolved === undefined || resolved === null || !resolved[key]) {
+      if (whenNone === 'none') {
+        return undefined;
+      }
       throw new Error(
         `Cloud-agent ${operation} for ${agent.provider} in environment '${envId}' requires ` +
           `${key} credentials, but the providerCredentials resolver returned none for it.`,
@@ -1038,7 +1045,6 @@ export const providerCredentialsFor = (
     }
     return resolved;
   };
-};
 
 // ── public API ───────────────────────────────────────────────────────────────
 /**

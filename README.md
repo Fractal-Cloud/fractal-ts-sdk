@@ -461,13 +461,17 @@ await cloud.environments.updateAgents(management, {
   request is sent. The control plane refuses (`400`) an agent that was never
   initialized, one that is already updating, and a provider with no published
   agent version.
-- **`providerCredentials`** (an object or a resolver, as for `deploy`) is optional.
-  When given, it is sent as the same provider headers `initialize` uses. **The control
-  plane's update endpoint does not read them today.** It updates with the credentials
-  it already holds for the environment. An environment initialized with short-lived
-  inline credentials (a CI job's assumed role, an OIDC token) may hold none by then,
-  and its update fails at the first step that needs them. Under `agentUpdate: 'wait'`
-  that failure is reported with the step's message.
+- **One agent at a time.** A refusal or failure stops the call there. Agents before
+  it stay updated, and the ones after it are not started.
+- **`providerCredentials`** (an object or a resolver, as for `deploy`) is optional,
+  and so is each provider in it. Credentials given for an agent's provider are sent
+  as the same headers `initialize` uses. An agent whose provider gets none is updated
+  without them. **The control plane's update endpoint does not read these headers
+  today.** It updates with the credentials it already holds for the environment. An
+  environment initialized with short-lived inline credentials (a CI job's assumed
+  role, an OIDC token) may hold none by then, and its update fails at the first step
+  that needs them. Under `agentUpdate: 'wait'` that failure is reported with the
+  step's message.
 
 ### Reading DNS zone results
 

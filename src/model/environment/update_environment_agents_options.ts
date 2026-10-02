@@ -13,9 +13,11 @@ export type UpdateEnvironmentAgentsOptions = {
    * Credentials sent with each update, as the same provider headers
    * `initialize` carries — an object for every agent, or a resolver asked per
    * agent right before its update request (and only for selected agents).
-   * Optional: without it the update request carries no provider credentials,
-   * and the control plane updates with the credentials it already holds for
-   * the environment.
+   * Optional, and so is each provider in it: an agent whose provider gets no
+   * credentials (absent from the object, or a resolver returning none for it)
+   * is updated without provider headers, with the credentials the control
+   * plane already holds for the environment. A partial AWS set and mixed
+   * static/federated credentials are refused as for `initialize`.
    *
    * The control plane's update endpoint does not read these headers today: it
    * re-runs the agent's role/permission steps with the credentials it holds
@@ -30,7 +32,11 @@ export type UpdateEnvironmentAgentsOptions = {
    * `fire-and-forget` starts them and returns. Default `fire-and-forget`.
    */
   agentUpdate?: 'wait' | 'fire-and-forget';
+  /** Suppress the wait-mode log lines. */
   quiet?: boolean;
+  /** Delay between status reads under `wait`. Default 30 seconds. */
   pollIntervalMs?: number;
+  /** How long to wait for EACH agent's update under `wait`, not for the whole
+   *  call. Default 55 minutes. */
   timeoutMs?: number;
 };

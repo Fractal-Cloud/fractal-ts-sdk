@@ -38,7 +38,6 @@ import {
   partialAwsCredentials,
   providerCredentialsFor,
   providerPath,
-  stableStringify,
   type InitializationRun,
 } from './service';
 import {formatEnvironmentId, type ProviderCredentials} from './types';
@@ -64,12 +63,42 @@ const updateFailure = (provider: string, run: InitializationRun): string => {
   return `${provider} cloud-agent update failed:\n${lines.join('\n')}`;
 };
 
+/** How far a run's steps reach: their count and their highest order. */
+const extent = (run: InitializationRun): {count: number; maxOrder: number} => {
+  const steps = run.steps ?? [];
+  return {
+    count: steps.length,
+    maxOrder: steps.reduce((max, s) => Math.max(max, s.order ?? 0), 0),
+  };
+};
+
+/** True when `run` carries steps `before` did not: the update's. */
+const hasUpdateSteps = (
+  run: InitializationRun,
+  before: InitializationRun,
+): boolean => {
+  const now = extent(run);
+  const then = extent(before);
+  return now.count > then.count || now.maxOrder > then.maxOrder;
+};
+
+/** True when `credentials` carry anything for `agent`'s provider. */
+const coversProvider = (
+  credentials: ProviderCredentials | undefined,
+  agent: CloudAgent,
+): credentials is ProviderCredentials =>
+  credentials !== undefined &&
+  credentials !== null &&
+  Boolean(
+    credentials[agent.provider.toLowerCase() as keyof ProviderCredentials],
+  );
+
 /** Poll an update to a terminal status, ignoring the run it was started over. */
 const awaitUpdate = async (
   env: ResolvedEnvironment,
   agent: CloudAgent,
   cfg: ApiConfig,
-  before: string,
+  before: InitializationRun,
   opts: {quiet: boolean; pollIntervalMs: number; timeoutMs: number},
 ): Promise<void> => {
   const envId = formatEnvironmentId(env.id);
@@ -77,23 +106,32 @@ const awaitUpdate = async (
   const startMs = Date.now();
   const deadline = startMs + opts.timeoutMs;
   let round = 0;
-  // The status endpoint keeps serving the run as it was until the control plane
-  // appends the update's steps, and that run is usually Completed: accepting it
-  // would report an update that has not started as done. Every read is judged
-  // against the pre-update snapshot until one differs.
+  // An update APPENDS its steps to the agent's existing run, which is usually
+  // Completed. Until a read shows those steps, the run is the one the update was
+  // started over, and its status says nothing about the update — so only a run
+  // with more steps (or a higher step order) than the snapshot is judged. Any
+  // other difference (a timestamp, a retried step) is not proof of the update.
   let pickedUp = false;
   while (Date.now() < deadline) {
     round++;
     const run = await fetchInitializationStatus(env, provider, cfg);
-    if (run !== null && !pickedUp && stableStringify(run) !== before) {
-      pickedUp = true;
+    if (run === null) {
+      log(opts.quiet, 'CHECK', 'Initialization run not found', {
+        env: envId,
+        provider,
+        round,
+        elapsed: elapsedSec(startMs),
+      });
+      await sleep(opts.pollIntervalMs);
+      continue;
     }
-    if (run === null || !pickedUp) {
+    pickedUp = pickedUp || hasUpdateSteps(run, before);
+    if (!pickedUp) {
       log(opts.quiet, 'CHECK', 'Waiting for the cloud-agent update to start', {
         env: envId,
         provider,
         round,
-        status: run?.status ?? 'Unknown',
+        status: run.status,
         elapsed: elapsedSec(startMs),
       });
       await sleep(opts.pollIntervalMs);
@@ -187,6 +225,8 @@ export async function updateEnvironmentAgents(
 
   // Everything that can be refused without the control plane is refused before
   // the first request, so a bad call updates nothing rather than half the tree.
+  // (A resolver's credentials only exist once it is asked, right before each
+  // agent's update, so what IT returns is checked there.)
   if (selected.length === 0) {
     throw new Error(
       `No cloud agent to update: the tree of '${managementEnvId}' declares none` +
@@ -210,20 +250,18 @@ export async function updateEnvironmentAgents(
   const source = opts.providerCredentials;
   const staticCredentials = typeof source === 'function' ? undefined : source;
   if (staticCredentials !== undefined) {
-    for (const {env, agent} of selected) {
-      const key = agent.provider.toLowerCase() as keyof ProviderCredentials;
-      if (!staticCredentials[key]) {
-        throw new Error(
-          `Cloud-agent update for ${agent.provider} in environment '${formatEnvironmentId(env.id)}' ` +
-            `requires providerCredentials.${key} when providerCredentials is given, but none were supplied.`,
-        );
-      }
-    }
-    if (selected.some(({agent}) => agent.provider === 'AWS')) {
+    const covered = selected.filter(({agent}) =>
+      coversProvider(staticCredentials, agent),
+    );
+    if (covered.some(({agent}) => agent.provider === 'AWS')) {
       const problem = partialAwsCredentials(staticCredentials);
       if (problem !== null) {
         throw new Error(`providerCredentials.aws: ${problem}`);
       }
+    }
+    for (const {agent} of covered) {
+      // Throws on the shapes initialize refuses too (static and federated mixed).
+      initHeaders(agent, staticCredentials, 'update');
     }
   }
 
@@ -238,6 +276,7 @@ export async function updateEnvironmentAgents(
     managementEnvId,
     secrets,
     'update',
+    'none',
   );
 
   for (const {env, agent} of selected) {
@@ -245,29 +284,39 @@ export async function updateEnvironmentAgents(
     const provider = agent.provider;
     const initializerPath = `initializer/${providerPath[provider]}`;
 
-    let before: string | null = null;
+    // A provider the caller supplies nothing for is updated without provider
+    // headers, with the credentials the control plane already holds.
+    let providerHeaders: Record<string, string> = {};
+    if (source !== undefined) {
+      const credentials = await credentialsFor(env, agent);
+      if (coversProvider(credentials, agent)) {
+        const warning =
+          provider === 'AWS' ? awsCredsWarning(credentials) : null;
+        if (warning !== null) {
+          log(quiet, 'WARN', warning, {env: envId, provider});
+        }
+        providerHeaders = initHeaders(agent, credentials, 'update');
+      }
+    }
+
+    // Snapshot right before the request, so nothing that happens to the run
+    // between the read and the update can pass for the update's own progress.
+    let before: InitializationRun | null = null;
     if (mode === 'wait') {
-      const current = await fetchInitializationStatus(env, provider, scopedCfg);
-      if (current === null) {
+      before = await fetchInitializationStatus(env, provider, scopedCfg);
+      if (before === null) {
         throw new Error(
           `The ${provider} cloud agent of environment '${envId}' has no initialization run to ` +
             'update. Initialize it first (cloud.environments.deploy).',
         );
       }
-      before = stableStringify(current);
     }
 
-    let providerHeaders: Record<string, string> = {};
-    if (source !== undefined) {
-      const credentials = await credentialsFor(env, agent);
-      const warning = provider === 'AWS' ? awsCredsWarning(credentials) : null;
-      if (warning !== null) {
-        log(quiet, 'WARN', warning, {env: envId, provider});
-      }
-      providerHeaders = initHeaders(agent, credentials, 'update');
-    }
-
-    log(quiet, 'INFO', 'Starting cloud-agent update', {env: envId, provider});
+    log(quiet, 'INFO', 'Starting cloud-agent update', {
+      env: envId,
+      provider,
+      credentials: Object.keys(providerHeaders).length > 0 ? 'sent' : 'none',
+    });
     await send(
       scopedCfg,
       superagent

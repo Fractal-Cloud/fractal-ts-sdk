@@ -227,13 +227,50 @@ describe('cloud.environments.updateAgents()', () => {
     expect(h.requests).toHaveLength(0);
   });
 
-  it('refuses static credentials that lack a selected agent’s provider before sending anything', async () => {
+  it('an agent whose provider the credentials do not cover is updated without provider headers', async () => {
+    h.state.queue = [{status: 202}, {status: 202}, {status: 202}];
+    await cloud.environments.updateAgents(tree(), {
+      quiet: true,
+      providerCredentials: awsCreds,
+    });
+    const gcp = h.requests.find(r => r.url.endsWith('/gcp/update'));
+    expect(gcp).toBeDefined();
+    expect(Object.keys(gcp?.headers ?? {}).some(k => /^X-(AWS|GCP|Azure|OCI|Hetzner)/i.test(k))).toBe(
+      false,
+    );
+    expect(
+      h.requests.filter(r => r.headers['X-AWS-Access-Key-ID'] === 'AKIA-mgmt'),
+    ).toHaveLength(2);
+  });
+
+  it('a resolver returning nothing for an agent sends no provider headers', async () => {
+    h.state.queue = [{status: 202}];
+    await cloud.environments.updateAgents(tree(), {
+      quiet: true,
+      only: a => a.provider === 'GCP',
+      providerCredentials: () => undefined,
+    });
+    expect(h.requests).toHaveLength(1);
+    expect(
+      Object.keys(h.requests[0].headers).some(k => /^X-(AWS|GCP|Azure|OCI|Hetzner)/i.test(k)),
+    ).toBe(false);
+  });
+
+  it('refuses mixed static and federated credentials before sending anything', async () => {
     await expect(
       cloud.environments.updateAgents(tree(), {
         quiet: true,
-        providerCredentials: awsCreds,
+        providerCredentials: {
+          ...awsCreds,
+          gcp: {
+            serviceAccountEmail: 'sa@p.iam',
+            serviceAccountCredentials: '{"k":1}',
+            workloadIdentityProvider: 'projects/1/x',
+            federatedToken: 'tok',
+          } as never,
+        },
       }),
-    ).rejects.toThrow(/providerCredentials\.gcp/);
+    ).rejects.toThrow(/Cloud-agent update for GCP received both static and federated/);
     expect(h.requests).toHaveLength(0);
   });
 
@@ -332,6 +369,110 @@ describe('cloud.environments.updateAgents()', () => {
     );
     expect(logged).toMatch(/CHECK Polling cloud-agent update .*round=\d+/);
     expect(logged).toMatch(/INFO {2}Cloud-agent update completed .*elapsed=/);
+  });
+
+  it('wait: a change that adds no step (a timestamp) is not taken for the update', async () => {
+    const before = run('Completed', [step(1, 'FractalCloudAgent', 'Completed')]);
+    const touched = {
+      status: 200,
+      body: {
+        initializationRun: {
+          status: 'Completed',
+          updatedAt: 'later',
+          steps: [step(1, 'FractalCloudAgent', 'Completed')],
+        },
+      },
+    };
+    h.state.queue = [
+      before,
+      {status: 202},
+      touched, // differs, but carries no update step: not a verdict
+      run('Completed', [
+        step(1, 'FractalCloudAgent', 'Completed'),
+        step(2, 'Update to 1.2.3', 'Completed'),
+      ]),
+    ];
+    await cloud.environments.updateAgents(tree(), {
+      quiet: true,
+      agentUpdate: 'wait',
+      pollIntervalMs: 1,
+      timeoutMs: 5000,
+      only: a => a.environment.shortName === 'mgmt' && a.provider === 'AWS',
+    });
+    expect(h.state.queue).toHaveLength(0);
+    expect(h.requests).toHaveLength(4);
+  });
+
+  it('wait: a cancelled update throws', async () => {
+    const before = run('Failed', [step(1, 'FractalCloudAgent', 'Failed')]);
+    h.state.queue = [
+      before,
+      {status: 202},
+      run('Cancelled', [
+        step(1, 'FractalCloudAgent', 'Cancelled'),
+        step(2, 'Update to 1.2.3', 'Cancelled'),
+      ]),
+    ];
+    await expect(
+      cloud.environments.updateAgents(tree(), {
+        quiet: true,
+        agentUpdate: 'wait',
+        pollIntervalMs: 1,
+        only: a => a.environment.shortName === 'mgmt' && a.provider === 'AWS',
+      }),
+    ).rejects.toThrow(/AWS cloud-agent update was cancelled/);
+  });
+
+  it('wait: awaits each update before starting the next, management first', async () => {
+    const before = run('Completed', [step(1, 'FractalCloudAgent', 'Completed')]);
+    const after = run('Completed', [
+      step(1, 'FractalCloudAgent', 'Completed'),
+      step(2, 'Update to 1.2.3', 'Completed'),
+    ]);
+    h.state.queue = [before, {status: 202}, after, before, {status: 202}, after];
+    await cloud.environments.updateAgents(tree(), {
+      quiet: true,
+      agentUpdate: 'wait',
+      pollIntervalMs: 1,
+      only: a => a.provider === 'AWS',
+    });
+    expect(h.requests.map(r => `${r.method} ${r.url.slice(API.length)}`)).toEqual([
+      'GET /mgmt/initializer/aws/status',
+      'POST /mgmt/initializer/aws/update',
+      'GET /mgmt/initializer/aws/status',
+      'GET /prod/initializer/aws/status',
+      'POST /prod/initializer/aws/update',
+      'GET /prod/initializer/aws/status',
+    ]);
+  });
+
+  it('wait: resolver credentials are redacted from a later status-poll error', async () => {
+    const before = run('Completed', []);
+    h.state.queue = [
+      before,
+      {status: 202},
+      {status: 500, body: {message: 'rejected token prod-session-xyz'}},
+    ];
+    const err = await cloud.environments
+      .updateAgents(tree(), {
+        quiet: true,
+        agentUpdate: 'wait',
+        pollIntervalMs: 1,
+        only: a => a.environment.shortName === 'prod',
+        providerCredentials: () => ({
+          aws: {
+            accessKeyId: 'AKIA-prod',
+            secretAccessKey: 'prod-secret-abc',
+            sessionToken: 'prod-session-xyz',
+          },
+        }),
+      })
+      .then(
+        () => expect.fail('expected the poll to fail'),
+        (e: unknown) => e,
+      );
+    const text = `${String(err)} ${JSON.stringify(err)}`;
+    expect(text).not.toContain('prod-session-xyz');
   });
 
   it('wait: a failed step fails the update with the step’s message', async () => {

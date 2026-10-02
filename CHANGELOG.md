@@ -22,10 +22,10 @@ environment first. That re-runs the agent's role/permission steps and redeploys 
 published version. `only` selects agents by `{environment, tier, provider, accountId, region}`
 (the new `CloudAgentTarget`). `agentUpdate: 'wait'` polls each update through
 `.../status` and ignores the run as it was before the update. It logs in the wait-mode format and
-throws with the failing step's message. OCI and Hetzner agents, a selection matching nothing,
-static credentials missing a selected provider, and a partial AWS set are refused before any
-request is sent. `providerCredentials` is optional and is sent as the `initialize` headers, but
-the control plane's update endpoint does not read them yet. It updates with the credentials it
+throws with the failing step's message. OCI and Hetzner agents, a selection matching nothing, a
+partial static AWS set and mixed static/federated static credentials are refused before any
+request is sent. `providerCredentials` is optional, per provider too, and is sent as the
+`initialize` headers, but the control plane's update endpoint does not read them yet. It updates with the credentials it
 already holds, so an environment initialized with short-lived inline credentials can fail its
 update at the first step that needs them. Writes no environment, and changes nothing about
 `deploy`.
