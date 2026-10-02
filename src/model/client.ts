@@ -37,7 +37,10 @@ import {
   getEnvironmentDnsZones,
   listEnvironments,
 } from './environment/service';
+import {planEnvironments} from './environment/plan';
 import type {DeployEnvironmentOptions} from './environment/service';
+import type {EnvironmentDeployResult} from './environment/environment_deploy_result';
+import type {EnvironmentPlan} from './environment/environment_plan';
 import type {ManagementEnvironmentNode} from './environment/environment';
 import type {
   EnvironmentDetails,
@@ -173,11 +176,21 @@ export type FractalCloudClient = {
      *
      * Updating an existing environment merges parameters: only the keys this
      * tree declares are written, every other key the server holds is kept.
+     * Resolves to what happened to each cloud agent, skipped ones included.
      */
     deploy: (
       management: ManagementEnvironmentNode,
       opts?: DeployEnvironmentOptions,
-    ) => Promise<void>;
+    ) => Promise<EnvironmentDeployResult>;
+    /**
+     * Preview what deploying these trees would create (+), update (~) or leave
+     * unchanged (=), read-only; render it with `formatEnvironmentPlan` or
+     * `environmentPlanMarkdown`. The order of an environment's agents is not a
+     * change.
+     */
+    plan: (
+      trees: ManagementEnvironmentNode | readonly ManagementEnvironmentNode[],
+    ) => Promise<EnvironmentPlan>;
     /** List an owner's environments (summaries: id, name, status, resource
      *  groups, initialized clouds). */
     list: (owner: {
@@ -210,6 +223,7 @@ export const createFractalCloudClient = (
   },
   environments: {
     deploy: (management, opts) => deployEnvironment(management, cfg, opts),
+    plan: trees => planEnvironments(trees, cfg),
     list: owner => listEnvironments(owner, cfg),
     get: id => getEnvironment(id, cfg),
     dnsZones: id => getEnvironmentDnsZones(id, cfg),

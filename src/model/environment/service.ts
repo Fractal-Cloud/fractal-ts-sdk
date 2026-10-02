@@ -47,6 +47,12 @@ import type {DnsZoneProviderResult} from './dns_zone_provider_result';
 import type {EnvironmentDnsZone} from './environment_dns_zone';
 import type {EnvironmentDnsZones} from './environment_dns_zones';
 import {findParameter} from './parameters';
+import {keepStoredAgentOrder} from './agent_order';
+import {ProviderCredentialsNotConfigured} from './provider_credentials_not_configured';
+import type {DeployedAgent} from './deployed_agent';
+import type {EnvironmentDeployResult} from './environment_deploy_result';
+import type {SkippedAgent} from './skipped_agent';
+import type {CiReporter} from '../ci/ci_reporter';
 import type {CloudAgent} from './cloud_agents';
 import {
   resolveEnvironment,
@@ -75,6 +81,12 @@ export type DeployEnvironmentOptions = {
    * AWS: only three-part session credentials (`accessKeyId` + `secretAccessKey`
    * + `sessionToken`) are honored by the control plane today; see
    * {@link AwsCredentials}.
+   *
+   * A resolver that throws {@link ProviderCredentialsNotConfigured} declares that
+   * this run holds no credentials for that cloud: the agent is skipped with a
+   * notice and the deploy goes on with the others, so one CI job per cloud can
+   * each deploy the whole tree (see `credentialsFromCi`). Any other error, or a
+   * resolver returning nothing, fails the deploy.
    */
   providerCredentials?: ProviderCredentials | ProviderCredentialsResolver;
   /**
@@ -90,6 +102,18 @@ export type DeployEnvironmentOptions = {
    * option; re-running once the management env is initialized proceeds.
    */
   agentInit?: 'wait' | 'fire-and-forget';
+  /**
+   * An operational agent whose management agent on the same cloud has not
+   * completed (so the control plane would refuse it): `skip` (default) leaves it
+   * for a later deploy with a notice; `fail` throws before sending anything.
+   * The operational environment itself is still created or updated.
+   */
+  pendingManagement?: 'skip' | 'fail';
+  /**
+   * Where notices about skipped agents go (a CI reporter, e.g. `ci.reporter`
+   * from `detectCi()`). Default: the deploy's own log lines.
+   */
+  reporter?: CiReporter;
   /**
    * Send `POST .../initialize` even when a stored initialization run already
    * reads `Completed`. Default `false` — every existing caller keeps today's
@@ -659,7 +683,7 @@ const failureMessage = (provider: string, run: InitializationRun): string => {
 
 /** What a deploy knows about an agent's initialization once it has handled it:
  *  `Completed` only when a Completed run was observed (and not forced over). */
-type AgentInitOutcome = 'Completed' | 'NotCompleted';
+type AgentInitOutcome = 'Completed' | 'NotCompleted' | 'Skipped';
 
 const initializeAgent = async (
   env: ResolvedEnvironment,
@@ -671,13 +695,16 @@ const initializeAgent = async (
     pollIntervalMs: number;
     timeoutMs: number;
     quiet: boolean;
-    /** Resolves this env's credentials; called only when initialize is sent. */
+    /** Resolves this env's credentials; called only when initialize is sent.
+     *  `null`: this run holds none for the agent's cloud, and it is skipped. */
     credentialsFor: (
       env: ResolvedEnvironment,
       agent: CloudAgent,
-    ) => Promise<ProviderCredentials | undefined>;
-    /** Throws when this agent may not be initialized yet (ordering guard). */
-    beforeStart: (env: ResolvedEnvironment, agent: CloudAgent) => void;
+    ) => Promise<ProviderCredentials | undefined | null>;
+    /** Told once the initialize request has been accepted. */
+    onStarted: (agent: CloudAgent) => void;
+    /** `false` (or a throw) when this agent may not be initialized yet. */
+    beforeStart: (env: ResolvedEnvironment, agent: CloudAgent) => boolean;
   },
 ): Promise<AgentInitOutcome> => {
   const envId = formatEnvironmentId(env.id);
@@ -706,7 +733,9 @@ const initializeAgent = async (
       : null;
 
   if (needsStart) {
-    opts.beforeStart(env, agent);
+    if (!opts.beforeStart(env, agent)) {
+      return 'Skipped';
+    }
     log(opts.quiet, 'INFO', 'Starting cloud-agent initialization', {
       env: envId,
       provider,
@@ -726,6 +755,9 @@ const initializeAgent = async (
     //     service-account email) are deliberately excluded so they still show up in
     //     a diagnostic.
     const credentials = await opts.credentialsFor(env, agent);
+    if (credentials === null) {
+      return 'Skipped';
+    }
     const warning =
       agent.provider === 'AWS' ? awsCredsWarning(credentials) : null;
     if (warning !== null) {
@@ -744,6 +776,7 @@ const initializeAgent = async (
         .send(initBody(agent, env)),
       collectSecrets(providerHeaders),
     );
+    opts.onStarted(agent);
   }
 
   if (opts.agentInit === 'fire-and-forget') {
@@ -852,6 +885,7 @@ const stableStringify = (value: unknown): string => {
 const needsUpdate = (
   env: ResolvedEnvironment,
   existing: EnvironmentResponse,
+  parameters: Record<string, unknown>,
 ): boolean => {
   if (existing.name !== env.name) {
     return true;
@@ -865,11 +899,7 @@ const needsUpdate = (
   // Keys the SDK does not declare are preserved by the merge, so a key the server
   // or the web UI added never counts as drift.
   const existingParams = (existing.parameters ?? {}) as Record<string, unknown>;
-  return (
-    stableStringify(
-      mergeEnvironmentParameters(existingParams, env.parameters),
-    ) !== stableStringify(existingParams)
-  );
+  return stableStringify(parameters) !== stableStringify(existingParams);
 };
 
 /** Result of reconciling one environment's own record. `parameters` is what
@@ -895,9 +925,12 @@ const createOrUpdateEnvironment = async (
     await createEnvironment(env, cfg);
     return {existing: null, parameters: createParameters(env.parameters)};
   }
-  const parameters = mergeEnvironmentParameters(
-    existing.parameters,
-    env.parameters,
+  // Agents the tree declares in another order than the server stores them are
+  // the same agents: keep the stored order, so nothing is rewritten for it and
+  // the order never flips between runs.
+  const parameters = keepStoredAgentOrder(
+    existing.parameters ?? {},
+    mergeEnvironmentParameters(existing.parameters, env.parameters),
   );
   // Removing the last tag / DNS zone from code no longer clears it (undeclared
   // keys are preserved), so say which builder-owned keys were kept — a quiet
@@ -914,7 +947,7 @@ const createOrUpdateEnvironment = async (
       clearWith: "withParameter('<key>', null)",
     });
   }
-  if (needsUpdate(env, existing)) {
+  if (needsUpdate(env, existing, parameters)) {
     log(quiet, 'INFO', 'Updating environment', {env: id});
     // Preserve the existing default CI/CD profile; profiles are managed later.
     await updateEnvironment(
@@ -981,8 +1014,35 @@ export async function deployEnvironment(
   management: ManagementEnvironmentNode,
   cfg: ApiConfig,
   opts: DeployEnvironmentOptions = {},
-): Promise<void> {
+): Promise<EnvironmentDeployResult> {
   const tree = resolveEnvironment(management);
+  const pendingManagement = opts.pendingManagement ?? 'skip';
+  const result: EnvironmentDeployResult = {
+    started: [],
+    completed: [],
+    inProgress: [],
+    skipped: [],
+  };
+  const agentRef = (
+    env: ResolvedEnvironment,
+    agent: CloudAgent,
+  ): DeployedAgent => ({environment: {...env.id}, provider: agent.provider});
+  const skip = (
+    env: ResolvedEnvironment,
+    agent: CloudAgent,
+    reason: SkippedAgent['reason'],
+    message: string,
+  ): void => {
+    result.skipped.push({...agentRef(env, agent), reason, message});
+    if (opts.reporter !== undefined) {
+      opts.reporter.notice(message);
+    } else {
+      log(quiet, 'INFO', message, {
+        env: formatEnvironmentId(env.id),
+        provider: agent.provider,
+      });
+    }
+  };
   const quiet = opts.quiet ?? false;
   const agentInit = opts.agentInit ?? 'fire-and-forget';
   const reinitializeAgents = opts.reinitializeAgents ?? false;
@@ -1100,7 +1160,7 @@ export async function deployEnvironment(
   const credentialsFor = async (
     env: ResolvedEnvironment,
     agent: CloudAgent,
-  ): Promise<ProviderCredentials | undefined> => {
+  ): Promise<ProviderCredentials | undefined | null> => {
     if (typeof resolveCredentials !== 'function') {
       return resolveCredentials;
     }
@@ -1115,6 +1175,17 @@ export async function deployEnvironment(
         region: agent.region,
       });
     } catch (err) {
+      if (err instanceof ProviderCredentialsNotConfigured) {
+        skip(
+          env,
+          agent,
+          'missing-credentials',
+          `Skipped the ${agent.provider} agent of '${envId}': this run holds no ` +
+            `${agent.provider} credentials (${err.message}). The job holding ` +
+            `${agent.provider} credentials initializes it.`,
+        );
+        return null;
+      }
       // Name the environment; the message is the caller's own error, and no
       // `cause` is attached so nothing the resolver held rides along.
       throw new Error(
@@ -1146,15 +1217,31 @@ export async function deployEnvironment(
   // Management outcome per provider, filled as the management env's agents are
   // handled — which is always before any operational env's (`ordered`).
   const managementOutcome = new Map<CloudAgent['provider'], AgentInitOutcome>();
-  const beforeStart = (env: ResolvedEnvironment, agent: CloudAgent): void => {
+  const beforeStart = (
+    env: ResolvedEnvironment,
+    agent: CloudAgent,
+  ): boolean => {
     if (formatEnvironmentId(env.id) === managementEnvId) {
-      return;
+      return true;
     }
-    // Refuse only what this deploy KNOWS will fail: it handled the management
-    // agent for this provider and did not observe a Completed run. Anything
-    // else is left to the control plane's own check.
-    if (managementOutcome.get(agent.provider) !== 'NotCompleted') {
-      return;
+    // Hold back only what this deploy KNOWS will fail: it handled the management
+    // agent for this provider and did not observe a Completed run (it started
+    // one, or skipped it). Anything else is left to the control plane's check.
+    const outcome = managementOutcome.get(agent.provider);
+    if (outcome !== 'NotCompleted' && outcome !== 'Skipped') {
+      return true;
+    }
+    if (pendingManagement === 'skip') {
+      skip(
+        env,
+        agent,
+        'pending-management',
+        `Skipped the ${agent.provider} agent of '${formatEnvironmentId(env.id)}': its management ` +
+          `environment '${managementEnvId}' has not completed its ${agent.provider} ` +
+          'initialization yet, which the control plane requires first. The next deploy ' +
+          'after it completes initializes this one.',
+      );
+      return false;
     }
     // The server would reject this with ManagementEnvironmentNotInitialized; say
     // why, and what to do, before sending anything.
@@ -1167,7 +1254,9 @@ export async function deployEnvironment(
     );
   };
 
+  const started = new Set<CloudAgent>();
   const agentOpts = {
+    onStarted: (agent: CloudAgent) => started.add(agent),
     agentInit,
     reinitializeAgents,
     pollIntervalMs,
@@ -1183,8 +1272,16 @@ export async function deployEnvironment(
       if (isManagement) {
         managementOutcome.set(agent.provider, outcome);
       }
+      if (started.has(agent)) {
+        result.started.push(agentRef(env, agent));
+      } else if (outcome === 'Completed') {
+        result.completed.push(agentRef(env, agent));
+      } else if (outcome === 'NotCompleted') {
+        result.inProgress.push(agentRef(env, agent));
+      }
     }
   }
+  return result;
 }
 
 // ── read operations ─────────────────────────────────────────────────────────

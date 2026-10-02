@@ -1071,6 +1071,8 @@ describe('cloud.environments.deploy() — per-environment credentials', () => {
     await expect(
       cloud.environments.deploy(awsTree(), {
         quiet: true,
+        // The default skips it with a notice (environment_deploy_ci.test.ts).
+        pendingManagement: 'fail',
         providerCredentials: request => {
           asked.push(request.environment.shortName);
           return sessionCreds(request.accountId);
@@ -1537,6 +1539,7 @@ describe('cloud.environments.deploy() — review hardening', () => {
         quiet: true,
         providerCredentials,
         reinitializeAgents: true,
+        pendingManagement: 'fail',
       }),
     ).rejects.toThrow(/agentInit: 'wait'/);
     const inits = h.requests.filter(r => r.url.endsWith('/initialize'));

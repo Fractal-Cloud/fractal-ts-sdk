@@ -11,6 +11,60 @@ of truth for what is on npm.
 
 ## Unreleased
 
+### Added — **the CI kit: deploy environments from CI without writing the plumbing**
+
+- Ports `CiIdentity` (`idToken(audience)`, optional `fixedAudience`) and
+  `CiReporter` (`notice`, `warning`, `error`, `mask`, `appendSummary`), composed
+  as a `Ci` with `variable(name)`.
+- Adapters: `githubActionsIdentity` / `githubActionsReporter`
+  (`ACTIONS_ID_TOKEN_REQUEST_URL` / `_TOKEN`, `::notice::`, `::add-mask::`,
+  `GITHUB_STEP_SUMMARY`), `azureDevOpsIdentity` / `azureDevOpsReporter`
+  (`POST $(System.OidcRequestUri)?api-version=7.1&serviceConnectionId=` with
+  `System.AccessToken`, `##vso[task.logissue]`, `##vso[task.setsecret]`,
+  `##vso[task.uploadsummary]`), and the local `consoleReporter` / `noCiIdentity`.
+  `detectCi()` picks them from the environment. Messages are escaped so they
+  cannot end or forge a CI command.
+- `credentialsFromCi(ci, {cloud, aws, gcp, azure, environments?})` returns a
+  `providerCredentials` resolver for **one job holding one cloud's
+  credentials**. OIDC is the default per cloud (AWS `{roleArn}` exchanged with
+  `sts:AssumeRoleWithWebIdentity`, or handed to the control plane with
+  `exchange: 'control-plane'`; GCP workload identity federation; Azure
+  federated credential), with the audience each cloud expects (or the CI's
+  fixed one). CI secrets are the alternative, read with `ciSecret('NAME')`:
+  AWS keys (long-lived ones become a session through a signed
+  `sts:GetSessionToken` first), an Azure client secret, a GCP key JSON. Tokens
+  are minted per request, everything secret is masked through the reporter,
+  and an account, project, subscription or environment the configuration does
+  not name is refused.
+- README: "Deploy from CI", with GitHub Actions and Azure DevOps per-cloud job
+  layouts.
+
+### Added — **`environments.plan(trees)`**
+
+A read-only preview of what `deploy` would create (`+`), update (`~`, with the
+changed fields), leave unchanged (`=`) or refuse (`!`: an operational
+`networkTier` the stored management tier would override). The order of an
+environment's agents is not a change. `formatEnvironmentPlan` and
+`environmentPlanMarkdown` render it as lines and as a step-summary section.
+
+### Changed — **a deploy skips the agents it cannot initialize, and says so**
+
+- A `providerCredentials` resolver that throws the new
+  `ProviderCredentialsNotConfigured` skips that agent with a notice and the
+  deploy continues with the other agents, so one job per cloud can each deploy
+  the whole tree. Any other resolver error still fails the deploy, and so does a
+  resolver returning nothing.
+- Under `fire-and-forget`, an operational agent whose management agent has not
+  completed on that cloud is now **skipped with a notice** instead of throwing
+  (the operational environment itself is still written). `pendingManagement:
+  'fail'` restores the throw.
+- Notices go to the new `reporter` option (a `CiReporter`), or to the deploy log.
+- `environments.deploy` resolves to `{started, completed, inProgress, skipped}`
+  instead of `void`.
+- An environment whose stored agents differ from the declared ones only in order
+  is no longer rewritten; the stored order is kept, so it never flips between
+  runs.
+
 ### Added — **`DnsZone.providers`: choose which clouds host an environment's DNS zone**
 
 `withDnsZones([{name, providers: ['AWS' | 'GCP' | 'Azure', ...]}])`. Omitted, every AWS / GCP /
