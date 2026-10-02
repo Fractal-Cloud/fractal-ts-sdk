@@ -10,6 +10,7 @@
  * SDK surface stays with the API's `EnvironmentId` shape here (type/ownerId/
  * shortName), never exposing the term to describe a Bounded Context.
  */
+import type {DnsRecord, DnsZoneGuardrails} from '../components/dns';
 
 /** Ownership flavor of an environment (matches the API's environment type). */
 export type EnvironmentType = 'Personal' | 'Organizational';
@@ -44,11 +45,19 @@ export type CiCdProfile = {
   sshPrivateKeyPassphrase?: string;
 };
 
-/** A DNS zone registered on an environment. */
-export type DnsZone = {
+/**
+ * A DNS zone registered on an environment. It carries the same guardrails and
+ * records as the DNS Zone component (`DnsZoneComponent`), so an environment zone
+ * and the atom share one shape; the agent realizes it through the environment
+ * cloud's DNS zone offer. `name` is the zone's domain (the component calls it
+ * `domainName`).
+ */
+export type DnsZone = DnsZoneGuardrails & {
   name: string;
   /** Optional provider hint; the agent resolves the concrete zone. */
   dnsZoneType?: string;
+  /** Record sets of the zone, validated against the guardrails. */
+  records?: DnsRecord[];
 };
 
 /**

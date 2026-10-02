@@ -44,6 +44,7 @@ export * from './components/observability';
 export * from './components/security';
 export * from './components/custom_workloads';
 export * from './components/unmanaged';
+export * from './components/dns';
 
 // Offer catalogue (concrete — vendor or vendor-neutral)
 export * from './offers/network_and_compute';
@@ -55,3 +56,4 @@ export * from './offers/observability';
 export * from './offers/security';
 export * from './offers/custom_workloads';
 export * from './offers/unmanaged';
+export * from './offers/dns';
