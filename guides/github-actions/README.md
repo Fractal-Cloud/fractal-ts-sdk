@@ -7,16 +7,18 @@ static AWS keys.
 
 ```
 guides/github-actions/
-├── src/environments.ts                   the tree (management + prod + dev)
-├── src/deploy.ts                         deploy, per-environment credentials
+├── src/environments.ts                   the tree (management + prod + dev), per target
+├── src/deploy.ts                         deploy one target with its own credentials
 ├── src/plan.ts                           PR preview via environments.list()/get()
 └── workflows/
-    ├── environments-deploy.yml           main → assume one role per account → deploy
+    ├── environments-deploy.yml           main → one job per account, each assuming its role
     └── environments-plan.yml             pull_request → typecheck + preview, no AWS
 ```
 
 Copy `src/` and `workflows/` (into `.github/workflows/`) into your landing-zone
-repository, then replace the account ids, organization id and region.
+repository, then replace the account ids, organization id and region. The
+consumer repository needs `@fractal_cloud/sdk`, `typescript` and `tsx`. The samples
+are typechecked against this SDK in its own CI (`tsconfig.guides.json`).
 
 ## 1. A deployer role in every target account
 
@@ -42,8 +44,15 @@ repository actually sends:
 
 ```bash
 PREFIX=$(gh api repos/<owner>/<repo>/actions/oidc/customization/sub --jq .sub_claim_prefix)
+[ -n "$PREFIX" ] || { echo "no sub_claim_prefix returned; do not guess it" >&2; exit 1; }
 SUBJECT="${PREFIX}:ref:refs/heads/main"
 ```
+
+`:ref:refs/heads/main` is the suffix of the default subject template for a job
+that runs on a push to `main` and has no `environment:`. If the repository
+customizes `include_claim_keys`, or the job declares an `environment:`, the subject
+has a different shape. In case of doubt, print the `sub` of a real token from a
+throwaway workflow run on `main` and trust exactly that value.
 
 Then, per account (with an admin profile for it):
 
@@ -52,6 +61,7 @@ ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
 PROVIDER="arn:aws:iam::${ACCOUNT}:oidc-provider/token.actions.githubusercontent.com"
 
 # Once per account, if the GitHub OIDC provider does not exist yet.
+aws iam get-open-id-connect-provider --open-id-connect-provider-arn "$PROVIDER" >/dev/null 2>&1 ||
 aws iam create-open-id-connect-provider \
   --url https://token.actions.githubusercontent.com \
   --client-id-list sts.amazonaws.com \
@@ -87,58 +97,99 @@ landing-zones repository keeps an idempotent version of these steps as
 ## 2. The deploy workflow
 
 [`workflows/environments-deploy.yml`](workflows/environments-deploy.yml) is built
-from these parts:
+from these parts.
 
-- **`permissions: id-token: write, contents: read`.** These let the job mint the
-  OIDC token, and nothing more.
-- **One `aws-actions/configure-aws-credentials` step per account**, each with a
-  distinct `id`, `output-credentials: true` and `role-duration-seconds: 7200`. Each
-  step exposes `aws-access-key-id`, `aws-secret-access-key` and `aws-session-token`
-  as step outputs. The workflow passes those to the script as
-  `<PREFIX>_AWS_*` variables.
-- **Per-environment credentials.**
-  [`src/deploy.ts`](src/deploy.ts) passes a function as `providerCredentials`.
-  The SDK calls it once per environment, right before that environment's agent is
-  initialized, and the function returns that account's three values. **All three are
+**Why one job per environment.** The initializer keeps using the credentials it
+was handed until that environment's initialization finishes, which can take up to
+the SDK's 55-minute wait. Credentials minted at the start of one job that
+initializes management, then prod, then dev in sequence would have to last up to
+about 2 h 45 min. The role's 2-hour session would expire partway through. So the
+workflow runs:
+
+1. a `check` job that installs and typechecks with **no** `id-token` permission;
+2. a `management` job that assumes the management account's role and deploys the
+   management environment alone, waiting for its initialization;
+3. an `operational` job (a matrix, one entry per account, needing `management`). Each
+   entry assumes **its own** account's role when it starts and deploys the
+   management environment plus that one operational environment.
+
+Each job's single `aws-actions/configure-aws-credentials` step has a distinct `id`,
+`output-credentials: true` and `role-duration-seconds: 7200`. That gives every
+account its own step and keeps every session ahead of the one initialization it
+serves. In the `operational` jobs the management environment is already Completed,
+so the SDK never asks for its credentials there. Deploying a subset of the tree
+never touches environments the subset does not declare.
+
+Other parts:
+
+- **`permissions:`** — `contents: read` for the workflow. `id-token: write` only
+  on the two deploy jobs, so they can mint the OIDC token the roles trust.
+- **Per-environment credentials.** [`src/deploy.ts`](src/deploy.ts) passes a
+  function as `providerCredentials`. The SDK calls it right before an
+  environment's agent is initialized, and the function returns the job's three
+  values (`accessKeyId`, `secretAccessKey`, `sessionToken`). **All three are
   required**: the API uses AWS credentials as inline credentials only when the
   session token is present too. Without it they are ignored, and the SDK logs a
-  `WARN`.
+  `WARN`. If the function is asked about an environment the job holds no
+  credentials for, it fails naming the job to run first.
 - **`agentInit: 'wait'`.** The control plane refuses an operational
-  initialization until the management one has Completed. `wait` initializes
-  management, waits for it to complete, and only then does the operational
-  environments, all in one run.
+  initialization until the management one has Completed. `wait` makes each job end
+  only once its initialization has, which is what makes `needs: management` a real
+  ordering guarantee.
 - **Fractal service account** comes from repository secrets `SERVICE_ACCOUNT_ID` /
   `SERVICE_ACCOUNT_SECRET`, and the owner id from the repository variable
   `FRACTAL_OWNER_ID`.
-- **`concurrency: environments-deploy`, `cancel-in-progress: false`.** Two deploys
-  never overlap. A second push queues behind a running initialization instead of
-  racing it or cancelling it halfway.
-- **`timeout-minutes: 110`.** This leaves headroom for a full initialization while
-  staying inside the 2-hour session.
+- **`concurrency: environments-deploy`, `cancel-in-progress: false`.** A running
+  deploy is never overlapped or cancelled. The newest pending push waits behind it,
+  and an older pending one is superseded.
+- **`timeout-minutes: 100`** per deploy job: one initialization plus headroom,
+  inside the 2-hour session.
+- **`npm ci --ignore-scripts`** and actions pinned to commit SHAs. This limits
+  which third-party code runs in a job that can assume an `AdministratorAccess`
+  role.
+- A `workflow_dispatch` from any branch other than `main` cannot assume the
+  roles. That is intended.
 
 ## 3. The pull-request workflow
 
 [`workflows/environments-plan.yml`](workflows/environments-plan.yml) gets **no AWS
 credentials**: it has no `id-token` permission, and the roles trust only `main`
-anyway. It typechecks the tree. It then runs [`src/plan.ts`](src/plan.ts), which
-validates the tree with `resolveEnvironment` and reads the current state with
-`cloud.environments.list()` / `get()`. It prints what a deploy would create or
-change, computing parameter changes with `mergeEnvironmentParameters`, which is
-exactly what a deploy writes. It needs only the Fractal service account, and it
-skips the preview for pull requests from forks, which receive no secrets.
+anyway. It typechecks the tree, then runs [`src/plan.ts`](src/plan.ts). That script
+validates the tree with `resolveEnvironment`, reads the current state with
+`cloud.environments.list()` / `get()`, and prints `+ create`, `~ update <fields>` or
+`=` per environment. The preview follows deploy's own decisions:
+
+- it creates when an environment is absent or Deleted;
+- it updates when the name, the resource groups, or the parameters after
+  `mergeEnvironmentParameters` differ, compared key-order-insensitively;
+- it reports, and fails on, an operational `networkTier` that the management
+  environment's stored tier would override.
+
+Cloud-agent initialization is not previewed. The preview step is skipped for
+pull requests from forks and from Dependabot, which do not receive repository
+secrets.
 
 ## Security notes
 
 - **No static AWS keys anywhere.** Not in secrets, not in the repository. Every AWS
   credential is a short-lived session minted from the job's OIDC token.
-- **Trust only the default branch.** The `sub` condition pins
-  `:ref:refs/heads/main`, so a pull request, another branch or a fork cannot
-  assume the role. Use `StringEquals`, not `StringLike` with wildcards.
+- **Trust only the default branch**, with `StringEquals` (no wildcards) on `aud` and
+  `sub`. A pull request, another branch or a fork cannot assume the roles. Note
+  that the trust is on the *branch*, not on this workflow file: any workflow merged
+  to `main` can assume them. Protect `main` (required reviews) and require
+  code-owner review for `.github/workflows/`.
 - **Credentials live only for the run.** They expire after at most two hours. The
-  SDK redacts them from every error it throws, including errors from requests that
-  never carried them.
+  SDK redacts them from the errors it raises, including errors from requests that
+  never carried them. An error thrown by your own credentials resolver is passed
+  through with its message as written.
 - **The role ARN is not a secret.** It is safe to commit in the workflow. Without a
   token that matches the trust policy it grants nothing.
-- The Fractal service-account secret is the one long-lived credential. Keep it in
-  repository (or environment) secrets, and protect `main` so that only reviewed
-  changes deploy.
+- **The Fractal service-account secret is the one long-lived credential, and the
+  plan job exposes it to pull-request code.** A same-repository pull request runs
+  its own `plan.ts` (and could change the workflow itself) with that secret in the
+  environment. That secret can create and update environments. Anyone with write
+  access can therefore use it. If your Fractal organization supports one, give the
+  plan job a separate, least-privileged service account (the workflow prefers
+  `SERVICE_ACCOUNT_PLAN_ID` / `SERVICE_ACCOUNT_PLAN_SECRET` when they are set).
+  Otherwise put the plan job behind a GitHub Environment with required reviewers,
+  or drop the preview step and keep only the typecheck.

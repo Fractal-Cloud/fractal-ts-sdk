@@ -1,13 +1,17 @@
 /**
- * Deploy the environment tree (runs on `main` only). AWS credentials come from
- * one `aws-actions/configure-aws-credentials` step per account, exported as
- * <PREFIX>_AWS_ACCESS_KEY_ID / _SECRET_ACCESS_KEY / _SESSION_TOKEN.
+ * Deploy one target environment: `tsx src/deploy.ts <mgmt|prod|dev>`.
+ *
+ * The job's single `aws-actions/configure-aws-credentials` step (output
+ * credentials, exported as TARGET_AWS_*) holds the credentials of the TARGET
+ * account only. The management environment is initialized by its own, earlier
+ * job; when an operational job runs it is already Completed, so its credentials
+ * are never requested here.
  */
 import {
   createFractalCloudClient,
   type ProviderCredentials,
 } from '@fractal_cloud/sdk';
-import {management} from './environments';
+import {treeFor} from './environments';
 
 const required = (name: string): string => {
   const value = process.env[name];
@@ -17,20 +21,17 @@ const required = (name: string): string => {
   return value;
 };
 
+const target = process.argv[2] ?? '';
+const tree = treeFor(target);
+
 // All three values are required: the control plane uses AWS credentials as
 // inline credentials only when the session token is present too.
-const awsFor = (prefix: string): ProviderCredentials => ({
+const targetCredentials: ProviderCredentials = {
   aws: {
-    accessKeyId: required(`${prefix}_AWS_ACCESS_KEY_ID`),
-    secretAccessKey: required(`${prefix}_AWS_SECRET_ACCESS_KEY`),
-    sessionToken: required(`${prefix}_AWS_SESSION_TOKEN`),
+    accessKeyId: required('TARGET_AWS_ACCESS_KEY_ID'),
+    secretAccessKey: required('TARGET_AWS_SECRET_ACCESS_KEY'),
+    sessionToken: required('TARGET_AWS_SESSION_TOKEN'),
   },
-});
-
-const prefixByEnvironment: Record<string, string> = {
-  mgmt: 'MGMT',
-  prod: 'PROD',
-  dev: 'DEV',
 };
 
 const cloud = createFractalCloudClient({
@@ -38,18 +39,18 @@ const cloud = createFractalCloudClient({
   clientSecret: required('SERVICE_ACCOUNT_SECRET'),
 });
 
-await cloud.environments.deploy(management, {
-  // Asked once per environment, right before its agent is initialized.
+await cloud.environments.deploy(tree, {
+  // Asked only for an environment whose agent is about to be initialized.
   providerCredentials: ({environment}) => {
-    const prefix = prefixByEnvironment[environment.shortName];
-    if (prefix === undefined) {
+    if (environment.shortName !== target) {
       throw new Error(
-        `No AWS credentials mapped for '${environment.shortName}'`,
+        `'${environment.shortName}' needs initializing but this job holds ` +
+          `credentials for '${target}' only. Run the '${environment.shortName}' job first.`,
       );
     }
-    return awsFor(prefix);
+    return targetCredentials;
   },
   // Operational initializations are refused until the management one has
-  // Completed; `wait` runs them in that order within one deploy.
+  // Completed; `wait` makes this job end only when its initialization has.
   agentInit: 'wait',
 });
