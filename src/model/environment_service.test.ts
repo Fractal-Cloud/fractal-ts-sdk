@@ -1155,6 +1155,51 @@ describe('cloud.environments.deploy() — per-environment credentials', () => {
     },
   );
 
+  it('refuses a lone roleArn, which is not the web-identity variant', async () => {
+    await expect(
+      cloud.environments.deploy(awsTree(), {
+        quiet: true,
+        providerCredentials: {
+          aws: {roleArn: 'arn:aws:iam::1:role/r', accessKeyId: 'AKIA'} as never,
+        },
+      }),
+    ).rejects.toThrow(/missing: secretAccessKey, sessionToken/);
+    expect(h.requests).toHaveLength(0);
+  });
+
+  it('ignores a partial AWS set when the tree has no AWS agent', async () => {
+    h.state.queue = [
+      {status: 404},
+      {status: 201},
+      {status: 200, body: {initializationRun: {status: 'Completed'}}},
+    ];
+    await cloud.environments.deploy(mgmtOnly(), {
+      quiet: true,
+      providerCredentials: {
+        ...providerCredentials,
+        aws: {accessKeyId: 'AKIA', secretAccessKey: 's'},
+      },
+    });
+    expect(h.requests.map(r => r.method)).toEqual(['GET', 'POST', 'GET']);
+  });
+
+  it('never echoes a credential value in the partial-set refusal', async () => {
+    const err = await cloud.environments
+      .deploy(awsTree(), {
+        quiet: true,
+        providerCredentials: {
+          aws: {accessKeyId: 'AKIA-VISIBLE', secretAccessKey: 'TOP-SECRET-1'},
+        },
+      })
+      .then(
+        () => new Error('resolved'),
+        (e: Error) => e,
+      );
+    expect(err.message).toMatch(/missing: sessionToken/);
+    expect(err.message).not.toContain('TOP-SECRET-1');
+    expect(err.message).not.toContain('AKIA-VISIBLE');
+  });
+
   it('refuses a partial AWS set from the resolver, before sending it', async () => {
     h.state.queue = [
       {status: 404}, // fetch mgmt
@@ -1410,6 +1455,39 @@ describe('cloud.environments.deploy() — review hardening', () => {
     ).rejects.toThrow(/'prod' would be ignored/);
     // Only the management env was read — neither mgmt's PUT nor dev's write ran.
     expect(h.requests.map(r => r.method)).toEqual(['GET']);
+  });
+
+  it('reads an absent management env once and creates it (pre-pass reuse)', async () => {
+    h.state.queue = [
+      {status: 404}, // fetch mgmt (pre-pass) → absent
+      {status: 201}, // create mgmt — no second GET
+      {status: 404}, // fetch prod
+      {status: 201}, // create prod
+      {status: 200, body: {initializationRun: {status: 'Completed'}}}, // mgmt
+      {status: 404}, // prod status
+      {status: 202}, // prod initialize
+    ];
+    await cloud.environments.deploy(opTree(), {quiet: true, providerCredentials});
+    const mgmtUrl = `https://api.fractal.cloud/environments/Personal/${OWNER}/mgmt`;
+    expect(
+      h.requests.filter(r => r.method === 'GET' && r.url === mgmtUrl),
+    ).toHaveLength(1);
+    expect(h.requests.slice(0, 2).map(r => `${r.method} ${r.url}`)).toEqual([
+      `GET ${mgmtUrl}`,
+      `POST ${mgmtUrl}`,
+    ]);
+  });
+
+  it('a parameter declared undefined leaves the stored value through a deploy', async () => {
+    h.state.queue = [
+      storedMgmt({agents: [AGENT], networkTier: 'prod'}),
+      {status: 200, body: {initializationRun: {status: 'Completed'}}},
+    ];
+    await cloud.environments.deploy(
+      mgmtOnly().withParameter('networkTier', undefined),
+      {quiet: true, providerCredentials},
+    );
+    expect(h.requests.filter(r => r.method === 'PUT')).toHaveLength(0);
   });
 
   it('accepts an operational tier once the management tier is declared absent', async () => {

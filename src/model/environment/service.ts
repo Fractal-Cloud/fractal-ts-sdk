@@ -382,7 +382,9 @@ const partialAwsCredentials = (
   pc: ProviderCredentials | undefined,
 ): string | null => {
   const c = pc?.aws as Record<string, unknown> | undefined;
-  if (!c || hasKey(c, 'webIdentityToken') || hasKey(c, 'roleArn')) {
+  // Exempt only the complete web-identity variant: a lone `roleArn` (or one
+  // mixed with partial keys) would otherwise slip partial keys through.
+  if (!c || (hasKey(c, 'webIdentityToken') && hasKey(c, 'roleArn'))) {
     return null;
   }
   const parts = ['accessKeyId', 'secretAccessKey', 'sessionToken'];
@@ -1006,8 +1008,14 @@ export async function deployEnvironment(
     typeof opts.providerCredentials === 'function'
       ? undefined
       : opts.providerCredentials;
-  // Refuse a partial AWS set before anything is written.
-  const staticProblem = partialAwsCredentials(staticCredentials);
+  // Refuse a partial AWS set before anything is written — only when the tree has
+  // an AWS agent those credentials could be sent for.
+  const hasAwsAgent = ordered.some(e =>
+    e.cloudAgents.some(a => a.provider === 'AWS'),
+  );
+  const staticProblem = hasAwsAgent
+    ? partialAwsCredentials(staticCredentials)
+    : null;
   if (staticProblem !== null) {
     throw new Error(`providerCredentials.aws: ${staticProblem}`);
   }
