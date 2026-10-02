@@ -50,11 +50,12 @@ export type ApiConfig = Credentials & {
   extraSecrets?: readonly LabeledSecret[];
   /**
    * Retry of calls that fail while the control plane is briefly unavailable
-   * (502/503/504, dropped connections) — on by default, bounded to 2 minutes per
-   * call, with exponential backoff and jitter, honoring `Retry-After`, and one WARN
-   * line per retry. Idempotent calls (GET, PUT) are retried on any such failure;
+   * (502/503/504, dropped connections) — on by default; no retry starts more than
+   * 2 minutes after the first attempt; exponential backoff and jitter, honoring
+   * `Retry-After`. Idempotent calls (GET, PUT) are retried on any such failure;
    * POST and DELETE only when the failure proves nothing was started (see
-   * retry.ts). `false` turns it off.
+   * retry.ts). One WARN line per retry inside a logging wait-mode operation, or
+   * everywhere with `quiet: false`. `false` turns retries off.
    */
   retry?: RetryOptions | false;
 };

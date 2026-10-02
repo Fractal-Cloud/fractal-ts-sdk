@@ -19,7 +19,7 @@
  * NOT runtime-verified here (no Fractal Cloud credentials) — covered by mocked
  * HTTP unit tests; smoke against the live API before release.
  */
-import {withQuietRetries} from '../retry';
+import {withRetryLogging} from '../retry';
 import superagent from 'superagent';
 import {collectSecrets, redactSecrets, send} from '../api-error';
 import {
@@ -1149,7 +1149,7 @@ export async function deployEnvironment(
   apiConfig: ApiConfig,
   opts: DeployEnvironmentOptions = {},
 ): Promise<EnvironmentDeployResult> {
-  const cfg = withQuietRetries(apiConfig, opts.quiet ?? false);
+  const cfg = withRetryLogging(apiConfig, opts.quiet ?? false);
   const tree = resolveEnvironment(management);
   const pendingManagement = opts.pendingManagement ?? 'skip';
   const result: EnvironmentDeployResult = {

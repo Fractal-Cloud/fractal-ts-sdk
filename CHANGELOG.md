@@ -16,24 +16,28 @@ of truth for what is on npm.
 A control-plane rollout answered `503` for minutes and failed every call in that
 window, `environments.deploy` included. The client now repeats calls when repeating
 is safe, with exponential backoff and jitter (1 s doubling to 15 s), honoring
-`Retry-After`, bounded to 2 minutes per call, and logs one
+`Retry-After`; no retry starts more than 2 minutes after the first attempt. Inside a
+wait-mode deploy or agent update that is not `quiet`, each retry logs one
 `WARN  Control plane unavailable, retrying  method=… path=… cause=… attempt=… retryInMs=… elapsed=…`
-line per retry (silenced by `quiet: true`, and in fire-and-forget live-system deploys).
+line; other calls retry silently unless the client sets `retry: {quiet: false}`.
 
 - **`GET` and `PUT`** are repeated on `502`, `503`, `504` and a dropped or refused
   connection. A `PUT` is a whole-state overlay, so a repeat writes the same state.
 - **`POST` and `DELETE`** (initialize, update, create, destroy) are repeated only when
   the failure proves nothing was started: the control plane's drain refusal (`503`,
   `reasonCode: ServiceDraining`, sent by fractal-environments while it shuts down,
-  before it does anything), an ingress `503` that never reached a pod (`no healthy
-  upstream`, `reset reason: connection failure` / `overflow`), or a refused
+  before it does anything), the ingress's own plain-text `503` for a request that
+  never reached a pod (the whole body is `no healthy upstream` or `upstream connect
+  error ... reset reason: connection failure` / `overflow`), or a refused
   connection. Never on `502`, `504`, a reset connection or a timeout: `POST
   .../initialize` is not idempotent, and a second accepted initialize starts a
   second run.
 - `4xx`, `500` and an unknown host are never repeated.
 
 Configure with `createFractalCloudClient({..., retry: {maxElapsedMs, initialDelayMs,
-maxDelayMs, quiet}})`, or turn it off with `retry: false`. No control-plane version
+maxDelayMs, quiet}})` (a missing, non-finite or non-positive value takes the default;
+delays never go below 50 ms), or turn it off with `retry: false`. Every `send()` call
+site now passes a request factory, which a source-level test enforces. No control-plane version
 is required; the `ServiceDraining` refusal comes with the fractal-environments release
 that drains on shutdown, and against an older one the other rules still apply.
 

@@ -9,7 +9,14 @@
  */
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {FractalApiError, send} from './api-error';
-import {backoffDelayMs, parseRetryAfterMs, retryDecision} from './retry';
+import {
+  MIN_RETRY_DELAY_MS,
+  backoffDelayMs,
+  parseRetryAfterMs,
+  resolveRetryOptions,
+  retryDecision,
+  withRetryLogging,
+} from './retry';
 
 const httpError = (
   status: number,
@@ -70,21 +77,49 @@ describe('retryDecision', () => {
     },
   );
 
+  const envoy = (text: string, headers: Record<string, string> = {}) =>
+    httpError(503, {text, headers: {'content-type': 'text/plain', ...headers}});
+
   it.each([
     'no healthy upstream',
     'upstream connect error or disconnect/reset before headers. reset reason: connection failure',
     'upstream connect error or disconnect/reset before headers. reset reason: remote connection failure, transport failure reason: delayed connect error: 111',
     'upstream connect error or disconnect/reset before headers. reset reason: overflow',
   ])('retries POST on an ingress 503 that never reached a pod: %s', text => {
-    expect(retryDecision('POST', httpError(503, {text})).retry).toBe(true);
+    expect(retryDecision('POST', envoy(text)).retry).toBe(true);
   });
 
   it.each([
     'upstream connect error or disconnect/reset before headers. reset reason: connection termination',
+    // Envoy retried: an earlier attempt may have reached a pod.
+    'upstream connect error or disconnect/reset before headers. retried and the latest reset reason: connection failure',
     'Service Unavailable',
     '',
   ])('does not retry POST on a 503 that may have reached a handler: "%s"', text => {
-    expect(retryDecision('POST', httpError(503, {text})).retry).toBe(false);
+    expect(retryDecision('POST', envoy(text)).retry).toBe(false);
+  });
+
+  // A service that acted and then quotes a downstream Envoy error in its own body
+  // must not be mistaken for the ingress refusing before any pod saw the request.
+  it('does not retry POST when the phrase is quoted inside a service response', () => {
+    const quoted = httpError(503, {
+      body: {message: 'dependency failed: no healthy upstream'},
+      text: '{"message":"dependency failed: no healthy upstream"}',
+      headers: {'content-type': 'application/json'},
+    });
+    expect(retryDecision('POST', quoted).retry).toBe(false);
+    expect(
+      retryDecision('POST', envoy('error: no healthy upstream, try later')).retry,
+    ).toBe(false);
+  });
+
+  it('does not retry POST when an upstream answered (Envoy timed it)', () => {
+    expect(
+      retryDecision(
+        'POST',
+        envoy('no healthy upstream', {'x-envoy-upstream-service-time': '12'}),
+      ).retry,
+    ).toBe(false);
   });
 
   it.each([502, 504])('does not retry POST on %s: the handler may have run', status => {
@@ -127,6 +162,37 @@ describe('backoff', () => {
   });
 });
 
+describe('retry options', () => {
+  it('falls back to the defaults for missing, non-finite or non-positive values', () => {
+    expect(
+      resolveRetryOptions({
+        maxElapsedMs: undefined,
+        initialDelayMs: Number.NaN,
+        maxDelayMs: -5,
+      }),
+    ).toEqual({maxElapsedMs: 120_000, initialDelayMs: 1_000, maxDelayMs: 15_000});
+  });
+
+  it('never lets a delay go below the floor, so a bad option cannot hammer the server', () => {
+    const resolved = resolveRetryOptions({initialDelayMs: 0.001, maxDelayMs: 0.001});
+    expect(backoffDelayMs(1, resolved, () => 0)).toBeGreaterThanOrEqual(MIN_RETRY_DELAY_MS / 2);
+  });
+
+  it('keeps valid values', () => {
+    expect(
+      resolveRetryOptions({maxElapsedMs: 300_000, initialDelayMs: 200, maxDelayMs: 5_000}),
+    ).toEqual({maxElapsedMs: 300_000, initialDelayMs: 200, maxDelayMs: 5_000});
+  });
+
+  it('logs only inside an operation that logs, unless told otherwise', () => {
+    const base = {clientId: 'c', clientSecret: 's'};
+    expect(withRetryLogging(base, false).retry).toEqual({quiet: false});
+    expect(withRetryLogging(base, true).retry).toEqual({quiet: true});
+    expect(withRetryLogging({...base, retry: {quiet: true}}, false).retry).toEqual({quiet: true});
+    expect(withRetryLogging({...base, retry: false as const}, false).retry).toBe(false);
+  });
+});
+
 describe('parseRetryAfterMs', () => {
   const now = Date.parse('2026-10-02T09:00:00Z');
 
@@ -158,7 +224,7 @@ const request = (method: string, outcome: () => Promise<unknown>) => ({
     outcome().then(resolve, reject),
 });
 
-const fast = {initialDelayMs: 1, maxDelayMs: 2, maxElapsedMs: 5_000};
+const fast = {initialDelayMs: 1, maxDelayMs: 2, maxElapsedMs: 5_000, quiet: false};
 const cfg = (retry: unknown = fast) =>
   ({clientId: 'cid', clientSecret: 'client-secret', retry}) as Parameters<
     typeof send
@@ -287,6 +353,32 @@ describe('send with retries', () => {
       FractalApiError,
     );
     expect(factory).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs nothing outside a logging operation by default', async () => {
+    const lines: string[] = [];
+    vi.spyOn(console, 'log').mockImplementation(l => lines.push(String(l)));
+    const outcomes = [httpError(504)];
+    const factory = () =>
+      request('GET', () => {
+        const next = outcomes.shift();
+        return next === undefined
+          ? Promise.resolve({status: 200})
+          : Promise.reject(next);
+      });
+
+    await send(cfg({initialDelayMs: 1, maxDelayMs: 2}), factory);
+
+    expect(lines).toHaveLength(0);
+  });
+
+  it('sanitizes a factory that throws while building the request', async () => {
+    const err = await send(cfg(), () => {
+      throw Object.assign(new Error('bad header client-secret'), {status: undefined});
+    }).catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(FractalApiError);
+    expect(String((err as Error).message)).not.toContain('client-secret');
   });
 
   it('logs nothing when quiet', async () => {

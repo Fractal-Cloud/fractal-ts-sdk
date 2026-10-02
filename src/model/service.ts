@@ -17,7 +17,7 @@
  * mocked-HTTP unit tests in client.test.ts; smoke against the live API with real
  * credentials before release.
  */
-import {withQuietRetries} from './retry';
+import {withRetryLogging} from './retry';
 import superagent from 'superagent';
 import type {LiveSystem} from './core';
 import {
@@ -282,7 +282,7 @@ export async function deployLiveSystem(
   opts: DeployOptions = {mode: 'fire-and-forget'},
 ): Promise<LiveSystemState | undefined> {
   // Fire-and-forget emits no logs (wait-mode contract), retry warnings included.
-  const cfg = withQuietRetries(
+  const cfg = withRetryLogging(
     apiConfig,
     opts.mode === 'fire-and-forget' || (opts.quiet ?? false),
   );

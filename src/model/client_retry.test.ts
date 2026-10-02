@@ -47,7 +47,7 @@ const unavailable = (text = 'no healthy upstream') =>
     response: {status: 503, headers: {}, text},
   });
 
-const cloud = (retry: unknown = {initialDelayMs: 1, maxDelayMs: 2}) =>
+const cloud = (retry: unknown = {initialDelayMs: 1, maxDelayMs: 2, quiet: false}) =>
   createFractalCloudClient({
     clientId: 'cid',
     clientSecret: 'secret',
@@ -79,6 +79,41 @@ describe('client calls through a control-plane restart', () => {
     expect(env).not.toBeNull();
     expect(h.requests.map(r => r.method)).toEqual(['GET', 'GET', 'GET']);
     expect(lines.filter(l => / WARN {2}Control plane unavailable, retrying/.test(l))).toHaveLength(2);
+  });
+
+  it.each([
+    ['blueprints.create (POST)', 504],
+    ['liveSystems.destroy (DELETE)', 502],
+  ])('%s is not repeated on %s: the server may have acted', async (_name, status) => {
+    const err = Object.assign(new Error('bad gateway'), {
+      status,
+      response: {status, headers: {}, text: ''},
+    });
+    h.state.queue.push({throws: err});
+
+    if (_name.startsWith('liveSystems')) {
+      await expect(
+        cloud().liveSystems.destroy({
+          name: 'acme',
+          boundedContext: {ownerType: 'Personal', ownerId: OWNER, name: 'rg'},
+        } as never),
+      ).rejects.toBeInstanceOf(FractalApiError);
+    } else {
+      // The existence probe (GET 404) first, then the create.
+      h.state.queue.unshift({status: 404, body: {}});
+      await expect(
+        cloud().blueprints.create({
+          fractalName: 'basic',
+          version: {major: 1, minor: 0, patch: 0},
+          boundedContext: {ownerType: 'Personal', ownerId: OWNER, name: 'rg'},
+          description: 'd',
+          blueprint: {components: []},
+        } as never),
+      ).rejects.toBeInstanceOf(FractalApiError);
+    }
+
+    const writes = h.requests.filter(r => r.method !== 'GET');
+    expect(writes).toHaveLength(1);
   });
 
   it('gives up with a FractalApiError when retries are off', async () => {

@@ -11,7 +11,7 @@
  *
  * The control plane offers it for AWS, Azure and GCP agents only.
  */
-import {withQuietRetries} from '../retry';
+import {withRetryLogging} from '../retry';
 import superagent from 'superagent';
 import {collectSecrets, redactSecrets, send} from '../api-error';
 import {
@@ -198,7 +198,7 @@ export async function updateEnvironmentAgents(
   apiConfig: ApiConfig,
   opts: UpdateEnvironmentAgentsOptions = {},
 ): Promise<EnvironmentUpdateResult> {
-  const cfg = withQuietRetries(apiConfig, opts.quiet ?? false);
+  const cfg = withRetryLogging(apiConfig, opts.quiet ?? false);
   const tree = resolveEnvironment(management);
   const quiet = opts.quiet ?? false;
   const mode = opts.agentUpdate ?? 'fire-and-forget';

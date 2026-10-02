@@ -61,9 +61,9 @@ import type {Credentials, LabeledSecret} from './http';
 import {elapsedSec, log, sleep} from './http';
 import type {RetryOptions} from './retry';
 import {
-  DEFAULT_RETRY_OPTIONS,
   backoffDelayMs,
   pathOf,
+  resolveRetryOptions,
   retryAfterOf,
   retryDecision,
 } from './retry';
@@ -480,6 +480,12 @@ export const sanitizeApiError = (
  *
  * Pass `extraSecrets` whenever the request carries a credential beyond the client
  * pair, so a server that echoes it back cannot print it.
+ *
+ * Pass the request as a FACTORY (`() => superagent.get(...)`): a superagent request
+ * can be awaited once, so only a factory lets this repeat the call through a brief
+ * control-plane outage (see retry.ts for which failures of which methods are
+ * repeated). The source-level test also requires the factory form. A plain request
+ * is still accepted and is never repeated.
  */
 export const send = async <T>(
   credentials: SecretBearingConfig,
@@ -498,14 +504,22 @@ export const send = async <T>(
   const policy =
     credentials.retry === false
       ? undefined
-      : {...DEFAULT_RETRY_OPTIONS, ...credentials.retry};
+      : resolveRetryOptions(credentials.retry);
+  // Silent unless asked: see withRetryLogging.
+  const quiet =
+    credentials.retry === false || credentials.retry?.quiet !== false;
   const started = Date.now();
 
   for (let attempt = 1; ; attempt++) {
-    const pending = request();
+    let pending: PromiseLike<T> | undefined;
     try {
+      // Inside the try: a builder that throws is sanitized like any failure.
+      pending = request();
       return await pending;
     } catch (err) {
+      if (pending === undefined) {
+        throw sanitizeApiError(err, credentials, extraSecrets);
+      }
       const {method, url} = pending as {method?: unknown; url?: unknown};
       const methodName =
         typeof method === 'string' ? method.toUpperCase() : undefined;
@@ -528,19 +542,14 @@ export const send = async <T>(
 
       // Method, path (no host, no query) and the cause only: nothing from the
       // request's headers or the response body reaches this line.
-      log(
-        policy.quiet ?? false,
-        'WARN',
-        'Control plane unavailable, retrying',
-        {
-          method: methodName ?? 'unknown',
-          path: pathOf(url),
-          cause: decision.reason,
-          attempt,
-          retryInMs: delayMs,
-          elapsed: elapsedSec(started),
-        },
-      );
+      log(quiet, 'WARN', 'Control plane unavailable, retrying', {
+        method: methodName ?? 'unknown',
+        path: pathOf(url),
+        cause: decision.reason,
+        attempt,
+        retryInMs: delayMs,
+        elapsed: elapsedSec(started),
+      });
       await sleep(delayMs);
     }
   }
