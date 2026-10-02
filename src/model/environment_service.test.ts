@@ -269,8 +269,9 @@ describe('cloud.environments.deploy()', () => {
         },
       },
       {status: 200}, // PUT prod
-      {status: 404}, // mgmt agent status
-      {status: 202}, // mgmt initialize
+      // mgmt already initialized — the control plane refuses an operational
+      // initialization until it is (ManagementEnvironmentNotInitialized)
+      {status: 200, body: {initializationRun: {status: 'Completed'}}},
       {status: 404}, // prod agent status
       {status: 202}, // prod initialize
     ];
@@ -385,10 +386,23 @@ describe('cloud.environments.deploy()', () => {
       {status: 201}, // create prod
       {status: 404}, // mgmt azure status
       {status: 202}, // mgmt azure init
+      {
+        status: 200, // mgmt azure poll → Completed (wait mode)
+        body: {initializationRun: {status: 'Completed'}},
+      },
       {status: 404}, // prod azure status
       {status: 202}, // prod azure init
+      {
+        status: 200, // prod azure poll → Completed
+        body: {initializationRun: {status: 'Completed'}},
+      },
     ];
-    await cloud.environments.deploy(mgmt, {quiet: true, providerCredentials});
+    await cloud.environments.deploy(mgmt, {
+      quiet: true,
+      providerCredentials,
+      agentInit: 'wait',
+      pollIntervalMs: 1,
+    });
 
     const posts = h.requests.filter(r => r.method === 'POST');
     // create mgmt, create prod, then two initializes
@@ -673,5 +687,741 @@ describe('cloud.environments.deploy() — reinitializeAgents', () => {
         providerCredentials,
       }),
     ).rejects.toThrow(/initialization failed/);
+  });
+});
+
+// ── parameter merge on update ────────────────────────────────────────────────
+// The API's PUT replaces `parameters` wholesale. These pin that a deploy only
+// ever writes the keys it declares, so a key set elsewhere (the web UI, the
+// server itself) survives every re-run.
+describe('cloud.environments.deploy() — parameter merge', () => {
+  beforeEach(() => {
+    h.requests.length = 0;
+    h.state.queue = [];
+  });
+
+  const AZURE_AGENT = {
+    provider: 'AZURE',
+    region: 'westeurope',
+    tenantId: 'tenant-1',
+    subscriptionId: 'sub-mgmt',
+  };
+  const existingMgmt = (
+    parameters: Record<string, unknown>,
+    extra: Record<string, unknown> = {},
+  ) => ({
+    status: 200,
+    body: {
+      id: {type: 'Personal', ownerId: OWNER, shortName: 'mgmt'},
+      name: 'mgmt',
+      resourceGroups: [rg('mgmt-rg')],
+      parameters,
+      status: 'Active',
+      ...extra,
+    },
+  });
+  const completed = {
+    status: 200,
+    body: {initializationRun: {status: 'Completed'}},
+  };
+  const putBodies = () =>
+    h.requests
+      .filter(r => r.method === 'PUT')
+      .map(r => r.body as {parameters: Record<string, unknown>});
+
+  it('keeps a networkTier set outside the SDK when another change forces a PUT', async () => {
+    h.state.queue = [
+      existingMgmt({
+        networkTier: 'prod', // set in the web UI
+        serverAddedField: {kept: true},
+        agents: [{...AZURE_AGENT, region: 'eastus'}], // drift → PUT
+      }),
+      {status: 200}, // PUT
+      completed, // agent status → nothing to do
+    ];
+    await cloud.environments.deploy(mgmtOnly(), {
+      quiet: true,
+      providerCredentials,
+    });
+    const [put] = putBodies();
+    expect(put.parameters).toEqual({
+      networkTier: 'prod',
+      serverAddedField: {kept: true},
+      agents: [AZURE_AGENT],
+    });
+  });
+
+  it('overlays a declared networkTier, replacing a differently-cased key', async () => {
+    h.state.queue = [
+      existingMgmt({NetworkTier: 'nonprod', agents: [AZURE_AGENT]}),
+      {status: 200}, // PUT
+      completed,
+    ];
+    await cloud.environments.deploy(mgmtOnly().withNetworkTier('prod'), {
+      quiet: true,
+      providerCredentials,
+    });
+    const [put] = putBodies();
+    // One key, the declared spelling — the server matches keys
+    // case-insensitively, so leaving both would make the result order-dependent.
+    expect(put.parameters).toEqual({
+      networkTier: 'prod',
+      agents: [AZURE_AGENT],
+    });
+  });
+
+  it('does not PUT when the declared networkTier already matches', async () => {
+    h.state.queue = [
+      existingMgmt({networkTier: 'prod', agents: [AZURE_AGENT], ui: 'x'}),
+      completed,
+    ];
+    await cloud.environments.deploy(mgmtOnly().withNetworkTier('prod'), {
+      quiet: true,
+      providerCredentials,
+    });
+    expect(h.requests.map(r => r.method)).toEqual(['GET', 'GET']);
+  });
+
+  it('withParameter(key, null) removes the key — and that alone is drift', async () => {
+    h.state.queue = [
+      existingMgmt({legacyFlag: 'on', keep: 1, agents: [AZURE_AGENT]}),
+      {status: 200}, // PUT
+      completed,
+    ];
+    await cloud.environments.deploy(
+      mgmtOnly().withParameter('legacyFlag', null),
+      {quiet: true, providerCredentials},
+    );
+    const [put] = putBodies();
+    expect(put.parameters).toEqual({keep: 1, agents: [AZURE_AGENT]});
+  });
+
+  it('a removed key that is already absent is not drift', async () => {
+    h.state.queue = [existingMgmt({agents: [AZURE_AGENT]}), completed];
+    await cloud.environments.deploy(
+      mgmtOnly().withParameter('legacyFlag', null),
+      {quiet: true, providerCredentials},
+    );
+    expect(putBodies()).toEqual([]);
+  });
+
+  it('the default-CI/CD-profile PUT carries the merged parameters too', async () => {
+    h.state.queue = [
+      existingMgmt(
+        {networkTier: 'prod', agents: [AZURE_AGENT]},
+        {defaultCiCdProfileShortName: null},
+      ),
+      {status: 201}, // ci-cd-profiles/bulk
+      {status: 200}, // PUT setting the default profile
+      completed,
+    ];
+    await cloud.environments.deploy(
+      mgmtOnly().withDefaultCiCdProfile({
+        shortName: 'gh',
+        displayName: 'GitHub',
+        sshPrivateKeyData: 'key-data',
+      }),
+      {quiet: true, providerCredentials},
+    );
+    const puts = putBodies();
+    expect(puts).toHaveLength(1);
+    expect(puts[0].parameters).toEqual({
+      networkTier: 'prod',
+      agents: [AZURE_AGENT],
+    });
+  });
+
+  it('create sends declared parameters, omitting keys declared absent', async () => {
+    h.state.queue = [
+      {status: 404}, // fetch → create
+      {status: 201}, // create
+      completed,
+    ];
+    await cloud.environments.deploy(
+      mgmtOnly()
+        .withNetworkTier('nonprod')
+        .withParameter('costCenter', 'cc-42')
+        .withParameter('gone', null),
+      {quiet: true, providerCredentials},
+    );
+    const create = h.requests[1];
+    expect(create.method).toBe('POST');
+    expect(
+      (create.body as {parameters: Record<string, unknown>}).parameters,
+    ).toEqual({
+      networkTier: 'nonprod',
+      costCenter: 'cc-42',
+      agents: [AZURE_AGENT],
+    });
+  });
+});
+
+// ── per-environment provider credentials ───────────────────────────────────────
+describe('cloud.environments.deploy() — per-environment credentials', () => {
+  beforeEach(() => {
+    h.requests.length = 0;
+    h.state.queue = [];
+  });
+
+  const ORG = 'o-abc123';
+  const awsTree = () =>
+    ManagementEnvironment({
+      id: {type: 'Personal', ownerId: OWNER, shortName: 'mgmt'},
+      resourceGroups: [rg('mgmt-rg')],
+    })
+      .withAwsCloudAgent({
+        region: 'eu-central-1',
+        organizationId: ORG,
+        accountId: '111111111111',
+      })
+      .withOperationalEnvironment(
+        OperationalEnvironment({
+          shortName: 'prod',
+          resourceGroups: [rg('prod-rg')],
+        })
+          .withAwsAccount({region: 'eu-central-1', accountId: '222222222222'})
+          .withNetworkTier('prod'),
+      )
+      .withOperationalEnvironment(
+        OperationalEnvironment({
+          shortName: 'dev',
+          resourceGroups: [rg('dev-rg')],
+        })
+          .withAwsAccount({region: 'eu-west-1', accountId: '333333333333'})
+          .withNetworkTier('nonprod'),
+      );
+
+  const sessionCreds = (account: string) => ({
+    aws: {
+      accessKeyId: `AKIA${account}`,
+      secretAccessKey: `secret-${account}`,
+      sessionToken: `token-${account}`,
+    },
+  });
+  const done = {status: 200, body: {initializationRun: {status: 'Completed'}}};
+  const freshTreeQueue = () => [
+    {status: 404}, // fetch mgmt
+    {status: 201}, // create mgmt
+    {status: 404}, // fetch prod
+    {status: 201}, // create prod
+    {status: 404}, // fetch dev
+    {status: 201}, // create dev
+    {status: 404}, // mgmt status
+    {status: 202}, // mgmt initialize
+    done, // mgmt poll
+    {status: 404}, // prod status
+    {status: 202}, // prod initialize
+    done, // prod poll
+    {status: 404}, // dev status
+    {status: 202}, // dev initialize
+    done, // dev poll
+  ];
+
+  it('asks the resolver per environment and sends each its own credentials', async () => {
+    h.state.queue = freshTreeQueue();
+    const asked: unknown[] = [];
+    await cloud.environments.deploy(awsTree(), {
+      quiet: true,
+      agentInit: 'wait',
+      pollIntervalMs: 1,
+      providerCredentials: async request => {
+        asked.push(request);
+        return sessionCreds(request.accountId);
+      },
+    });
+
+    expect(asked).toEqual([
+      {
+        environment: {type: 'Personal', ownerId: OWNER, shortName: 'mgmt'},
+        tier: 'management',
+        provider: 'AWS',
+        accountId: '111111111111',
+        region: 'eu-central-1',
+      },
+      {
+        environment: {type: 'Personal', ownerId: OWNER, shortName: 'prod'},
+        tier: 'operational',
+        provider: 'AWS',
+        accountId: '222222222222',
+        region: 'eu-central-1',
+      },
+      {
+        environment: {type: 'Personal', ownerId: OWNER, shortName: 'dev'},
+        tier: 'operational',
+        provider: 'AWS',
+        accountId: '333333333333',
+        region: 'eu-west-1',
+      },
+    ]);
+
+    const inits = h.requests.filter(r => r.url.endsWith('/initialize'));
+    expect(inits.map(r => r.url.split('/')[6])).toEqual([
+      'mgmt',
+      'prod',
+      'dev',
+    ]);
+    expect(inits.map(r => r.headers['X-AWS-Access-Key-ID'])).toEqual([
+      'AKIA111111111111',
+      'AKIA222222222222',
+      'AKIA333333333333',
+    ]);
+    expect(inits.map(r => r.headers['X-AWS-Session-Token'])).toEqual([
+      'token-111111111111',
+      'token-222222222222',
+      'token-333333333333',
+    ]);
+    // The operational init body names its own account, under the mgmt org.
+    expect(inits[2].body).toMatchObject({
+      organizationId: ORG,
+      accountId: '333333333333',
+      region: 'eu-west-1',
+    });
+    // Each operational env was created with its own tier.
+    const creates = h.requests.filter(
+      r => r.method === 'POST' && !r.url.endsWith('/initialize'),
+    );
+    expect(
+      creates.map(
+        r => (r.body as {parameters: {networkTier?: string}}).parameters,
+      ),
+    ).toMatchObject([{}, {networkTier: 'prod'}, {networkTier: 'nonprod'}]);
+    expect(
+      (creates[0].body as {parameters: Record<string, unknown>}).parameters,
+    ).not.toHaveProperty('networkTier');
+  });
+
+  it('does not ask for credentials an already-initialized agent does not need', async () => {
+    h.state.queue = [
+      {status: 404}, // fetch mgmt
+      {status: 201}, // create mgmt
+      {status: 404}, // fetch prod
+      {status: 201}, // create prod
+      {status: 404}, // fetch dev
+      {status: 201}, // create dev
+      done, // mgmt status → Completed, no initialize
+      done, // mgmt poll
+      done, // prod status → Completed
+      done, // prod poll
+      {status: 404}, // dev status → start
+      {status: 202}, // dev initialize
+      done, // dev poll
+    ];
+    const asked: string[] = [];
+    await cloud.environments.deploy(awsTree(), {
+      quiet: true,
+      agentInit: 'wait',
+      pollIntervalMs: 1,
+      providerCredentials: request => {
+        asked.push(request.environment.shortName);
+        return sessionCreds(request.accountId);
+      },
+    });
+    expect(asked).toEqual(['dev']);
+  });
+
+  it('fails clearly when the resolver returns nothing for an environment', async () => {
+    h.state.queue = freshTreeQueue();
+    await expect(
+      cloud.environments.deploy(awsTree(), {
+        quiet: true,
+        agentInit: 'wait',
+        pollIntervalMs: 1,
+        providerCredentials: request =>
+          request.tier === 'management'
+            ? sessionCreds(request.accountId)
+            : undefined,
+      }),
+    ).rejects.toThrow(
+      /AWS in environment 'Personal\/[^']+\/prod' requires aws credentials, but the providerCredentials resolver returned none/,
+    );
+    // Nothing was sent for prod.
+    expect(
+      h.requests.filter(r => r.url.endsWith('/prod/initializer/aws/initialize')),
+    ).toHaveLength(0);
+  });
+
+  it('a single credentials object is still used for every environment', async () => {
+    h.state.queue = freshTreeQueue();
+    await cloud.environments.deploy(awsTree(), {
+      quiet: true,
+      agentInit: 'wait',
+      pollIntervalMs: 1,
+      providerCredentials: sessionCreds('shared'),
+    });
+    const inits = h.requests.filter(r => r.url.endsWith('/initialize'));
+    expect(inits).toHaveLength(3);
+    expect(
+      new Set(inits.map(r => r.headers['X-AWS-Access-Key-ID'])),
+    ).toEqual(new Set(['AKIAshared']));
+  });
+
+  it("fire-and-forget on a new tree starts management, then refuses operational naming agentInit: 'wait'", async () => {
+    h.state.queue = [
+      {status: 404}, // fetch mgmt
+      {status: 201}, // create mgmt
+      {status: 404}, // fetch prod
+      {status: 201}, // create prod
+      {status: 404}, // fetch dev
+      {status: 201}, // create dev
+      {status: 404}, // mgmt status
+      {status: 202}, // mgmt initialize
+      {status: 404}, // prod status → would start, refused before sending
+    ];
+    const asked: string[] = [];
+    await expect(
+      cloud.environments.deploy(awsTree(), {
+        quiet: true,
+        providerCredentials: request => {
+          asked.push(request.environment.shortName);
+          return sessionCreds(request.accountId);
+        },
+      }),
+    ).rejects.toThrow(/management environment .* Completed AWS initialization.*agentInit: 'wait'/s);
+    const inits = h.requests.filter(r => r.url.endsWith('/initialize'));
+    expect(inits.map(r => r.url.split('/')[6])).toEqual(['mgmt']);
+    expect(asked).toEqual(['mgmt']); // prod's credentials were never minted
+  });
+
+  it('fire-and-forget proceeds to operational envs once management is Completed', async () => {
+    h.state.queue = [
+      {status: 404}, // fetch mgmt
+      {status: 201}, // create mgmt
+      {status: 404}, // fetch prod
+      {status: 201}, // create prod
+      {status: 404}, // fetch dev
+      {status: 201}, // create dev
+      done, // mgmt status → Completed
+      {status: 404}, // prod status
+      {status: 202}, // prod initialize
+      {status: 404}, // dev status
+      {status: 202}, // dev initialize
+    ];
+    await cloud.environments.deploy(awsTree(), {
+      quiet: true,
+      providerCredentials: request => sessionCreds(request.accountId),
+    });
+    const inits = h.requests.filter(r => r.url.endsWith('/initialize'));
+    expect(inits.map(r => r.url.split('/')[6])).toEqual(['prod', 'dev']);
+  });
+
+  it('warns when AWS credentials lack a sessionToken, or are web-identity', async () => {
+    const lines: string[] = [];
+    const spy = vi.spyOn(console, 'log').mockImplementation((m: string) => {
+      lines.push(m);
+    });
+    try {
+      const mgmt = ManagementEnvironment({
+        id: {type: 'Personal', ownerId: OWNER, shortName: 'mgmt'},
+        resourceGroups: [rg('mgmt-rg')],
+      }).withAwsCloudAgent({
+        region: 'eu-central-1',
+        organizationId: ORG,
+        accountId: '111111111111',
+      });
+      h.state.queue = [{status: 404}, {status: 201}, {status: 404}, {status: 202}];
+      await cloud.environments.deploy(mgmt, {
+        providerCredentials: {aws: {accessKeyId: 'AKIA', secretAccessKey: 's'}},
+      });
+      h.state.queue = [{status: 404}, {status: 201}, {status: 404}, {status: 202}];
+      await cloud.environments.deploy(mgmt, {
+        providerCredentials: {
+          aws: {roleArn: 'arn:aws:iam::1:role/r', webIdentityToken: 'jwt'},
+        },
+      });
+      h.state.queue = [{status: 404}, {status: 201}, {status: 404}, {status: 202}];
+      await cloud.environments.deploy(mgmt, {
+        providerCredentials: sessionCreds('111111111111'),
+      });
+    } finally {
+      spy.mockRestore();
+    }
+    const warns = lines.filter(l => / WARN /.test(l));
+    expect(warns).toHaveLength(2);
+    expect(warns[0]).toMatch(/without a sessionToken/);
+    expect(warns[1]).toMatch(/web-identity credentials .* not honored/);
+  });
+});
+
+// ── read operations ──────────────────────────────────────────────────────────
+describe('cloud.environments.list() / get()', () => {
+  beforeEach(() => {
+    h.requests.length = 0;
+    h.state.queue = [];
+  });
+
+  it('list calls GET /environments/{type}/{ownerId} and maps the summaries', async () => {
+    h.state.queue = [
+      {
+        status: 200,
+        body: [
+          {
+            id: {type: 'Organizational', ownerId: OWNER, shortName: 'mgmt'},
+            name: 'Management',
+            status: 'Active',
+            resourceGroups: [rg('mgmt-rg')],
+            initializedClouds: ['Aws'],
+          },
+          {
+            id: {type: 'Organizational', ownerId: OWNER, shortName: 'prod'},
+            name: 'Production',
+            status: 'Pending',
+            resourceGroups: null,
+            initializedClouds: [],
+          },
+        ],
+      },
+    ];
+    const envs = await cloud.environments.list({
+      type: 'Organizational',
+      ownerId: OWNER,
+    });
+    expect(h.requests).toHaveLength(1);
+    expect(h.requests[0].method).toBe('GET');
+    expect(h.requests[0].url).toBe(
+      `https://api.fractal.cloud/environments/Organizational/${OWNER}`,
+    );
+    expect(h.requests[0].headers['X-ClientID']).toBe('cid');
+    expect(envs).toEqual([
+      {
+        id: {type: 'Organizational', ownerId: OWNER, shortName: 'mgmt'},
+        name: 'Management',
+        status: 'Active',
+        resourceGroups: [rg('mgmt-rg')],
+        initializedClouds: ['Aws'],
+      },
+      {
+        id: {type: 'Organizational', ownerId: OWNER, shortName: 'prod'},
+        name: 'Production',
+        status: 'Pending',
+        resourceGroups: [],
+        initializedClouds: [],
+      },
+    ]);
+  });
+
+  it('list returns [] for an owner with no environments', async () => {
+    h.state.queue = [{status: 200, body: []}];
+    expect(
+      await cloud.environments.list({type: 'Personal', ownerId: OWNER}),
+    ).toEqual([]);
+  });
+
+  it('list refuses a blank ownerId without calling the API', async () => {
+    await expect(
+      cloud.environments.list({type: 'Personal', ownerId: ' '}),
+    ).rejects.toThrow(/requires an ownerId/);
+    expect(h.requests).toHaveLength(0);
+  });
+
+  it('list percent-encodes the path segments', async () => {
+    h.state.queue = [{status: 200, body: []}];
+    await cloud.environments.list({type: 'Personal', ownerId: '../x'});
+    expect(h.requests[0].url).toBe(
+      'https://api.fractal.cloud/environments/Personal/..%2Fx',
+    );
+  });
+
+  it('get returns every parameter, and the management id', async () => {
+    h.state.queue = [
+      {
+        status: 200,
+        body: {
+          managementEnvironmentId: {
+            type: 'Personal',
+            ownerId: OWNER,
+            shortName: 'mgmt',
+          },
+          id: {type: 'Personal', ownerId: OWNER, shortName: 'prod'},
+          name: 'Production',
+          resourceGroups: [rg('prod-rg')],
+          parameters: {networkTier: 'prod', agents: []},
+          defaultCiCdProfileShortName: null,
+          status: 'Active',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      },
+    ];
+    const env = await cloud.environments.get({
+      type: 'Personal',
+      ownerId: OWNER,
+      shortName: 'prod',
+    });
+    expect(h.requests[0].url).toBe(
+      `https://api.fractal.cloud/environments/Personal/${OWNER}/prod`,
+    );
+    expect(env).toEqual({
+      id: {type: 'Personal', ownerId: OWNER, shortName: 'prod'},
+      managementEnvironmentId: {
+        type: 'Personal',
+        ownerId: OWNER,
+        shortName: 'mgmt',
+      },
+      name: 'Production',
+      status: 'Active',
+      resourceGroups: [rg('prod-rg')],
+      parameters: {networkTier: 'prod', agents: []},
+      defaultCiCdProfileShortName: null,
+    });
+  });
+
+  it('get returns null for a missing environment', async () => {
+    h.state.queue = [{status: 404}];
+    expect(
+      await cloud.environments.get({
+        type: 'Personal',
+        ownerId: OWNER,
+        shortName: 'nope',
+      }),
+    ).toBeNull();
+  });
+
+  it('get maps a management environment to a null managementEnvironmentId', async () => {
+    h.state.queue = [
+      {
+        status: 200,
+        body: {
+          managementEnvironmentId: null,
+          id: {type: 'Personal', ownerId: OWNER, shortName: 'mgmt'},
+          name: 'mgmt',
+          resourceGroups: [],
+          parameters: {},
+          status: 'Active',
+        },
+      },
+    ];
+    const env = await cloud.environments.get({
+      type: 'Personal',
+      ownerId: OWNER,
+      shortName: 'mgmt',
+    });
+    expect(env?.managementEnvironmentId).toBeNull();
+    expect(env?.defaultCiCdProfileShortName).toBeNull();
+  });
+});
+
+describe('cloud.environments.deploy() — review hardening', () => {
+  beforeEach(() => {
+    h.requests.length = 0;
+    h.state.queue = [];
+  });
+
+  const AGENT = {
+    provider: 'AZURE',
+    region: 'westeurope',
+    tenantId: 'tenant-1',
+    subscriptionId: 'sub-mgmt',
+  };
+  const opTree = () =>
+    mgmtOnly().withOperationalEnvironment(
+      OperationalEnvironment({shortName: 'prod', resourceGroups: [rg('prod-rg')]})
+        .withAzureSubscription({region: 'northeurope', subscriptionId: 'sub-p'})
+        .withNetworkTier('prod'),
+    );
+  const storedMgmt = (parameters: Record<string, unknown>) => ({
+    status: 200,
+    body: {
+      id: {type: 'Personal', ownerId: OWNER, shortName: 'mgmt'},
+      name: 'mgmt',
+      resourceGroups: [rg('mgmt-rg')],
+      parameters,
+      status: 'Active',
+    },
+  });
+
+  it('refuses an operational tier the STORED management tier overrides, before writing it', async () => {
+    h.state.queue = [storedMgmt({agents: [AGENT], NetworkTier: 'nonprod'})];
+    await expect(
+      cloud.environments.deploy(opTree(), {quiet: true, providerCredentials}),
+    ).rejects.toThrow(
+      /'prod' would be ignored .* stores networkTier 'nonprod'.*withParameter\('networkTier', null\)/s,
+    );
+    // Only the management env was read; nothing was written for prod.
+    expect(h.requests.map(r => r.method)).toEqual(['GET']);
+  });
+
+  it('accepts an operational tier once the management tier is declared absent', async () => {
+    h.state.queue = [
+      storedMgmt({agents: [AGENT], networkTier: 'nonprod'}),
+      {status: 200}, // PUT mgmt removing networkTier
+      {status: 404}, // fetch prod
+      {status: 201}, // create prod
+      {status: 200, body: {initializationRun: {status: 'Completed'}}}, // mgmt
+      {status: 404}, // prod status
+      {status: 202}, // prod initialize
+    ];
+    await cloud.environments.deploy(
+      opTree().withParameter('networkTier', null),
+      {quiet: true, providerCredentials},
+    );
+    const put = h.requests.find(r => r.method === 'PUT');
+    expect((put!.body as {parameters: unknown}).parameters).toEqual({
+      agents: [AGENT],
+    });
+  });
+
+  it('reinitializeAgents under fire-and-forget refuses operational inits it knows will fail', async () => {
+    h.state.queue = [
+      storedMgmt({agents: [AGENT]}),
+      {
+        status: 200, // fetch prod → up to date
+        body: {
+          id: {type: 'Personal', ownerId: OWNER, shortName: 'prod'},
+          name: 'prod',
+          resourceGroups: [rg('prod-rg')],
+          parameters: {
+            agents: [
+              {...AGENT, region: 'northeurope', subscriptionId: 'sub-p'},
+            ],
+            networkTier: 'prod',
+          },
+          status: 'Active',
+        },
+      },
+      {status: 200, body: {initializationRun: {status: 'Completed'}}}, // mgmt
+      {status: 202}, // forced mgmt initialize
+      {status: 200, body: {initializationRun: {status: 'Completed'}}}, // prod
+    ];
+    await expect(
+      cloud.environments.deploy(opTree(), {
+        quiet: true,
+        providerCredentials,
+        reinitializeAgents: true,
+      }),
+    ).rejects.toThrow(/agentInit: 'wait'/);
+    const inits = h.requests.filter(r => r.url.endsWith('/initialize'));
+    expect(inits).toHaveLength(1);
+  });
+
+  it('wraps a throwing resolver with the environment id', async () => {
+    h.state.queue = [{status: 404}, {status: 201}, {status: 404}];
+    await expect(
+      cloud.environments.deploy(mgmtOnly(), {
+        quiet: true,
+        providerCredentials: () => {
+          throw new Error('sts:AssumeRole denied');
+        },
+      }),
+    ).rejects.toThrow(
+      /resolver failed for the AZURE agent of environment 'Personal\/[^']+\/mgmt': sts:AssumeRole denied/,
+    );
+  });
+
+  it('logs which stored builder-owned keys it keeps', async () => {
+    const lines: string[] = [];
+    const spy = vi.spyOn(console, 'log').mockImplementation((m: string) => {
+      lines.push(m);
+    });
+    try {
+      h.state.queue = [
+        storedMgmt({agents: [AGENT], tags: {team: 'x'}}),
+        {status: 200, body: {initializationRun: {status: 'Completed'}}},
+      ];
+      await cloud.environments.deploy(mgmtOnly(), {providerCredentials});
+    } finally {
+      spy.mockRestore();
+    }
+    expect(
+      lines.some(l => /Keeping stored parameters .* keys=tags/.test(l)),
+    ).toBe(true);
   });
 });

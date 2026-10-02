@@ -8,6 +8,7 @@
  * complete (polling the initializer status endpoint).
  *
  * Endpoints (base `${FRACTAL_API_URL}/environments`):
+ *   GET           /{type}/{ownerId}                (list, summaries)
  *   GET|POST|PUT  /{type}/{ownerId}/{shortName}
  *   POST          /{...}/secrets/bulk
  *   POST          /{...}/ci-cd-profiles/bulk
@@ -25,16 +26,22 @@ import {
   sleep,
   elapsedSec,
   log,
+  pathSegment,
   type ApiConfig,
   type LabeledSecret,
 } from '../http';
 import type {
   CiCdProfile,
+  EnvironmentDetails,
   EnvironmentId,
+  EnvironmentSummary,
+  EnvironmentType,
   ProviderCredentials,
+  ProviderCredentialsResolver,
   Secret,
 } from './types';
-import {formatEnvironmentId} from './types';
+import {formatEnvironmentId, NETWORK_TIER_PARAMETER} from './types';
+import {findParameter} from './parameters';
 import type {CloudAgent} from './cloud_agents';
 import {
   resolveEnvironment,
@@ -48,11 +55,35 @@ const DEFAULT_AGENT_POLL_INTERVAL_MS = 30_000;
 const DEFAULT_AGENT_TIMEOUT_MS = 55 * 60_000;
 
 export type DeployEnvironmentOptions = {
-  /** Credentials for the cloud agents you initialize (throws if a needed
-   *  provider's credentials are absent). */
-  providerCredentials?: ProviderCredentials;
-  /** `wait` polls each cloud-agent initialization to completion; `fire-and-forget`
-   *  starts them and returns. Default `fire-and-forget`. */
+  /**
+   * Credentials for the cloud agents you initialize (throws if a needed
+   * provider's credentials are absent).
+   *
+   * - An OBJECT is used for every environment in the tree — the management env
+   *   and each operational env alike. Fine when they share one account.
+   * - A FUNCTION ({@link ProviderCredentialsResolver}) is asked per environment
+   *   and agent, right before that agent's `initialize` request, and only when one
+   *   is actually sent. Use it when the environments live in different cloud
+   *   accounts — e.g. key on `request.environment.shortName` or
+   *   `request.accountId`.
+   *
+   * AWS: only three-part session credentials (`accessKeyId` + `secretAccessKey`
+   * + `sessionToken`) are honored by the control plane today; see
+   * {@link AwsCredentials}.
+   */
+  providerCredentials?: ProviderCredentials | ProviderCredentialsResolver;
+  /**
+   * `wait` polls each cloud-agent initialization to completion; `fire-and-forget`
+   * starts them and returns. Default `fire-and-forget`.
+   *
+   * Environments are initialized in order: the management env first, then each
+   * operational env. The control plane refuses an operational initialization
+   * until the management env's initialization for that provider has Completed, so
+   * initializing a NEW tree (management + operational agents) in one run needs
+   * `wait`. Under `fire-and-forget` the deploy starts the management
+   * initialization and then throws before any operational one, naming this
+   * option; re-running once the management env is initialized proceeds.
+   */
   agentInit?: 'wait' | 'fire-and-forget';
   /**
    * Send `POST .../initialize` even when a stored initialization run already
@@ -144,6 +175,47 @@ const fetchEnvironment = async (
   return res.status === 200 ? (res.body as EnvironmentResponse) : null;
 };
 
+/** Case-insensitive key match: the control plane looks parameters up
+ *  case-insensitively (`networkTier` and `NetworkTier` are the same key). */
+const sameKey = (a: string, b: string): boolean =>
+  a.toLowerCase() === b.toLowerCase();
+
+/**
+ * The parameters to submit when UPDATING an environment.
+ *
+ * The API's PUT replaces `parameters` wholesale, so sending only what the SDK
+ * declares would wipe every key it does not know about — a `networkTier` set in
+ * the web UI, the `agents` the server records at initialization. Start from the
+ * server's current parameters and overlay only the declared keys: a declared
+ * value replaces the server's (including any differently-cased spelling of the
+ * same key), a declared `null` removes it, and every undeclared key is kept
+ * byte-for-byte.
+ */
+export const mergeEnvironmentParameters = (
+  current: Readonly<Record<string, unknown>> | null | undefined,
+  declared: Readonly<Record<string, unknown>>,
+): Record<string, unknown> => {
+  const merged: Record<string, unknown> = {};
+  const declaredKeys = Object.keys(declared);
+  for (const [key, value] of Object.entries(current ?? {})) {
+    if (!declaredKeys.some(d => sameKey(d, key))) {
+      merged[key] = value;
+    }
+  }
+  for (const key of declaredKeys) {
+    if (declared[key] !== null && declared[key] !== undefined) {
+      merged[key] = declared[key];
+    }
+  }
+  return merged;
+};
+
+/** Declared parameters for a CREATE: there is nothing to preserve, and a key
+ *  declared absent (`null`) is simply not sent. */
+const createParameters = (
+  declared: Readonly<Record<string, unknown>>,
+): Record<string, unknown> => mergeEnvironmentParameters({}, declared);
+
 const createEnvironment = async (
   env: ResolvedEnvironment,
   cfg: ApiConfig,
@@ -158,14 +230,20 @@ const createEnvironment = async (
         managementEnvironmentId: managementIdDto(env),
         name: env.name,
         resourceGroups: env.resourceGroups,
-        parameters: env.parameters,
+        parameters: createParameters(env.parameters),
       }),
   );
 };
 
+/**
+ * PUT an environment. `parameters` is the FULL set to store — the API replaces
+ * the field wholesale — so callers pass the merged set
+ * ({@link mergeEnvironmentParameters}), never `env.parameters` alone.
+ */
 const updateEnvironment = async (
   env: ResolvedEnvironment,
   cfg: ApiConfig,
+  parameters: Record<string, unknown>,
   defaultCiCdProfileShortName: string | null,
 ): Promise<void> => {
   await send(
@@ -178,7 +256,7 @@ const updateEnvironment = async (
         managementEnvironmentId: managementIdDto(env),
         name: env.name,
         resourceGroups: env.resourceGroups,
-        parameters: env.parameters,
+        parameters,
         defaultCiCdProfileShortName,
       }),
   );
@@ -212,6 +290,7 @@ const manageCiCdProfiles = async (
   env: ResolvedEnvironment,
   cfg: ApiConfig,
   currentDefault: string | null,
+  parameters: Record<string, unknown>,
 ): Promise<void> => {
   if (env.defaultCiCdProfile === undefined) {
     // Clear an existing default if one was set previously.
@@ -220,7 +299,7 @@ const manageCiCdProfiles = async (
       currentDefault !== undefined &&
       currentDefault !== ''
     ) {
-      await updateEnvironment(env, cfg, null);
+      await updateEnvironment(env, cfg, parameters, null);
     }
     return;
   }
@@ -248,7 +327,12 @@ const manageCiCdProfiles = async (
     ]),
   );
   if (env.defaultCiCdProfile.shortName !== currentDefault) {
-    await updateEnvironment(env, cfg, env.defaultCiCdProfile.shortName);
+    await updateEnvironment(
+      env,
+      cfg,
+      parameters,
+      env.defaultCiCdProfile.shortName,
+    );
   }
 };
 
@@ -297,6 +381,9 @@ const initHeaders = (
         throw mixedCreds('AWS');
       }
       // TODO: AWS federated (web-identity) init pending server support
+      // The server's AWS initializer binds only the three X-AWS-Access-Key-ID /
+      // -Secret-Access-Key / -Session-Token headers today, so these two are sent
+      // but ignored — see AwsCredentials, and the WARN logged by awsCredsWarning.
       if (hasKey(c, 'webIdentityToken')) {
         const oidc = c as {roleArn: string; webIdentityToken: string};
         return {
@@ -391,6 +478,50 @@ const initHeaders = (
       }
       return {'X-Hetzner-Token': c.token};
     }
+  }
+};
+
+/**
+ * A warning for AWS credentials the control plane will not use as inline
+ * credentials (see {@link AwsCredentials}), or `null` when they are honored.
+ * Logged rather than thrown: the server may still succeed with a credential it
+ * already holds for the environment, which is a legitimate setup.
+ */
+const awsCredsWarning = (
+  pc: ProviderCredentials | undefined,
+): string | null => {
+  const c = pc?.aws;
+  if (!c) {
+    return null;
+  }
+  if (hasKey(c, 'webIdentityToken')) {
+    return (
+      'AWS web-identity credentials (roleArn + webIdentityToken) are not honored by the ' +
+      'control plane yet; exchange the token with sts:AssumeRoleWithWebIdentity and pass ' +
+      'accessKeyId + secretAccessKey + sessionToken instead'
+    );
+  }
+  if (!hasKey(c, 'sessionToken')) {
+    return (
+      'AWS credentials without a sessionToken are not used as inline credentials by the ' +
+      'control plane; it requires accessKeyId + secretAccessKey + sessionToken'
+    );
+  }
+  return null;
+};
+
+/** The cloud account an agent lands in, provider-neutrally. */
+const agentAccountId = (agent: CloudAgent): string => {
+  switch (agent.provider) {
+    case 'AWS':
+      return agent.accountId;
+    case 'AZURE':
+      return agent.subscriptionId;
+    case 'GCP':
+    case 'HETZNER':
+      return agent.projectId;
+    case 'OCI':
+      return agent.compartmentId;
   }
 };
 
@@ -497,6 +628,10 @@ const failureMessage = (provider: string, run: InitializationRun): string => {
   return `${provider} cloud-agent initialization failed:\n${lines.join('\n')}`;
 };
 
+/** What a deploy knows about an agent's initialization once it has handled it:
+ *  `Completed` only when a Completed run was observed (and not forced over). */
+type AgentInitOutcome = 'Completed' | 'NotCompleted';
+
 const initializeAgent = async (
   env: ResolvedEnvironment,
   agent: CloudAgent,
@@ -507,9 +642,15 @@ const initializeAgent = async (
     pollIntervalMs: number;
     timeoutMs: number;
     quiet: boolean;
-    providerCredentials?: ProviderCredentials;
+    /** Resolves this env's credentials; called only when initialize is sent. */
+    credentialsFor: (
+      env: ResolvedEnvironment,
+      agent: CloudAgent,
+    ) => Promise<ProviderCredentials | undefined>;
+    /** Throws when this agent may not be initialized yet (ordering guard). */
+    beforeStart: (env: ResolvedEnvironment, agent: CloudAgent) => void;
   },
-): Promise<void> => {
+): Promise<AgentInitOutcome> => {
   const envId = formatEnvironmentId(env.id);
   const provider = agent.provider;
 
@@ -536,6 +677,7 @@ const initializeAgent = async (
       : null;
 
   if (needsStart) {
+    opts.beforeStart(env, agent);
     log(opts.quiet, 'INFO', 'Starting cloud-agent initialization', {
       env: envId,
       provider,
@@ -554,7 +696,13 @@ const initializeAgent = async (
     //     supplies. Header names carrying identifiers (role ARN, client id,
     //     service-account email) are deliberately excluded so they still show up in
     //     a diagnostic.
-    const providerHeaders = initHeaders(agent, opts.providerCredentials);
+    const credentials = await opts.credentialsFor(env, agent);
+    const warning =
+      agent.provider === 'AWS' ? awsCredsWarning(credentials) : null;
+    if (warning !== null) {
+      log(opts.quiet, 'WARN', warning, {env: envId, provider});
+    }
+    const providerHeaders = initHeaders(agent, credentials);
     await send(
       cfg,
       superagent
@@ -570,7 +718,9 @@ const initializeAgent = async (
   }
 
   if (opts.agentInit === 'fire-and-forget') {
-    return;
+    return !needsStart && current?.status === 'Completed'
+      ? 'Completed'
+      : 'NotCompleted';
   }
 
   const startMs = Date.now();
@@ -610,7 +760,7 @@ const initializeAgent = async (
             provider,
             elapsed: elapsedSec(startMs),
           });
-          return;
+          return 'Completed';
         case 'Cancelled':
           log(opts.quiet, 'ERROR', 'Cloud-agent initialization cancelled', {
             env: envId,
@@ -682,27 +832,55 @@ const needsUpdate = (
   if (stableStringify(existingRgs) !== stableStringify(desiredRgs)) {
     return true;
   }
-  // Compare only the parameter keys the SDK manages; the server may add its own
-  // (e.g. status/output fields) which must not count as drift.
+  // Drift is "applying the declared keys would change the stored parameters".
+  // Keys the SDK does not declare are preserved by the merge, so a key the server
+  // or the web UI added never counts as drift.
   const existingParams = (existing.parameters ?? {}) as Record<string, unknown>;
-  const managedSubset: Record<string, unknown> = {};
-  for (const key of Object.keys(env.parameters)) {
-    managedSubset[key] = existingParams[key];
-  }
-  return stableStringify(managedSubset) !== stableStringify(env.parameters);
+  return (
+    stableStringify(
+      mergeEnvironmentParameters(existingParams, env.parameters),
+    ) !== stableStringify(existingParams)
+  );
+};
+
+/** Result of reconciling one environment's own record. `parameters` is what
+ *  the server now holds (as far as this deploy knows), the base for any later
+ *  PUT in the same deploy. */
+type EnvironmentWriteResult = {
+  existing: EnvironmentResponse | null;
+  parameters: Record<string, unknown>;
 };
 
 const createOrUpdateEnvironment = async (
   env: ResolvedEnvironment,
   cfg: ApiConfig,
   quiet: boolean,
-): Promise<EnvironmentResponse | null> => {
+): Promise<EnvironmentWriteResult> => {
   const id = formatEnvironmentId(env.id);
   const existing = await fetchEnvironment(env, cfg);
   if (existing === null || existing.status.toLowerCase() === 'deleted') {
     log(quiet, 'INFO', 'Creating environment', {env: id});
     await createEnvironment(env, cfg);
-    return null;
+    return {existing: null, parameters: createParameters(env.parameters)};
+  }
+  const parameters = mergeEnvironmentParameters(
+    existing.parameters,
+    env.parameters,
+  );
+  // Removing the last tag / DNS zone from code no longer clears it (undeclared
+  // keys are preserved), so say which builder-owned keys were kept — a quiet
+  // change in convergence is worse than a noisy one.
+  const kept = ['tags', 'dnsZones'].filter(
+    k =>
+      findParameter(env.parameters, k) === undefined &&
+      findParameter(existing.parameters, k) !== undefined,
+  );
+  if (kept.length > 0) {
+    log(quiet, 'INFO', 'Keeping stored parameters this tree does not declare', {
+      env: id,
+      keys: kept.join(','),
+      clearWith: "withParameter('<key>', null)",
+    });
   }
   if (needsUpdate(env, existing)) {
     log(quiet, 'INFO', 'Updating environment', {env: id});
@@ -710,12 +888,54 @@ const createOrUpdateEnvironment = async (
     await updateEnvironment(
       env,
       cfg,
+      parameters,
       existing.defaultCiCdProfileShortName ?? null,
     );
   } else {
     log(quiet, 'INFO', 'Environment up-to-date', {env: id});
   }
-  return existing;
+  return {existing, parameters};
+};
+
+/**
+ * Refuse an operational `networkTier` the control plane would ignore because the
+ * management environment STORES a different one (set in the web UI, or by an
+ * earlier deploy) without this tree declaring it. Resolution already refuses the
+ * case where both are declared; this covers the stored half, which is only
+ * knowable once the management env has been read. Runs before the operational
+ * env is written.
+ */
+const assertTierApplies = (
+  env: ResolvedEnvironment,
+  management: ResolvedEnvironment,
+  writtenById: ReadonlyMap<string, EnvironmentWriteResult>,
+): void => {
+  const mgmtId = formatEnvironmentId(management.id);
+  if (formatEnvironmentId(env.id) === mgmtId) {
+    return;
+  }
+  const opTier = findParameter(env.parameters, NETWORK_TIER_PARAMETER);
+  const stored = writtenById.get(mgmtId)?.parameters;
+  const mgmtTier = findParameter(stored, NETWORK_TIER_PARAMETER);
+  if (
+    opTier === undefined ||
+    opTier === null ||
+    mgmtTier === undefined ||
+    mgmtTier === null ||
+    // The server treats a blank tier as unset (IsNullOrWhiteSpace) and falls
+    // back to the operational value, so a blank one overrides nothing.
+    String(mgmtTier).trim().length === 0 ||
+    String(mgmtTier).trim().toLowerCase() === String(opTier).toLowerCase()
+  ) {
+    return;
+  }
+  throw new Error(
+    `Operational environment '${formatEnvironmentId(env.id)}': networkTier '${String(opTier)}' ` +
+      `would be ignored — management environment '${mgmtId}' stores networkTier ` +
+      `'${String(mgmtTier)}', which the control plane reads first. Declare ` +
+      "withParameter('networkTier', null) on the management environment to tier " +
+      'operational environments individually, or drop the operational tier.',
+  );
 };
 
 // ── public API ───────────────────────────────────────────────────────────────
@@ -751,8 +971,17 @@ export async function deployEnvironment(
   // flow against a listener that echoed an Azure SP secret, the leak surfaced on
   // the initialization-STATUS poll — a plausible place for a real control plane to
   // report "the credentials you provided are invalid: <value>".
+  //
+  // Mutable on purpose: credentials from a resolver function only exist once it
+  // is called, mid-deployment, and are appended here before the request that
+  // carries them — the config holds this same array, so every LATER request is
+  // covered too.
+  const staticCredentials =
+    typeof opts.providerCredentials === 'function'
+      ? undefined
+      : opts.providerCredentials;
   const deploymentSecrets: LabeledSecret[] = [
-    ...collectSecrets(opts.providerCredentials, 'providerCredentials'),
+    ...collectSecrets(staticCredentials, 'providerCredentials'),
     ...ordered.flatMap(env => [
       ...env.secrets.map(s => ({
         label: `secret:${s.shortName}`,
@@ -777,9 +1006,10 @@ export async function deployEnvironment(
   const scopedCfg: ApiConfig = {...cfg, extraSecrets: deploymentSecrets};
 
   // 1. create/update every environment
-  const existingById = new Map<string, EnvironmentResponse | null>();
+  const writtenById = new Map<string, EnvironmentWriteResult>();
   for (const env of ordered) {
-    existingById.set(
+    assertTierApplies(env, tree.management, writtenById);
+    writtenById.set(
       formatEnvironmentId(env.id),
       await createOrUpdateEnvironment(env, scopedCfg, quiet),
     );
@@ -792,26 +1022,182 @@ export async function deployEnvironment(
 
   // 3. CI/CD profiles (+ default)
   for (const env of ordered) {
-    const existing = existingById.get(formatEnvironmentId(env.id)) ?? null;
+    const written = writtenById.get(formatEnvironmentId(env.id));
     await manageCiCdProfiles(
       env,
       scopedCfg,
-      existing?.defaultCiCdProfileShortName ?? null,
+      written?.existing?.defaultCiCdProfileShortName ?? null,
+      written?.parameters ?? createParameters(env.parameters),
     );
   }
 
   // 4. cloud-agent initialization
+  const managementEnvId = formatEnvironmentId(tree.management.id);
+  const resolveCredentials = opts.providerCredentials;
+  const credentialsFor = async (
+    env: ResolvedEnvironment,
+    agent: CloudAgent,
+  ): Promise<ProviderCredentials | undefined> => {
+    if (typeof resolveCredentials !== 'function') {
+      return resolveCredentials;
+    }
+    const envId = formatEnvironmentId(env.id);
+    let resolved: ProviderCredentials | undefined;
+    try {
+      resolved = await resolveCredentials({
+        environment: {...env.id},
+        tier: envId === managementEnvId ? 'management' : 'operational',
+        provider: agent.provider,
+        accountId: agentAccountId(agent),
+        region: agent.region,
+      });
+    } catch (err) {
+      // Name the environment; the message is the caller's own error, and no
+      // `cause` is attached so nothing the resolver held rides along.
+      throw new Error(
+        `The providerCredentials resolver failed for the ${agent.provider} agent of ` +
+          `environment '${envId}': ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+    // Register before the request that carries them is built.
+    deploymentSecrets.push(
+      ...collectSecrets(resolved, `providerCredentials[${envId}]`),
+    );
+    const key = agent.provider.toLowerCase() as keyof ProviderCredentials;
+    if (resolved === undefined || resolved === null || !resolved[key]) {
+      throw new Error(
+        `Cloud-agent initialization for ${agent.provider} in environment '${envId}' requires ` +
+          `${key} credentials, but the providerCredentials resolver returned none for it.`,
+      );
+    }
+    return resolved;
+  };
+
+  // Management outcome per provider, filled as the management env's agents are
+  // handled — which is always before any operational env's (`ordered`).
+  const managementOutcome = new Map<CloudAgent['provider'], AgentInitOutcome>();
+  const beforeStart = (env: ResolvedEnvironment, agent: CloudAgent): void => {
+    if (formatEnvironmentId(env.id) === managementEnvId) {
+      return;
+    }
+    // Refuse only what this deploy KNOWS will fail: it handled the management
+    // agent for this provider and did not observe a Completed run. Anything
+    // else is left to the control plane's own check.
+    if (managementOutcome.get(agent.provider) !== 'NotCompleted') {
+      return;
+    }
+    // The server would reject this with ManagementEnvironmentNotInitialized; say
+    // why, and what to do, before sending anything.
+    throw new Error(
+      `Cannot initialize the ${agent.provider} cloud agent of operational environment ` +
+        `'${formatEnvironmentId(env.id)}' yet: the control plane requires the management ` +
+        `environment '${managementEnvId}' to have a Completed ${agent.provider} initialization ` +
+        "first, and it has not completed. Deploy with agentInit: 'wait' to initialize a new " +
+        'tree in one run, or re-run once the management environment is initialized.',
+    );
+  };
+
   const agentOpts = {
     agentInit,
     reinitializeAgents,
     pollIntervalMs,
     timeoutMs,
     quiet,
-    providerCredentials: opts.providerCredentials,
+    credentialsFor,
+    beforeStart,
   };
   for (const env of ordered) {
+    const isManagement = formatEnvironmentId(env.id) === managementEnvId;
     for (const agent of env.cloudAgents) {
-      await initializeAgent(env, agent, scopedCfg, agentOpts);
+      const outcome = await initializeAgent(env, agent, scopedCfg, agentOpts);
+      if (isManagement) {
+        managementOutcome.set(agent.provider, outcome);
+      }
     }
   }
+}
+
+// ── read operations ─────────────────────────────────────────────────────────
+const toEnvironmentId = (dto: EnvironmentIdDto): EnvironmentId => ({
+  type: dto.type as EnvironmentType,
+  ownerId: dto.ownerId,
+  shortName: dto.shortName,
+});
+
+const checkOwner = (owner: {type: EnvironmentType; ownerId: string}): void => {
+  if (owner.ownerId === undefined || owner.ownerId.trim().length === 0) {
+    throw new Error('Listing environments requires an ownerId.');
+  }
+};
+
+/**
+ * List every environment of an owner (`GET /environments/{type}/{ownerId}`).
+ * Returns summaries, ordered by short name as the server orders them; an owner
+ * with no environments yields `[]`.
+ */
+export async function listEnvironments(
+  owner: {type: EnvironmentType; ownerId: string},
+  cfg: ApiConfig,
+): Promise<EnvironmentSummary[]> {
+  checkOwner(owner);
+  const res = await send(
+    cfg,
+    superagent
+      .get(
+        `${environmentsUrl(cfg)}/${pathSegment(owner.type)}/${pathSegment(owner.ownerId)}`,
+      )
+      .ok(r => r.status === 200)
+      .set(authHeaders(cfg)),
+  );
+  const rows = (Array.isArray(res.body) ? res.body : []) as {
+    id: EnvironmentIdDto;
+    name?: string | null;
+    status?: string | null;
+    resourceGroups?: string[] | null;
+    initializedClouds?: string[] | null;
+  }[];
+  return rows.map(r => ({
+    id: toEnvironmentId(r.id),
+    name: r.name ?? '',
+    status: r.status ?? 'Unknown',
+    resourceGroups: [...(r.resourceGroups ?? [])],
+    initializedClouds: [...(r.initializedClouds ?? [])],
+  }));
+}
+
+/**
+ * Read one environment (`GET /environments/{type}/{ownerId}/{shortName}`),
+ * including every parameter the server holds. `null` when it does not exist.
+ */
+export async function getEnvironment(
+  id: EnvironmentId,
+  cfg: ApiConfig,
+): Promise<EnvironmentDetails | null> {
+  checkOwner({type: id.type, ownerId: id.ownerId});
+  const res = await send(
+    cfg,
+    superagent
+      .get(
+        `${environmentsUrl(cfg)}/${pathSegment(id.type)}/${pathSegment(id.ownerId)}/${pathSegment(id.shortName)}`,
+      )
+      .ok(r => r.status === 200 || r.status === 404)
+      .set(authHeaders(cfg)),
+  );
+  if (res.status !== 200) {
+    return null;
+  }
+  const body = res.body as EnvironmentResponse & {
+    managementEnvironmentId?: EnvironmentIdDto | null;
+  };
+  return {
+    id: toEnvironmentId(body.id),
+    managementEnvironmentId: body.managementEnvironmentId
+      ? toEnvironmentId(body.managementEnvironmentId)
+      : null,
+    name: body.name ?? '',
+    status: body.status ?? 'Unknown',
+    resourceGroups: [...(body.resourceGroups ?? [])],
+    parameters: {...(body.parameters ?? {})},
+    defaultCiCdProfileShortName: body.defaultCiCdProfileShortName ?? null,
+  };
 }

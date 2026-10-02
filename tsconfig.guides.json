@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["guides/**/*.ts"],
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {"@fractal_cloud/sdk": ["./src/index.ts"]}
+  }
+}

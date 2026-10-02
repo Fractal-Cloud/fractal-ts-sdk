@@ -12,3 +12,5 @@ export * from './environment';
 // The deploy operation itself lives on the client (`cloud.environments.deploy`)
 // so credentials are held in one place; only its options type is public here.
 export type {DeployEnvironmentOptions} from './service';
+// Exposed so a caller can predict exactly what a deploy will write.
+export {mergeEnvironmentParameters} from './service';

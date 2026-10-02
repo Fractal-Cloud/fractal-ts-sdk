@@ -31,9 +31,19 @@ import {
   liveSystemOutputs,
 } from './service';
 import type {DeployOptions, LiveSystemState} from './service';
-import {deployEnvironment} from './environment/service';
+import {
+  deployEnvironment,
+  getEnvironment,
+  listEnvironments,
+} from './environment/service';
 import type {DeployEnvironmentOptions} from './environment/service';
 import type {ManagementEnvironmentNode} from './environment/environment';
+import type {
+  EnvironmentDetails,
+  EnvironmentId,
+  EnvironmentSummary,
+  EnvironmentType,
+} from './environment/types';
 
 export type FractalCloudClientConfig = ApiConfig;
 
@@ -158,11 +168,22 @@ export type FractalCloudClient = {
      * Deploy a management environment tree: the management env and each
      * operational env, their secrets and CI/CD profiles, then cloud-agent
      * initialization.
+     *
+     * Updating an existing environment merges parameters: only the keys this
+     * tree declares are written, every other key the server holds is kept.
      */
     deploy: (
       management: ManagementEnvironmentNode,
       opts?: DeployEnvironmentOptions,
     ) => Promise<void>;
+    /** List an owner's environments (summaries: id, name, status, resource
+     *  groups, initialized clouds). */
+    list: (owner: {
+      type: EnvironmentType;
+      ownerId: string;
+    }) => Promise<EnvironmentSummary[]>;
+    /** Read one environment with all of its parameters; `null` if absent. */
+    get: (id: EnvironmentId) => Promise<EnvironmentDetails | null>;
   };
 };
 
@@ -180,5 +201,7 @@ export const createFractalCloudClient = (
   },
   environments: {
     deploy: (management, opts) => deployEnvironment(management, cfg, opts),
+    list: owner => listEnvironments(owner, cfg),
+    get: id => getEnvironment(id, cfg),
   },
 });

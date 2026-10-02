@@ -7,7 +7,8 @@
  */
 import {describe, it, expect} from 'vitest';
 import {createFractal} from './core';
-import {DnsZoneComponent} from './components/dns';
+import {DnsZoneComponent, DnsZoneGuardrails} from './components/dns';
+import type {DnsZone} from './environment/types';
 import {AwsRoute53HostedZone} from './offers/dns';
 import {Cognito} from './offers/security';
 
@@ -111,5 +112,17 @@ describe('DNS Zone component', () => {
         alias: {dnsName: 'x.', hostedZoneId: 'Z1'},
       },
     ]);
+  });
+
+  it('an environment DNS zone carries the same guardrails and records', () => {
+    const zone: DnsZone = {
+      name: 'fractal.cloud',
+      dnssec: 'required',
+      recordManagement: 'additive',
+      caaIssuers: ['letsencrypt.org'],
+      records: [{name: 'www', type: 'CNAME', values: ['fractal.cloud.']}],
+    };
+    const guardrails: DnsZoneGuardrails = zone;
+    expect(guardrails.dnssec).toBe('required');
   });
 });

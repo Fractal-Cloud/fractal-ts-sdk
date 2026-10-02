@@ -8,6 +8,7 @@
 import {describe, it, expect} from 'vitest';
 import {
   ManagementEnvironment,
+  mergeEnvironmentParameters,
   OperationalEnvironment,
   resolveEnvironment,
   type CloudAgent,
@@ -156,5 +157,158 @@ describe('resolveEnvironment', () => {
       sshPrivateKeyData: 'key',
     });
     expect(() => resolveEnvironment(mgmt)).toThrow(/default CI\/CD profile/);
+  });
+});
+
+describe('environment parameters', () => {
+  it('withNetworkTier declares networkTier, immutably', () => {
+    const a = baseMgmt();
+    const b = a.withNetworkTier('prod');
+    expect(a.state.parameters).toEqual({});
+    expect(b.state.parameters).toEqual({networkTier: 'prod'});
+    expect(resolveEnvironment(b).management.parameters).toMatchObject({
+      networkTier: 'prod',
+      agents: [expect.objectContaining({provider: 'AZURE'})],
+    });
+  });
+
+  it('withParameter declares free-form keys on both tiers', () => {
+    const tree = resolveEnvironment(
+      baseMgmt()
+        .withParameter('costCenter', 'cc-1')
+        .withOperationalEnvironment(
+          OperationalEnvironment({
+            shortName: 'prod',
+            resourceGroups: [rg('prod-rg')],
+          })
+            .withParameter('owner', {team: 'platform'})
+            .withNetworkTier('prod'),
+        ),
+    );
+    expect(tree.management.parameters.costCenter).toBe('cc-1');
+    expect(tree.operationals[0].parameters).toEqual({
+      owner: {team: 'platform'},
+      networkTier: 'prod',
+    });
+  });
+
+  it.each(['agents', 'tags', 'dnsZones'])(
+    'withParameter refuses the builder-owned key %s',
+    key => {
+      expect(() => baseMgmt().withParameter(key, {})).toThrow(
+        /managed by the builder/,
+      );
+    },
+  );
+
+  it.each(['agents', 'tags', 'dnsZones'])(
+    'withParameter accepts null for the builder-owned key %s, to clear it',
+    key => {
+      const tree = resolveEnvironment(baseMgmt().withParameter(key, null));
+      if (key === 'agents') {
+        // A typed declaration wins over the clear.
+        expect(tree.management.parameters.agents).toHaveLength(1);
+      } else {
+        expect(tree.management.parameters[key]).toBeNull();
+      }
+    },
+  );
+
+  it('withParameter refuses a blank key', () => {
+    expect(() => baseMgmt().withParameter('  ', 1)).toThrow(/blank/);
+  });
+
+  it('rejects a networkTier the control plane would fail on', () => {
+    expect(() =>
+      resolveEnvironment(baseMgmt().withParameter('networkTier', 'staging')),
+    ).toThrow(/networkTier must be one of \[prod, nonprod\], got "staging"/);
+  });
+
+  it('refuses an operational tier the management tier would override', () => {
+    const tree = baseMgmt()
+      .withNetworkTier('nonprod')
+      .withOperationalEnvironment(
+        OperationalEnvironment({
+          shortName: 'prod',
+          resourceGroups: [rg('prod-rg')],
+        }).withNetworkTier('prod'),
+      );
+    expect(() => resolveEnvironment(tree)).toThrow(
+      /'prod': networkTier 'prod' would be ignored .* declares networkTier 'nonprod'/,
+    );
+  });
+
+  it('accepts an operational tier equal to the management tier', () => {
+    const tree = baseMgmt()
+      .withNetworkTier('prod')
+      .withOperationalEnvironment(
+        OperationalEnvironment({
+          shortName: 'prod',
+          resourceGroups: [rg('prod-rg')],
+        }).withNetworkTier('prod'),
+      );
+    expect(() => resolveEnvironment(tree)).not.toThrow();
+  });
+
+  it('operational(name) keeps declared parameters', () => {
+    const m = baseMgmt().withOperationalEnvironment(
+      OperationalEnvironment({shortName: 'dev'}).withNetworkTier('nonprod'),
+    );
+    expect(m.operational('dev').state.parameters).toEqual({
+      networkTier: 'nonprod',
+    });
+  });
+});
+
+describe('mergeEnvironmentParameters', () => {
+  it('keeps undeclared keys, overlays declared ones, drops declared nulls', () => {
+    expect(
+      mergeEnvironmentParameters(
+        {a: 1, NetworkTier: 'nonprod', gone: true, nested: {x: 1}},
+        {networkTier: 'prod', gone: null, b: 2},
+      ),
+    ).toEqual({a: 1, nested: {x: 1}, networkTier: 'prod', b: 2});
+  });
+
+  it('tolerates a server with no parameters', () => {
+    expect(mergeEnvironmentParameters(null, {k: 'v', z: null})).toEqual({
+      k: 'v',
+    });
+  });
+});
+
+describe('environment parameters — key case', () => {
+  it('a differently-cased key replaces the earlier spelling', () => {
+    const m = baseMgmt()
+      .withParameter('NetworkTier', 'nonprod')
+      .withNetworkTier('prod');
+    expect(m.state.parameters).toEqual({networkTier: 'prod'});
+  });
+
+  it('validates networkTier under any spelling', () => {
+    expect(() =>
+      resolveEnvironment(baseMgmt().withParameter('NETWORKTIER', 'staging')),
+    ).toThrow(/networkTier must be one of/);
+  });
+
+  it('refuses a reserved key under any spelling', () => {
+    expect(() => baseMgmt().withParameter('Agents', [])).toThrow(
+      /managed by the builder/,
+    );
+    expect(() => baseMgmt().withParameter('TAGS', null)).toThrow(
+      /managed by the builder/,
+    );
+  });
+
+  it('detects a tier conflict under any spelling', () => {
+    const tree = baseMgmt()
+      .withParameter('NetworkTier', 'nonprod')
+      .withOperationalEnvironment(
+        OperationalEnvironment({
+          shortName: 'prod',
+          resourceGroups: [rg('prod-rg')],
+        }).withNetworkTier('prod'),
+      );
+    expect(() => resolveEnvironment(tree)).toThrow(/would be ignored/);
   });
 });
