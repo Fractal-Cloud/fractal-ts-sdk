@@ -407,12 +407,12 @@ Things to know:
 - **`providerCredentials`** is either one object, used for every environment in the
   tree (as before), or a function asked per environment and agent. Credentials a
   function returns are redacted from errors like static ones.
-- **AWS credentials must be three-part session credentials** — `accessKeyId`,
-  `secretAccessKey` *and* `sessionToken`. That is what the control plane uses
-  today. A partial set (e.g. no `sessionToken`) is refused before anything is sent,
-  since the server would silently fall back to a credential it already holds.
-  `{roleArn, webIdentityToken}` is sent but not used, and the SDK logs a `WARN`.
-  Exchange a GitHub OIDC token for session credentials first, as above.
+- **AWS credentials** are a session (`accessKeyId`, `secretAccessKey`,
+  `sessionToken`), long-lived keys (`accessKeyId`, `secretAccessKey`, sent as they
+  are), or web identity (`roleArn`, `webIdentityToken`, which the control plane
+  exchanges itself). The last two need fractal-environments v3.32.0 or later. A set
+  missing a key, or with an empty `sessionToken`, is refused before anything is
+  sent.
 - **Order.** Management is initialized first, then each operational environment.
   With `agentInit: 'wait'` each initialization is awaited before the next starts.
   With the default `fire-and-forget`, an operational agent whose management agent
@@ -467,12 +467,12 @@ await cloud.environments.updateAgents(management, {
 - **`providerCredentials`** (an object or a resolver, as for `deploy`) is optional,
   and so is each provider in it. Credentials given for an agent's provider are sent
   as the same headers `initialize` uses. An agent whose provider gets none is updated
-  without them. **The control plane's update endpoint does not read these headers
-  today.** It updates with the credentials it already holds for the environment. An
-  environment initialized with short-lived inline credentials (a CI job's assumed
-  role, an OIDC token) may hold none by then, and its update fails at the first step
-  that needs them. Under `agentUpdate: 'wait'` that failure is reported with the
-  step's message.
+  without them. The control plane updates with the credentials sent
+  (fractal-environments v3.32.0 or later). An older one updates with the
+  credentials it already holds for the environment; one initialized with
+  short-lived credentials may hold none by then, and its update fails at the first
+  step that needs them (reported with the step's message under `agentUpdate:
+  'wait'`).
 
 ### Reading DNS zone results
 
@@ -670,7 +670,7 @@ environment, or the Azure DevOps service connection).
 
 | Cloud | OIDC (default) | Audience |
 |---|---|---|
-| AWS | `{roleArn}`, one entry per account. The SDK exchanges the token with `sts:AssumeRoleWithWebIdentity` for a session (`sessionDurationSeconds`, default 3600). `exchange: 'control-plane'` hands the token over instead, for a control plane that does the exchange. | `sts.amazonaws.com` |
+| AWS | `{roleArn}`, one entry per account. The token is handed to the control plane, which exchanges it with `sts:AssumeRoleWithWebIdentity` at request time (fractal-environments v3.32.0 or later). `exchange: 'sdk'` exchanges it in the job instead and hands over the session (`sessionDurationSeconds`, default 3600), for older control planes. | `sts.amazonaws.com` |
 | GCP | `{serviceAccountEmail, workloadIdentityProvider, projectIds}` | `https://iam.googleapis.com/<provider>` |
 | Azure | `{clientId, subscriptionIds}` | `api://AzureADTokenExchange` |
 
@@ -693,9 +693,10 @@ credentialsFromCi(ci, {
 });
 ```
 
-Long-lived AWS keys are never sent: the SDK exchanges them for a short session
-with a signed `sts:GetSessionToken` first. OIDC and secrets mix freely, one per
-cloud.
+Long-lived AWS keys are sent as they are, without a session token; the control
+plane holds them for the run only and checks their account (fractal-environments
+v3.32.0 or later). They are not exchanged for a `sts:GetSessionToken` session,
+which could not call IAM without MFA. OIDC and secrets mix freely, one per cloud.
 
 Either way, the resolver:
 

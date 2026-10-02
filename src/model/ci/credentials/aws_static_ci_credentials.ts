@@ -1,8 +1,9 @@
 /**
  * ci/credentials/aws_static_ci_credentials.ts — AWS through access keys kept as
- * CI secrets (the standard way). Long-lived keys without a session token are
- * turned into a session with `sts:GetSessionToken`, because the control plane
- * only honors three-part session credentials.
+ * CI secrets (the standard way). Long-lived keys are sent as they are (the
+ * control plane holds them for the run only and checks their account with
+ * `sts:GetCallerIdentity`); an assumed-role session sends its token too. Both
+ * need fractal-environments v3.32.0 or later for keys without a session token.
  */
 import type {CiValue} from './ci_value';
 
@@ -12,6 +13,9 @@ export type AwsStaticCiCredentials = {
   accessKeyId: CiValue;
   secretAccessKey: CiValue;
   sessionToken?: CiValue;
-  /** Length of the session made from long-lived keys. Default 3600. */
+  /**
+   * @deprecated Ignored. Long-lived keys are no longer exchanged for a session:
+   * a `sts:GetSessionToken` session cannot call IAM without MFA.
+   */
   sessionDurationSeconds?: number;
 };

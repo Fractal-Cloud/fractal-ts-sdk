@@ -30,7 +30,6 @@ import {
 } from './environment';
 import {
   agentAccountId,
-  awsCredsWarning,
   envUri,
   fetchInitializationStatus,
   initHeaders,
@@ -38,6 +37,7 @@ import {
   partialAwsCredentials,
   providerCredentialsFor,
   providerPath,
+  withVersionHint,
   type InitializationRun,
 } from './service';
 import {formatEnvironmentId, type ProviderCredentials} from './types';
@@ -313,18 +313,15 @@ export async function updateEnvironmentAgents(
     // A provider the caller supplies nothing for is updated without provider
     // headers, with the credentials the control plane already holds.
     let providerHeaders: Record<string, string> = {};
+    let sent: ProviderCredentials | undefined;
     if (source !== undefined) {
       const credentials = await credentialsFor(env, agent);
       if (credentials === null) {
         continue;
       }
       if (coversProvider(credentials, agent)) {
-        const warning =
-          provider === 'AWS' ? awsCredsWarning(credentials) : null;
-        if (warning !== null) {
-          log(quiet, 'WARN', warning, {env: envId, provider});
-        }
         providerHeaders = initHeaders(agent, credentials, 'update');
+        sent = credentials;
       }
     }
 
@@ -346,14 +343,18 @@ export async function updateEnvironmentAgents(
       provider,
       credentials: Object.keys(providerHeaders).length > 0 ? 'sent' : 'none',
     });
-    await send(
-      scopedCfg,
-      superagent
-        .post(envUri(scopedCfg, env, `${initializerPath}/update`))
-        .ok(r => r.status === 202)
-        .set(authHeaders(scopedCfg))
-        .set(providerHeaders),
-      collectSecrets(providerHeaders),
+    await withVersionHint(
+      agent,
+      sent,
+      send(
+        scopedCfg,
+        superagent
+          .post(envUri(scopedCfg, env, `${initializerPath}/update`))
+          .ok(r => r.status === 202)
+          .set(authHeaders(scopedCfg))
+          .set(providerHeaders),
+        collectSecrets(providerHeaders),
+      ),
     );
     result.started.push({environment: {...env.id}, provider});
 
