@@ -98,8 +98,9 @@ export type DeployEnvironmentOptions = {
    * until the management env's initialization for that provider has Completed, so
    * initializing a NEW tree (management + operational agents) in one run needs
    * `wait`. Under `fire-and-forget` the deploy starts the management
-   * initialization and then throws before any operational one, naming this
-   * option; re-running once the management env is initialized proceeds.
+   * initialization and skips each operational one with a notice (see
+   * `pendingManagement`); re-running once the management env is initialized
+   * proceeds.
    */
   agentInit?: 'wait' | 'fire-and-forget';
   /**
