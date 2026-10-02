@@ -14,6 +14,7 @@ export * from './secret';
 
 // Shared HTTP contract (credentials type surfaced publicly)
 export type {Credentials, ApiConfig} from './http';
+export type {RetryOptions} from './retry';
 
 // The error every API operation throws. Exported so a caller can branch on it
 // (`err instanceof FractalApiError`, `err.status`, `err.reasonCode`) — necessary

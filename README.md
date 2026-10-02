@@ -185,6 +185,28 @@ await cloud.liveSystems.deploy(liveSystem, {mode: 'wait'});
 
 Pass `baseUrl` to target a non-production control plane.
 
+### Retries through a brief control-plane outage
+
+A control-plane rollout or restart can answer `502`/`503`/`504` or drop the connection for a short while. The client repeats a call when repeating it is safe, with exponential backoff and jitter (1 s doubling to 15 s), honoring `Retry-After`, for at most 2 minutes per call, and logs one line per retry in the wait-mode format:
+
+```
+[2026-10-02T09:00:01.000Z] WARN  Control plane unavailable, retrying  method=GET path=/environments/Personal/<owner>/dev cause=503 attempt=1 retryInMs=730 elapsed=0s
+```
+
+| Call | Repeated on |
+|---|---|
+| `GET`, `PUT` (reads; environment, secret and live-system updates are whole-state overlays) | `502`, `503`, `504`, `ECONNRESET`, `ECONNREFUSED`, `ETIMEDOUT`, `EPIPE`, `EAI_AGAIN`, socket hang up |
+| `POST`, `DELETE` (initialize, update, create, destroy) | only when nothing can have started: the control plane's drain refusal (`503`, `reasonCode: ServiceDraining`), an ingress `503` that never reached a pod (`no healthy upstream`, `reset reason: connection failure` / `overflow`), or a refused connection |
+
+A `POST .../initialize` is not idempotent — a second accepted initialize starts a second run — so it is never repeated on `502`, `504`, a reset connection or a timeout. `4xx` and `500` are never repeated. Tune or disable it with `retry`:
+
+```typescript
+createFractalCloudClient({clientId, clientSecret, retry: {maxElapsedMs: 300_000}});
+createFractalCloudClient({clientId, clientSecret, retry: false});
+```
+
+`quiet: true` (and fire-and-forget live-system deploys) silence the retry lines too.
+
 ### Errors — safe to log
 
 Every operation throws **`FractalApiError`**, never the underlying HTTP client's

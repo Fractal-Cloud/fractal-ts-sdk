@@ -545,11 +545,17 @@ describe('no SDK request may bypass the boundary', () => {
         const before = code.slice(Math.max(0, at - 120), at);
         const isImport = /\bimport\s+$/.test(before);
         // `send(<config>,` immediately before the identifier.
-        const isSendArgument = /\bsend\(\s*[A-Za-z_$][\w$.]*\s*,\s*$/.test(
-          before,
-        );
+        const isSendArgument =
+          /\bsend\(\s*[A-Za-z_$][\w$.]*\s*,\s*(?:\(\)\s*=>\s*)?$/.test(before);
         if (!isImport && !isSendArgument) {
           offenders.push(`${file}:${line}: unwrapped superagent reference`);
+        }
+        // A request object can be awaited once, so `send` cannot repeat it through
+        // a control-plane outage (retry.ts). Only a factory gets retries.
+        if (isSendArgument && !/\(\)\s*=>\s*$/.test(before)) {
+          offenders.push(
+            `${file}:${line}: send() given a request instead of a factory; it cannot be retried`,
+          );
         }
       }
     }

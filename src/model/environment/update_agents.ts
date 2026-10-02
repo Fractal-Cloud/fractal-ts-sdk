@@ -11,6 +11,7 @@
  *
  * The control plane offers it for AWS, Azure and GCP agents only.
  */
+import {withQuietRetries} from '../retry';
 import superagent from 'superagent';
 import {collectSecrets, redactSecrets, send} from '../api-error';
 import {
@@ -194,9 +195,10 @@ const awaitUpdate = async (
  */
 export async function updateEnvironmentAgents(
   management: ManagementEnvironmentNode,
-  cfg: ApiConfig,
+  apiConfig: ApiConfig,
   opts: UpdateEnvironmentAgentsOptions = {},
 ): Promise<EnvironmentUpdateResult> {
+  const cfg = withQuietRetries(apiConfig, opts.quiet ?? false);
   const tree = resolveEnvironment(management);
   const quiet = opts.quiet ?? false;
   const mode = opts.agentUpdate ?? 'fire-and-forget';
@@ -348,11 +350,12 @@ export async function updateEnvironmentAgents(
       sent,
       send(
         scopedCfg,
-        superagent
-          .post(envUri(scopedCfg, env, `${initializerPath}/update`))
-          .ok(r => r.status === 202)
-          .set(authHeaders(scopedCfg))
-          .set(providerHeaders),
+        () =>
+          superagent
+            .post(envUri(scopedCfg, env, `${initializerPath}/update`))
+            .ok(r => r.status === 202)
+            .set(authHeaders(scopedCfg))
+            .set(providerHeaders),
         collectSecrets(providerHeaders),
       ),
     );

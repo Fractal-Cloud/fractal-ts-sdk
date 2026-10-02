@@ -19,6 +19,7 @@
  * NOT runtime-verified here (no Fractal Cloud credentials) — covered by mocked
  * HTTP unit tests; smoke against the live API before release.
  */
+import {withQuietRetries} from '../retry';
 import superagent from 'superagent';
 import {collectSecrets, redactSecrets, send} from '../api-error';
 import {
@@ -193,8 +194,7 @@ const fetchEnvironment = async (
   env: ResolvedEnvironment,
   cfg: ApiConfig,
 ): Promise<EnvironmentResponse | null> => {
-  const res = await send(
-    cfg,
+  const res = await send(cfg, () =>
     superagent
       .get(envUri(cfg, env))
       .ok(r => r.status === 200 || r.status === 404)
@@ -252,8 +252,7 @@ const createEnvironment = async (
   env: ResolvedEnvironment,
   cfg: ApiConfig,
 ): Promise<void> => {
-  await send(
-    cfg,
+  await send(cfg, () =>
     superagent
       .post(envUri(cfg, env))
       .ok(r => r.status === 201)
@@ -278,8 +277,7 @@ const updateEnvironment = async (
   parameters: Record<string, unknown>,
   defaultCiCdProfileShortName: string | null,
 ): Promise<void> => {
-  await send(
-    cfg,
+  await send(cfg, () =>
     superagent
       .put(envUri(cfg, env))
       .ok(r => r.status === 200)
@@ -303,11 +301,12 @@ const manageSecrets = async (
   }
   await send(
     cfg,
-    superagent
-      .post(envUri(cfg, env, 'secrets/bulk'))
-      .ok(r => r.status === 201 || r.status === 404)
-      .set(authHeaders(cfg))
-      .send(env.secrets as Secret[]),
+    () =>
+      superagent
+        .post(envUri(cfg, env, 'secrets/bulk'))
+        .ok(r => r.status === 201 || r.status === 404)
+        .set(authHeaders(cfg))
+        .send(env.secrets as Secret[]),
     // This request body IS the customer's secret values. Dropping the request
     // object covers the request itself; these entries cover a server that quotes
     // an offending value back in its error body.
@@ -338,11 +337,12 @@ const manageCiCdProfiles = async (
   const profiles: CiCdProfile[] = [env.defaultCiCdProfile, ...env.ciCdProfiles];
   await send(
     cfg,
-    superagent
-      .post(envUri(cfg, env, 'ci-cd-profiles/bulk'))
-      .ok(r => r.status === 201 || r.status === 404)
-      .set(authHeaders(cfg))
-      .send(profiles),
+    () =>
+      superagent
+        .post(envUri(cfg, env, 'ci-cd-profiles/bulk'))
+        .ok(r => r.status === 201 || r.status === 404)
+        .set(authHeaders(cfg))
+        .send(profiles),
     // SSH private keys and their passphrases. A PEM key contains newlines, which
     // is exactly the shape that defeated one-level escape matching in the samples
     // repo — hence the fixed-point spellings in api-error.ts.
@@ -632,8 +632,7 @@ export const fetchInitializationStatus = async (
   provider: CloudAgent['provider'],
   cfg: ApiConfig,
 ): Promise<InitializationRun | null> => {
-  const res = await send(
-    cfg,
+  const res = await send(cfg, () =>
     superagent
       .get(envUri(cfg, env, `initializer/${providerPath[provider]}/status`))
       .ok(r => r.status === 200 || r.status === 404)
@@ -813,18 +812,19 @@ const initializeAgent = async (
       credentials,
       send(
         cfg,
-        superagent
-          .post(
-            envUri(
-              cfg,
-              env,
-              `initializer/${providerPath[provider]}/initialize`,
-            ),
-          )
-          .ok(r => r.status === 202)
-          .set(authHeaders(cfg))
-          .set(providerHeaders)
-          .send(initBody(agent, env)),
+        () =>
+          superagent
+            .post(
+              envUri(
+                cfg,
+                env,
+                `initializer/${providerPath[provider]}/initialize`,
+              ),
+            )
+            .ok(r => r.status === 202)
+            .set(authHeaders(cfg))
+            .set(providerHeaders)
+            .send(initBody(agent, env)),
         collectSecrets(providerHeaders),
       ),
     );
@@ -1146,9 +1146,10 @@ export const providerCredentialsFor =
  */
 export async function deployEnvironment(
   management: ManagementEnvironmentNode,
-  cfg: ApiConfig,
+  apiConfig: ApiConfig,
   opts: DeployEnvironmentOptions = {},
 ): Promise<EnvironmentDeployResult> {
+  const cfg = withQuietRetries(apiConfig, opts.quiet ?? false);
   const tree = resolveEnvironment(management);
   const pendingManagement = opts.pendingManagement ?? 'skip';
   const result: EnvironmentDeployResult = {
@@ -1474,8 +1475,7 @@ export async function listEnvironments(
   cfg: ApiConfig,
 ): Promise<EnvironmentSummary[]> {
   checkOwner(owner);
-  const res = await send(
-    cfg,
+  const res = await send(cfg, () =>
     superagent
       .get(
         `${environmentsUrl(cfg)}/${pathSegment(owner.type)}/${pathSegment(owner.ownerId)}`,
@@ -1519,8 +1519,7 @@ export async function getEnvironment(
   cfg: ApiConfig,
 ): Promise<EnvironmentDetails | null> {
   checkOwner({type: id.type, ownerId: id.ownerId});
-  const res = await send(
-    cfg,
+  const res = await send(cfg, () =>
     superagent
       .get(
         `${environmentsUrl(cfg)}/${pathSegment(id.type)}/${pathSegment(id.ownerId)}/${pathSegment(id.shortName)}`,
@@ -1875,8 +1874,7 @@ export async function getEnvironmentDnsZones(
   cfg: ApiConfig,
 ): Promise<EnvironmentDnsZones | null> {
   checkDnsZonesId(id);
-  const res = await send(
-    cfg,
+  const res = await send(cfg, () =>
     superagent
       .get(
         `${environmentsUrl(cfg)}/${pathSegment(id.type)}/${pathSegment(id.ownerId)}/${pathSegment(id.shortName)}/dns-zones`,

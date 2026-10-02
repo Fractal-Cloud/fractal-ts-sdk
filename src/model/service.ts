@@ -17,6 +17,7 @@
  * mocked-HTTP unit tests in client.test.ts; smoke against the live API with real
  * credentials before release.
  */
+import {withQuietRetries} from './retry';
 import superagent from 'superagent';
 import type {LiveSystem} from './core';
 import {
@@ -166,8 +167,7 @@ const withBlueprintHint = (
 const submit = async (ls: LiveSystem, cfg: ApiConfig): Promise<void> => {
   const id = liveSystemId(ls);
   const url = apiUrl(cfg, `/livesystems/${id}`);
-  const existing = await send(
-    cfg,
+  const existing = await send(cfg, () =>
     superagent
       .get(url)
       .ok(res => res.status === 200 || res.status === 404)
@@ -176,10 +176,11 @@ const submit = async (ls: LiveSystem, cfg: ApiConfig): Promise<void> => {
   const body = buildBody(ls);
   try {
     if (existing.status === 200) {
-      await send(cfg, superagent.put(url).set(authHeaders(cfg)).send(body));
+      await send(cfg, () =>
+        superagent.put(url).set(authHeaders(cfg)).send(body),
+      );
     } else {
-      await send(
-        cfg,
+      await send(cfg, () =>
         superagent
           .post(apiUrl(cfg, '/livesystems'))
           .set(authHeaders(cfg))
@@ -198,8 +199,7 @@ const fetchLiveSystem = async (
   id: string,
   cfg: ApiConfig,
 ): Promise<LiveSystemBody> => {
-  const res = await send(
-    cfg,
+  const res = await send(cfg, () =>
     superagent.get(apiUrl(cfg, `/livesystems/${id}`)).set(authHeaders(cfg)),
   );
   return res.body as LiveSystemBody;
@@ -278,9 +278,14 @@ const pollUntilActive = async (
  *  `privateIp`) without a second round-trip. */
 export async function deployLiveSystem(
   ls: LiveSystem,
-  cfg: ApiConfig,
+  apiConfig: ApiConfig,
   opts: DeployOptions = {mode: 'fire-and-forget'},
 ): Promise<LiveSystemState | undefined> {
+  // Fire-and-forget emits no logs (wait-mode contract), retry warnings included.
+  const cfg = withQuietRetries(
+    apiConfig,
+    opts.mode === 'fire-and-forget' || (opts.quiet ?? false),
+  );
   if (opts.mode === 'fire-and-forget') {
     await submit(ls, cfg);
     return undefined;
@@ -320,8 +325,7 @@ export async function destroyLiveSystem(
   ls: LiveSystem,
   cfg: ApiConfig,
 ): Promise<void> {
-  await send(
-    cfg,
+  await send(cfg, () =>
     superagent
       .delete(apiUrl(cfg, `/livesystems/${liveSystemId(ls)}`))
       .set(authHeaders(cfg)),

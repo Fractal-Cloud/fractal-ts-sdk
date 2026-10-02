@@ -8,6 +8,7 @@
  */
 
 import type {OwnerRef, Version} from './core';
+import type {RetryOptions} from './retry';
 
 export const FRACTAL_API_URL = 'https://api.fractal.cloud';
 export const CLIENT_ID_HEADER = 'X-ClientID';
@@ -47,6 +48,15 @@ export type ApiConfig = Credentials & {
    * Populated internally by `deployEnvironment`; callers need not set it.
    */
   extraSecrets?: readonly LabeledSecret[];
+  /**
+   * Retry of calls that fail while the control plane is briefly unavailable
+   * (502/503/504, dropped connections) — on by default, bounded to 2 minutes per
+   * call, with exponential backoff and jitter, honoring `Retry-After`, and one WARN
+   * line per retry. Idempotent calls (GET, PUT) are retried on any such failure;
+   * POST and DELETE only when the failure proves nothing was started (see
+   * retry.ts). `false` turns it off.
+   */
+  retry?: RetryOptions | false;
 };
 
 /** Absolute URL for an API path, honoring a `baseUrl` override. A trailing slash

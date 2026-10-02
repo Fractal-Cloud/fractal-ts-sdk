@@ -58,6 +58,15 @@
  */
 
 import type {Credentials, LabeledSecret} from './http';
+import {elapsedSec, log, sleep} from './http';
+import type {RetryOptions} from './retry';
+import {
+  DEFAULT_RETRY_OPTIONS,
+  backoffDelayMs,
+  pathOf,
+  retryAfterOf,
+  retryDecision,
+} from './retry';
 
 export type {LabeledSecret};
 
@@ -68,6 +77,8 @@ export type {LabeledSecret};
 type SecretBearingConfig = Pick<Credentials, 'clientSecret'> & {
   clientId?: string;
   extraSecrets?: readonly LabeledSecret[];
+  /** Retry policy for transient failures (see retry.ts); `false` disables it. */
+  retry?: RetryOptions | false;
 };
 
 /** Marker written in place of a redacted value. Names WHICH secret matched. */
@@ -472,13 +483,66 @@ export const sanitizeApiError = (
  */
 export const send = async <T>(
   credentials: SecretBearingConfig,
-  request: PromiseLike<T>,
+  request: PromiseLike<T> | (() => PromiseLike<T>),
   extraSecrets: readonly LabeledSecret[] = [],
 ): Promise<T> => {
-  try {
-    return await request;
-  } catch (err) {
-    throw sanitizeApiError(err, credentials, extraSecrets);
+  // A request object can be awaited once; only a factory can be repeated.
+  if (typeof request !== 'function') {
+    try {
+      return await request;
+    } catch (err) {
+      throw sanitizeApiError(err, credentials, extraSecrets);
+    }
+  }
+
+  const policy =
+    credentials.retry === false
+      ? undefined
+      : {...DEFAULT_RETRY_OPTIONS, ...credentials.retry};
+  const started = Date.now();
+
+  for (let attempt = 1; ; attempt++) {
+    const pending = request();
+    try {
+      return await pending;
+    } catch (err) {
+      const {method, url} = pending as {method?: unknown; url?: unknown};
+      const methodName =
+        typeof method === 'string' ? method.toUpperCase() : undefined;
+      const decision =
+        policy === undefined
+          ? {retry: false as const}
+          : retryDecision(methodName, err);
+      if (policy === undefined || !decision.retry) {
+        throw sanitizeApiError(err, credentials, extraSecrets);
+      }
+
+      const now = Date.now();
+      const delayMs = Math.max(
+        backoffDelayMs(attempt, policy),
+        retryAfterOf(err, now) ?? 0,
+      );
+      if (now - started + delayMs > policy.maxElapsedMs) {
+        throw sanitizeApiError(err, credentials, extraSecrets);
+      }
+
+      // Method, path (no host, no query) and the cause only: nothing from the
+      // request's headers or the response body reaches this line.
+      log(
+        policy.quiet ?? false,
+        'WARN',
+        'Control plane unavailable, retrying',
+        {
+          method: methodName ?? 'unknown',
+          path: pathOf(url),
+          cause: decision.reason,
+          attempt,
+          retryInMs: delayMs,
+          elapsed: elapsedSec(started),
+        },
+      );
+      await sleep(delayMs);
+    }
   }
 };
 
