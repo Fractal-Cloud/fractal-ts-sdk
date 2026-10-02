@@ -11,6 +11,33 @@ of truth for what is on npm.
 
 ## Unreleased
 
+**Deploy fractal-environments v3.32.0 or later first.** AWS long-lived keys and AWS
+web identity exchanged by the control plane (now the `credentialsFromCi` default)
+need it. An older control plane may refuse them (the SDK's error then names the
+version) or **ignore them and use AWS credentials it already holds** for the
+environment, which no error reveals. Against an older one, use session credentials
+or `exchange: 'sdk'`.
+
+### Changed — **AWS long-lived keys are sent as they are**
+
+`{accessKeyId, secretAccessKey}` without a `sessionToken` is no longer refused, and
+`credentialsFromCi` no longer exchanges long-lived keys with `sts:GetSessionToken`:
+such a session cannot call IAM without MFA, and initializing creates IAM roles. The
+two keys are sent as `X-AWS-Access-Key-ID` / `X-AWS-Secret-Access-Key`, and the
+control plane holds them for the run only. A set missing a key, or with an empty
+`sessionToken`, is still refused. `AwsStaticCiCredentials.sessionDurationSeconds`
+is deprecated and ignored.
+
+### Changed — **AWS web identity is exchanged by the control plane by default**
+
+`credentialsFromCi`'s AWS OIDC entries default to `exchange: 'control-plane'`: the
+token is sent as `X-AWS-Role-Arn` / `X-AWS-Web-Identity-Token` on initialize and
+update, and the control plane calls `sts:AssumeRoleWithWebIdentity` itself (audience
+`sts.amazonaws.com`, role in the target account). `exchange: 'sdk'` keeps the
+exchange in the job. The `WARN` for web-identity credentials is gone.
+
+## 2.9.0
+
 ### Added — **`environments.updateAgents()`: update cloud agents without re-initializing them**
 
 An agent initialized before a permission was added to its role kept running without that

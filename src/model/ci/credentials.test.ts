@@ -17,7 +17,6 @@ import type {
   ProviderCredentialsRequest,
   ProviderType,
 } from '../environment/index';
-import {signAwsRequest} from './credentials/aws_sigv4';
 
 const fakeCi = (
   opts: {fixedAudience?: string; vars?: Record<string, string>} = {},
@@ -96,13 +95,13 @@ const WIF =
   'projects/123/locations/global/workloadIdentityPools/github/providers/gh';
 
 describe('credentialsFromCi() — OIDC (default)', () => {
-  it('AWS: exchanges a token for sts.amazonaws.com via AssumeRoleWithWebIdentity', async () => {
+  it("AWS: with exchange: 'sdk', exchanges a token for sts.amazonaws.com via AssumeRoleWithWebIdentity", async () => {
     const f = fakeCi();
     const sts = fakeSts();
     const resolve = credentialsFromCi(
       f.ci,
       {
-      cloud: 'AWS',aws: {roleArn: ROLE}},
+      cloud: 'AWS',aws: {roleArn: ROLE, exchange: 'sdk'}},
       {fetch: sts.fn},
     );
     const creds = await resolve(request('AWS', '111111111111'));
@@ -132,13 +131,13 @@ describe('credentialsFromCi() — OIDC (default)', () => {
     );
   });
 
-  it('AWS: hands the token to the control plane when it does the exchange', async () => {
+  it('AWS: by default hands the token to the control plane, which does the exchange', async () => {
     const f = fakeCi();
     const sts = fakeSts();
     const resolve = credentialsFromCi(
       f.ci,
       {
-      cloud: 'AWS',aws: {roleArn: ROLE, exchange: 'control-plane'}},
+      cloud: 'AWS',aws: {roleArn: ROLE}},
       {fetch: sts.fn},
     );
     await expect(resolve(request('AWS', '111111111111'))).resolves.toEqual({
@@ -154,7 +153,7 @@ describe('credentialsFromCi() — OIDC (default)', () => {
     const resolve = credentialsFromCi(
       f.ci,
       {
-      cloud: 'AWS',aws: [{roleArn: ROLE}, {roleArn: other}]},
+      cloud: 'AWS',aws: [{roleArn: ROLE, exchange: 'sdk'}, {roleArn: other, exchange: 'sdk'}]},
       {fetch: sts.fn},
     );
     await resolve(request('AWS', '222222222222'));
@@ -176,7 +175,7 @@ describe('credentialsFromCi() — OIDC (default)', () => {
     const resolve = credentialsFromCi(
       f.ci,
       {
-      cloud: 'AWS',aws: {roleArn: ROLE, sessionDurationSeconds: 7200, audience: 'custom'}},
+      cloud: 'AWS',aws: {roleArn: ROLE, exchange: 'sdk', sessionDurationSeconds: 7200, audience: 'custom'}},
       {fetch: sts.fn},
     );
     await resolve(request('AWS', '111111111111'));
@@ -192,7 +191,7 @@ describe('credentialsFromCi() — OIDC (default)', () => {
     const resolve = credentialsFromCi(
       f.ci,
       {
-      cloud: 'AWS',aws: {roleArn: ROLE}},
+      cloud: 'AWS',aws: {roleArn: ROLE, exchange: 'sdk'}},
       {fetch: sts.fn},
     );
     const err = await resolve(request('AWS', '111111111111')).catch(
@@ -216,8 +215,7 @@ describe('credentialsFromCi() — OIDC (default)', () => {
       })) as typeof fetch;
     const resolve = credentialsFromCi(
       f.ci,
-      {
-      cloud: 'AWS',aws: {roleArn: ROLE}},
+      {cloud: 'AWS', aws: {roleArn: ROLE, exchange: 'sdk'}},
       {fetch: fn},
     );
     await expect(resolve(request('AWS', '111111111111'))).resolves.toEqual({
@@ -336,13 +334,15 @@ describe('credentialsFromCi() — static secrets (the standard way)', () => {
     );
   });
 
-  it('AWS: long-lived keys become a session via a signed sts:GetSessionToken', async () => {
+  it('AWS: long-lived keys are sent as they are, never exchanged for a session', async () => {
+    // A GetSessionToken session cannot call IAM without MFA, and initializing
+    // creates IAM roles: the control plane takes the keys themselves.
     const f = fakeCi({vars});
     const sts = fakeSts();
     const resolve = credentialsFromCi(
       f.ci,
       {
-      cloud: 'AWS',
+        cloud: 'AWS',
         aws: {
           accountId: '111111111111',
           accessKeyId: ciSecret('AWS_ACCESS_KEY_ID'),
@@ -351,25 +351,11 @@ describe('credentialsFromCi() — static secrets (the standard way)', () => {
       },
       {fetch: sts.fn},
     );
-    const creds = await resolve(request('AWS', '111111111111'));
-    expect(sts.calls[0].body.get('Action')).toBe('GetSessionToken');
-    const auth = sts.calls[0].headers.get('authorization') ?? '';
-    expect(auth).toMatch(
-      /^AWS4-HMAC-SHA256 Credential=AKIAEXAMPLE\/\d{8}\/eu-central-1\/sts\/aws4_request, SignedHeaders=[a-z;-]+, Signature=[0-9a-f]{64}$/,
-    );
-    // The secret key itself is never sent.
-    expect(JSON.stringify([...sts.calls[0].headers])).not.toContain(
-      'aws-static-secret',
-    );
-    expect(sts.calls[0].body.toString()).not.toContain('aws-static-secret');
-    expect(creds).toEqual({
-      aws: {
-        accessKeyId: 'ASIA-GetSessionToken',
-        secretAccessKey: 'secret-GetSessionToken',
-        sessionToken: 'session-GetSessionToken',
-      },
+    await expect(resolve(request('AWS', '111111111111'))).resolves.toEqual({
+      aws: {accessKeyId: 'AKIAEXAMPLE', secretAccessKey: 'aws-static-secret'},
     });
-    expect(f.masked).toContain('session-GetSessionToken');
+    expect(sts.calls).toHaveLength(0);
+    expect(f.masked).toContain('aws-static-secret');
   });
 
   it('Azure: a service principal secret from CI secrets', async () => {
@@ -584,7 +570,7 @@ describe('credentialsFromCi() — review hardening', () => {
     const sts = fakeSts();
     const resolve = credentialsFromCi(
       f.ci,
-      {cloud: 'AWS', aws: {roleArn: 'arn:aws-cn:iam::111111111111:role/Deployer'}},
+      {cloud: 'AWS', aws: {roleArn: 'arn:aws-cn:iam::111111111111:role/Deployer', exchange: 'sdk'}},
       {fetch: sts.fn},
     );
     await expect(resolve(request('AWS', '111111111111'))).rejects.toThrow(
@@ -635,31 +621,5 @@ describe('credentialsFromCi() — review hardening', () => {
     await expect(
       resolve(request('AZURE', '4ee3eb42-883b-4f9b-af8b-275435e50125')),
     ).resolves.toBeDefined();
-  });
-});
-
-describe('signAwsRequest() — SigV4', () => {
-  it("matches AWS's published example signature", () => {
-    // https://docs.aws.amazon.com/IAM/latest/UserGuide/create-signed-request.html
-    // (the IAM ListUsers example of the Signature Version 4 test suite).
-    const headers = signAwsRequest({
-      method: 'GET',
-      url: 'https://iam.amazonaws.com/?Action=ListUsers&Version=2010-05-08',
-      headers: {
-        'content-type': 'application/x-www-form-urlencoded; charset=utf-8',
-      },
-      body: '',
-      region: 'us-east-1',
-      service: 'iam',
-      accessKeyId: 'AKIDEXAMPLE',
-      secretAccessKey: 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
-      now: new Date('2015-08-30T12:36:00Z'),
-    });
-    expect(headers.authorization).toBe(
-      'AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20150830/us-east-1/iam/aws4_request, ' +
-        'SignedHeaders=content-type;host;x-amz-date, ' +
-        'Signature=5d672d79c15b13162d9279b0855cfba6789a8edb4c82c400e06b5924a6f2b5d7',
-    );
-    expect(headers['x-amz-date']).toBe('20150830T123600Z');
   });
 });

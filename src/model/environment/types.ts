@@ -88,27 +88,25 @@ export type DnsZone = DnsZoneGuardrails & {
 };
 
 /**
- * AWS cloud-agent credentials: static access key (optionally session-scoped) or
- * federated web identity (role ARN + OIDC token exchanged via
- * AssumeRoleWithWebIdentity).
+ * AWS cloud-agent credentials, sent with `initialize` and `update`:
  *
- * **What the control plane honors today.** The AWS initializer reads only the
- * `X-AWS-Access-Key-ID`, `X-AWS-Secret-Access-Key` and `X-AWS-Session-Token`
- * headers, and treats them as inline credentials only when **all three** are
- * present. In practice that means:
+ * - `{accessKeyId, secretAccessKey, sessionToken}` — an assumed-role session
+ *   (what `aws-actions/configure-aws-credentials` or any `sts:AssumeRole`
+ *   produces), sent as `X-AWS-Access-Key-ID`, `X-AWS-Secret-Access-Key` and
+ *   `X-AWS-Session-Token`.
+ * - `{accessKeyId, secretAccessKey}` — long-lived keys, sent as the first two
+ *   headers only. The control plane holds them in memory for the run and checks
+ *   their account with `sts:GetCallerIdentity`. They are not exchanged for a
+ *   `sts:GetSessionToken` session, which could not call IAM without MFA.
+ * - `{roleArn, webIdentityToken}` — federated web identity, sent as
+ *   `X-AWS-Role-Arn` / `X-AWS-Web-Identity-Token`. The control plane exchanges
+ *   the token with one `sts:AssumeRoleWithWebIdentity` at request time; the role
+ *   must be in the target account.
  *
- * - `{accessKeyId, secretAccessKey, sessionToken}` — works. This is what
- *   `aws-actions/configure-aws-credentials` (or any `sts:AssumeRole`) produces.
- * - `{accessKeyId, secretAccessKey}` without `sessionToken` (or any other partial
- *   set) — REFUSED by the SDK before anything is sent. The server would not use
- *   it as inline credentials and would silently fall back to a credential it
- *   already holds, i.e. act as a different identity than the one supplied.
- * - `{roleArn, webIdentityToken}` — sent as `X-AWS-Role-Arn` /
- *   `X-AWS-Web-Identity-Token`, which the server currently ignores. Exchange the
- *   token yourself (`sts:AssumeRoleWithWebIdentity`) and pass the resulting
- *   three-part session credentials instead.
- *
- * The SDK logs a `WARN` line for the web-identity variant.
+ * The second and third shapes need fractal-environments v3.32.0 or later; an
+ * older control plane's refusal says so. A set missing `accessKeyId` or
+ * `secretAccessKey`, or carrying an empty `sessionToken`, is refused before
+ * anything is sent.
  */
 export type AwsCredentials =
   | {accessKeyId: string; secretAccessKey: string; sessionToken?: string}

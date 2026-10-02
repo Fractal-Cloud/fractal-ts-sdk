@@ -219,11 +219,11 @@ describe('cloud.environments.updateAgents()', () => {
       cloud.environments.updateAgents(tree(), {
         quiet: true,
         providerCredentials: {
-          aws: {accessKeyId: 'a', secretAccessKey: 'b'},
+          aws: {accessKeyId: 'a', sessionToken: 'b'},
         },
         only: agent => agent.provider === 'AWS',
       }),
-    ).rejects.toThrow(/sessionToken/);
+    ).rejects.toThrow(/secretAccessKey/);
     expect(h.requests).toHaveLength(0);
   });
 

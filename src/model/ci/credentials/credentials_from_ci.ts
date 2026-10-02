@@ -35,7 +35,6 @@ import type {GcpStaticCiCredentials} from './gcp_static_ci_credentials';
 import {
   assumeRoleWithWebIdentity,
   awsPartitionOf,
-  getSessionToken,
   stsEndpoint,
 } from './aws_sts';
 
@@ -208,7 +207,8 @@ export const credentialsFromCi = (
     if (entry === undefined) {
       throw refused(request, 'AWS account');
     }
-    // The region names the STS host a token or key signature is sent to.
+    // The region names the STS host a token may be sent to (exchange: 'sdk'),
+    // and must be a real one for the control plane too.
     stsEndpoint(request.region);
     if (isAwsOidc(entry)) {
       const partition = ROLE_ARN_RE.exec(entry.roleArn)?.[1] ?? 'aws';
@@ -220,7 +220,8 @@ export const credentialsFromCi = (
     }
     if (isAwsOidc(entry)) {
       const webIdentityToken = await token(AWS_AUDIENCE, entry.audience);
-      if (entry.exchange === 'control-plane') {
+      // Default: the control plane exchanges the token itself, at request time.
+      if (entry.exchange !== 'sdk') {
         return {aws: {roleArn: entry.roleArn, webIdentityToken}};
       }
       const session = await assumeRoleWithWebIdentity(
@@ -238,7 +239,7 @@ export const credentialsFromCi = (
       );
       return {aws: maskSession(session)};
     }
-    return {aws: await staticAws(entry, request.region)};
+    return {aws: staticAws(entry)};
   };
 
   const maskSession = (s: {
@@ -251,26 +252,17 @@ export const credentialsFromCi = (
     sessionToken: mask(s.sessionToken),
   });
 
-  const staticAws = async (entry: AwsStaticCiCredentials, region: string) => {
+  const staticAws = (entry: AwsStaticCiCredentials) => {
     const accessKeyId = value(entry.accessKeyId, 'aws.accessKeyId');
     const secretAccessKey = value(entry.secretAccessKey, 'aws.secretAccessKey');
     if (entry.sessionToken !== undefined) {
       const sessionToken = value(entry.sessionToken, 'aws.sessionToken');
       return {accessKeyId, secretAccessKey, sessionToken};
     }
-    // Long-lived keys: the control plane honors only a three-part session, so
-    // the keys are exchanged for a short one and never sent themselves.
-    const session = await getSessionToken(
-      {
-        accessKeyId,
-        secretAccessKey,
-        durationSeconds:
-          entry.sessionDurationSeconds ?? DEFAULT_SESSION_SECONDS,
-        region,
-      },
-      fetchFn,
-    );
-    return maskSession(session);
+    // Long-lived keys are sent as they are. A session made from them with
+    // sts:GetSessionToken could not call IAM without MFA, and initializing
+    // creates IAM roles; the control plane holds the keys for the run only.
+    return {accessKeyId, secretAccessKey};
   };
 
   const forGcp = async (

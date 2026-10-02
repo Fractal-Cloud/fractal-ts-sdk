@@ -1,16 +1,13 @@
 /**
- * ci/credentials/aws_sts.ts — the two STS calls that turn what a CI holds into
- * the three-part session the control plane honors:
+ * ci/credentials/aws_sts.ts — the STS call that turns a CI's OIDC token into a
+ * three-part session when the SDK does the exchange (`exchange: 'sdk'`):
+ * `AssumeRoleWithWebIdentity`, an unsigned call carrying the token.
  *
- * - `AssumeRoleWithWebIdentity`, an unsigned call carrying the CI's OIDC token;
- * - `GetSessionToken`, signed with long-lived access keys.
- *
- * Errors name STS's code and message with every credential redacted; the token
- * and keys are never part of one.
+ * Errors name STS's code and message with the token redacted; it is never part
+ * of one.
  */
 import {redactSecrets} from '../../api-error';
 import type {AwsSession} from './aws_session';
-import {signAwsRequest} from './aws_sigv4';
 
 const STS_VERSION = '2011-06-15';
 
@@ -101,7 +98,6 @@ const call = async (
   params: Record<string, string>,
   secrets: readonly string[],
   fetchFn: typeof fetch,
-  sign?: {accessKeyId: string; secretAccessKey: string},
 ): Promise<AwsSession> => {
   const url = stsEndpoint(region);
   const body = new URLSearchParams({
@@ -109,22 +105,10 @@ const call = async (
     Version: STS_VERSION,
     ...params,
   }).toString();
-  const base = {
+  const headers = {
     'content-type': 'application/x-www-form-urlencoded; charset=utf-8',
     accept: 'application/json',
   };
-  const headers =
-    sign === undefined
-      ? base
-      : signAwsRequest({
-          method: 'POST',
-          url,
-          headers: base,
-          body,
-          region,
-          service: 'sts',
-          ...sign,
-        });
   let res: Response;
   try {
     res = await fetchFn(url, {method: 'POST', headers, body});
@@ -163,22 +147,4 @@ export const assumeRoleWithWebIdentity = (
     },
     [args.webIdentityToken],
     fetchFn,
-  );
-
-export const getSessionToken = (
-  args: {
-    accessKeyId: string;
-    secretAccessKey: string;
-    durationSeconds: number;
-    region: string;
-  },
-  fetchFn: typeof fetch,
-): Promise<AwsSession> =>
-  call(
-    'GetSessionToken',
-    args.region,
-    {DurationSeconds: String(args.durationSeconds)},
-    [args.secretAccessKey],
-    fetchFn,
-    {accessKeyId: args.accessKeyId, secretAccessKey: args.secretAccessKey},
   );

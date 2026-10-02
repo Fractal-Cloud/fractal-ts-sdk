@@ -25,12 +25,11 @@ export type UpdateEnvironmentAgentsOptions = {
    * with a notice: in one job per cloud, each job updates its own cloud's agents.
    *
    * The headers are those `initialize` sends, AWS web identity
-   * (`X-AWS-Role-Arn` / `X-AWS-Web-Identity-Token`) included. A control plane
-   * that does not read them yet re-runs the steps with the credentials it holds
-   * from an earlier `authenticate` / `initialize`; an environment initialized
-   * with short-lived inline credentials no longer has those, and its update
-   * fails at the first step that needs them — surfaced under
-   * `agentUpdate: 'wait'` with the step's message.
+   * (`X-AWS-Role-Arn` / `X-AWS-Web-Identity-Token`) included, and the control
+   * plane updates with them (fractal-environments v3.32.0 or later). An older
+   * one re-runs the steps with the credentials it holds from an earlier
+   * `initialize`; an environment initialized with short-lived credentials no
+   * longer has those, and its update fails at the first step that needs them.
    */
   providerCredentials?: ProviderCredentials | ProviderCredentialsResolver;
   /**

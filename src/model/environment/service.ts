@@ -78,9 +78,7 @@ export type DeployEnvironmentOptions = {
    *   accounts — e.g. key on `request.environment.shortName` or
    *   `request.accountId`.
    *
-   * AWS: only three-part session credentials (`accessKeyId` + `secretAccessKey`
-   * + `sessionToken`) are honored by the control plane today; see
-   * {@link AwsCredentials}.
+   * AWS: a session, long-lived keys, or web identity; see {@link AwsCredentials}.
    *
    * A resolver that throws {@link ProviderCredentialsNotConfigured} declares that
    * this run holds no credentials for that cloud: the agent is skipped with a
@@ -410,12 +408,13 @@ const hasKey = (o: object, key: string): boolean => {
 };
 
 /**
- * Refuse AWS static credentials that are not all three of `accessKeyId`,
- * `secretAccessKey` and `sessionToken`. The control plane uses them as inline
- * credentials only when all three are present and otherwise silently falls back
- * to whatever credential it already holds — so a partial set would "work" against
- * a different identity than the one supplied. Web-identity credentials are a
- * separate variant and are not checked here. Returns the problem, or `null`.
+ * Refuse an AWS static credential set the control plane cannot use as given:
+ * `accessKeyId` and `secretAccessKey` are both required, and `sessionToken` is
+ * optional (long-lived keys are sent as they are; an assumed-role session sends
+ * all three). A `sessionToken` that is present but empty is refused rather than
+ * read as absent: it is a CI secret that did not resolve, and dropping it would
+ * silently change the identity the keys stand for. Web-identity credentials are
+ * a separate variant and are not checked here. Returns the problem, or `null`.
  */
 export const partialAwsCredentials = (
   pc: ProviderCredentials | undefined,
@@ -426,12 +425,35 @@ export const partialAwsCredentials = (
   if (!c || (hasKey(c, 'webIdentityToken') && hasKey(c, 'roleArn'))) {
     return null;
   }
-  const parts = ['accessKeyId', 'secretAccessKey', 'sessionToken'];
-  const missing = parts.filter(k => !hasKey(c, k));
-  return missing.length === 0
-    ? null
-    : 'AWS credentials must carry all of accessKeyId, secretAccessKey and sessionToken ' +
-        `(the control plane ignores a partial set); missing: ${missing.join(', ')}.`;
+  const missing = ['accessKeyId', 'secretAccessKey'].filter(k => !hasKey(c, k));
+  if (missing.length > 0) {
+    return `AWS credentials must carry accessKeyId and secretAccessKey; missing: ${missing.join(', ')}.`;
+  }
+  if ('sessionToken' in c && !hasKey(c, 'sessionToken')) {
+    return 'AWS credentials must carry accessKeyId and secretAccessKey, and a sessionToken only when it is set; unset or empty: sessionToken.';
+  }
+  return null;
+};
+
+/**
+ * Credential shapes only fractal-environments v3.32.0 or later accepts (web
+ * identity, long-lived keys without a session token), or `null`. Used to say so
+ * when an older control plane refuses them.
+ */
+export const awsCredentialsNeedingV332 = (
+  pc: ProviderCredentials | undefined,
+): string | null => {
+  const c = pc?.aws as Record<string, unknown> | undefined;
+  if (!c) {
+    return null;
+  }
+  if (hasKey(c, 'webIdentityToken')) {
+    return 'web-identity credentials (X-AWS-Role-Arn / X-AWS-Web-Identity-Token)';
+  }
+  if (!hasKey(c, 'sessionToken')) {
+    return 'access keys without a session token';
+  }
+  return null;
 };
 
 /** Build the provider credential headers for an agent's initialize (or
@@ -450,10 +472,8 @@ export const initHeaders = (
       if (hasKey(c, 'accessKeyId') && hasKey(c, 'webIdentityToken')) {
         throw mixedCreds('AWS', operation);
       }
-      // TODO: AWS federated (web-identity) init pending server support
-      // The server's AWS initializer binds only the three X-AWS-Access-Key-ID /
-      // -Secret-Access-Key / -Session-Token headers today, so these two are sent
-      // but ignored — see AwsCredentials, and the WARN logged by awsCredsWarning.
+      // The control plane exchanges the token itself (one unsigned
+      // sts:AssumeRoleWithWebIdentity per request, into the target account).
       if (hasKey(c, 'webIdentityToken')) {
         const oidc = c as {roleArn: string; webIdentityToken: string};
         return {
@@ -549,30 +569,6 @@ export const initHeaders = (
       return {'X-Hetzner-Token': c.token};
     }
   }
-};
-
-/**
- * A warning for AWS credentials the control plane will not use as inline
- * credentials (see {@link AwsCredentials}), or `null` when they are honored.
- * Logged rather than thrown: the server may still succeed with a credential it
- * already holds for the environment, which is a legitimate setup.
- */
-export const awsCredsWarning = (
-  pc: ProviderCredentials | undefined,
-): string | null => {
-  const c = pc?.aws;
-  if (!c) {
-    return null;
-  }
-  if (hasKey(c, 'webIdentityToken')) {
-    return (
-      'AWS web-identity credentials (roleArn + webIdentityToken) are not honored by the ' +
-      'control plane yet; exchange the token with sts:AssumeRoleWithWebIdentity and pass ' +
-      'accessKeyId + secretAccessKey + sessionToken instead'
-    );
-  }
-  // A partial static set never gets here: partialAwsCredentials refuses it.
-  return null;
 };
 
 /** The cloud account an agent lands in, provider-neutrally. */
@@ -699,6 +695,45 @@ const failureMessage = (provider: string, run: InitializationRun): string => {
  *  when this run holds none for its cloud. */
 type AgentInitOutcome = 'Completed' | 'NotCompleted' | 'Held' | 'NoCredentials';
 
+/**
+ * Add, to a request REFUSED (4xx) while it carried credentials only a newer
+ * control plane accepts, which version that is. Server errors and network
+ * failures are left alone. The error keeps its type and fields (callers branch
+ * on `FractalApiError`); only its message gains the hint, a constant that holds
+ * no credential. An older control plane may also ACCEPT such a request and use
+ * credentials it already holds instead, which no error can reveal: deploy
+ * fractal-environments v3.32.0 before relying on these shapes.
+ */
+export const withVersionHint = async <T>(
+  agent: CloudAgent,
+  credentials: ProviderCredentials | undefined,
+  request: Promise<T>,
+): Promise<T> => {
+  try {
+    return await request;
+  } catch (err) {
+    const shape =
+      agent.provider === 'AWS' ? awsCredentialsNeedingV332(credentials) : null;
+    const status = (err as {status?: unknown} | null)?.status;
+    if (
+      shape !== null &&
+      err instanceof Error &&
+      typeof status === 'number' &&
+      status >= 400 &&
+      status < 500
+    ) {
+      try {
+        err.message +=
+          ` The control plane accepts ${shape} from fractal-environments v3.32.0 on; ` +
+          'if it runs an older version, that may be why it refused them.';
+      } catch {
+        // A frozen error keeps its own message.
+      }
+    }
+    throw err;
+  }
+};
+
 const initializeAgent = async (
   env: ResolvedEnvironment,
   agent: CloudAgent,
@@ -772,23 +807,26 @@ const initializeAgent = async (
     if (credentials === null) {
       return 'NoCredentials';
     }
-    const warning =
-      agent.provider === 'AWS' ? awsCredsWarning(credentials) : null;
-    if (warning !== null) {
-      log(opts.quiet, 'WARN', warning, {env: envId, provider});
-    }
     const providerHeaders = initHeaders(agent, credentials);
-    await send(
-      cfg,
-      superagent
-        .post(
-          envUri(cfg, env, `initializer/${providerPath[provider]}/initialize`),
-        )
-        .ok(r => r.status === 202)
-        .set(authHeaders(cfg))
-        .set(providerHeaders)
-        .send(initBody(agent, env)),
-      collectSecrets(providerHeaders),
+    await withVersionHint(
+      agent,
+      credentials,
+      send(
+        cfg,
+        superagent
+          .post(
+            envUri(
+              cfg,
+              env,
+              `initializer/${providerPath[provider]}/initialize`,
+            ),
+          )
+          .ok(r => r.status === 202)
+          .set(authHeaders(cfg))
+          .set(providerHeaders)
+          .send(initBody(agent, env)),
+        collectSecrets(providerHeaders),
+      ),
     );
     opts.onStarted(agent);
   }

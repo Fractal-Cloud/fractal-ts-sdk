@@ -60,6 +60,7 @@ import {
   OperationalEnvironment,
 } from './environment/index';
 import {createFractalCloudClient} from './client';
+import {withVersionHint} from './environment/service';
 
 const cloud = createFractalCloudClient({
   clientId: 'cid',
@@ -1106,7 +1107,7 @@ describe('cloud.environments.deploy() — per-environment credentials', () => {
     expect(inits.map(r => r.url.split('/')[6])).toEqual(['prod', 'dev']);
   });
 
-  it('warns when AWS credentials are web-identity', async () => {
+  it('sends web-identity credentials as X-AWS-Role-Arn / X-AWS-Web-Identity-Token, without a warning', async () => {
     const lines: string[] = [];
     const spy = vi.spyOn(console, 'log').mockImplementation((m: string) => {
       lines.push(m);
@@ -1123,25 +1124,93 @@ describe('cloud.environments.deploy() — per-environment credentials', () => {
       h.state.queue = [{status: 404}, {status: 201}, {status: 404}, {status: 202}];
       await cloud.environments.deploy(mgmt, {
         providerCredentials: {
-          aws: {roleArn: 'arn:aws:iam::1:role/r', webIdentityToken: 'jwt'},
+          aws: {
+            roleArn: 'arn:aws:iam::111111111111:role/r',
+            webIdentityToken: 'fixture-jwt',
+          },
         },
-      });
-      h.state.queue = [{status: 404}, {status: 201}, {status: 404}, {status: 202}];
-      await cloud.environments.deploy(mgmt, {
-        providerCredentials: sessionCreds('111111111111'),
       });
     } finally {
       spy.mockRestore();
     }
-    const warns = lines.filter(l => / WARN /.test(l));
-    expect(warns).toHaveLength(1);
-    expect(warns[0]).toMatch(/web-identity credentials .* not honored/);
+    expect(lines.filter(l => / WARN /.test(l))).toHaveLength(0);
+    const init = h.requests.find(r => r.url.endsWith('/initialize'))!;
+    expect(init.headers['X-AWS-Role-Arn']).toBe(
+      'arn:aws:iam::111111111111:role/r',
+    );
+    expect(init.headers['X-AWS-Web-Identity-Token']).toBe('fixture-jwt');
+    expect(init.headers['X-AWS-Access-Key-ID']).toBeUndefined();
+  });
+
+  it('sends long-lived keys as two headers, without a session token', async () => {
+    h.state.queue = [{status: 404}, {status: 201}, {status: 404}, {status: 202}];
+    const mgmt = ManagementEnvironment({
+      id: {type: 'Personal', ownerId: OWNER, shortName: 'mgmt'},
+      resourceGroups: [rg('mgmt-rg')],
+    }).withAwsCloudAgent({
+      region: 'eu-central-1',
+      organizationId: ORG,
+      accountId: '111111111111',
+    });
+    await cloud.environments.deploy(mgmt, {
+      quiet: true,
+      providerCredentials: {
+        aws: {accessKeyId: 'AKIA-LONG', secretAccessKey: 'long-lived-secret'},
+      },
+    });
+    const init = h.requests.find(r => r.url.endsWith('/initialize'))!;
+    expect(init.headers['X-AWS-Access-Key-ID']).toBe('AKIA-LONG');
+    expect(init.headers['X-AWS-Secret-Access-Key']).toBe('long-lived-secret');
+    expect('X-AWS-Session-Token' in init.headers).toBe(false);
+  });
+
+  it('names the control-plane version when a request with these credentials is refused', async () => {
+    const agent = {
+      provider: 'AWS' as const,
+      region: 'eu-central-1',
+      organizationId: ORG,
+      accountId: '111111111111',
+    };
+    const withStatus = (message: string, status?: number) =>
+      Object.assign(new Error(message), status === undefined ? {} : {status});
+    const refused = withStatus('HTTP 400: credentials not accepted', 400);
+    const err = await withVersionHint(
+      agent,
+      {aws: {accessKeyId: 'AKIA-LONG', secretAccessKey: 'long-lived-secret'}},
+      Promise.reject(refused),
+    ).catch((e: Error) => e);
+    // Same error object, so `instanceof FractalApiError` and its fields survive.
+    expect(err).toBe(refused);
+    expect(err.message).toMatch(
+      /without a session token .*fractal-environments v3\.32\.0/,
+    );
+    const web = await withVersionHint(
+      agent,
+      {aws: {roleArn: 'arn:aws:iam::111111111111:role/r', webIdentityToken: 'jwt'}},
+      Promise.reject(withStatus('HTTP 400', 400)),
+    ).catch((e: Error) => e);
+    expect(web.message).toMatch(/web-identity .*v3\.32\.0/);
+    // Not a refusal: a server error or a network failure gets no hint.
+    for (const other of [withStatus('HTTP 503', 503), withStatus('ECONNRESET')]) {
+      const e = await withVersionHint(
+        agent,
+        {aws: {accessKeyId: 'AKIA-LONG', secretAccessKey: 'long-lived-secret'}},
+        Promise.reject(other),
+      ).catch((x: Error) => x);
+      expect(e.message).not.toMatch(/v3\.32\.0/);
+    }
+    const session = await withVersionHint(
+      agent,
+      {aws: {accessKeyId: 'ASIA', secretAccessKey: 's', sessionToken: 't'}},
+      Promise.reject(withStatus('HTTP 400', 400)),
+    ).catch((e: Error) => e);
+    expect(session.message).toBe('HTTP 400');
   });
 
   it.each([
-    [{accessKeyId: 'AKIA', secretAccessKey: 's'}, 'sessionToken'],
-    [{accessKeyId: 'AKIA', secretAccessKey: 's', sessionToken: ''}, 'sessionToken'],
     [{accessKeyId: 'AKIA', sessionToken: 't'}, 'secretAccessKey'],
+    [{secretAccessKey: 's'}, 'accessKeyId'],
+    [{accessKeyId: 'AKIA', secretAccessKey: 's', sessionToken: ''}, 'sessionToken'],
   ])(
     'refuses a partial static AWS set before any request: %j',
     async (aws, missing) => {
@@ -1151,7 +1220,7 @@ describe('cloud.environments.deploy() — per-environment credentials', () => {
           providerCredentials: {aws: aws as never},
         }),
       ).rejects.toThrow(
-        new RegExp(`all of accessKeyId, secretAccessKey and sessionToken.*missing: ${missing}`),
+        new RegExp(`accessKeyId and secretAccessKey.*: ${missing}`),
       );
       expect(h.requests).toHaveLength(0);
     },
@@ -1165,7 +1234,7 @@ describe('cloud.environments.deploy() — per-environment credentials', () => {
           aws: {roleArn: 'arn:aws:iam::1:role/r', accessKeyId: 'AKIA'} as never,
         },
       }),
-    ).rejects.toThrow(/missing: secretAccessKey, sessionToken/);
+    ).rejects.toThrow(/missing: secretAccessKey/);
     expect(h.requests).toHaveLength(0);
   });
 
@@ -1190,14 +1259,14 @@ describe('cloud.environments.deploy() — per-environment credentials', () => {
       .deploy(awsTree(), {
         quiet: true,
         providerCredentials: {
-          aws: {accessKeyId: 'AKIA-VISIBLE', secretAccessKey: 'TOP-SECRET-1'},
+          aws: {accessKeyId: 'AKIA-VISIBLE', sessionToken: 'TOP-SECRET-1'},
         },
       })
       .then(
         () => new Error('resolved'),
         (e: Error) => e,
       );
-    expect(err.message).toMatch(/missing: sessionToken/);
+    expect(err.message).toMatch(/missing: secretAccessKey/);
     expect(err.message).not.toContain('TOP-SECRET-1');
     expect(err.message).not.toContain('AKIA-VISIBLE');
   });
@@ -1217,11 +1286,11 @@ describe('cloud.environments.deploy() — per-environment credentials', () => {
         quiet: true,
         agentInit: 'wait',
         providerCredentials: () => ({
-          aws: {accessKeyId: 'AKIA', secretAccessKey: 's'},
+          aws: {accessKeyId: 'AKIA', sessionToken: 't'},
         }),
       }),
     ).rejects.toThrow(
-      /resolver returned unusable credentials for environment 'Personal\/[^']+\/mgmt'.*missing: sessionToken/,
+      /resolver returned unusable credentials for environment 'Personal\/[^']+\/mgmt'.*missing: secretAccessKey/,
     );
     expect(h.requests.filter(r => r.url.endsWith('/initialize'))).toHaveLength(
       0,
