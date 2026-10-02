@@ -73,16 +73,29 @@ without a reporter). A caller that relied on that failure reads
   is no longer rewritten; the stored order is kept, so it never flips between
   runs.
 
-### Added — **`DnsZone.providers`: choose which clouds host an environment's DNS zone**
+### Added — **environment DNS zones are hosted by the environment's agents; `DnsZone.agents` optionally narrows them**
 
-`withDnsZones([{name, providers: ['AWS' | 'GCP' | 'Azure', ...]}])`. Omitted, every AWS / GCP /
-Azure agent of the environment hosts its own copy of the zone, with the same records, in the
-account / project / subscription of the environment that declares it (an operational
-environment's zone no longer lives in the management account). Resolving the tree now refuses a
-zone that selects a cloud the environment has no agent or account for, an empty or unknown
-`providers`, and `dnssec: 'required'` on more than one host: one zone signed by several
-providers needs multi-signer DNSSEC, which is not supported (`'optional'` on several hosts is
-served unsigned). `dnsZoneType` is deprecated in favor of `providers`.
+`withDnsZones([{name}])` needs no selection: every agent of the environment that hosts DNS zones
+hosts its own copy of the zone, with the same records, in the account / project / subscription of
+the environment that declares it (an operational environment's zone no longer lives in the
+management account). Which agents host DNS zones is what each agent declares to the control plane
+(fractal-environments 3.32), so a new kind of agent is used without an SDK change.
+
+To narrow a zone, `agents` lists some of the environment's agents: the declared agent (or cloud
+account) itself, or its id — `agentIdOf(agent)`, i.e. `aws`, `gcp`, `azure`, or `{type}:{shortName}`
+for an agent bound by name such as `aria:caas-k8s`. Resolving the tree refuses an empty `agents`,
+an entry that is not an agent id, an agent object the environment does not declare, and
+`dnssec: 'required'` on several selected agents (multi-signer DNSSEC is not supported; `'optional'`
+on several hosts is served unsigned). `dnsZoneType` is deprecated. New `withCloudAgent(agent)` /
+`withCloudAccount(account)` add a declared agent or account value, so a zone can reference it.
+
+`environments.dnsZones()` results carry the reporting `agent` and are one per agent (two agents of
+one type each get theirs); `provider` stays, as the agent's type. `DnsZoneProviderResult.agent` is
+a new required field (code that builds results, such as test doubles, must set it), and `problems`
+name the agent (`zone (aws): ...`).
+
+Needs fractal-environments 3.32.0 or later: an older control plane ignores `agents`, so a narrowed
+zone would be hosted by every agent.
 
 ### Added — **`environments.dnsZones()`: read an environment's DNS zone results**
 
