@@ -11,6 +11,21 @@ of truth for what is on npm.
 
 ## Unreleased
 
+### Added — **`DnsZoneComponent` and the `AwsRoute53HostedZone` offer**
+
+`DnsZoneComponent` (`NetworkAndCompute.DnsZone`) carries the shared DNS zone guardrails every DNS
+zone offer enforces: `withDomainName`, `withRecords`, `withVisibility`, `withDnssec`,
+`withRecordManagement`, `withAllowedRecordTypes`, `withTtlBounds`, `withCaaIssuers` and
+`withSubdomainDelegation`. The agent refuses a declared record outside them rather than adjusting
+it. `AwsRoute53HostedZone` emits `NetworkAndCompute.PaaS.AwsRoute53HostedZone` with
+`adoptExisting` / `comment` as its vendor plumbing. The types `DnsZoneGuardrails`, `DnsRecord` and
+`DnsZoneOutputs` describe the parameters and the published outputs (`zoneId`, `nameServers`,
+`dsRecords`).
+
+DNS zones are normally declared on the environment (`withDnsZones`); using the component directly
+in a Live System is advanced and unsupported. The environment's `DnsZone` entry now accepts the same
+guardrails and `records` (its domain stays under `name`), so both paths share one shape.
+
 ### Added — **per-environment provider credentials**
 
 `environments.deploy(mgmt, {providerCredentials})` used one credential set for the
