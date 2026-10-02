@@ -123,6 +123,7 @@ describe('cloud.environments.dnsZones()', () => {
           unassignedReason: null,
           results: [
             {
+              agent: 'aws',
               provider: 'AWS',
               assigned: true,
               status: 'Active',
@@ -161,6 +162,7 @@ describe('cloud.environments.dnsZones()', () => {
     const result = await cloud.environments.dnsZones(id);
     expect(result?.zones[0].results).toEqual([
       {
+        agent: 'gcp',
         provider: 'GCP',
         assigned: true,
         status: 'Pending',
@@ -216,6 +218,7 @@ describe('cloud.environments.dnsZones()', () => {
     expect(held.unassignedReason).toMatch(/set dnsZoneType/);
     expect(held.results).toEqual([
       {
+        agent: 'azure',
         provider: 'Azure',
         assigned: false,
         status: 'Failed',
@@ -272,6 +275,37 @@ describe('cloud.environments.dnsZones()', () => {
       ['AWS', true, 'Active', 'Z0123456789'],
       ['GCP', true, 'Realizing', 'example-com'],
       ['Azure', true, 'Pending', null],
+    ]);
+  });
+
+  it('keys each result by agent, two agents of one type included', async () => {
+    h.state.queue = [
+      {
+        status: 200,
+        body: {
+          zones: [
+            {
+              zoneName: 'example.com',
+              declared: true,
+              assignedAgents: ['aws', 'aria:aruba', 'aria:caas-k8s'],
+              assignedProviders: ['Aws', 'Aria'],
+              realizations: [
+                {...awsActive, agent: 'aws'},
+                {...awsActive, provider: 'Aria', agent: 'aria:aruba'},
+              ],
+            },
+          ],
+          problems: [],
+        },
+      },
+    ];
+    const result = await cloud.environments.dnsZones(id);
+    expect(
+      result?.zones[0].results.map(r => [r.agent, r.provider, r.assigned, r.status]),
+    ).toEqual([
+      ['aws', 'AWS', true, 'Active'],
+      ['aria:aruba', 'Aria', true, 'Active'],
+      ['aria:caas-k8s', 'Aria', true, 'Pending'],
     ]);
   });
 
@@ -342,7 +376,7 @@ describe('cloud.environments.dnsZones()', () => {
       expect(result?.zones[1].results[0].outputs).toEqual(overrides.outputs);
       expect(result?.problems).toEqual([
         'declared twice',
-        `bad.example (AWS): zones[1].realizations[0].${problem}`,
+        `bad.example (aws): zones[1].realizations[0].${problem}`,
       ]);
     },
   );

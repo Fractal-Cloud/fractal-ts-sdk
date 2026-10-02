@@ -1465,29 +1465,45 @@ const outputDsRecords = (
   }));
 };
 
-/** One realization the control plane reports, as a provider result. */
+/**
+ * The agent a realization is from: its `agent` id, or — from a control plane
+ * that predates agent ids — its provider, which is a cloud agent's id in lower case.
+ */
+const realizationAgent = (
+  path: string,
+  v: Record<string, unknown>,
+  provider: string,
+): string => {
+  const agent = optionalString(DNS_ZONES, `${path}.agent`, v.agent, '');
+  return (agent.length > 0 ? agent : provider).toLowerCase();
+};
+
+/** One realization the control plane reports, as an agent's result. */
 const realizationResult = (
   zoneName: string,
   path: string,
   v: unknown,
-  assigned: ReadonlySet<DnsZoneProvider>,
+  assigned: ReadonlySet<string>,
   problems: string[],
 ): DnsZoneProviderResult => {
   if (!isObject(v)) {
     throw unexpected(DNS_ZONES, path, 'is not an object');
   }
-  const provider = dnsProvider(requiredString(`${path}.provider`, v.provider));
+  const rawProvider = requiredString(`${path}.provider`, v.provider);
+  const provider = dnsProvider(rawProvider);
+  const agent = realizationAgent(path, v, rawProvider);
   const status = requiredString(`${path}.status`, v.status);
   const outputs = v.outputs ?? {};
   if (!isObject(outputs)) {
     throw unexpected(DNS_ZONES, `${path}.outputs`, 'is not an object');
   }
   const problem = (at: string, detail: string): void => {
-    problems.push(`${zoneName} (${provider}): ${at} ${detail}`);
+    problems.push(`${zoneName} (${agent}): ${at} ${detail}`);
   };
   return {
+    agent,
     provider,
-    assigned: assigned.has(provider),
+    assigned: assigned.has(agent),
     status,
     message: optionalString(DNS_ZONES, `${path}.message`, v.message, ''),
     zoneId: outputZoneId(`${path}.outputs.zoneId`, outputs.zoneId, problem),
@@ -1510,8 +1526,11 @@ const realizationResult = (
   };
 };
 
-const pendingResult = (provider: DnsZoneProvider): DnsZoneProviderResult => ({
-  provider,
+const pendingResult = (
+  agent: DnsZoneAgentAssignment,
+): DnsZoneProviderResult => ({
+  agent: agent.agent,
+  provider: agent.provider,
   assigned: true,
   status: 'Pending',
   message: '',
@@ -1522,21 +1541,33 @@ const pendingResult = (provider: DnsZoneProvider): DnsZoneProviderResult => ({
   updatedAt: null,
 });
 
+/** An agent a zone is assigned to, and its provider. */
+type DnsZoneAgentAssignment = {agent: string; provider: DnsZoneProvider};
+
 /**
- * The providers a zone is assigned to: `assignedProviders`, every cloud hosting a
- * copy. `assignedProvider` (the single host, empty otherwise) is read when the
- * control plane sends no non-empty `assignedProviders`.
+ * The agents a zone is assigned to: `assignedAgents`, every agent hosting a copy,
+ * each with its provider from `assignedProviders` when the control plane names
+ * one provider per agent. From a control plane that predates agent ids,
+ * `assignedProviders` (or the single `assignedProvider`) names cloud agents, whose
+ * id is their provider in lower case.
  */
-const assignedProviders = (
+const assignedAgents = (
   path: string,
   z: Record<string, unknown>,
-): DnsZoneProvider[] => {
+): DnsZoneAgentAssignment[] => {
+  const agents = optionalStrings(
+    DNS_ZONES,
+    `${path}.assignedAgents`,
+    z.assignedAgents,
+  )
+    .filter(a => a.length > 0)
+    .map(a => a.toLowerCase());
   const many = optionalStrings(
     DNS_ZONES,
     `${path}.assignedProviders`,
     z.assignedProviders,
   );
-  const raw =
+  const providers =
     many.length > 0
       ? many
       : [
@@ -1546,8 +1577,19 @@ const assignedProviders = (
             z.assignedProvider,
             '',
           ),
-        ];
-  return [...new Set(raw.filter(p => p.length > 0).map(dnsProvider))];
+        ].filter(p => p.length > 0);
+  if (agents.length === 0) {
+    return [...new Set(providers)].map(p => ({
+      agent: p.toLowerCase(),
+      provider: dnsProvider(p),
+    }));
+  }
+  // An agent's type is its id before any ':'; the control plane spells it as a provider.
+  return [...new Set(agents)].map(agent => {
+    const type = agent.split(':')[0];
+    const named = providers.find(p => p.toLowerCase() === type);
+    return {agent, provider: dnsProvider(named ?? type)};
+  });
 };
 
 const environmentDnsZone = (
@@ -1562,8 +1604,8 @@ const environmentDnsZone = (
   if (typeof z.declared !== 'boolean') {
     throw unexpected(DNS_ZONES, `${path}.declared`, 'is not a boolean');
   }
-  const assigned = assignedProviders(path, z);
-  const assignedSet = new Set(assigned);
+  const assigned = assignedAgents(path, z);
+  const assignedSet = new Set(assigned.map(a => a.agent));
   const realizations = z.realizations ?? [];
   if (!Array.isArray(realizations)) {
     throw unexpected(DNS_ZONES, `${path}.realizations`, 'is not an array');
@@ -1577,10 +1619,10 @@ const environmentDnsZone = (
       problems,
     ),
   );
-  const byProvider = new Map(reported.map(r => [r.provider, r]));
+  const byAgent = new Map(reported.map(r => [r.agent, r]));
   const results = [
-    ...assigned.map(p => byProvider.get(p) ?? pendingResult(p)),
-    ...reported.filter(r => !assignedSet.has(r.provider)),
+    ...assigned.map(a => byAgent.get(a.agent) ?? pendingResult(a)),
+    ...reported.filter(r => !assignedSet.has(r.agent)),
   ];
   const reason = optionalString(
     DNS_ZONES,
@@ -1617,7 +1659,7 @@ const checkDnsZonesId = (id: EnvironmentId): void => {
 /**
  * Read an environment's DNS zones as its cloud agents realized them
  * (`GET /environments/{type}/{ownerId}/{shortName}/dns-zones`): per zone, one
- * result per provider with its status, `zoneId`, `nameServers` and
+ * result per agent hosting it with its status, `zoneId`, `nameServers` and
  * `dsRecords` — the NS and DS values a registrar needs to delegate the domain.
  * `null` when the environment does not exist. An output field an agent reported
  * malformed is left empty on its result and named in `problems`.

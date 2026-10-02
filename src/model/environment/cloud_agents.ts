@@ -149,3 +149,12 @@ export const agentParams = (agent: CloudAgent): Record<string, unknown> => {
 
 /** Provider of a cloud account (for keying by provider). */
 export const accountProvider = (a: CloudAccount): ProviderType => a.provider;
+
+/**
+ * The id of the agent a cloud agent (or a cloud account, which its management
+ * environment's agent serves) stands for: its type in lower case (`aws`, `azure`,
+ * `gcp`, ...). An environment has one agent of each such type, so the type is its
+ * id; it is how a DNS zone's `agents` names it.
+ */
+export const agentIdOf = (agent: CloudAgent | CloudAccount): string =>
+  agent.provider.toLowerCase();

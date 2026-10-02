@@ -11,6 +11,7 @@
  * shortName), never exposing the term to describe a Bounded Context.
  */
 import type {DnsRecord, DnsZoneGuardrails} from '../components/dns';
+import type {CloudAccount, CloudAgent} from './cloud_agents';
 
 /** Ownership flavor of an environment (matches the API's environment type). */
 export type EnvironmentType = 'Personal' | 'Organizational';
@@ -45,32 +46,41 @@ export type CiCdProfile = {
   sshPrivateKeyPassphrase?: string;
 };
 
-/** A cloud that can host a DNS zone declared on an environment. */
-export type DnsZoneHostProvider = 'AWS' | 'GCP' | 'Azure';
+/**
+ * One of an environment's agents, as a DNS zone selects it: the agent (or, on an
+ * operational environment, the cloud account) as declared on the environment, or
+ * its agent id — `{type}` for an agent bound per account (`aws`, `gcp`, `azure`,
+ * see {@link agentIdOf}) or `{type}:{shortName}` for one bound by name, such as an
+ * ARIA agent (`aria:caas-k8s`).
+ */
+export type DnsZoneAgent = string | CloudAgent | CloudAccount;
 
 /**
  * A DNS zone registered on an environment. It carries the same guardrails and
  * records as the DNS Zone component (`DnsZoneComponent`), so an environment zone
- * and the atom share one shape; each hosting cloud's agent realizes it through its
- * DNS zone offer, in the account / project / subscription of the environment that
- * declares it. `name` is the zone's domain (the component calls it `domainName`).
+ * and the atom share one shape. Every agent of the environment that hosts DNS
+ * zones realizes its own copy, in the account / project / subscription of the
+ * environment that declares it. `name` is the zone's domain (the component calls
+ * it `domainName`).
  */
 export type DnsZone = DnsZoneGuardrails & {
   name: string;
   /**
-   * Which of the environment's clouds host the zone, each with its own copy and
-   * the same records. Omitted: every AWS / GCP / Azure agent of the environment.
-   * Naming a cloud the environment has no agent (or account) for is refused;
-   * repeating one is harmless. An environment with no such cloud hosts the zone
-   * nowhere, and `environments.dnsZones()` reports it as unassigned.
-   * A zone is never signed by more than one provider (multi-signer DNSSEC is not
+   * Optional, and not needed in the common case: omitted, every agent of the
+   * environment that hosts DNS zones hosts its own copy, with the same records.
+   * Set it only to narrow the zone to some of the environment's agents. Which
+   * agents host DNS zones is what each agent declares to the control plane, not
+   * something this SDK decides. Selecting an agent the environment does not have,
+   * or one that does not host DNS zones, is refused; repeating one is harmless.
+   * A zone is never signed by more than one agent (multi-signer DNSSEC is not
    * supported): `dnssec: 'required'` needs a single host, and `'optional'` on
    * several hosts is served unsigned.
    */
-  providers?: readonly DnsZoneHostProvider[];
+  agents?: readonly DnsZoneAgent[];
   /**
-   * @deprecated Use `providers`. A provider hint (`aws`, `gcp`, `azure` or an
-   * offer type) that selects one provider; ignored when `providers` is set.
+   * @deprecated Omit it (every agent hosts the zone) or use `agents`. A hint that
+   * names one agent (`aws`, `gcp`, `azure` or an offer type); ignored when
+   * `agents` is set.
    */
   dnsZoneType?: string;
   /** Record sets of the zone, validated against the guardrails. */

@@ -40,7 +40,7 @@ import {
   type CloudAccount,
   type CloudAgent,
 } from './cloud_agents';
-import {validateDnsZoneProviders} from './dns_zone_providers';
+import {dnsZoneAgentIds, validateDnsZoneAgents} from './dns_zone_agents';
 
 const envRef = (id: EnvironmentId): OwnerRef => ({
   ownerType: id.type,
@@ -177,6 +177,11 @@ export type OperationalEnvironmentNode = {
     region: string;
     projectId: string;
   }): OperationalEnvironmentNode;
+  /**
+   * Declare a cloud account given as a value (replacing any account of the same
+   * provider), e.g. to reference the same value in a DNS zone's `agents`.
+   */
+  withCloudAccount(account: CloudAccount): OperationalEnvironmentNode;
   /** Deployable ref — only after resolution through a management env. */
   ref(): OwnerRef;
 };
@@ -220,6 +225,7 @@ const operationalNode = (s: OperationalState): OperationalEnvironmentNode => {
     withGcpProject: cfg => addAccount({provider: 'GCP', ...cfg}),
     withOciCompartment: cfg => addAccount({provider: 'OCI', ...cfg}),
     withHetznerProject: cfg => addAccount({provider: 'HETZNER', ...cfg}),
+    withCloudAccount: account => addAccount({...account}),
     ref: () => {
       if (s.managementId === undefined) {
         throw new Error(
@@ -314,6 +320,11 @@ export type ManagementEnvironmentNode = {
     region: string;
     projectId: string;
   }): ManagementEnvironmentNode;
+  /**
+   * Declare a cloud agent given as a value (replacing any agent of the same
+   * provider), e.g. to reference the same value in a DNS zone's `agents`.
+   */
+  withCloudAgent(agent: CloudAgent): ManagementEnvironmentNode;
   withOperationalEnvironments(
     envs: readonly OperationalEnvironmentNode[],
   ): ManagementEnvironmentNode;
@@ -365,6 +376,7 @@ const managementNode = (s: ManagementState): ManagementEnvironmentNode => {
     withGcpCloudAgent: cfg => addAgent({provider: 'GCP', ...cfg}),
     withOciCloudAgent: cfg => addAgent({provider: 'OCI', ...cfg}),
     withHetznerCloudAgent: cfg => addAgent({provider: 'HETZNER', ...cfg}),
+    withCloudAgent: agent => addAgent({...agent}),
     withOperationalEnvironments: envs =>
       next({operationalEnvironments: [...s.operationalEnvironments, ...envs]}),
     withOperationalEnvironment: env =>
@@ -438,9 +450,10 @@ const buildParameters = (
     parameters.tags = {...common.tags};
   }
   if (common.dnsZones.length > 0) {
-    parameters.dnsZones = common.dnsZones.map(z =>
-      z.providers === undefined ? {...z} : {...z, providers: [...z.providers]},
-    );
+    parameters.dnsZones = common.dnsZones.map(z => {
+      const agents = dnsZoneAgentIds(z);
+      return agents === undefined ? {...z} : {...z, agents};
+    });
   }
   return parameters;
 };
@@ -532,10 +545,10 @@ export const resolveEnvironment = (
   }
   errors.push(...validateCommon('Management environment', s));
   errors.push(
-    ...validateDnsZoneProviders(
+    ...validateDnsZoneAgents(
       'Management environment',
       s.dnsZones,
-      s.cloudAgents.map(a => a.provider),
+      s.cloudAgents,
     ),
   );
 
@@ -562,13 +575,7 @@ export const resolveEnvironment = (
       errors.push(`${label}: ${e}`);
     }
     errors.push(...validateCommon(label, os));
-    errors.push(
-      ...validateDnsZoneProviders(
-        label,
-        os.dnsZones,
-        os.cloudAccounts.map(a => a.provider),
-      ),
-    );
+    errors.push(...validateDnsZoneAgents(label, os.dnsZones, os.cloudAccounts));
     // The control plane reads the MANAGEMENT env's tier first, so an operational
     // tier that disagrees with a declared management tier would be silently
     // ignored. Refuse it instead of letting the author believe it applies.

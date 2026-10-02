@@ -9,7 +9,7 @@ export type EnvironmentDnsZones = {
   zones: EnvironmentDnsZone[];
   /** What could not be used: entries of the `dnsZones` declaration the control
    *  plane rejected (one it cannot read, or a name declared twice), and output
-   *  fields an agent reported malformed, as `<zone> (<provider>): <path> <why>`
+   *  fields an agent reported malformed, as `<zone> (<agent>): <path> <why>`
    *  (that field is left empty on its result). */
   problems: string[];
 };
