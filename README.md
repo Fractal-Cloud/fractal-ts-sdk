@@ -409,10 +409,10 @@ Things to know:
   function returns are redacted from errors like static ones.
 - **AWS credentials must be three-part session credentials** — `accessKeyId`,
   `secretAccessKey` *and* `sessionToken`. That is what the control plane uses
-  today. Without a `sessionToken`, or as `{roleArn, webIdentityToken}`, the
-  credentials are sent but not used (the server falls back to a credential it
-  already holds, if any), and the SDK logs a `WARN`. Exchange a GitHub OIDC token
-  for session credentials first, as above.
+  today. A partial set (e.g. no `sessionToken`) is refused before anything is sent,
+  since the server would silently fall back to a credential it already holds.
+  `{roleArn, webIdentityToken}` is sent but not used, and the SDK logs a `WARN`.
+  Exchange a GitHub OIDC token for session credentials first, as above.
 - **Order.** Management is initialized first, then each operational environment.
   With `agentInit: 'wait'` each initialization is awaited before the next starts.
   With the default `fire-and-forget`, a deploy that has just started the management

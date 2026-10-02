@@ -188,22 +188,26 @@ const sameKey = (a: string, b: string): boolean =>
  * the web UI, the `agents` the server records at initialization. Start from the
  * server's current parameters and overlay only the declared keys: a declared
  * value replaces the server's (including any differently-cased spelling of the
- * same key), a declared `null` removes it, and every undeclared key is kept
- * byte-for-byte.
+ * same key), a declared `null` removes it, and every undeclared key — including
+ * one whose declared value is `undefined` — is kept byte-for-byte.
  */
 export const mergeEnvironmentParameters = (
   current: Readonly<Record<string, unknown>> | null | undefined,
   declared: Readonly<Record<string, unknown>>,
 ): Record<string, unknown> => {
   const merged: Record<string, unknown> = {};
-  const declaredKeys = Object.keys(declared);
+  // `undefined` is NOT a declaration — only `null` declares a key absent — so a
+  // key whose value is `undefined` neither replaces nor removes anything.
+  const declaredKeys = Object.keys(declared).filter(
+    k => declared[k] !== undefined,
+  );
   for (const [key, value] of Object.entries(current ?? {})) {
     if (!declaredKeys.some(d => sameKey(d, key))) {
       merged[key] = value;
     }
   }
   for (const key of declaredKeys) {
-    if (declared[key] !== null && declared[key] !== undefined) {
+    if (declared[key] !== null) {
       merged[key] = declared[key];
     }
   }
@@ -366,6 +370,31 @@ const hasKey = (o: object, key: string): boolean => {
   return typeof v === 'string' && v.length > 0;
 };
 
+/**
+ * Refuse AWS static credentials that are not all three of `accessKeyId`,
+ * `secretAccessKey` and `sessionToken`. The control plane uses them as inline
+ * credentials only when all three are present and otherwise silently falls back
+ * to whatever credential it already holds — so a partial set would "work" against
+ * a different identity than the one supplied. Web-identity credentials are a
+ * separate variant and are not checked here. Returns the problem, or `null`.
+ */
+const partialAwsCredentials = (
+  pc: ProviderCredentials | undefined,
+): string | null => {
+  const c = pc?.aws as Record<string, unknown> | undefined;
+  // Exempt only the complete web-identity variant: a lone `roleArn` (or one
+  // mixed with partial keys) would otherwise slip partial keys through.
+  if (!c || (hasKey(c, 'webIdentityToken') && hasKey(c, 'roleArn'))) {
+    return null;
+  }
+  const parts = ['accessKeyId', 'secretAccessKey', 'sessionToken'];
+  const missing = parts.filter(k => !hasKey(c, k));
+  return missing.length === 0
+    ? null
+    : 'AWS credentials must carry all of accessKeyId, secretAccessKey and sessionToken ' +
+        `(the control plane ignores a partial set); missing: ${missing.join(', ')}.`;
+};
+
 /** Build the provider credential headers for an agent's initialize call. */
 const initHeaders = (
   agent: CloudAgent,
@@ -501,12 +530,7 @@ const awsCredsWarning = (
       'accessKeyId + secretAccessKey + sessionToken instead'
     );
   }
-  if (!hasKey(c, 'sessionToken')) {
-    return (
-      'AWS credentials without a sessionToken are not used as inline credentials by the ' +
-      'control plane; it requires accessKeyId + secretAccessKey + sessionToken'
-    );
-  }
+  // A partial static set never gets here: partialAwsCredentials refuses it.
   return null;
 };
 
@@ -855,9 +879,12 @@ const createOrUpdateEnvironment = async (
   env: ResolvedEnvironment,
   cfg: ApiConfig,
   quiet: boolean,
+  /** The record already read for this env, when a pre-pass fetched it. */
+  prefetched?: EnvironmentResponse | null,
 ): Promise<EnvironmentWriteResult> => {
   const id = formatEnvironmentId(env.id);
-  const existing = await fetchEnvironment(env, cfg);
+  const existing =
+    prefetched === undefined ? await fetchEnvironment(env, cfg) : prefetched;
   if (existing === null || existing.status.toLowerCase() === 'deleted') {
     log(quiet, 'INFO', 'Creating environment', {env: id});
     await createEnvironment(env, cfg);
@@ -902,20 +929,21 @@ const createOrUpdateEnvironment = async (
  * management environment STORES a different one (set in the web UI, or by an
  * earlier deploy) without this tree declaring it. Resolution already refuses the
  * case where both are declared; this covers the stored half, which is only
- * knowable once the management env has been read. Runs before the operational
- * env is written.
+ * knowable once the management env has been read. Runs for every operational env
+ * right after that read and before ANY environment is written, so a refused tree
+ * leaves the control plane untouched.
  */
 const assertTierApplies = (
   env: ResolvedEnvironment,
   management: ResolvedEnvironment,
-  writtenById: ReadonlyMap<string, EnvironmentWriteResult>,
+  managementParameters: Readonly<Record<string, unknown>>,
 ): void => {
   const mgmtId = formatEnvironmentId(management.id);
   if (formatEnvironmentId(env.id) === mgmtId) {
     return;
   }
   const opTier = findParameter(env.parameters, NETWORK_TIER_PARAMETER);
-  const stored = writtenById.get(mgmtId)?.parameters;
+  const stored = managementParameters;
   const mgmtTier = findParameter(stored, NETWORK_TIER_PARAMETER);
   if (
     opTier === undefined ||
@@ -980,6 +1008,17 @@ export async function deployEnvironment(
     typeof opts.providerCredentials === 'function'
       ? undefined
       : opts.providerCredentials;
+  // Refuse a partial AWS set before anything is written — only when the tree has
+  // an AWS agent those credentials could be sent for.
+  const hasAwsAgent = ordered.some(e =>
+    e.cloudAgents.some(a => a.provider === 'AWS'),
+  );
+  const staticProblem = hasAwsAgent
+    ? partialAwsCredentials(staticCredentials)
+    : null;
+  if (staticProblem !== null) {
+    throw new Error(`providerCredentials.aws: ${staticProblem}`);
+  }
   const deploymentSecrets: LabeledSecret[] = [
     ...collectSecrets(staticCredentials, 'providerCredentials'),
     ...ordered.flatMap(env => [
@@ -1005,13 +1044,32 @@ export async function deployEnvironment(
   ];
   const scopedCfg: ApiConfig = {...cfg, extraSecrets: deploymentSecrets};
 
-  // 1. create/update every environment
+  // 1. create/update every environment. The management record is read first
+  // and reused by its write, so the stored-tier check below can run before ANY
+  // write without an extra request.
+  const managementExisting = await fetchEnvironment(tree.management, scopedCfg);
+  const managementStoredParameters =
+    managementExisting === null ||
+    managementExisting.status.toLowerCase() === 'deleted'
+      ? createParameters(tree.management.parameters)
+      : mergeEnvironmentParameters(
+          managementExisting.parameters,
+          tree.management.parameters,
+        );
+  for (const env of tree.operationals) {
+    assertTierApplies(env, tree.management, managementStoredParameters);
+  }
   const writtenById = new Map<string, EnvironmentWriteResult>();
   for (const env of ordered) {
-    assertTierApplies(env, tree.management, writtenById);
+    const isManagement = env === tree.management;
     writtenById.set(
       formatEnvironmentId(env.id),
-      await createOrUpdateEnvironment(env, scopedCfg, quiet),
+      await createOrUpdateEnvironment(
+        env,
+        scopedCfg,
+        quiet,
+        isManagement ? managementExisting : undefined,
+      ),
     );
   }
 
@@ -1070,6 +1128,13 @@ export async function deployEnvironment(
           `${key} credentials, but the providerCredentials resolver returned none for it.`,
       );
     }
+    const problem =
+      agent.provider === 'AWS' ? partialAwsCredentials(resolved) : null;
+    if (problem !== null) {
+      throw new Error(
+        `The providerCredentials resolver returned unusable credentials for environment '${envId}': ${problem}`,
+      );
+    }
     return resolved;
   };
 
@@ -1118,6 +1183,64 @@ export async function deployEnvironment(
 }
 
 // ── read operations ─────────────────────────────────────────────────────────
+/** Raised when a read endpoint answers 200 with a body this SDK cannot map. */
+const unexpected = (what: string, path: string, detail: string): Error =>
+  new Error(
+    `Unexpected response from ${what}: ${path} ${detail}. ` +
+      'The control plane and this SDK version may disagree on the response shape.',
+  );
+
+const isObject = (v: unknown): v is Record<string, unknown> =>
+  v !== null && typeof v === 'object' && !Array.isArray(v);
+
+const isStringArray = (v: unknown): v is string[] =>
+  Array.isArray(v) && v.every(x => typeof x === 'string');
+
+/** Validate the fields both read endpoints share; returns the checked id. */
+const checkEnvironmentId = (
+  what: string,
+  path: string,
+  v: unknown,
+): EnvironmentIdDto => {
+  if (
+    !isObject(v) ||
+    typeof v.type !== 'string' ||
+    typeof v.ownerId !== 'string' ||
+    typeof v.shortName !== 'string'
+  ) {
+    throw unexpected(
+      what,
+      path,
+      'is not an environment id {type, ownerId, shortName}',
+    );
+  }
+  return {type: v.type, ownerId: v.ownerId, shortName: v.shortName};
+};
+
+const optionalString = (
+  what: string,
+  path: string,
+  v: unknown,
+  fallback: string,
+): string => {
+  if (v === undefined || v === null) {
+    return fallback;
+  }
+  if (typeof v !== 'string') {
+    throw unexpected(what, path, 'is not a string');
+  }
+  return v;
+};
+
+const optionalStrings = (what: string, path: string, v: unknown): string[] => {
+  if (v === undefined || v === null) {
+    return [];
+  }
+  if (!isStringArray(v)) {
+    throw unexpected(what, path, 'is not an array of strings');
+  }
+  return [...v];
+};
 const toEnvironmentId = (dto: EnvironmentIdDto): EnvironmentId => ({
   type: dto.type as EnvironmentType,
   ownerId: dto.ownerId,
@@ -1149,20 +1272,31 @@ export async function listEnvironments(
       .ok(r => r.status === 200)
       .set(authHeaders(cfg)),
   );
-  const rows = (Array.isArray(res.body) ? res.body : []) as {
-    id: EnvironmentIdDto;
-    name?: string | null;
-    status?: string | null;
-    resourceGroups?: string[] | null;
-    initializedClouds?: string[] | null;
-  }[];
-  return rows.map(r => ({
-    id: toEnvironmentId(r.id),
-    name: r.name ?? '',
-    status: r.status ?? 'Unknown',
-    resourceGroups: [...(r.resourceGroups ?? [])],
-    initializedClouds: [...(r.initializedClouds ?? [])],
-  }));
+  const what = 'GET /environments/{type}/{ownerId}';
+  if (!Array.isArray(res.body)) {
+    throw unexpected(what, 'body', 'is not an array');
+  }
+  return res.body.map((r: unknown, i: number) => {
+    const at = `[${i}]`;
+    if (!isObject(r)) {
+      throw unexpected(what, at, 'is not an object');
+    }
+    return {
+      id: toEnvironmentId(checkEnvironmentId(what, `${at}.id`, r.id)),
+      name: optionalString(what, `${at}.name`, r.name, ''),
+      status: optionalString(what, `${at}.status`, r.status, 'Unknown'),
+      resourceGroups: optionalStrings(
+        what,
+        `${at}.resourceGroups`,
+        r.resourceGroups,
+      ),
+      initializedClouds: optionalStrings(
+        what,
+        `${at}.initializedClouds`,
+        r.initializedClouds,
+      ),
+    };
+  });
 }
 
 /**
@@ -1186,18 +1320,44 @@ export async function getEnvironment(
   if (res.status !== 200) {
     return null;
   }
-  const body = res.body as EnvironmentResponse & {
-    managementEnvironmentId?: EnvironmentIdDto | null;
-  };
+  const what = 'GET /environments/{type}/{ownerId}/{shortName}';
+  const body: unknown = res.body;
+  if (!isObject(body)) {
+    throw unexpected(what, 'body', 'is not an object');
+  }
+  if (
+    body.parameters !== undefined &&
+    body.parameters !== null &&
+    !isObject(body.parameters)
+  ) {
+    throw unexpected(what, 'parameters', 'is not an object');
+  }
+  const mgmt = body.managementEnvironmentId;
   return {
-    id: toEnvironmentId(body.id),
-    managementEnvironmentId: body.managementEnvironmentId
-      ? toEnvironmentId(body.managementEnvironmentId)
-      : null,
-    name: body.name ?? '',
-    status: body.status ?? 'Unknown',
-    resourceGroups: [...(body.resourceGroups ?? [])],
-    parameters: {...(body.parameters ?? {})},
-    defaultCiCdProfileShortName: body.defaultCiCdProfileShortName ?? null,
+    id: toEnvironmentId(checkEnvironmentId(what, 'id', body.id)),
+    managementEnvironmentId:
+      mgmt === undefined || mgmt === null
+        ? null
+        : toEnvironmentId(
+            checkEnvironmentId(what, 'managementEnvironmentId', mgmt),
+          ),
+    name: optionalString(what, 'name', body.name, ''),
+    status: optionalString(what, 'status', body.status, 'Unknown'),
+    resourceGroups: optionalStrings(
+      what,
+      'resourceGroups',
+      body.resourceGroups,
+    ),
+    parameters: {...((body.parameters as Record<string, unknown>) ?? {})},
+    defaultCiCdProfileShortName:
+      body.defaultCiCdProfileShortName === undefined ||
+      body.defaultCiCdProfileShortName === null
+        ? null
+        : optionalString(
+            what,
+            'defaultCiCdProfileShortName',
+            body.defaultCiCdProfileShortName,
+            '',
+          ),
   };
 }

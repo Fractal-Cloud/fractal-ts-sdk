@@ -1104,7 +1104,7 @@ describe('cloud.environments.deploy() — per-environment credentials', () => {
     expect(inits.map(r => r.url.split('/')[6])).toEqual(['prod', 'dev']);
   });
 
-  it('warns when AWS credentials lack a sessionToken, or are web-identity', async () => {
+  it('warns when AWS credentials are web-identity', async () => {
     const lines: string[] = [];
     const spy = vi.spyOn(console, 'log').mockImplementation((m: string) => {
       lines.push(m);
@@ -1120,10 +1120,6 @@ describe('cloud.environments.deploy() — per-environment credentials', () => {
       });
       h.state.queue = [{status: 404}, {status: 201}, {status: 404}, {status: 202}];
       await cloud.environments.deploy(mgmt, {
-        providerCredentials: {aws: {accessKeyId: 'AKIA', secretAccessKey: 's'}},
-      });
-      h.state.queue = [{status: 404}, {status: 201}, {status: 404}, {status: 202}];
-      await cloud.environments.deploy(mgmt, {
         providerCredentials: {
           aws: {roleArn: 'arn:aws:iam::1:role/r', webIdentityToken: 'jwt'},
         },
@@ -1136,9 +1132,98 @@ describe('cloud.environments.deploy() — per-environment credentials', () => {
       spy.mockRestore();
     }
     const warns = lines.filter(l => / WARN /.test(l));
-    expect(warns).toHaveLength(2);
-    expect(warns[0]).toMatch(/without a sessionToken/);
-    expect(warns[1]).toMatch(/web-identity credentials .* not honored/);
+    expect(warns).toHaveLength(1);
+    expect(warns[0]).toMatch(/web-identity credentials .* not honored/);
+  });
+
+  it.each([
+    [{accessKeyId: 'AKIA', secretAccessKey: 's'}, 'sessionToken'],
+    [{accessKeyId: 'AKIA', secretAccessKey: 's', sessionToken: ''}, 'sessionToken'],
+    [{accessKeyId: 'AKIA', sessionToken: 't'}, 'secretAccessKey'],
+  ])(
+    'refuses a partial static AWS set before any request: %j',
+    async (aws, missing) => {
+      await expect(
+        cloud.environments.deploy(awsTree(), {
+          quiet: true,
+          providerCredentials: {aws: aws as never},
+        }),
+      ).rejects.toThrow(
+        new RegExp(`all of accessKeyId, secretAccessKey and sessionToken.*missing: ${missing}`),
+      );
+      expect(h.requests).toHaveLength(0);
+    },
+  );
+
+  it('refuses a lone roleArn, which is not the web-identity variant', async () => {
+    await expect(
+      cloud.environments.deploy(awsTree(), {
+        quiet: true,
+        providerCredentials: {
+          aws: {roleArn: 'arn:aws:iam::1:role/r', accessKeyId: 'AKIA'} as never,
+        },
+      }),
+    ).rejects.toThrow(/missing: secretAccessKey, sessionToken/);
+    expect(h.requests).toHaveLength(0);
+  });
+
+  it('ignores a partial AWS set when the tree has no AWS agent', async () => {
+    h.state.queue = [
+      {status: 404},
+      {status: 201},
+      {status: 200, body: {initializationRun: {status: 'Completed'}}},
+    ];
+    await cloud.environments.deploy(mgmtOnly(), {
+      quiet: true,
+      providerCredentials: {
+        ...providerCredentials,
+        aws: {accessKeyId: 'AKIA', secretAccessKey: 's'},
+      },
+    });
+    expect(h.requests.map(r => r.method)).toEqual(['GET', 'POST', 'GET']);
+  });
+
+  it('never echoes a credential value in the partial-set refusal', async () => {
+    const err = await cloud.environments
+      .deploy(awsTree(), {
+        quiet: true,
+        providerCredentials: {
+          aws: {accessKeyId: 'AKIA-VISIBLE', secretAccessKey: 'TOP-SECRET-1'},
+        },
+      })
+      .then(
+        () => new Error('resolved'),
+        (e: Error) => e,
+      );
+    expect(err.message).toMatch(/missing: sessionToken/);
+    expect(err.message).not.toContain('TOP-SECRET-1');
+    expect(err.message).not.toContain('AKIA-VISIBLE');
+  });
+
+  it('refuses a partial AWS set from the resolver, before sending it', async () => {
+    h.state.queue = [
+      {status: 404}, // fetch mgmt
+      {status: 201}, // create mgmt
+      {status: 404}, // fetch prod
+      {status: 201}, // create prod
+      {status: 404}, // fetch dev
+      {status: 201}, // create dev
+      {status: 404}, // mgmt status → start
+    ];
+    await expect(
+      cloud.environments.deploy(awsTree(), {
+        quiet: true,
+        agentInit: 'wait',
+        providerCredentials: () => ({
+          aws: {accessKeyId: 'AKIA', secretAccessKey: 's'},
+        }),
+      }),
+    ).rejects.toThrow(
+      /resolver returned unusable credentials for environment 'Personal\/[^']+\/mgmt'.*missing: sessionToken/,
+    );
+    expect(h.requests.filter(r => r.url.endsWith('/initialize'))).toHaveLength(
+      0,
+    );
   });
 });
 
@@ -1339,6 +1424,72 @@ describe('cloud.environments.deploy() — review hardening', () => {
     expect(h.requests.map(r => r.method)).toEqual(['GET']);
   });
 
+  it('refuses a stored-tier conflict on a LATER operational env before writing any env', async () => {
+    h.state.queue = [storedMgmt({agents: [AGENT], networkTier: 'nonprod'})];
+    await expect(
+      cloud.environments.deploy(
+        mgmtOnly()
+          .withParameter('owner', 'platform') // drift on mgmt → would PUT
+          .withOperationalEnvironment(
+            OperationalEnvironment({
+              shortName: 'dev',
+              resourceGroups: [rg('dev-rg')],
+            }).withAzureSubscription({
+              region: 'northeurope',
+              subscriptionId: 'sub-d',
+            }),
+          )
+          .withOperationalEnvironment(
+            OperationalEnvironment({
+              shortName: 'prod',
+              resourceGroups: [rg('prod-rg')],
+            })
+              .withAzureSubscription({
+                region: 'northeurope',
+                subscriptionId: 'sub-p',
+              })
+              .withNetworkTier('prod'),
+          ),
+        {quiet: true, providerCredentials},
+      ),
+    ).rejects.toThrow(/'prod' would be ignored/);
+    // Only the management env was read — neither mgmt's PUT nor dev's write ran.
+    expect(h.requests.map(r => r.method)).toEqual(['GET']);
+  });
+
+  it('reads an absent management env once and creates it (pre-pass reuse)', async () => {
+    h.state.queue = [
+      {status: 404}, // fetch mgmt (pre-pass) → absent
+      {status: 201}, // create mgmt — no second GET
+      {status: 404}, // fetch prod
+      {status: 201}, // create prod
+      {status: 200, body: {initializationRun: {status: 'Completed'}}}, // mgmt
+      {status: 404}, // prod status
+      {status: 202}, // prod initialize
+    ];
+    await cloud.environments.deploy(opTree(), {quiet: true, providerCredentials});
+    const mgmtUrl = `https://api.fractal.cloud/environments/Personal/${OWNER}/mgmt`;
+    expect(
+      h.requests.filter(r => r.method === 'GET' && r.url === mgmtUrl),
+    ).toHaveLength(1);
+    expect(h.requests.slice(0, 2).map(r => `${r.method} ${r.url}`)).toEqual([
+      `GET ${mgmtUrl}`,
+      `POST ${mgmtUrl}`,
+    ]);
+  });
+
+  it('a parameter declared undefined leaves the stored value through a deploy', async () => {
+    h.state.queue = [
+      storedMgmt({agents: [AGENT], networkTier: 'prod'}),
+      {status: 200, body: {initializationRun: {status: 'Completed'}}},
+    ];
+    await cloud.environments.deploy(
+      mgmtOnly().withParameter('networkTier', undefined),
+      {quiet: true, providerCredentials},
+    );
+    expect(h.requests.filter(r => r.method === 'PUT')).toHaveLength(0);
+  });
+
   it('accepts an operational tier once the management tier is declared absent', async () => {
     h.state.queue = [
       storedMgmt({agents: [AGENT], networkTier: 'nonprod'}),
@@ -1423,5 +1574,60 @@ describe('cloud.environments.deploy() — review hardening', () => {
     expect(
       lines.some(l => /Keeping stored parameters .* keys=tags/.test(l)),
     ).toBe(true);
+  });
+});
+
+describe('cloud.environments.list() / get() — response validation', () => {
+  beforeEach(() => {
+    h.requests.length = 0;
+    h.state.queue = [];
+  });
+  const owner = {type: 'Personal' as const, ownerId: OWNER};
+  const id = {type: 'Personal' as const, ownerId: OWNER, shortName: 'prod'};
+  const goodId = {type: 'Personal', ownerId: OWNER, shortName: 'prod'};
+
+  it.each([
+    [{rows: 'nope'}, /body is not an array/],
+    [['x'], /\[0\] is not an object/],
+    [[{name: 'n'}], /\[0\]\.id is not an environment id/],
+    [[{id: {type: 'Personal', ownerId: 7, shortName: 's'}}], /\[0\]\.id is not/],
+    [[{id: goodId, name: 3}], /\[0\]\.name is not a string/],
+    [[{id: goodId, resourceGroups: 'rg'}], /\[0\]\.resourceGroups is not an array of strings/],
+    [[{id: goodId, initializedClouds: [1]}], /\[0\]\.initializedClouds is not an array of strings/],
+  ])('list rejects %j', async (body, error) => {
+    h.state.queue = [{status: 200, body}];
+    const err = await cloud.environments.list(owner).then(
+      () => new Error('resolved'),
+      (e: Error) => e,
+    );
+    expect(err.message).toMatch(error);
+    expect(err.message).toMatch(
+      /^Unexpected response from GET \/environments\/\{type\}\/\{ownerId\}:/,
+    );
+  });
+
+  it.each([
+    ['not-an-object', /body is not an object/],
+    [{name: 'n'}, /: id is not an environment id/],
+    [{id: goodId, managementEnvironmentId: 'mgmt'}, /managementEnvironmentId is not an environment id/],
+    [{id: goodId, parameters: []}, /parameters is not an object/],
+    [{id: goodId, status: 1}, /status is not a string/],
+    [{id: goodId, defaultCiCdProfileShortName: {}}, /defaultCiCdProfileShortName is not a string/],
+  ])('get rejects %j', async (body, error) => {
+    h.state.queue = [{status: 200, body}];
+    await expect(cloud.environments.get(id)).rejects.toThrow(error);
+  });
+
+  it('get accepts a minimal valid body, defaulting the optional fields', async () => {
+    h.state.queue = [{status: 200, body: {id: goodId}}];
+    expect(await cloud.environments.get(id)).toEqual({
+      id: goodId,
+      managementEnvironmentId: null,
+      name: '',
+      status: 'Unknown',
+      resourceGroups: [],
+      parameters: {},
+      defaultCiCdProfileShortName: null,
+    });
   });
 });

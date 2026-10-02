@@ -115,10 +115,29 @@ with `wait` nothing changes.
 ### Documented — **which AWS credentials the control plane honors**
 
 Only three-part session credentials (`accessKeyId` + `secretAccessKey` +
-`sessionToken`) are used as inline credentials by the AWS initializer today. Static
-keys without a `sessionToken`, and `{roleArn, webIdentityToken}` (sent as
-`X-AWS-Role-Arn` / `X-AWS-Web-Identity-Token`), are still sent but ignored; the SDK
-now logs a `WARN` line for both.
+`sessionToken`) are used as inline credentials by the AWS initializer today.
+
+- A partial static set, such as keys without a `sessionToken`, is now **refused**
+  before any request: static credentials when the deploy starts, and a resolver's
+  credentials when it returns them. The server would not use a partial set. It
+  would silently fall back to a credential it already holds, which means acting as
+  a different identity than the one supplied.
+- `{roleArn, webIdentityToken}` is still sent (as `X-AWS-Role-Arn` /
+  `X-AWS-Web-Identity-Token`) but is ignored by the server. The SDK logs a `WARN`
+  line for it.
+
+### Changed — **stricter edges of the environment surface**
+
+- In `mergeEnvironmentParameters`, and so in every deploy, a key whose declared
+  value is `undefined` is **not declared**. It neither replaces nor removes the
+  stored value. Only `null` removes a key.
+- `environments.list` and `environments.get` validate the response shape. A body
+  they cannot map fails with `Unexpected response from GET ...: <path> ...`
+  instead of returning half-mapped data.
+- The check that refuses an operational `networkTier` overridden by the
+  management environment's stored tier now runs right after the management
+  environment is read and **before any environment is written**. Previously,
+  environments earlier in the tree could already have been written when it fired.
 
 ### Added — **`AzureContainerAppsEnvironment`, the platform a Container App needs**
 
