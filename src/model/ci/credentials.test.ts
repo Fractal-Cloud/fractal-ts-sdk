@@ -563,6 +563,81 @@ describe('credentialsFromCi() — what is not configured', () => {
   });
 });
 
+describe('credentialsFromCi() — review hardening', () => {
+  it('refuses a region that is not an AWS region before anything is minted', async () => {
+    const f = fakeCi();
+    const sts = fakeSts();
+    const resolve = credentialsFromCi(
+      f.ci,
+      {cloud: 'AWS', aws: {roleArn: ROLE}},
+      {fetch: sts.fn},
+    );
+    await expect(
+      resolve({...request('AWS', '111111111111'), region: 'x.evil.example/?'}),
+    ).rejects.toThrow(/not an AWS region/);
+    expect(f.audiences).toHaveLength(0);
+    expect(sts.calls).toHaveLength(0);
+  });
+
+  it("refuses a region outside the role's partition", async () => {
+    const f = fakeCi();
+    const sts = fakeSts();
+    const resolve = credentialsFromCi(
+      f.ci,
+      {cloud: 'AWS', aws: {roleArn: 'arn:aws-cn:iam::111111111111:role/Deployer'}},
+      {fetch: sts.fn},
+    );
+    await expect(resolve(request('AWS', '111111111111'))).rejects.toThrow(
+      /partition/,
+    );
+    await resolve({...request('AWS', '111111111111'), region: 'cn-north-1'});
+    expect(sts.calls[0].url).toBe('https://sts.cn-north-1.amazonaws.com.cn/');
+  });
+
+  it('matches the environment allowlist by full id as well as by short name', async () => {
+    const f = fakeCi();
+    const resolve = credentialsFromCi(f.ci, {
+      cloud: 'AZURE',
+      azure: {clientId: 'app-1', subscriptionIds: ['sub-1']},
+      environments: ['Organizational/owner/mgmt'],
+    });
+    await expect(resolve(request('AZURE', 'sub-1'))).resolves.toBeDefined();
+    const personal = {
+      ...request('AZURE', 'sub-1'),
+      environment: {type: 'Personal' as const, ownerId: 'owner', shortName: 'mgmt'},
+    };
+    await expect(resolve(personal)).rejects.toThrow(/not configured/);
+  });
+
+  it('refuses a workload identity provider that is not a provider resource name', () => {
+    const f = fakeCi();
+    expect(() =>
+      credentialsFromCi(f.ci, {
+        cloud: 'GCP',
+        gcp: {
+          serviceAccountEmail: 'sa@p.iam.gserviceaccount.com',
+          workloadIdentityProvider: `//iam.googleapis.com/${WIF}`,
+          projectIds: ['proj-1'],
+        },
+      }),
+    ).toThrow(/workloadIdentityProvider/);
+  });
+
+  it('matches subscription ids regardless of case', async () => {
+    const f = fakeCi();
+    const resolve = credentialsFromCi(f.ci, {
+      cloud: 'AZURE',
+      azure: {
+        clientId: 'app-1',
+        subscriptionIds: ['4EE3EB42-883B-4F9B-AF8B-275435E50125'],
+      },
+    });
+    await expect(
+      resolve(request('AZURE', '4ee3eb42-883b-4f9b-af8b-275435e50125')),
+    ).resolves.toBeDefined();
+  });
+});
+
 describe('signAwsRequest() — SigV4', () => {
   it("matches AWS's published example signature", () => {
     // https://docs.aws.amazon.com/IAM/latest/UserGuide/create-signed-request.html

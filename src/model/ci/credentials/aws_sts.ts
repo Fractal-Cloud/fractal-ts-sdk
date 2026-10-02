@@ -14,11 +14,29 @@ import {signAwsRequest} from './aws_sigv4';
 
 const STS_VERSION = '2011-06-15';
 
-/** The regional STS endpoint (`cn-*` regions live in the China partition). */
-export const stsEndpoint = (region: string): string =>
+const REGION_RE = /^[a-z]{2}(-[a-z]+)+-\d+$/;
+
+/** The partition a region belongs to. */
+export const awsPartitionOf = (region: string): string =>
   region.startsWith('cn-')
+    ? 'aws-cn'
+    : region.startsWith('us-gov-')
+      ? 'aws-us-gov'
+      : 'aws';
+
+/**
+ * The regional STS endpoint (`cn-*` regions live in the China partition). The
+ * region becomes part of the host a token is sent to, so anything that is not
+ * a region name is refused rather than interpolated.
+ */
+export const stsEndpoint = (region: string): string => {
+  if (!REGION_RE.test(region)) {
+    throw new Error(`'${region}' is not an AWS region.`);
+  }
+  return awsPartitionOf(region) === 'aws-cn'
     ? `https://sts.${region}.amazonaws.com.cn/`
     : `https://sts.${region}.amazonaws.com/`;
+};
 
 const xmlField = (xml: string, name: string): string | undefined =>
   new RegExp(`<${name}>([^<]*)</${name}>`).exec(xml)?.[1];

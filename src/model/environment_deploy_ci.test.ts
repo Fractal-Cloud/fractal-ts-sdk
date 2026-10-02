@@ -154,16 +154,16 @@ const withOperational = () =>
     );
 
 const all: Record<string, ProviderCredentials> = {
-  AWS: {aws: {accessKeyId: 'AKIA1', secretAccessKey: 's', sessionToken: 't'}},
+  AWS: {aws: {accessKeyId: 'AKIA1', secretAccessKey: 'fixture-secret-access-key', sessionToken: 'fixture-session-token'}},
   GCP: {
     gcp: {
       serviceAccountEmail: 'sa@p.iam.gserviceaccount.com',
       workloadIdentityProvider:
         'projects/1/locations/global/workloadIdentityPools/p/providers/x',
-      federatedToken: 'jwt',
+      federatedToken: 'fixture-federated-token',
     },
   },
-  AZURE: {azure: {clientId: 'app', federatedToken: 'jwt'}},
+  AZURE: {azure: {clientId: 'app', federatedToken: 'fixture-federated-token'}},
 };
 
 /** A resolver holding credentials for `held` clouds only, as one CI job would. */
@@ -328,7 +328,8 @@ describe('an operational agent whose management agent has not completed', () => 
       result.skipped.map(s => [s.environment.shortName, s.reason]),
     ).toEqual([
       ['mgmt', 'missing-credentials'],
-      ['prod', 'pending-management'],
+      // Not this job's cloud at all: the job holding it initializes both.
+      ['prod', 'missing-credentials'],
     ]);
   });
 
@@ -360,6 +361,66 @@ describe('an operational agent whose management agent has not completed', () => 
     expect(lines.some(l => /Skipped the AWS agent of .*prod/.test(l))).toBe(
       true,
     );
+  });
+});
+
+describe('review hardening', () => {
+  it("a per-cloud job under pendingManagement: 'fail' skips the other clouds rather than throwing", async () => {
+    const tree = ManagementEnvironment({
+      id: {type: 'Organizational', ownerId: OWNER, shortName: 'mgmt'},
+      resourceGroups: [rg('rg')],
+    })
+      .withAwsCloudAgent({
+        region: 'eu-central-1',
+        organizationId: 'o-abc',
+        accountId: '111111111111',
+      })
+      .withAzureCloudAgent({
+        region: 'westeurope',
+        tenantId: 'tenant-1',
+        subscriptionId: 'sub-1',
+      })
+      .withOperationalEnvironment(
+        OperationalEnvironment({shortName: 'prod', resourceGroups: [rg('rg')]})
+          .withAwsAccount({region: 'eu-central-1', accountId: '222222222222'})
+          .withAzureSubscription({region: 'westeurope', subscriptionId: 'sub-2'}),
+      );
+    h.server.runs.set('mgmt/aws', 'Completed');
+    const result = await cloud.environments.deploy(tree, {
+      quiet: true,
+      providerCredentials: holding('AWS'),
+      pendingManagement: 'fail',
+    });
+    expect(initialized()).toEqual(['prod/aws']);
+    expect(
+      result.skipped.map(s => [s.environment.shortName, s.provider, s.reason]),
+    ).toEqual([
+      ['mgmt', 'AZURE', 'missing-credentials'],
+      ['prod', 'AZURE', 'missing-credentials'],
+    ]);
+  });
+
+  it("redacts the deploy's secrets from a resolver's skip message", async () => {
+    const {notices, reporter} = recordingReporter();
+    const leaked = 'resolver-held-secret-value';
+    const result = await cloud.environments.deploy(threeClouds(), {
+      quiet: true,
+      providerCredentials: r => {
+        if (r.provider === 'AWS') {
+          return {aws: {accessKeyId: 'AKIA1', secretAccessKey: leaked, sessionToken: 't'}};
+        }
+        throw new ProviderCredentialsNotConfigured(
+          r.provider,
+          r.environment,
+          `oops ${leaked}`,
+        );
+      },
+      reporter,
+    });
+    expect(result.skipped).toHaveLength(2);
+    for (const n of [...notices, ...result.skipped.map(s => s.message)]) {
+      expect(n).not.toContain(leaked);
+    }
   });
 });
 

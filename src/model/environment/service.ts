@@ -20,7 +20,7 @@
  * HTTP unit tests; smoke against the live API before release.
  */
 import superagent from 'superagent';
-import {collectSecrets, send} from '../api-error';
+import {collectSecrets, redactSecrets, send} from '../api-error';
 import {
   apiUrl,
   authHeaders,
@@ -682,8 +682,10 @@ const failureMessage = (provider: string, run: InitializationRun): string => {
 };
 
 /** What a deploy knows about an agent's initialization once it has handled it:
- *  `Completed` only when a Completed run was observed (and not forced over). */
-type AgentInitOutcome = 'Completed' | 'NotCompleted' | 'Skipped';
+ *  `Completed` only when a Completed run was observed (and not forced over);
+ *  `Held` when it was held back before asking for credentials, `NoCredentials`
+ *  when this run holds none for its cloud. */
+type AgentInitOutcome = 'Completed' | 'NotCompleted' | 'Held' | 'NoCredentials';
 
 const initializeAgent = async (
   env: ResolvedEnvironment,
@@ -734,7 +736,7 @@ const initializeAgent = async (
 
   if (needsStart) {
     if (!opts.beforeStart(env, agent)) {
-      return 'Skipped';
+      return 'Held';
     }
     log(opts.quiet, 'INFO', 'Starting cloud-agent initialization', {
       env: envId,
@@ -756,7 +758,7 @@ const initializeAgent = async (
     //     a diagnostic.
     const credentials = await opts.credentialsFor(env, agent);
     if (credentials === null) {
-      return 'Skipped';
+      return 'NoCredentials';
     }
     const warning =
       agent.provider === 'AWS' ? awsCredsWarning(credentials) : null;
@@ -1031,13 +1033,16 @@ export async function deployEnvironment(
     env: ResolvedEnvironment,
     agent: CloudAgent,
     reason: SkippedAgent['reason'],
-    message: string,
+    text: string,
   ): void => {
+    // A resolver's own message can carry anything it held: redact what this
+    // deploy knows to be secret before it reaches a notice or the result.
+    const message = redactSecrets(text, deploymentSecrets);
     result.skipped.push({...agentRef(env, agent), reason, message});
     if (opts.reporter !== undefined) {
       opts.reporter.notice(message);
     } else {
-      log(quiet, 'INFO', message, {
+      log(quiet, 'WARN', message, {
         env: formatEnvironmentId(env.id),
         provider: agent.provider,
       });
@@ -1190,7 +1195,7 @@ export async function deployEnvironment(
       // `cause` is attached so nothing the resolver held rides along.
       throw new Error(
         `The providerCredentials resolver failed for the ${agent.provider} agent of ` +
-          `environment '${envId}': ${err instanceof Error ? err.message : String(err)}`,
+          `environment '${envId}': ${redactSecrets(err instanceof Error ? err.message : String(err), deploymentSecrets)}`,
       );
     }
     // Register before the request that carries them is built.
@@ -1224,11 +1229,24 @@ export async function deployEnvironment(
     if (formatEnvironmentId(env.id) === managementEnvId) {
       return true;
     }
-    // Hold back only what this deploy KNOWS will fail: it handled the management
-    // agent for this provider and did not observe a Completed run (it started
-    // one, or skipped it). Anything else is left to the control plane's check.
     const outcome = managementOutcome.get(agent.provider);
-    if (outcome !== 'NotCompleted' && outcome !== 'Skipped') {
+    // This run holds no credentials for the cloud at all (it could not start the
+    // management agent either): the job holding them initializes both.
+    if (outcome === 'NoCredentials') {
+      skip(
+        env,
+        agent,
+        'missing-credentials',
+        `Skipped the ${agent.provider} agent of '${formatEnvironmentId(env.id)}': this run holds ` +
+          `no ${agent.provider} credentials for its management environment '${managementEnvId}' ` +
+          `either. The job holding ${agent.provider} credentials initializes both.`,
+      );
+      return false;
+    }
+    // Hold back only what this deploy KNOWS will fail: it handled the management
+    // agent for this provider and did not observe a Completed run. Anything else
+    // is left to the control plane's check.
+    if (outcome !== 'NotCompleted') {
       return true;
     }
     if (pendingManagement === 'skip') {

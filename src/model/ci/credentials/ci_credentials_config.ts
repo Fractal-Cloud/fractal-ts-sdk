@@ -21,6 +21,10 @@ export type CiCredentialsConfig = {
   aws?: AwsCiCredentials | readonly AwsCiCredentials[];
   gcp?: GcpCiCredentials | readonly GcpCiCredentials[];
   azure?: AzureCiCredentials | readonly AzureCiCredentials[];
-  /** When set, the short names of the only environments credentials are handed out for. */
+  /**
+   * When set, the only environments credentials are handed out for: a full id
+   * (`Organizational/<ownerId>/<shortName>`), or a short name, which matches that
+   * short name under any owner.
+   */
   environments?: readonly string[];
 };

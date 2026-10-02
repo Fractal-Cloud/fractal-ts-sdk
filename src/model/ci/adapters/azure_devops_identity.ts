@@ -15,6 +15,7 @@ import type {CiEnvironment} from '../ci_environment';
 import type {CiIdentity} from '../ci_identity';
 import type {AzureDevOpsIdentityOptions} from './azure_devops_identity_options';
 import {present} from './present';
+import {readJson} from './read_json';
 
 const AZURE_DEVOPS_AUDIENCE = 'api://AzureADTokenExchange';
 
@@ -69,8 +70,10 @@ export const azureDevOpsIdentity = (
         `Azure DevOps refused an OIDC token for service connection '${serviceConnectionId}' (HTTP ${res.status}).`,
       );
     }
-    const body = (await res.json()) as {oidcToken?: unknown};
-    if (typeof body.oidcToken !== 'string' || body.oidcToken.length === 0) {
+    const body = (await readJson(res, "Azure DevOps' OIDC token endpoint")) as {
+      oidcToken?: unknown;
+    } | null;
+    if (typeof body?.oidcToken !== 'string' || body.oidcToken.length === 0) {
       throw new Error(
         `Azure DevOps returned no OIDC token for service connection '${serviceConnectionId}'.`,
       );

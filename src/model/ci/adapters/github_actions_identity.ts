@@ -9,6 +9,7 @@
 import type {CiEnvironment} from '../ci_environment';
 import type {CiIdentity} from '../ci_identity';
 import {present} from './present';
+import {readJson} from './read_json';
 
 export const githubActionsIdentity = (
   env: CiEnvironment = process.env,
@@ -34,8 +35,13 @@ export const githubActionsIdentity = (
         `GitHub Actions refused an OIDC token for audience '${audience}' (HTTP ${res.status}).`,
       );
     }
-    const body = (await res.json()) as {value?: unknown};
-    if (typeof body.value !== 'string' || body.value.length === 0) {
+    const body = (await readJson(
+      res,
+      "GitHub Actions' OIDC token endpoint",
+    )) as {
+      value?: unknown;
+    } | null;
+    if (typeof body?.value !== 'string' || body.value.length === 0) {
       throw new Error(
         `GitHub Actions returned no OIDC token for audience '${audience}'.`,
       );

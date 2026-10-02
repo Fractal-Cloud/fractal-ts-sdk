@@ -49,10 +49,18 @@ environment's agents is not a change. `formatEnvironmentPlan` and
 
 ### Changed — **a deploy skips the agents it cannot initialize, and says so**
 
+**What you may need to change.** A fire-and-forget deploy of a new tree used to
+fail before its operational agents; it now succeeds, skipping them with a notice
+(a `WARN` deploy-log line, or the `reporter`'s notice; nothing under `quiet`
+without a reporter). A caller that relied on that failure reads
+`result.skipped`, or passes `pendingManagement: 'fail'`.
+
 - A `providerCredentials` resolver that throws the new
   `ProviderCredentialsNotConfigured` skips that agent with a notice and the
   deploy continues with the other agents, so one job per cloud can each deploy
-  the whole tree. Any other resolver error still fails the deploy, and so does a
+  the whole tree. An operational agent of a cloud whose management agent was
+  skipped this way is skipped the same way, whatever `pendingManagement` says.
+  A skip notice is redacted like an error. Any other resolver error still fails the deploy, and so does a
   resolver returning nothing.
 - Under `fire-and-forget`, an operational agent whose management agent has not
   completed on that cloud is now **skipped with a notice** instead of throwing

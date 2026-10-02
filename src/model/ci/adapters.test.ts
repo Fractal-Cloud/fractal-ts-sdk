@@ -87,6 +87,16 @@ describe('GitHub Actions identity', () => {
     await expect(identity.idToken('aud')).rejects.toThrow(/no OIDC token/);
   });
 
+  it('refuses a body that is not JSON without quoting it', async () => {
+    const fn = (async () =>
+      new Response('not json: tok-fragment', {status: 200})) as typeof fetch;
+    const err = await githubActionsIdentity(env, fn)
+      .idToken('aud')
+      .catch(e => e as Error);
+    expect(err.message).toMatch(/not JSON/);
+    expect(err.message).not.toContain('tok-fragment');
+  });
+
   it('has no fixed audience', () => {
     expect(githubActionsIdentity(env).fixedAudience).toBeUndefined();
   });
@@ -183,6 +193,16 @@ describe('Azure DevOps identity', () => {
     expect(f.calls).toHaveLength(0);
   });
 
+  it('refuses a body that is not JSON without quoting it', async () => {
+    const fn = (async () =>
+      new Response('<html>tok-fragment', {status: 200})) as typeof fetch;
+    const err = await azureDevOpsIdentity(env, {serviceConnectionId: 'sc-1'}, fn)
+      .idToken('api://AzureADTokenExchange')
+      .catch(e => e as Error);
+    expect(err.message).toMatch(/not JSON/);
+    expect(err.message).not.toContain('tok-fragment');
+  });
+
   it('names the missing System.AccessToken mapping', async () => {
     const identity = azureDevOpsIdentity(
       {SYSTEM_OIDCREQUESTURI: env.SYSTEM_OIDCREQUESTURI},
@@ -226,7 +246,7 @@ describe('Azure DevOps reporter', () => {
     r.mask('s3cr3t');
     out.restore();
     expect(out.lines).toEqual([
-      'a%0Ab',
+      'NOTICE a%0Ab',
       '##vso[task.logissue type=warning]50%AZP25 done',
       '##vso[task.logissue type=error]e]x',
       '##vso[task.setsecret]s3cr3t',

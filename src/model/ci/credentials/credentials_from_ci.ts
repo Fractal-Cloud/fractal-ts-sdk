@@ -32,13 +32,20 @@ import type {CiValue} from './ci_value';
 import type {GcpCiCredentials} from './gcp_ci_credentials';
 import type {GcpOidcCiCredentials} from './gcp_oidc_ci_credentials';
 import type {GcpStaticCiCredentials} from './gcp_static_ci_credentials';
-import {assumeRoleWithWebIdentity, getSessionToken} from './aws_sts';
+import {
+  assumeRoleWithWebIdentity,
+  awsPartitionOf,
+  getSessionToken,
+  stsEndpoint,
+} from './aws_sts';
 
 const AWS_AUDIENCE = 'sts.amazonaws.com';
 const AZURE_AUDIENCE = 'api://AzureADTokenExchange';
 const DEFAULT_SESSION_SECONDS = 3600;
 const ROLE_ARN_RE =
-  /^arn:aws(?:-cn|-us-gov)?:iam::(\d{12}):role\/[\w+=,.@/-]+$/;
+  /^arn:(aws(?:-cn|-us-gov)?):iam::(\d{12}):role\/[\w+=,.@/-]+$/;
+const WIF_PROVIDER_RE =
+  /^projects\/\d+\/locations\/global\/workloadIdentityPools\/[^/]+\/providers\/[^/]+$/;
 const ACCOUNT_RE = /^\d{12}$/;
 const JOB_CLOUDS: readonly ProviderType[] = ['AWS', 'GCP', 'AZURE'];
 
@@ -61,7 +68,7 @@ const awsAccountOf = (c: AwsCiCredentials): string => {
         `credentialsFromCi: aws.roleArn '${c.roleArn}' is not an IAM role ARN (arn:aws:iam::<account>:role/<name>).`,
       );
     }
-    return m[1];
+    return m[2];
   }
   if (!ACCOUNT_RE.test(c.accountId ?? '')) {
     throw new Error(
@@ -89,12 +96,13 @@ const byAccount = <T>(
   const out = new Map<string, T>();
   for (const e of entries) {
     for (const account of accountsOf(e)) {
-      if (out.has(account)) {
+      const key = account.toLowerCase();
+      if (out.has(key)) {
         throw new Error(
           `credentialsFromCi: ${cloud} account '${account}' is configured more than once.`,
         );
       }
-      out.set(account, e);
+      out.set(key, e);
     }
   }
   return out;
@@ -135,16 +143,28 @@ export const credentialsFromCi = (
   const aws = byAccount('AWS', list(config.aws), e => [awsAccountOf(e)]);
   const gcp = byAccount('GCP', list(config.gcp), e => {
     requireIds('gcp.projectIds', e.projectIds);
+    if (isGcpOidc(e) && !WIF_PROVIDER_RE.test(e.workloadIdentityProvider)) {
+      throw new Error(
+        `credentialsFromCi: gcp.workloadIdentityProvider '${e.workloadIdentityProvider}' is not ` +
+          'projects/<number>/locations/global/workloadIdentityPools/<pool>/providers/<provider>.',
+      );
+    }
     return e.projectIds;
   });
   const azure = byAccount('Azure', list(config.azure), e => {
     requireIds('azure.subscriptionIds', e.subscriptionIds);
     return e.subscriptionIds;
   });
+  // An entry with slashes is a full id (`Type/ownerId/shortName`); one without
+  // matches the short name under any owner.
   const environments =
     config.environments === undefined
       ? undefined
       : new Set(config.environments);
+  const allowedEnvironment = (request: ProviderCredentialsRequest): boolean =>
+    environments === undefined ||
+    environments.has(formatEnvironmentId(request.environment)) ||
+    environments.has(request.environment.shortName);
 
   const mask = (value: string): string => {
     ci.reporter.mask(value);
@@ -184,9 +204,19 @@ export const credentialsFromCi = (
   const forAws = async (
     request: ProviderCredentialsRequest,
   ): Promise<ProviderCredentials> => {
-    const entry = aws.get(request.accountId);
+    const entry = aws.get(request.accountId.toLowerCase());
     if (entry === undefined) {
       throw refused(request, 'AWS account');
+    }
+    // The region names the STS host a token or key signature is sent to.
+    stsEndpoint(request.region);
+    if (isAwsOidc(entry)) {
+      const partition = ROLE_ARN_RE.exec(entry.roleArn)?.[1] ?? 'aws';
+      if (awsPartitionOf(request.region) !== partition) {
+        throw new Error(
+          `Region '${request.region}' is outside the ${partition} partition of role '${entry.roleArn}'.`,
+        );
+      }
     }
     if (isAwsOidc(entry)) {
       const webIdentityToken = await token(AWS_AUDIENCE, entry.audience);
@@ -246,7 +276,7 @@ export const credentialsFromCi = (
   const forGcp = async (
     request: ProviderCredentialsRequest,
   ): Promise<ProviderCredentials> => {
-    const entry = gcp.get(request.accountId);
+    const entry = gcp.get(request.accountId.toLowerCase());
     if (entry === undefined) {
       throw refused(request, 'GCP project');
     }
@@ -301,7 +331,7 @@ export const credentialsFromCi = (
   const forAzure = async (
     request: ProviderCredentialsRequest,
   ): Promise<ProviderCredentials> => {
-    const entry = azure.get(request.accountId);
+    const entry = azure.get(request.accountId.toLowerCase());
     if (entry === undefined) {
       throw refused(request, 'Azure subscription');
     }
@@ -329,10 +359,7 @@ export const credentialsFromCi = (
         `this job holds ${cloud} credentials only; the ${request.provider} job initializes it`,
       );
     }
-    if (
-      environments !== undefined &&
-      !environments.has(request.environment.shortName)
-    ) {
+    if (!allowedEnvironment(request)) {
       throw new Error(
         `environment '${request.environment.shortName}' is not configured for this job; ` +
           'refusing to hand out credentials for it.',

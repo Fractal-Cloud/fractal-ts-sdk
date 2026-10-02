@@ -3,7 +3,8 @@
  * commands (`##vso[task.logissue]`, `##vso[task.setsecret]`,
  * `##vso[task.uploadsummary]`).
  *
- * Azure Pipelines has no "notice" annotation, so a notice is a plain log line.
+ * Azure Pipelines has no "notice" annotation, so a notice is a plain log line
+ * behind a fixed prefix.
  * A summary is uploaded from a markdown file: each one is written to its own
  * file under `AGENT_TEMPDIRECTORY` and attached to the run.
  */
@@ -21,7 +22,8 @@ export const azureDevOpsReporter = (
   let summaries = 0;
   let summaryDir: string | undefined;
   return {
-    notice: m => console.log(escapeAzureDevOpsData(m)),
+    // A fixed prefix: a notice starting with `##vso[` must not be read as a command.
+    notice: m => console.log(`NOTICE ${escapeAzureDevOpsData(m)}`),
     warning: m =>
       console.log(
         `##vso[task.logissue type=warning]${escapeAzureDevOpsData(m)}`,
