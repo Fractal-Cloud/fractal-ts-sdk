@@ -12,7 +12,11 @@ import {
   type OperationalEnvironmentNode,
 } from '@fractal_cloud/sdk';
 
-export const OWNER_ID = process.env.FRACTAL_OWNER_ID ?? '';
+const ownerId = process.env.FRACTAL_OWNER_ID;
+if (ownerId === undefined || ownerId.trim().length === 0) {
+  throw new Error('Missing environment variable FRACTAL_OWNER_ID');
+}
+export const OWNER_ID: string = ownerId;
 const rg = (name: string) => `Organizational/${OWNER_ID}/${name}`;
 
 /** The management environment on its own (no operational environments). */

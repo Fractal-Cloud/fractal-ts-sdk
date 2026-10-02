@@ -38,7 +38,9 @@ const tierOf = (parameters: Record<string, unknown> | undefined): string => {
     k => k.toLowerCase() === 'networktier',
   );
   const value = key === undefined ? undefined : parameters![key];
-  return value === undefined || value === null ? '' : String(value).trim();
+  return value === undefined || value === null
+    ? ''
+    : String(value).trim().toLowerCase();
 };
 
 const changes = (
@@ -68,9 +70,17 @@ const changes = (
   return out;
 };
 
+const required = (name: string): string => {
+  const value = process.env[name];
+  if (value === undefined || value.length === 0) {
+    throw new Error(`Missing environment variable ${name}`);
+  }
+  return value;
+};
+
 const cloud = createFractalCloudClient({
-  clientId: process.env.SERVICE_ACCOUNT_ID ?? '',
-  clientSecret: process.env.SERVICE_ACCOUNT_SECRET ?? '',
+  clientId: required('SERVICE_ACCOUNT_ID'),
+  clientSecret: required('SERVICE_ACCOUNT_SECRET'),
 });
 
 // Validates the whole tree (throws with every error at once).

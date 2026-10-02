@@ -146,7 +146,8 @@ Other parts:
   inside the 2-hour session.
 - **`npm ci --ignore-scripts`** and actions pinned to commit SHAs. This limits
   which third-party code runs in a job that can assume an `AdministratorAccess`
-  role.
+  role. Confirm once that your toolchain runs without install scripts (`tsx`, via
+  esbuild, does in current versions).
 - A `workflow_dispatch` from any branch other than `main` cannot assume the
   roles. That is intended.
 
@@ -165,7 +166,7 @@ validates the tree with `resolveEnvironment`, reads the current state with
 - it reports, and fails on, an operational `networkTier` that the management
   environment's stored tier would override.
 
-Cloud-agent initialization is not previewed. The preview step is skipped for
+Cloud-agent initialization, secrets and CI/CD profiles are not previewed. The preview step is skipped for
 pull requests from forks and from Dependabot, which do not receive repository
 secrets.
 
