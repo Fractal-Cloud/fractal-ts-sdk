@@ -25,9 +25,10 @@ published version. `only` selects agents by `{environment, tier, provider, accou
 throws with the failing step's message. OCI and Hetzner agents, a selection matching nothing, a
 partial static AWS set and mixed static/federated static credentials are refused before any
 request is sent. `providerCredentials` is optional, per provider too, and is sent as the
-`initialize` headers, but the control plane's update endpoint does not read them yet. It updates with the credentials it
-already holds, so an environment initialized with short-lived inline credentials can fail its
-update at the first step that needs them. Writes no environment, and changes nothing about
+`initialize` headers. **The control plane's update endpoint does not read them yet**: it
+updates with the credentials it already holds, so an environment initialized with short-lived
+inline credentials (a CI job's assumed role or OIDC token) fails its update at the first step that
+needs them, until the endpoint accepts credentials. Writes no environment, and changes nothing about
 `deploy`.
 
 ### Added — **`DnsZone.providers`: choose which clouds host an environment's DNS zone**
