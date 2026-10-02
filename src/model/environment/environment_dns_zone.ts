@@ -1,6 +1,6 @@
 /**
  * environment/environment_dns_zone.ts — one DNS zone of an environment, with
- * a result per provider hosting it.
+ * a result per agent hosting it.
  */
 import type {DnsZoneProviderResult} from './dns_zone_provider_result';
 
@@ -13,11 +13,12 @@ export type EnvironmentDnsZone = {
   name: string;
   /** `false` once the environment no longer declares the zone. */
   declared: boolean;
-  /** Why no provider is assigned to a declared zone (e.g. the environment has
-   *  agents for several DNS providers and the zone names none); `null` when a
-   *  provider is assigned or the zone is no longer declared. */
+  /** Why a declared zone is not hosted exactly as declared (a selected agent
+   *  the environment does not have or that does not host DNS zones, DNSSEC that
+   *  several agents cannot honor); `null` when it is, or the zone is no longer
+   *  declared. */
   unassignedReason: string | null;
-  /** One entry per provider: each assigned provider first, then any other
-   *  provider that still reports a copy of the zone. */
+  /** One entry per agent: each assigned agent first, then any other agent that
+   *  still reports a copy of the zone. */
   results: DnsZoneProviderResult[];
 };

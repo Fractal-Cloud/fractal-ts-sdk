@@ -435,31 +435,45 @@ Things to know:
 
 ### Reading DNS zone results
 
-Zones declared with `withDnsZones` are realized by the environment's cloud agents,
-in the account / project / subscription of the environment that declares them.
-`providers` chooses which of the environment's clouds host a zone; omitted, every
-AWS / GCP / Azure agent of the environment hosts its own copy, with the same records:
+Zones declared with `withDnsZones` are realized by the environment's agents, in the
+account / project / subscription of the environment that declares them. You do not
+choose where: every agent of the environment that hosts DNS zones hosts its own
+copy, with the same records.
 
 ```ts
-mgmt.withDnsZones([
-  {name: 'fractal.cloud'}, // every agent of the environment
-  {name: 'internal.fractal.cloud', providers: ['GCP'], dnssec: 'required'},
-]);
+mgmt
+  .withAwsCloudAgent({region: 'eu-central-1', organizationId: ORG_ID, accountId: ACCOUNT})
+  .withDnsZones([{name: 'fractal.cloud'}, {name: 'yanchware.com'}]);
 ```
 
-- Selecting a cloud the environment has no agent (or, on an operational
-  environment, no account) for is refused when the tree is resolved, and again by
-  the control plane. Removing a cloud from `providers` tears that cloud's copy down.
-- A zone is never signed by more than one provider (multi-signer DNSSEC, RFC 8901,
-  is not supported): `dnssec: 'required'` needs a single host; `'optional'` on
-  several hosts is served unsigned, and a zone already signed by one provider is not
-  copied to another while it reports a DS record (remove the DS at the registrar and
-  set `'disabled'` first). Each zone's `unassignedReason` says when this applies.
-- `dnsZoneType` is deprecated: it still selects a single provider when `providers`
-  is not set.
+Which agents host DNS zones is what each agent declares to the control plane, so a
+new kind of agent hosts them as soon as it says it can, with no SDK change.
+
+To narrow a zone to some of the environment's agents, list them in `agents` — the
+declared agent itself, or its id (`aws`, `gcp`, `azure`, see `agentIdOf`; an agent
+bound by name, such as an ARIA agent, is `{type}:{shortName}`, e.g. `aria:caas-k8s`):
+
+```ts
+const gcp: CloudAgent = {provider: 'GCP', region: 'europe-west1', organizationId: ORG_ID, projectId: 'mgmt'};
+mgmt
+  .withCloudAgent(gcp)
+  .withDnsZones([{name: 'internal.fractal.cloud', agents: [gcp], dnssec: 'required'}]);
+```
+
+- Selecting an agent object the environment does not declare, an empty `agents`,
+  or text that is not an agent id is refused when the tree is resolved; selecting an
+  agent the environment does not have, or one that does not host DNS zones, is
+  refused by the control plane. Removing an agent from `agents` tears its copy down.
+- A zone is never signed by more than one agent (multi-signer DNSSEC, RFC 8901, is
+  not supported): `dnssec: 'required'` needs a single host; `'optional'` on several
+  hosts is served unsigned, and a zone already signed by one agent is not copied to
+  another while it reports a DS record (remove the DS at the registrar and set
+  `'disabled'` first). Each zone's `unassignedReason` says when this applies.
+- `dnsZoneType` is deprecated: it still selects a single agent when `agents` is not
+  set.
 
 `cloud.environments.dnsZones(id)` reads what the agents reported: per zone, one
-result per provider hosting it, with the name servers and DS records a registrar needs to
+result per agent hosting it, with the name servers and DS records a registrar needs to
 delegate the domain.
 
 ```ts
@@ -470,9 +484,9 @@ const dns = await cloud.environments.dnsZones({
 });
 for (const zone of dns?.zones ?? []) {
   for (const r of zone.results) {
-    // r.provider: 'AWS' | 'GCP' | 'Azure'; r.status: 'Pending' | 'Realizing' |
-    // 'Active' | 'Failed' | 'Deleting' | 'ManualOverride'
-    console.log(zone.name, r.provider, r.status, r.zoneId);
+    // r.agent: 'aws', 'aria:caas-k8s', ...; r.provider: its type ('AWS', ...);
+    // r.status: 'Pending' | 'Realizing' | 'Active' | 'Failed' | 'Deleting' | 'ManualOverride'
+    console.log(zone.name, r.agent, r.status, r.zoneId);
     console.log('  NS', r.nameServers.join(' '));
     for (const ds of r.dsRecords) {
       console.log('  DS', ds.keyTag, ds.algorithm, ds.digestType, ds.digest);
@@ -483,14 +497,14 @@ for (const zone of dns?.zones ?? []) {
 
 - `null` means the environment does not exist; an environment without zones
   returns `{zones: [], problems: []}`.
-- A provider the zone is assigned to that has not reported yet is listed with
+- An agent the zone is assigned to that has not reported yet is listed with
   status `Pending` and empty outputs. A result with `assigned: false` is a copy the
   environment no longer assigns there (held, or being torn down).
 - `dsRecords` stays empty for a zone that is not signed. `outputs` carries every
   field the agent reported, including provider-specific ones.
 - `unassignedReason` says why a declared zone is not hosted exactly as
-  declared (a selected cloud without an agent, or DNSSEC that several providers
-  cannot honor); `problems` lists declaration entries the control
+  declared (a selected agent that is missing or does not host DNS zones, or DNSSEC
+  that several agents cannot honor); `problems` lists declaration entries the control
   plane could not use (unreadable, or a name declared twice), and any output field
   an agent reported malformed — that field is left empty on its result rather than
   failing the whole read.
