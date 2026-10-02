@@ -45,7 +45,7 @@ const DEFAULT_SESSION_SECONDS = 3600;
 const ROLE_ARN_RE =
   /^arn:(aws(?:-cn|-us-gov)?):iam::(\d{12}):role\/[\w+=,.@/-]+$/;
 const WIF_PROVIDER_RE =
-  /^projects\/\d+\/locations\/global\/workloadIdentityPools\/[^/]+\/providers\/[^/]+$/;
+  /^projects\/\d+\/locations\/global\/workloadIdentityPools\/[a-z0-9-]+\/providers\/[a-z0-9-]+$/;
 const ACCOUNT_RE = /^\d{12}$/;
 const JOB_CLOUDS: readonly ProviderType[] = ['AWS', 'GCP', 'AZURE'];
 

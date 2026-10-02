@@ -649,7 +649,8 @@ Either way, the resolver:
   `##vso[task.setsecret]`) before returning it, and never logs one;
 - **refuses** an AWS account, GCP project or Azure subscription the configuration
   does not name, a region outside the role's partition, and, with
-  `environments: [...]` (full ids, or short names under any owner), an
+  `environments: [...]` (prefer full ids, `Organizational/<ownerId>/<shortName>`; a bare
+  short name matches under any owner), an
   environment outside the list: the deploy fails rather than handing credentials
   to the wrong target;
 - fails on a secret of its own cloud the job was not given, naming the variable.
