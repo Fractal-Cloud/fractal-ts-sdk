@@ -63,15 +63,16 @@ export type DnsZone = {
  *
  * - `{accessKeyId, secretAccessKey, sessionToken}` — works. This is what
  *   `aws-actions/configure-aws-credentials` (or any `sts:AssumeRole`) produces.
- * - `{accessKeyId, secretAccessKey}` without `sessionToken` — sent, but NOT used
- *   as inline credentials: the server falls back to a credential it already
- *   holds for the environment (or its management environment), if any.
+ * - `{accessKeyId, secretAccessKey}` without `sessionToken` (or any other partial
+ *   set) — REFUSED by the SDK before anything is sent. The server would not use
+ *   it as inline credentials and would silently fall back to a credential it
+ *   already holds, i.e. act as a different identity than the one supplied.
  * - `{roleArn, webIdentityToken}` — sent as `X-AWS-Role-Arn` /
  *   `X-AWS-Web-Identity-Token`, which the server currently ignores. Exchange the
  *   token yourself (`sts:AssumeRoleWithWebIdentity`) and pass the resulting
  *   three-part session credentials instead.
  *
- * The SDK logs a `WARN` line for the two variants that are not honored.
+ * The SDK logs a `WARN` line for the web-identity variant.
  */
 export type AwsCredentials =
   | {accessKeyId: string; secretAccessKey: string; sessionToken?: string}

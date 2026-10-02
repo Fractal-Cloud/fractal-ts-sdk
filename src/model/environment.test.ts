@@ -312,3 +312,20 @@ describe('environment parameters — key case', () => {
     expect(() => resolveEnvironment(tree)).toThrow(/would be ignored/);
   });
 });
+
+describe('mergeEnvironmentParameters — undefined is not a declaration', () => {
+  it('keeps the stored value of a key declared undefined', () => {
+    expect(
+      mergeEnvironmentParameters(
+        {networkTier: 'prod', other: 1},
+        {networkTier: undefined, NetworkTIER: undefined, other: undefined},
+      ),
+    ).toEqual({networkTier: 'prod', other: 1});
+  });
+
+  it('only null removes', () => {
+    expect(
+      mergeEnvironmentParameters({a: 1, b: 2}, {a: null, b: undefined}),
+    ).toEqual({b: 2});
+  });
+});

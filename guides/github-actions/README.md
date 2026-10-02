@@ -129,8 +129,8 @@ Other parts:
   environment's agent is initialized, and the function returns the job's three
   values (`accessKeyId`, `secretAccessKey`, `sessionToken`). **All three are
   required**: the API uses AWS credentials as inline credentials only when the
-  session token is present too. Without it they are ignored, and the SDK logs a
-  `WARN`. If the function is asked about an environment the job holds no
+  session token is present too, so the SDK refuses a partial set before sending
+  it. If the function is asked about an environment the job holds no
   credentials for, it fails naming the job to run first.
 - **`agentInit: 'wait'`.** The control plane refuses an operational
   initialization until the management one has Completed. `wait` makes each job end
