@@ -8,6 +8,7 @@ import {
   OperationalEnvironment,
   resolveEnvironment,
   type DnsZone,
+  type DnsZoneHostProvider,
 } from './environment/index';
 
 const OWNER = '2e114308-14ec-4d77-b610-490324fa1844';
@@ -38,9 +39,24 @@ describe('DNS zone providers', () => {
     ).not.toThrow();
   });
 
+  it('reads the deprecated dnsZoneType as a single provider', () => {
+    for (const hint of ['gcp', 'CloudDns', 'NetworkAndCompute.PaaS.GcpDnsZone']) {
+      expect(() =>
+        resolveEnvironment(mgmt().withDnsZones([zone({dnssec: 'required', dnsZoneType: hint})])),
+      ).not.toThrow();
+    }
+  });
+
+  it('sends a copy of the selection', () => {
+    const providers: DnsZoneHostProvider[] = ['GCP'];
+    const {management} = resolveEnvironment(mgmt().withDnsZones([zone({providers})]));
+    providers.push('Azure');
+    expect(management.parameters.dnsZones).toEqual([{name: 'fractal.cloud', providers: ['GCP']}]);
+  });
+
   it('refuses a provider the environment has no agent for', () => {
     expect(() => resolveEnvironment(mgmt().withDnsZones([zone({providers: ['AWS']})]))).toThrow(
-      /Management environment: DNS zone 'fractal.cloud' selects AWS.*no AWS agent/s,
+      /Management environment: DNS zone 'fractal.cloud' selects AWS.*no AWS agent or cloud account/s,
     );
   });
 

@@ -12,6 +12,32 @@ const HOSTS: readonly DnsZoneHostProvider[] = ['AWS', 'GCP', 'Azure'];
 const hostOf = (provider: string): DnsZoneHostProvider | undefined =>
   HOSTS.find(h => h.toUpperCase() === provider.toUpperCase());
 
+const HINT_ALIASES: Readonly<Record<string, DnsZoneHostProvider>> = {
+  aws: 'AWS',
+  route53: 'AWS',
+  gcp: 'GCP',
+  clouddns: 'GCP',
+  azure: 'Azure',
+  azuredns: 'Azure',
+};
+
+/**
+ * The single host a deprecated `dnsZoneType` names, as the control plane reads it:
+ * a provider name or alias, or an offer type whose name starts with a provider
+ * (`NetworkAndCompute.PaaS.AwsRoute53HostedZone`). `undefined` when it names none.
+ */
+const hostOfHint = (hint: string): DnsZoneHostProvider | undefined => {
+  const trimmed = hint.trim();
+  const aliased = HINT_ALIASES[trimmed.toLowerCase()];
+  if (aliased !== undefined) {
+    return aliased;
+  }
+  const offer = trimmed.slice(trimmed.lastIndexOf('.') + 1).toLowerCase();
+  return HOSTS.find(
+    h => offer.length > h.length && offer.startsWith(h.toLowerCase()),
+  );
+};
+
 /**
  * Errors for `zones` declared on an environment whose agents (or operational
  * cloud accounts) are of `agentProviders`, each prefixed with `label`.
@@ -28,6 +54,14 @@ export const validateDnsZoneProviders = (
   for (const zone of zones) {
     const at = `${label}: DNS zone '${zone.name}'`;
     let hosts: readonly DnsZoneHostProvider[] = available;
+    if (zone.providers === undefined && zone.dnsZoneType?.trim()) {
+      // Deprecated single-provider hint; the control plane reports one that
+      // names no provider, so only a recognized one narrows the hosts here.
+      const hinted = hostOfHint(zone.dnsZoneType);
+      if (hinted !== undefined) {
+        hosts = available.filter(h => h === hinted);
+      }
+    }
     if (zone.providers !== undefined) {
       if (zone.providers.length === 0) {
         errors.push(`${at}: providers is empty; omit it to use every agent.`);
@@ -48,7 +82,8 @@ export const validateDnsZoneProviders = (
       const missing = selected.filter(h => !available.includes(h));
       if (missing.length > 0) {
         errors.push(
-          `${at} selects ${missing.join(', ')}, but the environment has no ${missing.join(' or ')} agent.`,
+          `${at} selects ${missing.join(', ')}, but the environment has no ` +
+            `${missing.join(' or ')} agent or cloud account.`,
         );
       }
       hosts = selected.filter(h => available.includes(h));

@@ -60,7 +60,9 @@ export type DnsZone = DnsZoneGuardrails & {
   /**
    * Which of the environment's clouds host the zone, each with its own copy and
    * the same records. Omitted: every AWS / GCP / Azure agent of the environment.
-   * Naming a cloud the environment has no agent (or account) for is refused.
+   * Naming a cloud the environment has no agent (or account) for is refused;
+   * repeating one is harmless. An environment with no such cloud hosts the zone
+   * nowhere, and `environments.dnsZones()` reports it as unassigned.
    * A zone is never signed by more than one provider (multi-signer DNSSEC is not
    * supported): `dnssec: 'required'` needs a single host, and `'optional'` on
    * several hosts is served unsigned.

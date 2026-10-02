@@ -438,7 +438,9 @@ const buildParameters = (
     parameters.tags = {...common.tags};
   }
   if (common.dnsZones.length > 0) {
-    parameters.dnsZones = common.dnsZones.map(z => ({...z}));
+    parameters.dnsZones = common.dnsZones.map(z =>
+      z.providers === undefined ? {...z} : {...z, providers: [...z.providers]},
+    );
   }
   return parameters;
 };

@@ -457,8 +457,9 @@ mgmt.withDnsZones([
   set `'disabled'` first). Each zone's `unassignedReason` says when this applies.
 - `dnsZoneType` is deprecated: it still selects a single provider when `providers`
   is not set.
-`cloud.environments.dnsZones(id)` reads what they reported: per zone, one result per
-provider hosting it, with the name servers and DS records a registrar needs to
+
+`cloud.environments.dnsZones(id)` reads what the agents reported: per zone, one
+result per provider hosting it, with the name servers and DS records a registrar needs to
 delegate the domain.
 
 ```ts
@@ -487,8 +488,9 @@ for (const zone of dns?.zones ?? []) {
   environment no longer assigns there (held, or being torn down).
 - `dsRecords` stays empty for a zone that is not signed. `outputs` carries every
   field the agent reported, including provider-specific ones.
-- `unassignedReason` says why a declared zone is not hosted exactly as declared (a
-  selected cloud without an agent, or DNSSEC that several providers cannot honor); `problems` lists declaration entries the control
+- `unassignedReason` says why a declared zone is not hosted exactly as
+  declared (a selected cloud without an agent, or DNSSEC that several providers
+  cannot honor); `problems` lists declaration entries the control
   plane could not use (unreadable, or a name declared twice), and any output field
   an agent reported malformed — that field is left empty on its result rather than
   failing the whole read.
