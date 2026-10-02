@@ -476,3 +476,70 @@ describe("the stored order of an environment's agents", () => {
     expect(agents.map(a => a.provider)).toEqual(['AWS', 'GCP', 'AZURE']);
   });
 });
+
+describe('updateAgents in a per-cloud job', () => {
+  const updated = () =>
+    h.requests
+      .filter(r => r.url.endsWith('/update'))
+      .map(r => {
+        const p = new URL(r.url).pathname.split('/');
+        return `${p[4]}/${p[6]}`;
+      });
+
+  it('updates its own cloud, skips the others with a notice, and sends its credentials', async () => {
+    const {notices, reporter} = recordingReporter();
+    const result = await cloud.environments.updateAgents(threeClouds(), {
+      quiet: true,
+      providerCredentials: holding('GCP'),
+      reporter,
+    });
+    expect(updated()).toEqual(['mgmt/gcp']);
+    const sent = h.requests.find(r => r.url.endsWith('/gcp/update'))!;
+    expect(sent.headers['X-GCP-Federated-Token']).toBe('fixture-federated-token');
+    expect(result.started.map(a => a.provider)).toEqual(['GCP']);
+    expect(result.skipped.map(s => [s.provider, s.reason])).toEqual([
+      ['AWS', 'missing-credentials'],
+      ['AZURE', 'missing-credentials'],
+    ]);
+    expect(notices).toEqual([
+      expect.stringMatching(/Skipped the AWS agent of .*mgmt.*no AWS credentials/),
+      expect.stringMatching(/Skipped the AZURE agent/),
+    ]);
+  });
+
+  it('sends AWS web-identity credentials as X-AWS-Role-Arn / X-AWS-Web-Identity-Token', async () => {
+    await cloud.environments.updateAgents(threeClouds(), {
+      quiet: true,
+      providerCredentials: r => {
+        if (r.provider !== 'AWS') {
+          throw new ProviderCredentialsNotConfigured(r.provider, r.environment);
+        }
+        return {
+          aws: {
+            roleArn: 'arn:aws:iam::111111111111:role/Deployer',
+            webIdentityToken: 'fixture-web-identity-token',
+          },
+        };
+      },
+    });
+    const sent = h.requests.find(r => r.url.endsWith('/aws/update'))!;
+    expect(sent.headers['X-AWS-Role-Arn']).toBe(
+      'arn:aws:iam::111111111111:role/Deployer',
+    );
+    expect(sent.headers['X-AWS-Web-Identity-Token']).toBe(
+      'fixture-web-identity-token',
+    );
+  });
+
+  it('still fails on a refusal', async () => {
+    await expect(
+      cloud.environments.updateAgents(threeClouds(), {
+        quiet: true,
+        providerCredentials: () => {
+          throw new Error("AWS account '1' is not configured");
+        },
+      }),
+    ).rejects.toThrow(/not configured/);
+    expect(updated()).toEqual([]);
+  });
+});

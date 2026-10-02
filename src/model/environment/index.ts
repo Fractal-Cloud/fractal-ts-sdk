@@ -25,6 +25,9 @@ export type * from './environment_plan_action';
 export type * from './environment_plan_entry';
 export type * from './environment_plan';
 export {formatEnvironmentPlan, environmentPlanMarkdown} from './plan_rendering';
+export type * from './cloud_agent_target';
+export type * from './update_environment_agents_options';
+export type * from './environment_update_result';
 // Exposed so a caller can predict exactly what a deploy will write.
 export {mergeEnvironmentParameters} from './service';
 // Thrown by a providerCredentials resolver for a cloud this run holds no
