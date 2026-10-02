@@ -1171,7 +1171,9 @@ describe('cloud.environments.deploy() — per-environment credentials', () => {
       organizationId: ORG,
       accountId: '111111111111',
     };
-    const refused = new Error('HTTP 400: credentials not accepted');
+    const withStatus = (message: string, status?: number) =>
+      Object.assign(new Error(message), status === undefined ? {} : {status});
+    const refused = withStatus('HTTP 400: credentials not accepted', 400);
     const err = await withVersionHint(
       agent,
       {aws: {accessKeyId: 'AKIA-LONG', secretAccessKey: 'long-lived-secret'}},
@@ -1179,17 +1181,28 @@ describe('cloud.environments.deploy() — per-environment credentials', () => {
     ).catch((e: Error) => e);
     // Same error object, so `instanceof FractalApiError` and its fields survive.
     expect(err).toBe(refused);
-    expect(err.message).toMatch(/without a session token .*fractal-environments v3\.32\.0/);
+    expect(err.message).toMatch(
+      /without a session token .*fractal-environments v3\.32\.0/,
+    );
     const web = await withVersionHint(
       agent,
       {aws: {roleArn: 'arn:aws:iam::111111111111:role/r', webIdentityToken: 'jwt'}},
-      Promise.reject(new Error('HTTP 400')),
+      Promise.reject(withStatus('HTTP 400', 400)),
     ).catch((e: Error) => e);
     expect(web.message).toMatch(/web-identity .*v3\.32\.0/);
+    // Not a refusal: a server error or a network failure gets no hint.
+    for (const other of [withStatus('HTTP 503', 503), withStatus('ECONNRESET')]) {
+      const e = await withVersionHint(
+        agent,
+        {aws: {accessKeyId: 'AKIA-LONG', secretAccessKey: 'long-lived-secret'}},
+        Promise.reject(other),
+      ).catch((x: Error) => x);
+      expect(e.message).not.toMatch(/v3\.32\.0/);
+    }
     const session = await withVersionHint(
       agent,
       {aws: {accessKeyId: 'ASIA', secretAccessKey: 's', sessionToken: 't'}},
-      Promise.reject(new Error('HTTP 400')),
+      Promise.reject(withStatus('HTTP 400', 400)),
     ).catch((e: Error) => e);
     expect(session.message).toBe('HTTP 400');
   });

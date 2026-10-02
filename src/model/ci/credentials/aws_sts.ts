@@ -105,11 +105,10 @@ const call = async (
     Version: STS_VERSION,
     ...params,
   }).toString();
-  const base = {
+  const headers = {
     'content-type': 'application/x-www-form-urlencoded; charset=utf-8',
     accept: 'application/json',
   };
-  const headers = base;
   let res: Response;
   try {
     res = await fetchFn(url, {method: 'POST', headers, body});

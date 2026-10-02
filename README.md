@@ -410,7 +410,8 @@ Things to know:
 - **AWS credentials** are a session (`accessKeyId`, `secretAccessKey`,
   `sessionToken`), long-lived keys (`accessKeyId`, `secretAccessKey`, sent as they
   are), or web identity (`roleArn`, `webIdentityToken`, which the control plane
-  exchanges itself). The last two need fractal-environments v3.32.0 or later. A set
+  exchanges itself). The last two need fractal-environments v3.32.0 or later: an
+  older control plane may ignore them and use AWS credentials it already holds. A set
   missing a key, or with an empty `sessionToken`, is refused before anything is
   sent.
 - **Order.** Management is initialized first, then each operational environment.

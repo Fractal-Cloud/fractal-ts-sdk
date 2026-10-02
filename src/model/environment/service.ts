@@ -430,7 +430,7 @@ export const partialAwsCredentials = (
     return `AWS credentials must carry accessKeyId and secretAccessKey; missing: ${missing.join(', ')}.`;
   }
   if ('sessionToken' in c && !hasKey(c, 'sessionToken')) {
-    return 'AWS credentials must carry accessKeyId and secretAccessKey, and a sessionToken only when it is set; empty: sessionToken.';
+    return 'AWS credentials must carry accessKeyId and secretAccessKey, and a sessionToken only when it is set; unset or empty: sessionToken.';
   }
   return null;
 };
@@ -696,9 +696,13 @@ const failureMessage = (provider: string, run: InitializationRun): string => {
 type AgentInitOutcome = 'Completed' | 'NotCompleted' | 'Held' | 'NoCredentials';
 
 /**
- * Add, to a refused request that carried credentials only a newer control plane
- * accepts, which version that is. The error keeps its type and fields (callers
- * branch on `FractalApiError`); only its message gains the hint.
+ * Add, to a request REFUSED (4xx) while it carried credentials only a newer
+ * control plane accepts, which version that is. Server errors and network
+ * failures are left alone. The error keeps its type and fields (callers branch
+ * on `FractalApiError`); only its message gains the hint, a constant that holds
+ * no credential. An older control plane may also ACCEPT such a request and use
+ * credentials it already holds instead, which no error can reveal: deploy
+ * fractal-environments v3.32.0 before relying on these shapes.
  */
 export const withVersionHint = async <T>(
   agent: CloudAgent,
@@ -710,10 +714,21 @@ export const withVersionHint = async <T>(
   } catch (err) {
     const shape =
       agent.provider === 'AWS' ? awsCredentialsNeedingV332(credentials) : null;
-    if (shape !== null && err instanceof Error) {
-      err.message +=
-        ` The control plane accepts ${shape} from fractal-environments v3.32.0 on; ` +
-        'an older one refuses them.';
+    const status = (err as {status?: unknown} | null)?.status;
+    if (
+      shape !== null &&
+      err instanceof Error &&
+      typeof status === 'number' &&
+      status >= 400 &&
+      status < 500
+    ) {
+      try {
+        err.message +=
+          ` The control plane accepts ${shape} from fractal-environments v3.32.0 on; ` +
+          'if it runs an older version, that may be why it refused them.';
+      } catch {
+        // A frozen error keeps its own message.
+      }
     }
     throw err;
   }

@@ -11,10 +11,12 @@ of truth for what is on npm.
 
 ## Unreleased
 
-**Requires fractal-environments v3.32.0 or later** for AWS long-lived keys and for
-AWS web identity exchanged by the control plane (now the `credentialsFromCi`
-default). An older control plane refuses them, and the SDK's error says so;
-`exchange: 'sdk'` keeps working against it.
+**Deploy fractal-environments v3.32.0 or later first.** AWS long-lived keys and AWS
+web identity exchanged by the control plane (now the `credentialsFromCi` default)
+need it. An older control plane may refuse them (the SDK's error then names the
+version) or **ignore them and use AWS credentials it already holds** for the
+environment, which no error reveals. Against an older one, use session credentials
+or `exchange: 'sdk'`.
 
 ### Changed — **AWS long-lived keys are sent as they are**
 
