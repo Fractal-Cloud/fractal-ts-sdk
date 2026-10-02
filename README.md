@@ -415,9 +415,10 @@ Things to know:
   Exchange a GitHub OIDC token for session credentials first, as above.
 - **Order.** Management is initialized first, then each operational environment.
   With `agentInit: 'wait'` each initialization is awaited before the next starts.
-  With the default `fire-and-forget`, a deploy that has just started the management
-  initialization stops with an error before the operational ones, naming
-  `agentInit: 'wait'`; re-running once management is initialized continues.
+  With the default `fire-and-forget`, an operational agent whose management agent
+  has not completed yet is skipped with a notice and left for a later run (see
+  [Deploy from CI](#deploy-from-ci)); `pendingManagement: 'fail'` throws instead,
+  naming `agentInit: 'wait'`.
 - **Parameters merge on update.** The API replaces an environment's parameters
   wholesale on update, so a deploy starts from what the server holds and writes
   only the keys this tree declares (agents, tags, DNS zones, `withNetworkTier`,
@@ -432,6 +433,46 @@ Things to know:
   an operational tier that a tier STORED on the management environment would
   override is refused at deploy time, before the operational environment is
   written.
+
+### Updating cloud agents
+
+An agent initialized before a permission was added to its role does not get that
+permission from a deploy: its initialization is `Completed`, so nothing is sent.
+`reinitializeAgents` re-runs the whole initialization. An **update** is smaller. The
+control plane re-runs the agent's role and permission steps, refreshes its
+credential mirror and compute, and redeploys it on the latest published version:
+
+```ts
+await cloud.environments.updateAgents(management, {
+  // Optional: which agents to update. Default: every agent the tree declares.
+  // Receives {environment, tier, provider, accountId, region}.
+  only: ({environment, provider}) =>
+    environment.shortName === 'mgmt' && provider === 'AWS',
+  // 'wait' polls each update to Completed (or throws with the failing step).
+  agentUpdate: 'wait',
+});
+```
+
+- **Calls** `POST /environments/{type}/{ownerId}/{shortName}/initializer/{aws|azure|gcp}/update`
+  per agent: management environment first, then each operational one. The request
+  has no body and is answered `202`. The run is then read from the same `.../status`
+  endpoint initialization uses.
+- **Writes no environment.** Deploy first if the tree changed.
+- **AWS, Azure and GCP only.** Selecting an OCI or Hetzner agent is refused before any
+  request is sent. The control plane refuses (`400`) an agent that was never
+  initialized, one that is already updating, and a provider with no published
+  agent version.
+- **One agent at a time.** A refusal or failure stops the call there. Agents before
+  it stay updated, and the ones after it are not started.
+- **`providerCredentials`** (an object or a resolver, as for `deploy`) is optional,
+  and so is each provider in it. Credentials given for an agent's provider are sent
+  as the same headers `initialize` uses. An agent whose provider gets none is updated
+  without them. **The control plane's update endpoint does not read these headers
+  today.** It updates with the credentials it already holds for the environment. An
+  environment initialized with short-lived inline credentials (a CI job's assumed
+  role, an OIDC token) may hold none by then, and its update fails at the first step
+  that needs them. Under `agentUpdate: 'wait'` that failure is reported with the
+  step's message.
 
 ### Reading DNS zone results
 
@@ -515,6 +556,185 @@ for (const zone of dns?.zones ?? []) {
   environment.
 
 ---
+
+## Deploy from CI
+
+The SDK carries the CI plumbing an environments-as-code repository would
+otherwise write itself: minting the job's OIDC token, exchanging it per cloud,
+masking secrets, annotating the run and writing its summary. It sits behind two
+CI-agnostic ports, `CiIdentity` (OIDC tokens) and `CiReporter` (notice, warning,
+error, mask, step summary), with adapters for **GitHub Actions** and **Azure
+DevOps** and a local fallback. `detectCi()` picks the adapter from the
+environment; any other CI can supply its own two adapters.
+
+**One job per cloud.** Every job runs the same script over the whole tree, but
+holds the credentials of **one** cloud only (`cloud`). The deploy initializes that
+cloud's agents and skips every other cloud's with a notice; their own job
+initializes them. No job ever holds another cloud's credentials. Run the jobs one
+after another, since each writes the environments.
+
+```ts
+// deploy.ts — the same script in every job
+import {createFractalCloudClient, credentialsFromCi, detectCi, environmentPlanMarkdown} from '@fractal_cloud/sdk';
+import {trees} from './environments';
+
+const ci = detectCi();
+const cloud = createFractalCloudClient({
+  clientId: process.env.FRACTAL_CLIENT_ID!,
+  clientSecret: process.env.FRACTAL_CLIENT_SECRET!,
+});
+const providerCredentials = credentialsFromCi(ci, {
+  cloud: ci.variable('FRACTAL_CLOUD'), // 'aws' | 'gcp' | 'azure', set per job
+  aws: [{roleArn: 'arn:aws:iam::111111111111:role/FractalDeployer'}], // one per account
+  gcp: {
+    serviceAccountEmail: 'deployer@my-project.iam.gserviceaccount.com',
+    workloadIdentityProvider: 'projects/123/locations/global/workloadIdentityPools/ci/providers/github',
+    projectIds: ['my-project'],
+  },
+  azure: {clientId: '<app registration client id>', subscriptionIds: ['<subscription id>']},
+});
+
+const plan = await cloud.environments.plan(trees);
+ci.reporter.appendSummary(environmentPlanMarkdown(plan));
+for (const tree of trees) {
+  await cloud.environments.deploy(tree, {providerCredentials, reporter: ci.reporter});
+}
+```
+
+```yaml
+# .github/workflows/deploy.yml — GitHub Actions
+on: {push: {branches: [main]}}
+permissions: {contents: read}
+jobs:
+  deploy:
+    strategy: {max-parallel: 1, fail-fast: false, matrix: {cloud: [aws, gcp, azure]}}
+    runs-on: ubuntu-latest
+    environment: fractal-${{ matrix.cloud }} # protected, main only; each cloud trusts its own subject
+    permissions: {id-token: write, contents: read}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 24}
+      - run: npm ci && npx tsx deploy.ts
+        env:
+          FRACTAL_CLOUD: ${{ matrix.cloud }}
+          FRACTAL_CLIENT_ID: ${{ secrets.FRACTAL_CLIENT_ID }}
+          FRACTAL_CLIENT_SECRET: ${{ secrets.FRACTAL_CLIENT_SECRET }}
+```
+
+```yaml
+# azure-pipelines.yml — Azure DevOps: one job per cloud, one after another
+trigger: [main]
+pool: {vmImage: ubuntu-latest}
+parameters:
+  - name: clouds
+    type: object
+    default: [{cloud: aws}, {cloud: gcp, after: deploy_aws}, {cloud: azure, after: deploy_gcp}]
+jobs:
+  - ${{ each c in parameters.clouds }}:
+      - deployment: deploy_${{ c.cloud }}
+        environment: fractal-${{ c.cloud }} # approvals and checks
+        ${{ if c.after }}:
+          dependsOn: ${{ c.after }}
+          condition: not(canceled())
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                # AzureCLI@2 authorizes the workload-identity service connection for the job
+                # and exposes its id as AZURESUBSCRIPTION_SERVICE_CONNECTION_ID.
+                - task: AzureCLI@2
+                  inputs:
+                    azureSubscription: fractal-${{ c.cloud }}
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: npm ci && npx tsx deploy.ts
+                  env:
+                    FRACTAL_CLOUD: ${{ c.cloud }}
+                    SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+                    FRACTAL_CLIENT_ID: $(FRACTAL_CLIENT_ID)
+                    FRACTAL_CLIENT_SECRET: $(FRACTAL_CLIENT_SECRET)
+```
+
+Azure DevOps issues tokens for one audience only, `api://AzureADTokenExchange`, and
+the SDK uses it for every cloud there: a GCP workload identity provider or an AWS
+IAM OIDC provider trusting an Azure DevOps organization must accept that audience.
+
+### Credentials: OIDC (default) or CI secrets
+
+**OIDC is the default and the recommended choice**: the job proves who it is with
+a token minted for that one request, and no long-lived cloud secret exists to
+leak. Each cloud's identity should trust only its own job's subject (the GitHub
+environment, or the Azure DevOps service connection).
+
+| Cloud | OIDC (default) | Audience |
+|---|---|---|
+| AWS | `{roleArn}`, one entry per account. The SDK exchanges the token with `sts:AssumeRoleWithWebIdentity` for a session (`sessionDurationSeconds`, default 3600). `exchange: 'control-plane'` hands the token over instead, for a control plane that does the exchange. | `sts.amazonaws.com` |
+| GCP | `{serviceAccountEmail, workloadIdentityProvider, projectIds}` | `https://iam.googleapis.com/<provider>` |
+| Azure | `{clientId, subscriptionIds}` | `api://AzureADTokenExchange` |
+
+**CI secrets (the standard way)** are a first-class alternative, per cloud.
+`ciSecret('NAME')` reads a variable the job maps from the CI's protected secret
+store (scope the secrets to the cloud's protected environment, so each job only
+has its own) when the credential is about to be used:
+
+```ts
+credentialsFromCi(ci, {
+  cloud: ci.variable('FRACTAL_CLOUD'),
+  aws: {
+    accountId: '111111111111',
+    accessKeyId: ciSecret('AWS_ACCESS_KEY_ID'),
+    secretAccessKey: ciSecret('AWS_SECRET_ACCESS_KEY'),
+    sessionToken: ciSecret('AWS_SESSION_TOKEN'), // optional: long-lived keys become a session first
+  },
+  azure: {clientId: '<app id>', clientSecret: ciSecret('AZURE_CLIENT_SECRET'), subscriptionIds: ['<sub>']},
+  gcp: {serviceAccountKey: ciSecret('GCP_SERVICE_ACCOUNT_KEY'), projectIds: ['my-project']},
+});
+```
+
+Long-lived AWS keys are never sent: the SDK exchanges them for a short session
+with a signed `sts:GetSessionToken` first. OIDC and secrets mix freely, one per
+cloud.
+
+Either way, the resolver:
+
+- mints or reads credentials per initialize request, just in time, and only for
+  an agent that needs initializing;
+- masks every token and secret through the CI (`::add-mask::`,
+  `##vso[task.setsecret]`) before returning it, and never logs one;
+- **refuses** an AWS account, GCP project or Azure subscription the configuration
+  does not name, a region outside the role's partition, and, with
+  `environments: [...]` (prefer full ids, `Organizational/<ownerId>/<shortName>`; a bare
+  short name matches under any owner), an
+  environment outside the list: the deploy fails rather than handing credentials
+  to the wrong target;
+- fails on a secret of its own cloud the job was not given, naming the variable.
+
+### What a deploy does under fire-and-forget
+
+- Management environments first, then operational ones.
+- An agent of a cloud this job holds no credentials for is skipped with a notice
+  (`reason: 'missing-credentials'`), and the deploy goes on with the others.
+- An operational agent whose management agent has not completed its
+  initialization on that cloud is skipped with a notice (`'pending-management'`)
+  rather than failing the run; the operational environment is still written. The
+  next run after the management initialization completes picks it up, so a daily
+  scheduled run settles a new tree. `pendingManagement: 'fail'` throws instead.
+- The order of an environment's agents is not a change: a deploy keeps the stored
+  order when only the order differs, so it never flips between runs.
+- `deploy` resolves to `{started, completed, inProgress, skipped}`.
+- `environments.updateAgents(tree, {providerCredentials, reporter})` behaves the
+  same way in a per-cloud job: it updates the job's own cloud's agents, sending
+  the same credential headers as `initialize`, and skips the others with a
+  notice. It resolves to `{started, skipped}`.
+
+`cloud.environments.plan(trees)` previews the same decisions read-only: create
+(`+`), update (`~`, with the changed fields), unchanged (`=`, with the status and
+initialized clouds), or refused (`!`, an operational `networkTier` the stored
+management tier would override; `plan.refused` is then true).
+`formatEnvironmentPlan(plan)` renders it as lines, `environmentPlanMarkdown(plan)`
+as a step-summary section.
 
 ## Catalogue
 

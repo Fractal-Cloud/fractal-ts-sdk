@@ -11,6 +11,93 @@ of truth for what is on npm.
 
 ## Unreleased
 
+### Added — **`environments.updateAgents()`: update cloud agents without re-initializing them**
+
+An agent initialized before a permission was added to its role kept running without that
+permission. A deploy sends nothing for an agent whose initialization is `Completed`, and
+`reinitializeAgents` re-runs the whole initialization. `cloud.environments.updateAgents(tree,
+{only, agentUpdate, providerCredentials})` calls the control plane's
+`POST .../initializer/{aws|azure|gcp}/update` for each selected agent of the tree, management
+environment first. That re-runs the agent's role/permission steps and redeploys it on the latest
+published version. `only` selects agents by `{environment, tier, provider, accountId, region}`
+(the new `CloudAgentTarget`). `agentUpdate: 'wait'` polls each update through
+`.../status` and ignores the run as it was before the update. It logs in the wait-mode format and
+throws with the failing step's message. OCI and Hetzner agents, a selection matching nothing, a
+partial static AWS set and mixed static/federated static credentials are refused before any
+request is sent. `providerCredentials` is optional, per provider too, and is sent as the
+`initialize` headers, AWS web identity included. **Until the control plane's update endpoint reads them**, it
+updates with the credentials it already holds, so an environment initialized with short-lived
+inline credentials (a CI job's assumed role or OIDC token) fails its update at the first step that
+needs them, until the endpoint accepts credentials. Writes no environment, and changes nothing about
+`deploy`.
+
+`updateAgents` takes the same `reporter` as `deploy` and resolves to `{started, skipped}`: an
+agent whose resolver throws `ProviderCredentialsNotConfigured` (as `credentialsFromCi` does for
+every cloud but the job's own) is skipped with a notice, so one job per cloud updates its own
+cloud's agents.
+
+### Added — **the CI kit: deploy environments from CI without writing the plumbing**
+
+- Ports `CiIdentity` (`idToken(audience)`, optional `fixedAudience`) and
+  `CiReporter` (`notice`, `warning`, `error`, `mask`, `appendSummary`), composed
+  as a `Ci` with `variable(name)`.
+- Adapters: `githubActionsIdentity` / `githubActionsReporter`
+  (`ACTIONS_ID_TOKEN_REQUEST_URL` / `_TOKEN`, `::notice::`, `::add-mask::`,
+  `GITHUB_STEP_SUMMARY`), `azureDevOpsIdentity` / `azureDevOpsReporter`
+  (`POST $(System.OidcRequestUri)?api-version=7.1&serviceConnectionId=` with
+  `System.AccessToken`, `##vso[task.logissue]`, `##vso[task.setsecret]`,
+  `##vso[task.uploadsummary]`), and the local `consoleReporter` / `noCiIdentity`.
+  `detectCi()` picks them from the environment. Messages are escaped so they
+  cannot end or forge a CI command.
+- `credentialsFromCi(ci, {cloud, aws, gcp, azure, environments?})` returns a
+  `providerCredentials` resolver for **one job holding one cloud's
+  credentials**. OIDC is the default per cloud (AWS `{roleArn}` exchanged with
+  `sts:AssumeRoleWithWebIdentity`, or handed to the control plane with
+  `exchange: 'control-plane'`; GCP workload identity federation; Azure
+  federated credential), with the audience each cloud expects (or the CI's
+  fixed one). CI secrets are the alternative, read with `ciSecret('NAME')`:
+  AWS keys (long-lived ones become a session through a signed
+  `sts:GetSessionToken` first), an Azure client secret, a GCP key JSON. Tokens
+  are minted per request, everything secret is masked through the reporter,
+  and an account, project, subscription or environment the configuration does
+  not name is refused.
+- README: "Deploy from CI", with GitHub Actions and Azure DevOps per-cloud job
+  layouts.
+
+### Added — **`environments.plan(trees)`**
+
+A read-only preview of what `deploy` would create (`+`), update (`~`, with the
+changed fields), leave unchanged (`=`) or refuse (`!`: an operational
+`networkTier` the stored management tier would override). The order of an
+environment's agents is not a change. `formatEnvironmentPlan` and
+`environmentPlanMarkdown` render it as lines and as a step-summary section.
+
+### Changed — **a deploy skips the agents it cannot initialize, and says so**
+
+**What you may need to change.** A fire-and-forget deploy of a new tree used to
+fail before its operational agents; it now succeeds, skipping them with a notice
+(a `WARN` deploy-log line, or the `reporter`'s notice; nothing under `quiet`
+without a reporter). A caller that relied on that failure reads
+`result.skipped`, or passes `pendingManagement: 'fail'`.
+
+- A `providerCredentials` resolver that throws the new
+  `ProviderCredentialsNotConfigured` skips that agent with a notice and the
+  deploy continues with the other agents, so one job per cloud can each deploy
+  the whole tree. An operational agent of a cloud whose management agent was
+  skipped this way is skipped the same way, whatever `pendingManagement` says.
+  A skip notice is redacted like an error. Any other resolver error still fails the deploy, and so does a
+  resolver returning nothing.
+- Under `fire-and-forget`, an operational agent whose management agent has not
+  completed on that cloud is now **skipped with a notice** instead of throwing
+  (the operational environment itself is still written). `pendingManagement:
+  'fail'` restores the throw.
+- Notices go to the new `reporter` option (a `CiReporter`), or to the deploy log.
+- `environments.deploy` resolves to `{started, completed, inProgress, skipped}`
+  instead of `void`.
+- An environment whose stored agents differ from the declared ones only in order
+  is no longer rewritten; the stored order is kept, so it never flips between
+  runs.
+
 ### Added — **environment DNS zones are hosted by the environment's agents; `DnsZone.agents` optionally narrows them**
 
 `withDnsZones([{name}])` needs no selection: every agent of the environment that hosts DNS zones

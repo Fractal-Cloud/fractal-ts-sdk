@@ -34,6 +34,10 @@ export type {DeployOptions, ComponentState, LiveSystemState} from './service';
 // CI/CD profiles). Deploying them is `cloud.environments.deploy`.
 export * from './environment';
 
+// The CI kit: OIDC identity + reporter ports, GitHub Actions / Azure DevOps
+// adapters, and credentialsFromCi for one CI job's cloud.
+export * from './ci';
+
 // Component catalogue (abstract — vendor-agnostic)
 export * from './components/network_and_compute';
 export * from './components/storage';

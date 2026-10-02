@@ -20,7 +20,7 @@
  * HTTP unit tests; smoke against the live API before release.
  */
 import superagent from 'superagent';
-import {collectSecrets, send} from '../api-error';
+import {collectSecrets, redactSecrets, send} from '../api-error';
 import {
   apiUrl,
   authHeaders,
@@ -47,6 +47,12 @@ import type {DnsZoneProviderResult} from './dns_zone_provider_result';
 import type {EnvironmentDnsZone} from './environment_dns_zone';
 import type {EnvironmentDnsZones} from './environment_dns_zones';
 import {findParameter} from './parameters';
+import {keepStoredAgentOrder} from './agent_order';
+import {ProviderCredentialsNotConfigured} from './provider_credentials_not_configured';
+import type {DeployedAgent} from './deployed_agent';
+import type {EnvironmentDeployResult} from './environment_deploy_result';
+import type {SkippedAgent} from './skipped_agent';
+import type {CiReporter} from '../ci/ci_reporter';
 import type {CloudAgent} from './cloud_agents';
 import {
   resolveEnvironment,
@@ -75,6 +81,12 @@ export type DeployEnvironmentOptions = {
    * AWS: only three-part session credentials (`accessKeyId` + `secretAccessKey`
    * + `sessionToken`) are honored by the control plane today; see
    * {@link AwsCredentials}.
+   *
+   * A resolver that throws {@link ProviderCredentialsNotConfigured} declares that
+   * this run holds no credentials for that cloud: the agent is skipped with a
+   * notice and the deploy goes on with the others, so one CI job per cloud can
+   * each deploy the whole tree (see `credentialsFromCi`). Any other error, or a
+   * resolver returning nothing, fails the deploy.
    */
   providerCredentials?: ProviderCredentials | ProviderCredentialsResolver;
   /**
@@ -86,10 +98,23 @@ export type DeployEnvironmentOptions = {
    * until the management env's initialization for that provider has Completed, so
    * initializing a NEW tree (management + operational agents) in one run needs
    * `wait`. Under `fire-and-forget` the deploy starts the management
-   * initialization and then throws before any operational one, naming this
-   * option; re-running once the management env is initialized proceeds.
+   * initialization and skips each operational one with a notice (see
+   * `pendingManagement`); re-running once the management env is initialized
+   * proceeds.
    */
   agentInit?: 'wait' | 'fire-and-forget';
+  /**
+   * An operational agent whose management agent on the same cloud has not
+   * completed (so the control plane would refuse it): `skip` (default) leaves it
+   * for a later deploy with a notice; `fail` throws before sending anything.
+   * The operational environment itself is still created or updated.
+   */
+  pendingManagement?: 'skip' | 'fail';
+  /**
+   * Where notices about skipped agents go (a CI reporter, e.g. `ci.reporter`
+   * from `detectCi()`). Default: the deploy's own log lines.
+   */
+  reporter?: CiReporter;
   /**
    * Send `POST .../initialize` even when a stored initialization run already
    * reads `Completed`. Default `false` — every existing caller keeps today's
@@ -127,7 +152,7 @@ type InitializationStep = {
   status: string;
   lastOperationStatusMessage?: string;
 };
-type InitializationRun = {
+export type InitializationRun = {
   cloudProvider?: string;
   status: string;
   steps?: InitializationStep[];
@@ -156,7 +181,7 @@ const managementIdDto = (env: ResolvedEnvironment): EnvironmentIdDto | null =>
     ? null
     : idDto(env.managementId);
 
-const envUri = (
+export const envUri = (
   cfg: ApiConfig,
   env: ResolvedEnvironment,
   path = '',
@@ -346,7 +371,7 @@ const manageCiCdProfiles = async (
 };
 
 // ── cloud-agent initialization ─────────────────────────────────────────────────
-const providerPath: Record<CloudAgent['provider'], string> = {
+export const providerPath: Record<CloudAgent['provider'], string> = {
   AWS: 'aws',
   AZURE: 'azure',
   GCP: 'gcp',
@@ -354,17 +379,26 @@ const providerPath: Record<CloudAgent['provider'], string> = {
   HETZNER: 'hetzner',
 };
 
-const missingCreds = (provider: string): Error =>
+/** What a credential-bearing request is for, as error messages name it. */
+export type AgentOperation = 'initialization' | 'update';
+
+const missingCreds = (
+  provider: string,
+  operation: AgentOperation = 'initialization',
+): Error =>
   new Error(
-    `Cloud-agent initialization for ${provider} requires providerCredentials.${provider.toLowerCase()} but none were supplied.`,
+    `Cloud-agent ${operation} for ${provider} requires providerCredentials.${provider.toLowerCase()} but none were supplied.`,
   );
 
 /** Thrown when a provider's credentials carry both a static secret and a
  *  federated (OIDC) token — the intent is ambiguous, so refuse rather than
  *  silently pick one (and risk sending a secret the caller meant to suppress). */
-const mixedCreds = (provider: string): Error =>
+const mixedCreds = (
+  provider: string,
+  operation: AgentOperation = 'initialization',
+): Error =>
   new Error(
-    `Cloud-agent initialization for ${provider} received both static and federated ` +
+    `Cloud-agent ${operation} for ${provider} received both static and federated ` +
       `credentials in providerCredentials.${provider.toLowerCase()}; supply exactly one.`,
   );
 
@@ -383,7 +417,7 @@ const hasKey = (o: object, key: string): boolean => {
  * a different identity than the one supplied. Web-identity credentials are a
  * separate variant and are not checked here. Returns the problem, or `null`.
  */
-const partialAwsCredentials = (
+export const partialAwsCredentials = (
   pc: ProviderCredentials | undefined,
 ): string | null => {
   const c = pc?.aws as Record<string, unknown> | undefined;
@@ -400,19 +434,21 @@ const partialAwsCredentials = (
         `(the control plane ignores a partial set); missing: ${missing.join(', ')}.`;
 };
 
-/** Build the provider credential headers for an agent's initialize call. */
-const initHeaders = (
+/** Build the provider credential headers for an agent's initialize (or
+ *  update) call. */
+export const initHeaders = (
   agent: CloudAgent,
   pc: ProviderCredentials | undefined,
+  operation: AgentOperation = 'initialization',
 ): Record<string, string> => {
   switch (agent.provider) {
     case 'AWS': {
       const c = pc?.aws;
       if (!c) {
-        throw missingCreds('AWS');
+        throw missingCreds('AWS', operation);
       }
       if (hasKey(c, 'accessKeyId') && hasKey(c, 'webIdentityToken')) {
-        throw mixedCreds('AWS');
+        throw mixedCreds('AWS', operation);
       }
       // TODO: AWS federated (web-identity) init pending server support
       // The server's AWS initializer binds only the three X-AWS-Access-Key-ID /
@@ -442,10 +478,10 @@ const initHeaders = (
     case 'AZURE': {
       const c = pc?.azure;
       if (!c) {
-        throw missingCreds('AZURE');
+        throw missingCreds('AZURE', operation);
       }
       if (hasKey(c, 'spClientSecret') && hasKey(c, 'federatedToken')) {
-        throw mixedCreds('AZURE');
+        throw mixedCreds('AZURE', operation);
       }
       // Workload-identity federation: forward the caller-minted token as the
       // client assertion; the client id is the (public) app-registration id.
@@ -465,13 +501,13 @@ const initHeaders = (
     case 'GCP': {
       const c = pc?.gcp;
       if (!c) {
-        throw missingCreds('GCP');
+        throw missingCreds('GCP', operation);
       }
       if (
         hasKey(c, 'serviceAccountCredentials') &&
         hasKey(c, 'federatedToken')
       ) {
-        throw mixedCreds('GCP');
+        throw mixedCreds('GCP', operation);
       }
       // TODO: GCP workload-identity-federation init pending server support
       if (hasKey(c, 'federatedToken')) {
@@ -498,7 +534,7 @@ const initHeaders = (
     case 'OCI': {
       const c = pc?.oci;
       if (!c) {
-        throw missingCreds('OCI');
+        throw missingCreds('OCI', operation);
       }
       return {
         'X-OCI-Service-Account-ID': c.serviceAccountId,
@@ -508,7 +544,7 @@ const initHeaders = (
     case 'HETZNER': {
       const c = pc?.hetzner;
       if (!c) {
-        throw missingCreds('HETZNER');
+        throw missingCreds('HETZNER', operation);
       }
       return {'X-Hetzner-Token': c.token};
     }
@@ -521,7 +557,7 @@ const initHeaders = (
  * Logged rather than thrown: the server may still succeed with a credential it
  * already holds for the environment, which is a legitimate setup.
  */
-const awsCredsWarning = (
+export const awsCredsWarning = (
   pc: ProviderCredentials | undefined,
 ): string | null => {
   const c = pc?.aws;
@@ -540,7 +576,7 @@ const awsCredsWarning = (
 };
 
 /** The cloud account an agent lands in, provider-neutrally. */
-const agentAccountId = (agent: CloudAgent): string => {
+export const agentAccountId = (agent: CloudAgent): string => {
   switch (agent.provider) {
     case 'AWS':
       return agent.accountId;
@@ -595,7 +631,7 @@ const initBody = (
   }
 };
 
-const fetchInitializationStatus = async (
+export const fetchInitializationStatus = async (
   env: ResolvedEnvironment,
   provider: CloudAgent['provider'],
   cfg: ApiConfig,
@@ -621,7 +657,7 @@ const STEP_SYMBOL: Record<string, string> = {
   NotStarted: '⏳',
 };
 
-const logSteps = (
+export const logSteps = (
   quiet: boolean,
   envId: string,
   provider: string,
@@ -658,8 +694,10 @@ const failureMessage = (provider: string, run: InitializationRun): string => {
 };
 
 /** What a deploy knows about an agent's initialization once it has handled it:
- *  `Completed` only when a Completed run was observed (and not forced over). */
-type AgentInitOutcome = 'Completed' | 'NotCompleted';
+ *  `Completed` only when a Completed run was observed (and not forced over);
+ *  `Held` when it was held back before asking for credentials, `NoCredentials`
+ *  when this run holds none for its cloud. */
+type AgentInitOutcome = 'Completed' | 'NotCompleted' | 'Held' | 'NoCredentials';
 
 const initializeAgent = async (
   env: ResolvedEnvironment,
@@ -671,13 +709,16 @@ const initializeAgent = async (
     pollIntervalMs: number;
     timeoutMs: number;
     quiet: boolean;
-    /** Resolves this env's credentials; called only when initialize is sent. */
+    /** Resolves this env's credentials; called only when initialize is sent.
+     *  `null`: this run holds none for the agent's cloud, and it is skipped. */
     credentialsFor: (
       env: ResolvedEnvironment,
       agent: CloudAgent,
-    ) => Promise<ProviderCredentials | undefined>;
-    /** Throws when this agent may not be initialized yet (ordering guard). */
-    beforeStart: (env: ResolvedEnvironment, agent: CloudAgent) => void;
+    ) => Promise<ProviderCredentials | undefined | null>;
+    /** Told once the initialize request has been accepted. */
+    onStarted: (agent: CloudAgent) => void;
+    /** `false` (or a throw) when this agent may not be initialized yet. */
+    beforeStart: (env: ResolvedEnvironment, agent: CloudAgent) => boolean;
   },
 ): Promise<AgentInitOutcome> => {
   const envId = formatEnvironmentId(env.id);
@@ -706,7 +747,9 @@ const initializeAgent = async (
       : null;
 
   if (needsStart) {
-    opts.beforeStart(env, agent);
+    if (!opts.beforeStart(env, agent)) {
+      return 'Held';
+    }
     log(opts.quiet, 'INFO', 'Starting cloud-agent initialization', {
       env: envId,
       provider,
@@ -726,6 +769,9 @@ const initializeAgent = async (
     //     service-account email) are deliberately excluded so they still show up in
     //     a diagnostic.
     const credentials = await opts.credentialsFor(env, agent);
+    if (credentials === null) {
+      return 'NoCredentials';
+    }
     const warning =
       agent.provider === 'AWS' ? awsCredsWarning(credentials) : null;
     if (warning !== null) {
@@ -744,6 +790,7 @@ const initializeAgent = async (
         .send(initBody(agent, env)),
       collectSecrets(providerHeaders),
     );
+    opts.onStarted(agent);
   }
 
   if (opts.agentInit === 'fire-and-forget') {
@@ -852,6 +899,7 @@ const stableStringify = (value: unknown): string => {
 const needsUpdate = (
   env: ResolvedEnvironment,
   existing: EnvironmentResponse,
+  parameters: Record<string, unknown>,
 ): boolean => {
   if (existing.name !== env.name) {
     return true;
@@ -865,11 +913,7 @@ const needsUpdate = (
   // Keys the SDK does not declare are preserved by the merge, so a key the server
   // or the web UI added never counts as drift.
   const existingParams = (existing.parameters ?? {}) as Record<string, unknown>;
-  return (
-    stableStringify(
-      mergeEnvironmentParameters(existingParams, env.parameters),
-    ) !== stableStringify(existingParams)
-  );
+  return stableStringify(parameters) !== stableStringify(existingParams);
 };
 
 /** Result of reconciling one environment's own record. `parameters` is what
@@ -895,9 +939,12 @@ const createOrUpdateEnvironment = async (
     await createEnvironment(env, cfg);
     return {existing: null, parameters: createParameters(env.parameters)};
   }
-  const parameters = mergeEnvironmentParameters(
-    existing.parameters,
-    env.parameters,
+  // Agents the tree declares in another order than the server stores them are
+  // the same agents: keep the stored order, so nothing is rewritten for it and
+  // the order never flips between runs.
+  const parameters = keepStoredAgentOrder(
+    existing.parameters ?? {},
+    mergeEnvironmentParameters(existing.parameters, env.parameters),
   );
   // Removing the last tag / DNS zone from code no longer clears it (undeclared
   // keys are preserved), so say which builder-owned keys were kept — a quiet
@@ -914,7 +961,7 @@ const createOrUpdateEnvironment = async (
       clearWith: "withParameter('<key>', null)",
     });
   }
-  if (needsUpdate(env, existing)) {
+  if (needsUpdate(env, existing, parameters)) {
     log(quiet, 'INFO', 'Updating environment', {env: id});
     // Preserve the existing default CI/CD profile; profiles are managed later.
     await updateEnvironment(
@@ -971,6 +1018,88 @@ const assertTierApplies = (
   );
 };
 
+/**
+ * The credentials to send for one agent, from a deploy's or update's
+ * `providerCredentials`: the object itself, or what the resolver returns for
+ * that environment and agent. Resolved credentials are appended to `secrets`
+ * (the redaction set every later request is covered by) BEFORE the request that
+ * carries them is built.
+ */
+export const providerCredentialsFor =
+  (
+    source: ProviderCredentials | ProviderCredentialsResolver | undefined,
+    managementEnvId: string,
+    secrets: LabeledSecret[],
+    operation: AgentOperation = 'initialization',
+    /** What a resolver returning nothing for the agent's provider means:
+     *  `throw` (initialize needs credentials) or `none` (send none). */
+    whenNone: 'throw' | 'none' = 'throw',
+    /**
+     * Told when the resolver throws {@link ProviderCredentialsNotConfigured}:
+     * this run holds no credentials for the agent's cloud, and the agent is
+     * skipped (the result is then `null`). Without it, that error fails too.
+     */
+    onNotConfigured?: (
+      env: ResolvedEnvironment,
+      agent: CloudAgent,
+      err: ProviderCredentialsNotConfigured,
+    ) => void,
+  ): ((
+    env: ResolvedEnvironment,
+    agent: CloudAgent,
+  ) => Promise<ProviderCredentials | undefined | null>) =>
+  async (env, agent) => {
+    if (typeof source !== 'function') {
+      return source;
+    }
+    const envId = formatEnvironmentId(env.id);
+    let resolved: ProviderCredentials | undefined;
+    try {
+      resolved = await source({
+        environment: {...env.id},
+        tier: envId === managementEnvId ? 'management' : 'operational',
+        provider: agent.provider,
+        accountId: agentAccountId(agent),
+        region: agent.region,
+      });
+    } catch (err) {
+      if (
+        onNotConfigured !== undefined &&
+        err instanceof ProviderCredentialsNotConfigured
+      ) {
+        onNotConfigured(env, agent, err);
+        return null;
+      }
+      // Name the environment; the message is the caller's own error, redacted of
+      // what this operation knows to be secret, and no `cause` is attached so
+      // nothing the resolver held rides along.
+      throw new Error(
+        `The providerCredentials resolver failed for the ${agent.provider} agent of ` +
+          `environment '${envId}': ${redactSecrets(err instanceof Error ? err.message : String(err), secrets)}`,
+      );
+    }
+    // Register before the request that carries them is built.
+    secrets.push(...collectSecrets(resolved, `providerCredentials[${envId}]`));
+    const key = agent.provider.toLowerCase() as keyof ProviderCredentials;
+    if (resolved === undefined || resolved === null || !resolved[key]) {
+      if (whenNone === 'none') {
+        return undefined;
+      }
+      throw new Error(
+        `Cloud-agent ${operation} for ${agent.provider} in environment '${envId}' requires ` +
+          `${key} credentials, but the providerCredentials resolver returned none for it.`,
+      );
+    }
+    const problem =
+      agent.provider === 'AWS' ? partialAwsCredentials(resolved) : null;
+    if (problem !== null) {
+      throw new Error(
+        `The providerCredentials resolver returned unusable credentials for environment '${envId}': ${problem}`,
+      );
+    }
+    return resolved;
+  };
+
 // ── public API ───────────────────────────────────────────────────────────────
 /**
  * Deploy a management environment tree: create/update the management env and each
@@ -981,8 +1110,38 @@ export async function deployEnvironment(
   management: ManagementEnvironmentNode,
   cfg: ApiConfig,
   opts: DeployEnvironmentOptions = {},
-): Promise<void> {
+): Promise<EnvironmentDeployResult> {
   const tree = resolveEnvironment(management);
+  const pendingManagement = opts.pendingManagement ?? 'skip';
+  const result: EnvironmentDeployResult = {
+    started: [],
+    completed: [],
+    inProgress: [],
+    skipped: [],
+  };
+  const agentRef = (
+    env: ResolvedEnvironment,
+    agent: CloudAgent,
+  ): DeployedAgent => ({environment: {...env.id}, provider: agent.provider});
+  const skip = (
+    env: ResolvedEnvironment,
+    agent: CloudAgent,
+    reason: SkippedAgent['reason'],
+    text: string,
+  ): void => {
+    // A resolver's own message can carry anything it held: redact what this
+    // deploy knows to be secret before it reaches a notice or the result.
+    const message = redactSecrets(text, deploymentSecrets);
+    result.skipped.push({...agentRef(env, agent), reason, message});
+    if (opts.reporter !== undefined) {
+      opts.reporter.notice(message);
+    } else {
+      log(quiet, 'WARN', message, {
+        env: formatEnvironmentId(env.id),
+        provider: agent.provider,
+      });
+    }
+  };
   const quiet = opts.quiet ?? false;
   const agentInit = opts.agentInit ?? 'fire-and-forget';
   const reinitializeAgents = opts.reinitializeAgents ?? false;
@@ -1096,65 +1255,64 @@ export async function deployEnvironment(
 
   // 4. cloud-agent initialization
   const managementEnvId = formatEnvironmentId(tree.management.id);
-  const resolveCredentials = opts.providerCredentials;
-  const credentialsFor = async (
-    env: ResolvedEnvironment,
-    agent: CloudAgent,
-  ): Promise<ProviderCredentials | undefined> => {
-    if (typeof resolveCredentials !== 'function') {
-      return resolveCredentials;
-    }
-    const envId = formatEnvironmentId(env.id);
-    let resolved: ProviderCredentials | undefined;
-    try {
-      resolved = await resolveCredentials({
-        environment: {...env.id},
-        tier: envId === managementEnvId ? 'management' : 'operational',
-        provider: agent.provider,
-        accountId: agentAccountId(agent),
-        region: agent.region,
-      });
-    } catch (err) {
-      // Name the environment; the message is the caller's own error, and no
-      // `cause` is attached so nothing the resolver held rides along.
-      throw new Error(
-        `The providerCredentials resolver failed for the ${agent.provider} agent of ` +
-          `environment '${envId}': ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-    // Register before the request that carries them is built.
-    deploymentSecrets.push(
-      ...collectSecrets(resolved, `providerCredentials[${envId}]`),
-    );
-    const key = agent.provider.toLowerCase() as keyof ProviderCredentials;
-    if (resolved === undefined || resolved === null || !resolved[key]) {
-      throw new Error(
-        `Cloud-agent initialization for ${agent.provider} in environment '${envId}' requires ` +
-          `${key} credentials, but the providerCredentials resolver returned none for it.`,
-      );
-    }
-    const problem =
-      agent.provider === 'AWS' ? partialAwsCredentials(resolved) : null;
-    if (problem !== null) {
-      throw new Error(
-        `The providerCredentials resolver returned unusable credentials for environment '${envId}': ${problem}`,
-      );
-    }
-    return resolved;
-  };
+  const credentialsFor = providerCredentialsFor(
+    opts.providerCredentials,
+    managementEnvId,
+    deploymentSecrets,
+    'initialization',
+    'throw',
+    (env, agent, err) =>
+      skip(
+        env,
+        agent,
+        'missing-credentials',
+        `Skipped the ${agent.provider} agent of '${formatEnvironmentId(env.id)}': this run holds no ` +
+          `${agent.provider} credentials (${err.message}). The job holding ` +
+          `${agent.provider} credentials initializes it.`,
+      ),
+  );
 
   // Management outcome per provider, filled as the management env's agents are
   // handled — which is always before any operational env's (`ordered`).
   const managementOutcome = new Map<CloudAgent['provider'], AgentInitOutcome>();
-  const beforeStart = (env: ResolvedEnvironment, agent: CloudAgent): void => {
+  const beforeStart = (
+    env: ResolvedEnvironment,
+    agent: CloudAgent,
+  ): boolean => {
     if (formatEnvironmentId(env.id) === managementEnvId) {
-      return;
+      return true;
     }
-    // Refuse only what this deploy KNOWS will fail: it handled the management
-    // agent for this provider and did not observe a Completed run. Anything
-    // else is left to the control plane's own check.
-    if (managementOutcome.get(agent.provider) !== 'NotCompleted') {
-      return;
+    const outcome = managementOutcome.get(agent.provider);
+    // This run holds no credentials for the cloud at all (it could not start the
+    // management agent either): the job holding them initializes both.
+    if (outcome === 'NoCredentials') {
+      skip(
+        env,
+        agent,
+        'missing-credentials',
+        `Skipped the ${agent.provider} agent of '${formatEnvironmentId(env.id)}': this run holds ` +
+          `no ${agent.provider} credentials for its management environment '${managementEnvId}' ` +
+          `either. The job holding ${agent.provider} credentials initializes both.`,
+      );
+      return false;
+    }
+    // Hold back only what this deploy KNOWS will fail: it handled the management
+    // agent for this provider and did not observe a Completed run. Anything else
+    // is left to the control plane's check.
+    if (outcome !== 'NotCompleted') {
+      return true;
+    }
+    if (pendingManagement === 'skip') {
+      skip(
+        env,
+        agent,
+        'pending-management',
+        `Skipped the ${agent.provider} agent of '${formatEnvironmentId(env.id)}': its management ` +
+          `environment '${managementEnvId}' has not completed its ${agent.provider} ` +
+          'initialization yet, which the control plane requires first. The next deploy ' +
+          'after it completes initializes this one.',
+      );
+      return false;
     }
     // The server would reject this with ManagementEnvironmentNotInitialized; say
     // why, and what to do, before sending anything.
@@ -1167,7 +1325,9 @@ export async function deployEnvironment(
     );
   };
 
+  const started = new Set<CloudAgent>();
   const agentOpts = {
+    onStarted: (agent: CloudAgent) => started.add(agent),
     agentInit,
     reinitializeAgents,
     pollIntervalMs,
@@ -1183,8 +1343,16 @@ export async function deployEnvironment(
       if (isManagement) {
         managementOutcome.set(agent.provider, outcome);
       }
+      if (started.has(agent)) {
+        result.started.push(agentRef(env, agent));
+      } else if (outcome === 'Completed') {
+        result.completed.push(agentRef(env, agent));
+      } else if (outcome === 'NotCompleted') {
+        result.inProgress.push(agentRef(env, agent));
+      }
     }
   }
+  return result;
 }
 
 // ── read operations ─────────────────────────────────────────────────────────
