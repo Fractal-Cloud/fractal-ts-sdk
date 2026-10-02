@@ -120,14 +120,14 @@ type EnvironmentResponse = {
   defaultCiCdProfileShortName?: string | null;
   status: string;
 };
-type InitializationStep = {
+export type InitializationStep = {
   order?: number;
   resourceName?: string;
   resourceType?: string;
   status: string;
   lastOperationStatusMessage?: string;
 };
-type InitializationRun = {
+export type InitializationRun = {
   cloudProvider?: string;
   status: string;
   steps?: InitializationStep[];
@@ -156,7 +156,7 @@ const managementIdDto = (env: ResolvedEnvironment): EnvironmentIdDto | null =>
     ? null
     : idDto(env.managementId);
 
-const envUri = (
+export const envUri = (
   cfg: ApiConfig,
   env: ResolvedEnvironment,
   path = '',
@@ -346,7 +346,7 @@ const manageCiCdProfiles = async (
 };
 
 // ── cloud-agent initialization ─────────────────────────────────────────────────
-const providerPath: Record<CloudAgent['provider'], string> = {
+export const providerPath: Record<CloudAgent['provider'], string> = {
   AWS: 'aws',
   AZURE: 'azure',
   GCP: 'gcp',
@@ -354,17 +354,26 @@ const providerPath: Record<CloudAgent['provider'], string> = {
   HETZNER: 'hetzner',
 };
 
-const missingCreds = (provider: string): Error =>
+/** What a credential-bearing request is for, as error messages name it. */
+export type AgentOperation = 'initialization' | 'update';
+
+const missingCreds = (
+  provider: string,
+  operation: AgentOperation = 'initialization',
+): Error =>
   new Error(
-    `Cloud-agent initialization for ${provider} requires providerCredentials.${provider.toLowerCase()} but none were supplied.`,
+    `Cloud-agent ${operation} for ${provider} requires providerCredentials.${provider.toLowerCase()} but none were supplied.`,
   );
 
 /** Thrown when a provider's credentials carry both a static secret and a
  *  federated (OIDC) token — the intent is ambiguous, so refuse rather than
  *  silently pick one (and risk sending a secret the caller meant to suppress). */
-const mixedCreds = (provider: string): Error =>
+const mixedCreds = (
+  provider: string,
+  operation: AgentOperation = 'initialization',
+): Error =>
   new Error(
-    `Cloud-agent initialization for ${provider} received both static and federated ` +
+    `Cloud-agent ${operation} for ${provider} received both static and federated ` +
       `credentials in providerCredentials.${provider.toLowerCase()}; supply exactly one.`,
   );
 
@@ -383,7 +392,7 @@ const hasKey = (o: object, key: string): boolean => {
  * a different identity than the one supplied. Web-identity credentials are a
  * separate variant and are not checked here. Returns the problem, or `null`.
  */
-const partialAwsCredentials = (
+export const partialAwsCredentials = (
   pc: ProviderCredentials | undefined,
 ): string | null => {
   const c = pc?.aws as Record<string, unknown> | undefined;
@@ -400,19 +409,21 @@ const partialAwsCredentials = (
         `(the control plane ignores a partial set); missing: ${missing.join(', ')}.`;
 };
 
-/** Build the provider credential headers for an agent's initialize call. */
-const initHeaders = (
+/** Build the provider credential headers for an agent's initialize (or
+ *  update) call. */
+export const initHeaders = (
   agent: CloudAgent,
   pc: ProviderCredentials | undefined,
+  operation: AgentOperation = 'initialization',
 ): Record<string, string> => {
   switch (agent.provider) {
     case 'AWS': {
       const c = pc?.aws;
       if (!c) {
-        throw missingCreds('AWS');
+        throw missingCreds('AWS', operation);
       }
       if (hasKey(c, 'accessKeyId') && hasKey(c, 'webIdentityToken')) {
-        throw mixedCreds('AWS');
+        throw mixedCreds('AWS', operation);
       }
       // TODO: AWS federated (web-identity) init pending server support
       // The server's AWS initializer binds only the three X-AWS-Access-Key-ID /
@@ -442,10 +453,10 @@ const initHeaders = (
     case 'AZURE': {
       const c = pc?.azure;
       if (!c) {
-        throw missingCreds('AZURE');
+        throw missingCreds('AZURE', operation);
       }
       if (hasKey(c, 'spClientSecret') && hasKey(c, 'federatedToken')) {
-        throw mixedCreds('AZURE');
+        throw mixedCreds('AZURE', operation);
       }
       // Workload-identity federation: forward the caller-minted token as the
       // client assertion; the client id is the (public) app-registration id.
@@ -465,13 +476,13 @@ const initHeaders = (
     case 'GCP': {
       const c = pc?.gcp;
       if (!c) {
-        throw missingCreds('GCP');
+        throw missingCreds('GCP', operation);
       }
       if (
         hasKey(c, 'serviceAccountCredentials') &&
         hasKey(c, 'federatedToken')
       ) {
-        throw mixedCreds('GCP');
+        throw mixedCreds('GCP', operation);
       }
       // TODO: GCP workload-identity-federation init pending server support
       if (hasKey(c, 'federatedToken')) {
@@ -498,7 +509,7 @@ const initHeaders = (
     case 'OCI': {
       const c = pc?.oci;
       if (!c) {
-        throw missingCreds('OCI');
+        throw missingCreds('OCI', operation);
       }
       return {
         'X-OCI-Service-Account-ID': c.serviceAccountId,
@@ -508,7 +519,7 @@ const initHeaders = (
     case 'HETZNER': {
       const c = pc?.hetzner;
       if (!c) {
-        throw missingCreds('HETZNER');
+        throw missingCreds('HETZNER', operation);
       }
       return {'X-Hetzner-Token': c.token};
     }
@@ -521,7 +532,7 @@ const initHeaders = (
  * Logged rather than thrown: the server may still succeed with a credential it
  * already holds for the environment, which is a legitimate setup.
  */
-const awsCredsWarning = (
+export const awsCredsWarning = (
   pc: ProviderCredentials | undefined,
 ): string | null => {
   const c = pc?.aws;
@@ -540,7 +551,7 @@ const awsCredsWarning = (
 };
 
 /** The cloud account an agent lands in, provider-neutrally. */
-const agentAccountId = (agent: CloudAgent): string => {
+export const agentAccountId = (agent: CloudAgent): string => {
   switch (agent.provider) {
     case 'AWS':
       return agent.accountId;
@@ -595,7 +606,7 @@ const initBody = (
   }
 };
 
-const fetchInitializationStatus = async (
+export const fetchInitializationStatus = async (
   env: ResolvedEnvironment,
   provider: CloudAgent['provider'],
   cfg: ApiConfig,
@@ -621,7 +632,7 @@ const STEP_SYMBOL: Record<string, string> = {
   NotStarted: '⏳',
 };
 
-const logSteps = (
+export const logSteps = (
   quiet: boolean,
   envId: string,
   provider: string,
@@ -835,7 +846,7 @@ const initializeAgent = async (
 // ── create/update one environment ──────────────────────────────────────────────
 /** Deterministic JSON with recursively key-sorted objects, so property insertion
  *  order does not affect equality (the API may return keys in a different order). */
-const stableStringify = (value: unknown): string => {
+export const stableStringify = (value: unknown): string => {
   if (Array.isArray(value)) {
     return `[${value.map(stableStringify).join(',')}]`;
   }
@@ -971,6 +982,64 @@ const assertTierApplies = (
   );
 };
 
+/**
+ * The credentials to send for one agent, from a deploy's or update's
+ * `providerCredentials`: the object itself, or what the resolver returns for
+ * that environment and agent. Resolved credentials are appended to `secrets`
+ * (the redaction set every later request is covered by) BEFORE the request that
+ * carries them is built.
+ */
+export const providerCredentialsFor = (
+  source: ProviderCredentials | ProviderCredentialsResolver | undefined,
+  managementEnvId: string,
+  secrets: LabeledSecret[],
+  operation: AgentOperation = 'initialization',
+) => {
+  return async (
+    env: ResolvedEnvironment,
+    agent: CloudAgent,
+  ): Promise<ProviderCredentials | undefined> => {
+    if (typeof source !== 'function') {
+      return source;
+    }
+    const envId = formatEnvironmentId(env.id);
+    let resolved: ProviderCredentials | undefined;
+    try {
+      resolved = await source({
+        environment: {...env.id},
+        tier: envId === managementEnvId ? 'management' : 'operational',
+        provider: agent.provider,
+        accountId: agentAccountId(agent),
+        region: agent.region,
+      });
+    } catch (err) {
+      // Name the environment; the message is the caller's own error, and no
+      // `cause` is attached so nothing the resolver held rides along.
+      throw new Error(
+        `The providerCredentials resolver failed for the ${agent.provider} agent of ` +
+          `environment '${envId}': ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+    // Register before the request that carries them is built.
+    secrets.push(...collectSecrets(resolved, `providerCredentials[${envId}]`));
+    const key = agent.provider.toLowerCase() as keyof ProviderCredentials;
+    if (resolved === undefined || resolved === null || !resolved[key]) {
+      throw new Error(
+        `Cloud-agent ${operation} for ${agent.provider} in environment '${envId}' requires ` +
+          `${key} credentials, but the providerCredentials resolver returned none for it.`,
+      );
+    }
+    const problem =
+      agent.provider === 'AWS' ? partialAwsCredentials(resolved) : null;
+    if (problem !== null) {
+      throw new Error(
+        `The providerCredentials resolver returned unusable credentials for environment '${envId}': ${problem}`,
+      );
+    }
+    return resolved;
+  };
+};
+
 // ── public API ───────────────────────────────────────────────────────────────
 /**
  * Deploy a management environment tree: create/update the management env and each
@@ -1096,52 +1165,11 @@ export async function deployEnvironment(
 
   // 4. cloud-agent initialization
   const managementEnvId = formatEnvironmentId(tree.management.id);
-  const resolveCredentials = opts.providerCredentials;
-  const credentialsFor = async (
-    env: ResolvedEnvironment,
-    agent: CloudAgent,
-  ): Promise<ProviderCredentials | undefined> => {
-    if (typeof resolveCredentials !== 'function') {
-      return resolveCredentials;
-    }
-    const envId = formatEnvironmentId(env.id);
-    let resolved: ProviderCredentials | undefined;
-    try {
-      resolved = await resolveCredentials({
-        environment: {...env.id},
-        tier: envId === managementEnvId ? 'management' : 'operational',
-        provider: agent.provider,
-        accountId: agentAccountId(agent),
-        region: agent.region,
-      });
-    } catch (err) {
-      // Name the environment; the message is the caller's own error, and no
-      // `cause` is attached so nothing the resolver held rides along.
-      throw new Error(
-        `The providerCredentials resolver failed for the ${agent.provider} agent of ` +
-          `environment '${envId}': ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-    // Register before the request that carries them is built.
-    deploymentSecrets.push(
-      ...collectSecrets(resolved, `providerCredentials[${envId}]`),
-    );
-    const key = agent.provider.toLowerCase() as keyof ProviderCredentials;
-    if (resolved === undefined || resolved === null || !resolved[key]) {
-      throw new Error(
-        `Cloud-agent initialization for ${agent.provider} in environment '${envId}' requires ` +
-          `${key} credentials, but the providerCredentials resolver returned none for it.`,
-      );
-    }
-    const problem =
-      agent.provider === 'AWS' ? partialAwsCredentials(resolved) : null;
-    if (problem !== null) {
-      throw new Error(
-        `The providerCredentials resolver returned unusable credentials for environment '${envId}': ${problem}`,
-      );
-    }
-    return resolved;
-  };
+  const credentialsFor = providerCredentialsFor(
+    opts.providerCredentials,
+    managementEnvId,
+    deploymentSecrets,
+  );
 
   // Management outcome per provider, filled as the management env's agents are
   // handled — which is always before any operational env's (`ordered`).

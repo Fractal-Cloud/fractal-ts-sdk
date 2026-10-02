@@ -17,5 +17,7 @@ export type * from './environment_dns_zones';
 // The deploy operation itself lives on the client (`cloud.environments.deploy`)
 // so credentials are held in one place; only its options type is public here.
 export type {DeployEnvironmentOptions} from './service';
+export type * from './cloud_agent_target';
+export type * from './update_environment_agents_options';
 // Exposed so a caller can predict exactly what a deploy will write.
 export {mergeEnvironmentParameters} from './service';

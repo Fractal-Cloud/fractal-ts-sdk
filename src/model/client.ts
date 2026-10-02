@@ -38,6 +38,8 @@ import {
   listEnvironments,
 } from './environment/service';
 import type {DeployEnvironmentOptions} from './environment/service';
+import {updateEnvironmentAgents} from './environment/update_agents';
+import type {UpdateEnvironmentAgentsOptions} from './environment/update_environment_agents_options';
 import type {ManagementEnvironmentNode} from './environment/environment';
 import type {
   EnvironmentDetails,
@@ -178,6 +180,19 @@ export type FractalCloudClient = {
       management: ManagementEnvironmentNode,
       opts?: DeployEnvironmentOptions,
     ) => Promise<void>;
+    /**
+     * Update the cloud agents a management environment tree declares — all of
+     * them, or those `only` selects — without re-initializing them: the
+     * control plane re-runs each agent's role/permission steps and redeploys
+     * it on the latest published version. That is how an existing agent
+     * receives a permission granted after it was initialized. Management
+     * environment first, then each operational environment. Writes no
+     * environment; AWS, Azure and GCP agents only.
+     */
+    updateAgents: (
+      management: ManagementEnvironmentNode,
+      opts?: UpdateEnvironmentAgentsOptions,
+    ) => Promise<void>;
     /** List an owner's environments (summaries: id, name, status, resource
      *  groups, initialized clouds). */
     list: (owner: {
@@ -210,6 +225,8 @@ export const createFractalCloudClient = (
   },
   environments: {
     deploy: (management, opts) => deployEnvironment(management, cfg, opts),
+    updateAgents: (management, opts) =>
+      updateEnvironmentAgents(management, cfg, opts),
     list: owner => listEnvironments(owner, cfg),
     get: id => getEnvironment(id, cfg),
     dnsZones: id => getEnvironmentDnsZones(id, cfg),

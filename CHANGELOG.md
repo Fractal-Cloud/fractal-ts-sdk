@@ -11,6 +11,25 @@ of truth for what is on npm.
 
 ## Unreleased
 
+### Added — **`environments.updateAgents()`: update cloud agents without re-initializing them**
+
+An agent initialized before a permission was added to its role kept running without that
+permission. A deploy sends nothing for an agent whose initialization is `Completed`, and
+`reinitializeAgents` re-runs the whole initialization. `cloud.environments.updateAgents(tree,
+{only, agentUpdate, providerCredentials})` calls the control plane's
+`POST .../initializer/{aws|azure|gcp}/update` for each selected agent of the tree, management
+environment first. That re-runs the agent's role/permission steps and redeploys it on the latest
+published version. `only` selects agents by `{environment, tier, provider, accountId, region}`
+(the new `CloudAgentTarget`). `agentUpdate: 'wait'` polls each update through
+`.../status` and ignores the run as it was before the update. It logs in the wait-mode format and
+throws with the failing step's message. OCI and Hetzner agents, a selection matching nothing,
+static credentials missing a selected provider, and a partial AWS set are refused before any
+request is sent. `providerCredentials` is optional and is sent as the `initialize` headers, but
+the control plane's update endpoint does not read them yet. It updates with the credentials it
+already holds, so an environment initialized with short-lived inline credentials can fail its
+update at the first step that needs them. Writes no environment, and changes nothing about
+`deploy`.
+
 ### Added — **`DnsZone.providers`: choose which clouds host an environment's DNS zone**
 
 `withDnsZones([{name, providers: ['AWS' | 'GCP' | 'Azure', ...]}])`. Omitted, every AWS / GCP /

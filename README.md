@@ -433,6 +433,42 @@ Things to know:
   override is refused at deploy time, before the operational environment is
   written.
 
+### Updating cloud agents
+
+An agent initialized before a permission was added to its role does not get that
+permission from a deploy: its initialization is `Completed`, so nothing is sent.
+`reinitializeAgents` re-runs the whole initialization. An **update** is smaller. The
+control plane re-runs the agent's role and permission steps, refreshes its
+credential mirror and compute, and redeploys it on the latest published version:
+
+```ts
+await cloud.environments.updateAgents(management, {
+  // Optional: which agents to update. Default: every agent the tree declares.
+  // Receives {environment, tier, provider, accountId, region}.
+  only: ({environment, provider}) =>
+    environment.shortName === 'mgmt' && provider === 'AWS',
+  // 'wait' polls each update to Completed (or throws with the failing step).
+  agentUpdate: 'wait',
+});
+```
+
+- **Calls** `POST /environments/{type}/{ownerId}/{shortName}/initializer/{aws|azure|gcp}/update`
+  per agent: management environment first, then each operational one. The request
+  has no body and is answered `202`. The run is then read from the same `.../status`
+  endpoint initialization uses.
+- **Writes no environment.** Deploy first if the tree changed.
+- **AWS, Azure and GCP only.** Selecting an OCI or Hetzner agent is refused before any
+  request is sent. The control plane refuses (`400`) an agent that was never
+  initialized, one that is already updating, and a provider with no published
+  agent version.
+- **`providerCredentials`** (an object or a resolver, as for `deploy`) is optional.
+  When given, it is sent as the same provider headers `initialize` uses. **The control
+  plane's update endpoint does not read them today.** It updates with the credentials
+  it already holds for the environment. An environment initialized with short-lived
+  inline credentials (a CI job's assumed role, an OIDC token) may hold none by then,
+  and its update fails at the first step that needs them. Under `agentUpdate: 'wait'`
+  that failure is reported with the step's message.
+
 ### Reading DNS zone results
 
 Zones declared with `withDnsZones` are realized by the environment's cloud agents,
