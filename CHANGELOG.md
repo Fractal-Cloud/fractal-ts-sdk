@@ -36,7 +36,7 @@ line; other calls retry silently unless the client sets `retry: {quiet: false}`.
 
 Configure with `createFractalCloudClient({..., retry: {maxElapsedMs, initialDelayMs,
 maxDelayMs, quiet}})` (a missing, non-finite or non-positive value takes the default;
-delays never go below 50 ms), or turn it off with `retry: false`. Every `send()` call
+no delay is shorter than 25 ms), or turn it off with `retry: false`. Every `send()` call
 site now passes a request factory, which a source-level test enforces. No control-plane version
 is required; the `ServiceDraining` refusal comes with the fractal-environments release
 that drains on shutdown, and against an older one the other rules still apply.

@@ -53,9 +53,10 @@ export type RetryOptions = {
    *  Default 15000. */
   maxDelayMs?: number;
   /**
-   * `true`: never log retries. `false`: log a WARN line for every retry of every
-   * call. Unset: log only inside a wait-mode deploy or agent update that is not
-   * `quiet` (see {@link withRetryLogging}).
+   * `true`: never log retries. `false`: log a WARN line for every retry, except
+   * inside an operation called with `quiet: true`. Unset: log only inside a
+   * wait-mode deploy or agent update that is not `quiet` (see
+   * {@link withRetryLogging}).
    */
   quiet?: boolean;
 };
