@@ -346,8 +346,8 @@ const byEnvironment: Record<string, ProviderCredentials> = {
 };
 
 const cloud = createFractalCloudClient({
-  clientId: process.env.FRACTAL_CLIENT_ID!,
-  clientSecret: process.env.FRACTAL_CLIENT_SECRET!,
+  clientId: process.env.SERVICE_ACCOUNT_ID!,
+  clientSecret: process.env.SERVICE_ACCOUNT_SECRET!,
 });
 
 await cloud.environments.deploy(management, {
@@ -396,6 +396,11 @@ steps:
       MGMT_AWS_SESSION_TOKEN: ${{ steps.mgmt.outputs.aws-session-token }}
       # PROD_AWS_..., DEV_AWS_... likewise
 ```
+
+**Recommended setup:** run this from GitHub Actions with GitHub OIDC, one deployer
+role per AWS account, and no static AWS keys. See
+[guides/github-actions](guides/github-actions/README.md) for the role trust
+policy, deploy and pull-request workflows, and sample scripts.
 
 Things to know:
 

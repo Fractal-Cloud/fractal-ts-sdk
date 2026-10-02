@@ -84,6 +84,19 @@ first operational one, naming `agentInit: 'wait'`, instead of sending a request
 the server refuses. Re-running once management is initialized proceeds as before;
 with `wait` nothing changes.
 
+### Documented — **GitHub Actions + OIDC as the recommended environments-as-code setup**
+
+`guides/github-actions/` covers the recommended setup:
+
+- a `FractalLandingZoneDeployer` role per AWS account, trusting GitHub OIDC on the
+  repository's real subject prefix (read from `gh api .../oidc/customization/sub`,
+  because immutable-subject repositories send `repo:<owner>@<id>/<name>@<id>`), with
+  2-hour sessions and `AdministratorAccess`;
+- a deploy workflow with one `configure-aws-credentials` step per account and
+  per-environment `providerCredentials` under `agentInit: 'wait'`;
+- a pull-request workflow that holds no AWS credentials;
+- security notes.
+
 ### Documented — **which AWS credentials the control plane honors**
 
 Only three-part session credentials (`accessKeyId` + `secretAccessKey` +
