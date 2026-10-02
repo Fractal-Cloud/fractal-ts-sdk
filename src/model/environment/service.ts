@@ -1523,9 +1523,9 @@ const pendingResult = (provider: DnsZoneProvider): DnsZoneProviderResult => ({
 });
 
 /**
- * The providers a zone is assigned to. Today the control plane names at most
- * one (`assignedProvider`, empty for none); a zone hosted on several providers
- * is read from `assignedProviders` when the control plane sends a non-empty one.
+ * The providers a zone is assigned to: `assignedProviders`, every cloud hosting a
+ * copy. `assignedProvider` (the single host, empty otherwise) is read when the
+ * control plane sends no non-empty `assignedProviders`.
  */
 const assignedProviders = (
   path: string,

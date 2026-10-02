@@ -11,6 +11,17 @@ of truth for what is on npm.
 
 ## Unreleased
 
+### Added — **`DnsZone.providers`: choose which clouds host an environment's DNS zone**
+
+`withDnsZones([{name, providers: ['AWS' | 'GCP' | 'Azure', ...]}])`. Omitted, every AWS / GCP /
+Azure agent of the environment hosts its own copy of the zone, with the same records, in the
+account / project / subscription of the environment that declares it (an operational
+environment's zone no longer lives in the management account). Resolving the tree now refuses a
+zone that selects a cloud the environment has no agent or account for, an empty or unknown
+`providers`, and `dnssec: 'required'` on more than one host: one zone signed by several
+providers needs multi-signer DNSSEC, which is not supported (`'optional'` on several hosts is
+served unsigned). `dnsZoneType` is deprecated in favor of `providers`.
+
 ### Added — **`environments.dnsZones()`: read an environment's DNS zone results**
 
 `cloud.environments.dnsZones(id)` reads

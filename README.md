@@ -435,9 +435,31 @@ Things to know:
 
 ### Reading DNS zone results
 
-Zones declared with `withDnsZones` are realized by the environment's cloud agents.
-`cloud.environments.dnsZones(id)` reads what they reported: per zone, one result per
-provider hosting it, with the name servers and DS records a registrar needs to
+Zones declared with `withDnsZones` are realized by the environment's cloud agents,
+in the account / project / subscription of the environment that declares them.
+`providers` chooses which of the environment's clouds host a zone; omitted, every
+AWS / GCP / Azure agent of the environment hosts its own copy, with the same records:
+
+```ts
+mgmt.withDnsZones([
+  {name: 'fractal.cloud'}, // every agent of the environment
+  {name: 'internal.fractal.cloud', providers: ['GCP'], dnssec: 'required'},
+]);
+```
+
+- Selecting a cloud the environment has no agent (or, on an operational
+  environment, no account) for is refused when the tree is resolved, and again by
+  the control plane. Removing a cloud from `providers` tears that cloud's copy down.
+- A zone is never signed by more than one provider (multi-signer DNSSEC, RFC 8901,
+  is not supported): `dnssec: 'required'` needs a single host; `'optional'` on
+  several hosts is served unsigned, and a zone already signed by one provider is not
+  copied to another while it reports a DS record (remove the DS at the registrar and
+  set `'disabled'` first). Each zone's `unassignedReason` says when this applies.
+- `dnsZoneType` is deprecated: it still selects a single provider when `providers`
+  is not set.
+
+`cloud.environments.dnsZones(id)` reads what the agents reported: per zone, one
+result per provider hosting it, with the name servers and DS records a registrar needs to
 delegate the domain.
 
 ```ts
@@ -466,8 +488,9 @@ for (const zone of dns?.zones ?? []) {
   environment no longer assigns there (held, or being torn down).
 - `dsRecords` stays empty for a zone that is not signed. `outputs` carries every
   field the agent reported, including provider-specific ones.
-- `unassignedReason` says why a declared zone has no provider (e.g. several DNS
-  clouds and no `dnsZoneType`); `problems` lists declaration entries the control
+- `unassignedReason` says why a declared zone is not hosted exactly as
+  declared (a selected cloud without an agent, or DNSSEC that several providers
+  cannot honor); `problems` lists declaration entries the control
   plane could not use (unreadable, or a name declared twice), and any output field
   an agent reported malformed — that field is left empty on its result rather than
   failing the whole read.

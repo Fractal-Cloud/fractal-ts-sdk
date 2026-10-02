@@ -40,6 +40,7 @@ import {
   type CloudAccount,
   type CloudAgent,
 } from './cloud_agents';
+import {validateDnsZoneProviders} from './dns_zone_providers';
 
 const envRef = (id: EnvironmentId): OwnerRef => ({
   ownerType: id.type,
@@ -437,7 +438,9 @@ const buildParameters = (
     parameters.tags = {...common.tags};
   }
   if (common.dnsZones.length > 0) {
-    parameters.dnsZones = common.dnsZones.map(z => ({...z}));
+    parameters.dnsZones = common.dnsZones.map(z =>
+      z.providers === undefined ? {...z} : {...z, providers: [...z.providers]},
+    );
   }
   return parameters;
 };
@@ -528,6 +531,13 @@ export const resolveEnvironment = (
     errors.push('Management environment: ownerId is required.');
   }
   errors.push(...validateCommon('Management environment', s));
+  errors.push(
+    ...validateDnsZoneProviders(
+      'Management environment',
+      s.dnsZones,
+      s.cloudAgents.map(a => a.provider),
+    ),
+  );
 
   const agentByProvider = new Map<string, CloudAgent>();
   for (const agent of s.cloudAgents) {
@@ -552,6 +562,13 @@ export const resolveEnvironment = (
       errors.push(`${label}: ${e}`);
     }
     errors.push(...validateCommon(label, os));
+    errors.push(
+      ...validateDnsZoneProviders(
+        label,
+        os.dnsZones,
+        os.cloudAccounts.map(a => a.provider),
+      ),
+    );
     // The control plane reads the MANAGEMENT env's tier first, so an operational
     // tier that disagrees with a declared management tier would be silently
     // ignored. Refuse it instead of letting the author believe it applies.

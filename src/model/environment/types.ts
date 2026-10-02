@@ -45,16 +45,33 @@ export type CiCdProfile = {
   sshPrivateKeyPassphrase?: string;
 };
 
+/** A cloud that can host a DNS zone declared on an environment. */
+export type DnsZoneHostProvider = 'AWS' | 'GCP' | 'Azure';
+
 /**
  * A DNS zone registered on an environment. It carries the same guardrails and
  * records as the DNS Zone component (`DnsZoneComponent`), so an environment zone
- * and the atom share one shape; the agent realizes it through the environment
- * cloud's DNS zone offer. `name` is the zone's domain (the component calls it
- * `domainName`).
+ * and the atom share one shape; each hosting cloud's agent realizes it through its
+ * DNS zone offer, in the account / project / subscription of the environment that
+ * declares it. `name` is the zone's domain (the component calls it `domainName`).
  */
 export type DnsZone = DnsZoneGuardrails & {
   name: string;
-  /** Optional provider hint; the agent resolves the concrete zone. */
+  /**
+   * Which of the environment's clouds host the zone, each with its own copy and
+   * the same records. Omitted: every AWS / GCP / Azure agent of the environment.
+   * Naming a cloud the environment has no agent (or account) for is refused;
+   * repeating one is harmless. An environment with no such cloud hosts the zone
+   * nowhere, and `environments.dnsZones()` reports it as unassigned.
+   * A zone is never signed by more than one provider (multi-signer DNSSEC is not
+   * supported): `dnssec: 'required'` needs a single host, and `'optional'` on
+   * several hosts is served unsigned.
+   */
+  providers?: readonly DnsZoneHostProvider[];
+  /**
+   * @deprecated Use `providers`. A provider hint (`aws`, `gcp`, `azure` or an
+   * offer type) that selects one provider; ignored when `providers` is set.
+   */
   dnsZoneType?: string;
   /** Record sets of the zone, validated against the guardrails. */
   records?: DnsRecord[];
