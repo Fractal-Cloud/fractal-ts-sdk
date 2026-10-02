@@ -14,6 +14,7 @@
  *   POST          /{...}/ci-cd-profiles/bulk
  *   POST          /{...}/initializer/{provider}/initialize
  *   GET           /{...}/initializer/{provider}/status
+ *   GET           /{...}/dns-zones                 (DNS zone results)
  *
  * NOT runtime-verified here (no Fractal Cloud credentials) — covered by mocked
  * HTTP unit tests; smoke against the live API before release.
@@ -41,6 +42,10 @@ import type {
   Secret,
 } from './types';
 import {formatEnvironmentId, NETWORK_TIER_PARAMETER} from './types';
+import type {DnsZoneProvider} from './dns_zone_provider';
+import type {DnsZoneProviderResult} from './dns_zone_provider_result';
+import type {EnvironmentDnsZone} from './environment_dns_zone';
+import type {EnvironmentDnsZones} from './environment_dns_zones';
 import {findParameter} from './parameters';
 import type {CloudAgent} from './cloud_agents';
 import {
@@ -1359,5 +1364,294 @@ export async function getEnvironment(
             body.defaultCiCdProfileShortName,
             '',
           ),
+  };
+}
+
+// ── DNS zones ───────────────────────────────────────────────────────────────
+const DNS_ZONES = 'GET /environments/{type}/{ownerId}/{shortName}/dns-zones';
+
+/** The control plane spells providers `Aws` / `Gcp` / `Azure`. */
+const DNS_PROVIDERS: Record<string, DnsZoneProvider> = {
+  aws: 'AWS',
+  gcp: 'GCP',
+  azure: 'Azure',
+};
+
+const dnsProvider = (raw: string): DnsZoneProvider =>
+  DNS_PROVIDERS[raw.toLowerCase()] ?? raw;
+
+// The environment service's route constraints: an id outside them is answered
+// 404, which would otherwise read as "no such environment".
+const GUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_SHORT_NAME_LENGTH = 30;
+
+const requiredString = (path: string, v: unknown): string => {
+  if (typeof v !== 'string' || v.length === 0) {
+    throw unexpected(DNS_ZONES, path, 'is not a string');
+  }
+  return v;
+};
+
+const isDsRecord = (
+  v: unknown,
+): v is DnsZoneProviderResult['dsRecords'][number] =>
+  isObject(v) &&
+  Number.isInteger(v.keyTag) &&
+  Number.isInteger(v.algorithm) &&
+  Number.isInteger(v.digestType) &&
+  typeof v.digest === 'string';
+
+/**
+ * An agent's outputs are an open map it writes; one malformed field must not
+ * make every other zone unreadable. Each reader returns `undefined` for a value
+ * it cannot use and records why through `problem`.
+ */
+const outputZoneId = (
+  path: string,
+  v: unknown,
+  problem: (path: string, detail: string) => void,
+): string | null => {
+  if (v === undefined || v === null) {
+    return null;
+  }
+  if (typeof v !== 'string') {
+    problem(path, 'is not a string');
+    return null;
+  }
+  return v;
+};
+
+const outputNameServers = (
+  path: string,
+  v: unknown,
+  problem: (path: string, detail: string) => void,
+): string[] => {
+  if (v === undefined || v === null) {
+    return [];
+  }
+  if (!isStringArray(v)) {
+    problem(path, 'is not an array of strings');
+    return [];
+  }
+  return [...v];
+};
+
+const outputDsRecords = (
+  path: string,
+  v: unknown,
+  problem: (path: string, detail: string) => void,
+): DnsZoneProviderResult['dsRecords'] => {
+  if (v === undefined || v === null) {
+    return [];
+  }
+  if (!Array.isArray(v)) {
+    problem(path, 'is not an array');
+    return [];
+  }
+  const bad = v.findIndex(r => !isDsRecord(r));
+  if (bad >= 0) {
+    problem(
+      `${path}[${bad}]`,
+      'is not a DS record {keyTag, algorithm, digestType, digest}',
+    );
+    return [];
+  }
+  return v.map((r: DnsZoneProviderResult['dsRecords'][number]) => ({
+    keyTag: r.keyTag,
+    algorithm: r.algorithm,
+    digestType: r.digestType,
+    digest: r.digest,
+  }));
+};
+
+/** One realization the control plane reports, as a provider result. */
+const realizationResult = (
+  zoneName: string,
+  path: string,
+  v: unknown,
+  assigned: ReadonlySet<DnsZoneProvider>,
+  problems: string[],
+): DnsZoneProviderResult => {
+  if (!isObject(v)) {
+    throw unexpected(DNS_ZONES, path, 'is not an object');
+  }
+  const provider = dnsProvider(requiredString(`${path}.provider`, v.provider));
+  const status = requiredString(`${path}.status`, v.status);
+  const outputs = v.outputs ?? {};
+  if (!isObject(outputs)) {
+    throw unexpected(DNS_ZONES, `${path}.outputs`, 'is not an object');
+  }
+  const problem = (at: string, detail: string): void => {
+    problems.push(`${zoneName} (${provider}): ${at} ${detail}`);
+  };
+  return {
+    provider,
+    assigned: assigned.has(provider),
+    status,
+    message: optionalString(DNS_ZONES, `${path}.message`, v.message, ''),
+    zoneId: outputZoneId(`${path}.outputs.zoneId`, outputs.zoneId, problem),
+    nameServers: outputNameServers(
+      `${path}.outputs.nameServers`,
+      outputs.nameServers,
+      problem,
+    ),
+    dsRecords: outputDsRecords(
+      `${path}.outputs.dsRecords`,
+      outputs.dsRecords,
+      problem,
+    ),
+    // JSON from the wire: a round trip is a full, independent copy.
+    outputs: JSON.parse(JSON.stringify(outputs)) as Record<string, unknown>,
+    updatedAt:
+      v.updatedAt === undefined || v.updatedAt === null
+        ? null
+        : optionalString(DNS_ZONES, `${path}.updatedAt`, v.updatedAt, ''),
+  };
+};
+
+const pendingResult = (provider: DnsZoneProvider): DnsZoneProviderResult => ({
+  provider,
+  assigned: true,
+  status: 'Pending',
+  message: '',
+  zoneId: null,
+  nameServers: [],
+  dsRecords: [],
+  outputs: {},
+  updatedAt: null,
+});
+
+/**
+ * The providers a zone is assigned to. Today the control plane names at most
+ * one (`assignedProvider`, empty for none); a zone hosted on several providers
+ * is read from `assignedProviders` when the control plane sends a non-empty one.
+ */
+const assignedProviders = (
+  path: string,
+  z: Record<string, unknown>,
+): DnsZoneProvider[] => {
+  const many = optionalStrings(
+    DNS_ZONES,
+    `${path}.assignedProviders`,
+    z.assignedProviders,
+  );
+  const raw =
+    many.length > 0
+      ? many
+      : [
+          optionalString(
+            DNS_ZONES,
+            `${path}.assignedProvider`,
+            z.assignedProvider,
+            '',
+          ),
+        ];
+  return [...new Set(raw.filter(p => p.length > 0).map(dnsProvider))];
+};
+
+const environmentDnsZone = (
+  path: string,
+  z: unknown,
+  problems: string[],
+): EnvironmentDnsZone => {
+  if (!isObject(z)) {
+    throw unexpected(DNS_ZONES, path, 'is not an object');
+  }
+  const name = requiredString(`${path}.zoneName`, z.zoneName);
+  if (typeof z.declared !== 'boolean') {
+    throw unexpected(DNS_ZONES, `${path}.declared`, 'is not a boolean');
+  }
+  const assigned = assignedProviders(path, z);
+  const assignedSet = new Set(assigned);
+  const realizations = z.realizations ?? [];
+  if (!Array.isArray(realizations)) {
+    throw unexpected(DNS_ZONES, `${path}.realizations`, 'is not an array');
+  }
+  const reported = realizations.map((r: unknown, i: number) =>
+    realizationResult(
+      name,
+      `${path}.realizations[${i}]`,
+      r,
+      assignedSet,
+      problems,
+    ),
+  );
+  const byProvider = new Map(reported.map(r => [r.provider, r]));
+  const results = [
+    ...assigned.map(p => byProvider.get(p) ?? pendingResult(p)),
+    ...reported.filter(r => !assignedSet.has(r.provider)),
+  ];
+  const reason = optionalString(
+    DNS_ZONES,
+    `${path}.unassigned`,
+    z.unassigned,
+    '',
+  );
+  return {
+    name,
+    declared: z.declared,
+    unassignedReason: reason.length === 0 ? null : reason,
+    results,
+  };
+};
+
+const checkDnsZonesId = (id: EnvironmentId): void => {
+  const what = "Reading an environment's DNS zones";
+  if (id.ownerId === undefined || id.ownerId.trim().length === 0) {
+    throw new Error(`${what} requires an ownerId.`);
+  }
+  if (!GUID_RE.test(id.ownerId)) {
+    throw new Error(`${what}: ownerId must be a GUID, got '${id.ownerId}'.`);
+  }
+  if (id.shortName === undefined || id.shortName.trim().length === 0) {
+    throw new Error(`${what} requires a shortName.`);
+  }
+  if (id.shortName.length > MAX_SHORT_NAME_LENGTH) {
+    throw new Error(
+      `${what}: shortName must not be longer than ${MAX_SHORT_NAME_LENGTH} characters.`,
+    );
+  }
+};
+
+/**
+ * Read an environment's DNS zones as its cloud agents realized them
+ * (`GET /environments/{type}/{ownerId}/{shortName}/dns-zones`): per zone, one
+ * result per provider with its status, `zoneId`, `nameServers` and
+ * `dsRecords` — the NS and DS values a registrar needs to delegate the domain.
+ * `null` when the environment does not exist. An output field an agent reported
+ * malformed is left empty on its result and named in `problems`.
+ */
+export async function getEnvironmentDnsZones(
+  id: EnvironmentId,
+  cfg: ApiConfig,
+): Promise<EnvironmentDnsZones | null> {
+  checkDnsZonesId(id);
+  const res = await send(
+    cfg,
+    superagent
+      .get(
+        `${environmentsUrl(cfg)}/${pathSegment(id.type)}/${pathSegment(id.ownerId)}/${pathSegment(id.shortName)}/dns-zones`,
+      )
+      .ok(r => r.status === 200 || r.status === 404)
+      .set(authHeaders(cfg)),
+  );
+  if (res.status !== 200) {
+    return null;
+  }
+  const body: unknown = res.body;
+  if (!isObject(body)) {
+    throw unexpected(DNS_ZONES, 'body', 'is not an object');
+  }
+  const zones = body.zones ?? [];
+  if (!Array.isArray(zones)) {
+    throw unexpected(DNS_ZONES, 'zones', 'is not an array');
+  }
+  const problems = optionalStrings(DNS_ZONES, 'problems', body.problems);
+  return {
+    zones: zones.map((z: unknown, i: number) =>
+      environmentDnsZone(`zones[${i}]`, z, problems),
+    ),
+    problems,
   };
 }

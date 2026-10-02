@@ -9,6 +9,11 @@
 export * from './types';
 export * from './cloud_agents';
 export * from './environment';
+export type * from './dns_zone_provider';
+export type * from './dns_zone_result_status';
+export type * from './dns_zone_provider_result';
+export type * from './environment_dns_zone';
+export type * from './environment_dns_zones';
 // The deploy operation itself lives on the client (`cloud.environments.deploy`)
 // so credentials are held in one place; only its options type is public here.
 export type {DeployEnvironmentOptions} from './service';
