@@ -724,6 +724,10 @@ Either way, the resolver:
 - The order of an environment's agents is not a change: a deploy keeps the stored
   order when only the order differs, so it never flips between runs.
 - `deploy` resolves to `{started, completed, inProgress, skipped}`.
+- `environments.updateAgents(tree, {providerCredentials, reporter})` behaves the
+  same way in a per-cloud job: it updates the job's own cloud's agents, sending
+  the same credential headers as `initialize`, and skips the others with a
+  notice. It resolves to `{started, skipped}`.
 
 `cloud.environments.plan(trees)` previews the same decisions read-only: create
 (`+`), update (`~`, with the changed fields), unchanged (`=`, with the status and
