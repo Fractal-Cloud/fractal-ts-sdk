@@ -22,14 +22,7 @@
 // vendor-neutral self-hosted offers (e.g. generic Kafka/Prometheus on any
 // cluster) omit it and are identified by `deliveryModel` + `offerType`.
 export type Provider =
-  | 'AWS'
-  | 'Azure'
-  | 'GCP'
-  | 'OCI'
-  | 'Hetzner'
-  | 'Aruba'
-  | 'RedHat'
-  | 'VMware';
+  'AWS' | 'Azure' | 'GCP' | 'OCI' | 'Hetzner' | 'Aruba' | 'RedHat' | 'VMware';
 export type DeliveryModel = 'IaaS' | 'PaaS' | 'CaaS' | 'SaaS' | 'FaaS';
 
 // ── Offers (Catalogue, Level 3) ──────────────────────────────────────────────

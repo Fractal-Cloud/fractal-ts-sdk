@@ -433,6 +433,48 @@ Things to know:
   override is refused at deploy time, before the operational environment is
   written.
 
+### Reading DNS zone results
+
+Zones declared with `withDnsZones` are realized by the environment's cloud agents.
+`cloud.environments.dnsZones(id)` reads what they reported: per zone, one result per
+provider hosting it, with the name servers and DS records a registrar needs to
+delegate the domain.
+
+```ts
+const dns = await cloud.environments.dnsZones({
+  type: 'Organizational',
+  ownerId: ORG,
+  shortName: 'prod',
+});
+for (const zone of dns?.zones ?? []) {
+  for (const r of zone.results) {
+    // r.provider: 'AWS' | 'GCP' | 'Azure'; r.status: 'Pending' | 'Realizing' |
+    // 'Active' | 'Failed' | 'Deleting' | 'ManualOverride'
+    console.log(zone.name, r.provider, r.status, r.zoneId);
+    console.log('  NS', r.nameServers.join(' '));
+    for (const ds of r.dsRecords) {
+      console.log('  DS', ds.keyTag, ds.algorithm, ds.digestType, ds.digest);
+    }
+  }
+}
+```
+
+- `null` means the environment does not exist; an environment without zones
+  returns `{zones: [], problems: []}`.
+- A provider the zone is assigned to that has not reported yet is listed with
+  status `Pending` and empty outputs. A result with `assigned: false` is a copy the
+  environment no longer assigns there (held, or being torn down).
+- `dsRecords` stays empty for a zone that is not signed. `outputs` carries every
+  field the agent reported, including provider-specific ones.
+- `unassignedReason` says why a declared zone has no provider (e.g. several DNS
+  clouds and no `dnsZoneType`); `problems` lists declaration entries the control
+  plane could not use (unreadable, or a name declared twice), and any output field
+  an agent reported malformed — that field is left empty on its result rather than
+  failing the whole read.
+- An `ownerId` that is not a GUID, or a `shortName` over 30 characters, is refused
+  before the call: the API would answer 404, which would read as a missing
+  environment.
+
 ---
 
 ## Catalogue

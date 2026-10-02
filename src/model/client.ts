@@ -34,6 +34,7 @@ import type {DeployOptions, LiveSystemState} from './service';
 import {
   deployEnvironment,
   getEnvironment,
+  getEnvironmentDnsZones,
   listEnvironments,
 } from './environment/service';
 import type {DeployEnvironmentOptions} from './environment/service';
@@ -44,6 +45,7 @@ import type {
   EnvironmentSummary,
   EnvironmentType,
 } from './environment/types';
+import type {EnvironmentDnsZones} from './environment/environment_dns_zones';
 
 export type FractalCloudClientConfig = ApiConfig;
 
@@ -184,6 +186,13 @@ export type FractalCloudClient = {
     }) => Promise<EnvironmentSummary[]>;
     /** Read one environment with all of its parameters; `null` if absent. */
     get: (id: EnvironmentId) => Promise<EnvironmentDetails | null>;
+    /**
+     * Read an environment's DNS zones as its cloud agents realized them: per
+     * zone, one result per provider hosting it, with its status, `zoneId`,
+     * `nameServers` (NS) and `dsRecords` (DS) — what a registrar needs to
+     * delegate the domain. `null` if the environment is absent.
+     */
+    dnsZones: (id: EnvironmentId) => Promise<EnvironmentDnsZones | null>;
   };
 };
 
@@ -203,5 +212,6 @@ export const createFractalCloudClient = (
     deploy: (management, opts) => deployEnvironment(management, cfg, opts),
     list: owner => listEnvironments(owner, cfg),
     get: id => getEnvironment(id, cfg),
+    dnsZones: id => getEnvironmentDnsZones(id, cfg),
   },
 });

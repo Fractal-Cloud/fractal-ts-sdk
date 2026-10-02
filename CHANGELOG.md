@@ -11,6 +11,19 @@ of truth for what is on npm.
 
 ## Unreleased
 
+### Added — **`environments.dnsZones()`: read an environment's DNS zone results**
+
+`cloud.environments.dnsZones(id)` reads
+`GET /environments/{type}/{ownerId}/{shortName}/dns-zones` and returns
+`EnvironmentDnsZones | null`: per zone its `name`, whether it is still `declared`, an
+`unassignedReason`, and `results` — one `DnsZoneProviderResult` per provider with
+`provider`, `assigned`, `status`, `message`, `zoneId`, `nameServers`, `dsRecords`, the raw
+`outputs` and `updatedAt`. These are the NS and DS values needed to delegate the domain at a
+registrar. A provider assigned to a zone that has not reported yet appears as `Pending`, so
+`results` is the list to watch whether a zone is hosted on one provider or several. `null` means
+the environment does not exist. An output field an agent reported malformed is left empty on its
+result and named in `problems`, so one bad report does not hide the other zones.
+
 ### Added — **`DnsZoneComponent` and the `AwsRoute53HostedZone` offer**
 
 `DnsZoneComponent` (`NetworkAndCompute.DnsZone`) carries the shared DNS zone guardrails every DNS
