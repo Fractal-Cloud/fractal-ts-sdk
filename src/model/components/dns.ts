@@ -39,8 +39,20 @@ export type DnsAliasTarget = {
  * `values` and `alias`.
  */
 export type DnsRecord =
-  | {name?: string; type: DnsRecordType; ttl?: number; values: string[]}
-  | {name?: string; type: 'A' | 'AAAA' | 'CNAME'; alias: DnsAliasTarget};
+  | {
+      name?: string;
+      type: DnsRecordType;
+      ttl?: number;
+      values: string[];
+      alias?: never;
+    }
+  | {
+      name?: string;
+      type: 'A' | 'AAAA' | 'CNAME';
+      alias: DnsAliasTarget;
+      values?: never;
+      ttl?: never;
+    };
 
 /** The shared guardrails of a DNS zone, with the agent's defaults. */
 export type DnsZoneGuardrails = {
@@ -109,6 +121,18 @@ const dnsZoneNode = <Id extends string>(
   withAllowedRecordTypes: v =>
     dnsZoneNode<Id>(guardrail(s, 'allowedRecordTypes', v)),
   withTtlBounds: v => {
+    if (v.minTtl === undefined && v.maxTtl === undefined) {
+      throw new Error('withTtlBounds needs minTtl, maxTtl or both');
+    }
+    if (
+      v.minTtl !== undefined &&
+      v.maxTtl !== undefined &&
+      v.minTtl > v.maxTtl
+    ) {
+      throw new Error(
+        `withTtlBounds: minTtl (${v.minTtl}) is greater than maxTtl (${v.maxTtl})`,
+      );
+    }
     let next = s;
     if (v.minTtl !== undefined) {
       next = guardrail(next, 'minTtl', v.minTtl);

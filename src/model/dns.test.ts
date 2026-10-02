@@ -34,7 +34,10 @@ function authorFractal() {
             {
               name: '@',
               type: 'A',
-              alias: {dnsName: 'd111.cloudfront.net', hostedZoneId: 'Z2FDTNDATAQYW2'},
+              alias: {
+                dnsName: 'd111.cloudfront.net',
+                hostedZoneId: 'Z2FDTNDATAQYW2',
+              },
             },
           ]),
       );
@@ -87,5 +90,26 @@ describe('DNS Zone component', () => {
         },
       }),
     ).toThrow(/does not satisfy/);
+  });
+
+  it('refuses TTL bounds that are empty or inverted at design time', () => {
+    expect(() => DnsZoneComponent({id: 'z'}).withTtlBounds({})).toThrow(
+      /needs minTtl, maxTtl or both/,
+    );
+    expect(() =>
+      DnsZoneComponent({id: 'z'}).withTtlBounds({minTtl: 600, maxTtl: 60}),
+    ).toThrow(/greater than maxTtl/);
+  });
+
+  it('a record cannot carry both values and an alias', () => {
+    DnsZoneComponent({id: 'z'}).withRecords([
+      // @ts-expect-error values and alias are mutually exclusive
+      {
+        name: '@',
+        type: 'A',
+        values: ['192.0.2.1'],
+        alias: {dnsName: 'x.', hostedZoneId: 'Z1'},
+      },
+    ]);
   });
 });
