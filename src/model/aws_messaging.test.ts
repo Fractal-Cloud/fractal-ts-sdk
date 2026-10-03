@@ -303,3 +303,26 @@ describe('Workload → MessagingEntity link', () => {
     ]);
   });
 });
+
+describe('AwsSnsTopic maximumMessageSize', () => {
+  const topic = (maximumMessageSize: number) =>
+    pubSub().toLiveSystem({
+      name: 'accounts',
+      environment,
+      select: {
+        events: AwsSnsTopic({maximumMessageSize}),
+        upstream: AwsSnsTopic({}),
+        inbox: AwsSqsQueue({}),
+        service: K8sWorkload({}),
+      },
+    });
+
+  it('carries the 1 MiB opt-in', () => {
+    const events = topic(1048576).components.find(c => c.id === 'events')!;
+    expect(events.parameters.maximumMessageSize).toBe(1048576);
+  });
+
+  it.each([[1023], [1048577], [2048.5]])('refuses %s bytes', size => {
+    expect(() => topic(size)).toThrow(/maximumMessageSize/);
+  });
+});

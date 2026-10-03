@@ -77,8 +77,16 @@ import type {SecretRef} from './secret';
 import {createFractalCloudClient} from './client';
 
 const ORG = '00000000-0000-0000-0000-00000000f00d';
-const PLATFORM_BC: OwnerRef = {ownerType: 'Organizational', ownerId: ORG, name: 'platform'};
-const ACCOUNTS_BC: OwnerRef = {ownerType: 'Organizational', ownerId: ORG, name: 'accounts'};
+const PLATFORM_BC: OwnerRef = {
+  ownerType: 'Organizational',
+  ownerId: ORG,
+  name: 'platform',
+};
+const ACCOUNTS_BC: OwnerRef = {
+  ownerType: 'Organizational',
+  ownerId: ORG,
+  name: 'accounts',
+};
 const ORGANIZATIONS_BC: OwnerRef = {
   ownerType: 'Organizational',
   ownerId: ORG,
@@ -86,7 +94,11 @@ const ORGANIZATIONS_BC: OwnerRef = {
 };
 const PLATFORM_LS = liveSystemIdOf(PLATFORM_BC, 'shared-platform');
 const ORGANIZATIONS_LS = liveSystemIdOf(ORGANIZATIONS_BC, 'organizations');
-const environment = {ownerType: 'Organizational', ownerId: ORG, name: 'fractal-cloud-prod'};
+const environment = {
+  ownerType: 'Organizational',
+  ownerId: ORG,
+  name: 'fractal-cloud-prod',
+};
 
 type Subscription = {
   /** The upstream Domain Service, i.e. its Live System. */
@@ -106,7 +118,9 @@ const domainService = (subscriptions: Subscription[]) =>
       const cluster = bp.add(ContainerPlatform({id: 'cluster'}));
       const dbms = bp.add(RelationalDbms({id: 'dbms'}));
       const gateway = bp.add(ApiGateway({id: 'gateway'}));
-      const database = bp.add(RelationalDatabase({id: 'database'}).dependsOn(dbms));
+      const database = bp.add(
+        RelationalDatabase({id: 'database'}).dependsOn(dbms),
+      );
       const events = bp.add(MessagingEntity({id: 'events'}));
       // Ops-fixed guardrails: surge rollout, PDB, spread, probes, Graviton.
       const service = bp.add(
@@ -120,26 +134,48 @@ const domainService = (subscriptions: Subscription[]) =>
           .withNodeSelector({'kubernetes.io/arch': 'arm64'})
           .dependsOn(cluster),
       );
-      bp.link(service, database, {access: 'read-write'} satisfies RelationalDatabaseLink);
-      bp.link(service, events, {access: 'publish'} satisfies MessagingEntityLink);
-      const slots: Record<string, AnyNode> = {cluster, dbms, gateway, database, events, service};
+      bp.link(service, database, {
+        access: 'read-write',
+      } satisfies RelationalDatabaseLink);
+      bp.link(service, events, {
+        access: 'publish',
+      } satisfies MessagingEntityLink);
+      const slots: Record<string, AnyNode> = {
+        cluster,
+        dbms,
+        gateway,
+        database,
+        events,
+        service,
+      };
       for (const sub of subscriptions) {
         const upstream = bp.add(MessagingEntity({id: `${sub.name}-events`}));
-        const inbox = bp.add(MessagingEntity({id: `${sub.name}-inbox`}).withTopic(upstream));
-        bp.link(service, inbox, {access: 'subscribe'} satisfies MessagingEntityLink);
+        const inbox = bp.add(
+          MessagingEntity({id: `${sub.name}-inbox`}).withTopic(upstream),
+        );
+        bp.link(service, inbox, {
+          access: 'subscribe',
+        } satisfies MessagingEntityLink);
         slots[upstream.state.id] = upstream;
         slots[inbox.state.id] = inbox;
       }
       return slots;
     },
     operations: (s, ctx) => ({
-      withImage: (repo: string, tag: string) => s.service.set('image', `${repo}:${tag}`),
+      withImage: (repo: string, tag: string) =>
+        s.service.set('image', `${repo}:${tag}`),
       withEnv: (env: Record<string, string>) => s.service.set('env', env),
-      withSecretEnv: (env: Record<string, SecretRef>) => s.service.set('secretEnv', env),
+      withSecretEnv: (env: Record<string, SecretRef>) =>
+        s.service.set('secretEnv', env),
       withResources: (r: WorkloadResources) => s.service.set('resources', r),
       withAutoscaling: (min: number, max: number, cpu: number) =>
-        s.service.set('autoscaling', {minReplicas: min, maxReplicas: max, targetCpuUtilization: cpu}),
-      withDrain: (seconds: number) => s.service.set('terminationGracePeriodSeconds', seconds),
+        s.service.set('autoscaling', {
+          minReplicas: min,
+          maxReplicas: max,
+          targetCpuUtilization: cpu,
+        }),
+      withDrain: (seconds: number) =>
+        s.service.set('terminationGracePeriodSeconds', seconds),
       withRoutes: (routes: GatewayRouteOptions) =>
         ctx.link(s.service, s.gateway, gatewayRouteSettings(routes)),
     }),
@@ -148,8 +184,14 @@ const domainService = (subscriptions: Subscription[]) =>
 const selection = (subscriptions: Subscription[]): Record<string, Offer> => {
   const select: Record<string, Offer> = {
     cluster: referenceTo(Eks, {liveSystemId: PLATFORM_LS, componentId: 'eks'}),
-    dbms: referenceTo(AwsRdsPostgresDbms, {liveSystemId: PLATFORM_LS, componentId: 'postgres'}),
-    gateway: referenceTo(TraefikGateway, {liveSystemId: PLATFORM_LS, componentId: 'traefik'}),
+    dbms: referenceTo(AwsRdsPostgresDbms, {
+      liveSystemId: PLATFORM_LS,
+      componentId: 'postgres',
+    }),
+    gateway: referenceTo(TraefikGateway, {
+      liveSystemId: PLATFORM_LS,
+      componentId: 'traefik',
+    }),
     database: AwsRdsPostgresDatabase({databaseName: 'fractal_accounts'}),
     events: AwsSnsTopic({topicName: 'fractal-accounts'}),
     service: K8sWorkload({namespace: 'fractal'}),
@@ -181,13 +223,19 @@ const accountsLiveSystem = () =>
     .withImage('ghcr.io/fractal-cloud/accounts', 'v2.21.12')
     .withEnv({ASPNETCORE_ENVIRONMENT: 'Production'})
     .withSecretEnv({SENDGRID_API_KEY: secretRef('sendgrid-api-key')})
-    .withResources({requests: {cpu: '250m', memory: '512Mi'}, limits: {memory: '1Gi'}})
+    .withResources({
+      requests: {cpu: '250m', memory: '512Mi'},
+      limits: {memory: '1Gi'},
+    })
     .withAutoscaling(2, 6, 70)
     .withDrain(60)
     .withRoutes({
       routes: [
         {prefix: '/accounts'},
-        {prefix: '/swagger/accounts', rewritePath: '/swagger/v1.0/swagger.json'},
+        {
+          prefix: '/swagger/accounts',
+          rewritePath: '/swagger/v1.0/swagger.json',
+        },
       ],
       responseTimeoutMs: 60000,
       retryAttempts: 2,
@@ -195,9 +243,16 @@ const accountsLiveSystem = () =>
     // The typed selection is keyed by literal slot ids; this fractal's slots are
     // built from data, so its selection is a plain record.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .toLiveSystem({name: 'accounts', environment, select: selection(SUBSCRIPTIONS) as any});
+    .toLiveSystem({
+      name: 'accounts',
+      environment,
+      select: selection(SUBSCRIPTIONS) as any,
+    });
 
-const cloud = createFractalCloudClient({clientId: 'cid', clientSecret: 'secret'});
+const cloud = createFractalCloudClient({
+  clientId: 'cid',
+  clientSecret: 'secret',
+});
 
 describe('the Domain Service fractal on the shared AWS platform', () => {
   beforeEach(() => {
@@ -215,7 +270,9 @@ describe('the Domain Service fractal on the shared AWS platform', () => {
       blueprintMap: Record<string, unknown>;
     };
     expect(body.liveSystemId).toBe(`Organizational/${ORG}/accounts/accounts`);
-    expect(body.fractalId).toBe(`Organizational/${ORG}/accounts/domain-service:1.0.0`);
+    expect(body.fractalId).toBe(
+      `Organizational/${ORG}/accounts/domain-service:1.0.0`,
+    );
     expect(body.blueprintMap).toEqual({
       cluster: {
         type: 'NetworkAndCompute.PaaS.AwsEks',
@@ -223,7 +280,10 @@ describe('the Domain Service fractal on the shared AWS platform', () => {
         displayName: 'cluster',
         provider: 'AWS',
         deliveryModel: 'PaaS',
-        reference: {liveSystemId: `Organizational/${ORG}/platform/shared-platform`, componentId: 'eks'},
+        reference: {
+          liveSystemId: `Organizational/${ORG}/platform/shared-platform`,
+          componentId: 'eks',
+        },
         parameters: {},
         dependencies: [],
         links: [],
@@ -234,7 +294,10 @@ describe('the Domain Service fractal on the shared AWS platform', () => {
         displayName: 'dbms',
         provider: 'AWS',
         deliveryModel: 'PaaS',
-        reference: {liveSystemId: `Organizational/${ORG}/platform/shared-platform`, componentId: 'postgres'},
+        reference: {
+          liveSystemId: `Organizational/${ORG}/platform/shared-platform`,
+          componentId: 'postgres',
+        },
         parameters: {},
         dependencies: [],
         links: [],
@@ -245,7 +308,10 @@ describe('the Domain Service fractal on the shared AWS platform', () => {
         displayName: 'gateway',
         provider: undefined,
         deliveryModel: 'CaaS',
-        reference: {liveSystemId: `Organizational/${ORG}/platform/shared-platform`, componentId: 'traefik'},
+        reference: {
+          liveSystemId: `Organizational/${ORG}/platform/shared-platform`,
+          componentId: 'traefik',
+        },
         parameters: {},
         dependencies: [],
         links: [],
@@ -291,7 +357,11 @@ describe('the Domain Service fractal on the shared AWS platform', () => {
           secretEnv: {SENDGRID_API_KEY: {$envSecret: 'sendgrid-api-key'}},
           resourceRequests: {cpu: '250m', memory: '512Mi'},
           resourceLimits: {memory: '1Gi'},
-          autoscaling: {minReplicas: 2, maxReplicas: 6, targetCpuUtilization: 70},
+          autoscaling: {
+            minReplicas: 2,
+            maxReplicas: 6,
+            targetCpuUtilization: 70,
+          },
           terminationGracePeriodSeconds: 60,
         },
         dependencies: ['cluster'],
@@ -347,10 +417,13 @@ describe('the Domain Service fractal on the shared AWS platform', () => {
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId: ACCOUNTS_BC,
       blueprint: bp => ({
-        service: bp.add(Workload({id: 'service'}).withPodDisruptionBudget({minAvailable: 1})),
+        service: bp.add(
+          Workload({id: 'service'}).withPodDisruptionBudget({minAvailable: 1}),
+        ),
       }),
       operations: s => ({
-        withoutPdb: () => s.service.set('podDisruptionBudget', {minAvailable: 0}),
+        withoutPdb: () =>
+          s.service.set('podDisruptionBudget', {minAvailable: 0}),
       }),
     });
     expect(() => f.specialize().withoutPdb()).toThrow(/locked guardrail/);

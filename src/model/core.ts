@@ -17,6 +17,7 @@
  */
 
 import type {ComponentReference} from './component_reference';
+import {isRouteSettings, mergeRouteSettings} from './route_link_merge';
 
 // ── Catalogue value types ────────────────────────────────────────────────────
 // Vendors only. `CaaS`/`SaaS` are NOT vendors — they are delivery models below.
@@ -339,7 +340,37 @@ const slotOps = (id: string): SlotOps => ({
   append: (k, v) => st => appendOpen(st, id, k, v),
   addChild: child => st => addChild(st, id, child.state),
 });
-/** Append a runtime link record (used by both bp.link and operation-authored links). */
+/**
+ * Append a runtime link record (used by both bp.link and operation-authored
+ * links). Gateway route declarations from one source to one target merge into
+ * the existing link instead (see route_link_merge.ts): the control plane keeps
+ * one link per source and target.
+ */
+const withLink = (
+  links: readonly LinkRecord[],
+  sourceId: string,
+  targetId: string,
+  settings: Record<string, unknown>,
+): LinkRecord[] => {
+  const i = isRouteSettings(settings)
+    ? links.findIndex(
+        l =>
+          l.sourceId === sourceId &&
+          l.targetId === targetId &&
+          isRouteSettings(l.settings),
+      )
+    : -1;
+  if (i < 0) {
+    return [...links, {sourceId, targetId, settings}];
+  }
+  const merged = mergeRouteSettings(
+    sourceId,
+    targetId,
+    links[i].settings,
+    settings,
+  );
+  return links.map((l, j) => (j === i ? {...l, settings: merged} : l));
+};
 const addLink = (
   st: FractalState,
   sourceId: string,
@@ -347,7 +378,7 @@ const addLink = (
   settings: Record<string, unknown>,
 ): FractalState => ({
   ...st,
-  links: [...st.links, {sourceId, targetId, settings}],
+  links: withLink(st.links, sourceId, targetId, settings),
 });
 /** Collect a parent's child components in instantiation-context shape. */
 const childrenFor = (st: FractalState, parentId: string): ChildContext[] =>
@@ -591,7 +622,7 @@ export function createFractal<
   ) => Ops;
 }): Fractal<Slots, Ops> {
   const order: string[] = [];
-  const linkRecords: LinkRecord[] = [];
+  let linkRecords: LinkRecord[] = [];
   const bp = {
     add: <N extends AnyNode>(n: N): N => {
       order.push(n.state.id);
@@ -602,11 +633,12 @@ export function createFractal<
       target: AnyNode,
       settings: Record<string, unknown> = {},
     ): void => {
-      linkRecords.push({
-        sourceId: source.state.id,
-        targetId: target.state.id,
+      linkRecords = withLink(
+        linkRecords,
+        source.state.id,
+        target.state.id,
         settings,
-      });
+      );
     },
   };
   const slots = def.blueprint(bp);

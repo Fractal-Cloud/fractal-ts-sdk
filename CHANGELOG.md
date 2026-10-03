@@ -30,7 +30,8 @@ gives a Live System (`<ownerType>/<ownerId>/<boundedContext>/<liveSystemName>`).
 
 ### Added — AWS messaging: `AwsSnsTopic`, `AwsSqsQueue`, `MessagingEntity.withTopic`, `MessagingEntityLink`
 
-- `AwsSnsTopic({topicName?, kmsMasterKeyId?})`.
+- `AwsSnsTopic({topicName?, kmsMasterKeyId?, maximumMessageSize?})`; `maximumMessageSize`
+  up to 1 MiB (1048576) when every subscriber is SQS, Firehose or Lambda.
 - `AwsSqsQueue({queueName?, visibilityTimeoutSeconds?, messageRetentionSeconds?,
   maxReceiveCount?, dlqRetentionSeconds?, rawMessageDelivery?, filterEventNames?,
   filterPolicy?, dlqAlarm?})`: a queue with a dead-letter queue, subscribed to the one
@@ -43,11 +44,18 @@ gives a Live System (`<ownerType>/<ownerId>/<boundedContext>/<liveSystemName>`).
 
 - `TraefikGateway` (`APIManagement.CaaS.TraefikGateway`, owned by the caas-k8s agent):
   `namespace`, `replicas`, `chartVersion`, `host`, `internalLoadBalancer`,
-  `tlsCertificateArn`, `entryPointIdleTimeoutSeconds`. `Traefik` keeps the Java agents'
-  shape.
+  `tlsCertificateArn`, `entryPointIdleTimeoutSeconds`, and a ForwardAuth middleware
+  (`forwardAuthAddress`, `forwardAuthRequestHeaders`, `forwardAuthResponseHeaders`,
+  `forwardAuthForwardBody`, `forwardAuthMaxBodySize`, `forwardAuthExcludedPrefixes`; lists
+  travel comma-separated). `Traefik` keeps the Java agents' shape. A gateway behind a
+  CloudFront VPC origin must stay TCP-only: `tlsCertificateArn` there is refused.
 - `gatewayRouteSettings({routes: [{prefix, rewritePath?, host?}], responseTimeoutMs?,
   idleConnTimeoutMs?, retryAttempts?, servicePort?})` builds the flat, indexed settings of
   an outbound Workload → gateway link (`bp.link(service, gateway, gatewayRouteSettings(…))`).
+  Route declarations from one workload to one gateway merge into ONE link (the control
+  plane keeps one link per source and target), their routes numbered on; a later
+  declaration contradicting the link's timeouts, retries or port, or repeating a prefix
+  for the same host, is refused.
 
 ### Added — shared-platform knobs
 

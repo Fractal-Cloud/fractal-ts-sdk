@@ -60,5 +60,8 @@
   },
   "dependencies": {
     "superagent": "^10.4.1"
+  },
+  "overrides": {
+    "tmp": "^0.2.7"
   }
 }

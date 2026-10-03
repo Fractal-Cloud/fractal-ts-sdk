@@ -250,6 +250,12 @@ export const AwsSnsTopic = defineOffer<
     topicName?: string;
     /** Server-side encryption key; defaults to the AWS-managed `alias/aws/sns`. */
     kmsMasterKeyId?: string;
+    /**
+     * Largest message in bytes, 1024 to 1048576; the agent defaults to 262144.
+     * Above 262144 SNS accepts only SQS, Firehose and Lambda subscribers (at
+     * most 100). The queue's limit is 1 MiB, so the topic's is the end-to-end one.
+     */
+    maximumMessageSize?: number;
   }
 >({
   satisfies: 'Messaging.MessagingEntity',
@@ -257,6 +263,15 @@ export const AwsSnsTopic = defineOffer<
   provider: 'AWS',
   deliveryModel: 'PaaS',
   validate: (self, _all, config) => {
+    const size = config.maximumMessageSize;
+    if (
+      size !== undefined &&
+      (!Number.isInteger(size) || size < 1024 || size > 1048576)
+    ) {
+      throw new Error(
+        `AwsSnsTopic '${self.id}': maximumMessageSize ${size} is not a whole number of bytes from 1024 to 1048576.`,
+      );
+    }
     if (
       config.topicName !== undefined &&
       !SNS_TOPIC_NAME.test(config.topicName)

@@ -174,6 +174,16 @@ export const AwsCloudFront = defineOffer<
       );
     }
     const vpcOrigin = gateways.length === 1;
+    const tlsGateway = gateways.find(
+      g => g.parameters.tlsCertificateArn !== undefined,
+    );
+    if (tlsGateway !== undefined) {
+      throw new Error(
+        `Live component '${self.id}': a CloudFront VPC origin cannot reach an NLB with ` +
+          `a TLS listener, so the gateway '${tlsGateway.id}' behind it stays TCP-only: ` +
+          'drop its tlsCertificateArn.',
+      );
+    }
     const customOrigin =
       config.originDomain !== undefined && config.originDomain.trim() !== '';
     if (customOrigin && !HOST_NAME.test(config.originDomain!.trim())) {
@@ -284,6 +294,68 @@ export const Ambassador = defineOffer<
   offerType: 'APIManagement.CaaS.Ambassador',
   deliveryModel: 'CaaS',
 });
+const FORWARD_AUTH_LISTS = [
+  'forwardAuthRequestHeaders',
+  'forwardAuthResponseHeaders',
+  'forwardAuthExcludedPrefixes',
+] as const;
+const HEADER_NAME = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/;
+
+const ensureValidForwardAuth = (
+  id: string,
+  config: {
+    forwardAuthAddress?: string;
+    forwardAuthRequestHeaders?: readonly string[];
+    forwardAuthResponseHeaders?: readonly string[];
+    forwardAuthForwardBody?: boolean;
+    forwardAuthMaxBodySize?: number;
+    forwardAuthExcludedPrefixes?: readonly string[];
+  },
+): void => {
+  const refuse = (why: string): never => {
+    throw new Error(`Live component '${id}': ${why}.`);
+  };
+  const address = config.forwardAuthAddress;
+  const anyOther = Object.entries(config).some(
+    ([k, v]) =>
+      k.startsWith('forwardAuth') &&
+      k !== 'forwardAuthAddress' &&
+      v !== undefined,
+  );
+  if (address === undefined) {
+    if (anyOther) {
+      refuse('ForwardAuth settings without forwardAuthAddress do nothing');
+    }
+    return;
+  }
+  if (!/^https?:\/\/[^\s/?#]+(\/[^\s]*)?$/.test(address)) {
+    refuse(`forwardAuthAddress '${address}' is not an http(s) URL`);
+  }
+  for (const key of [
+    'forwardAuthRequestHeaders',
+    'forwardAuthResponseHeaders',
+  ] as const) {
+    const bad = (config[key] ?? []).find(h => !HEADER_NAME.test(h));
+    if (bad !== undefined) {
+      refuse(`${key} holds '${bad}', which is not a header name`);
+    }
+  }
+  const badPrefix = (config.forwardAuthExcludedPrefixes ?? []).find(
+    p => !p.startsWith('/') || p.includes(','),
+  );
+  if (badPrefix !== undefined) {
+    refuse(
+      `forwardAuthExcludedPrefixes holds '${badPrefix}', which is not a path prefix`,
+    );
+  }
+  const size = config.forwardAuthMaxBodySize;
+  if (size !== undefined && (!Number.isInteger(size) || size < 1)) {
+    refuse(
+      `forwardAuthMaxBodySize ${size} is not a whole number of bytes of at least 1`,
+    );
+  }
+};
+
 /** Traefik as the Java cloud agents reconcile it. For the platform gateway on EKS use `TraefikGateway`. */
 export const Traefik = defineOffer<
   'APIManagement.ApiGateway',
@@ -318,19 +390,62 @@ export const TraefikGateway = defineOffer<
     host?: string;
     /** An internal NLB (EKS Auto Mode load balancer class); default true. */
     internalLoadBalancer?: boolean;
-    /** Regional ACM certificate for a TLS listener on 443 of the NLB. */
+    /**
+     * Regional ACM certificate for a TLS listener on 443 of the NLB. NOT for a
+     * gateway behind a CloudFront VPC origin: a VPC origin cannot reach an NLB
+     * with a TLS listener, so that NLB stays TCP-only and the combination is
+     * refused.
+     */
     tlsCertificateArn?: string;
     /**
      * Idle timeout of the entry points; default 75. Must exceed the keep-alive
      * of whatever is in front (CloudFront's origin keep-alive).
      */
     entryPointIdleTimeoutSeconds?: number;
+    /**
+     * A ForwardAuth middleware on every route the workload links create (except
+     * `forwardAuthExcludedPrefixes`): each request is first sent to this URL,
+     * with its method preserved, and is refused unless it answers 2xx.
+     */
+    forwardAuthAddress?: string;
+    /** Request headers sent to the auth service; default x-clientid, x-clientsecret, origin. */
+    forwardAuthRequestHeaders?: readonly string[];
+    /** Auth-service response headers copied onto the request; default x-jwt. */
+    forwardAuthResponseHeaders?: readonly string[];
+    /** Send the request body to the auth service; default true. */
+    forwardAuthForwardBody?: boolean;
+    /** Largest body forwarded to the auth service, in bytes; default 1048576. */
+    forwardAuthMaxBodySize?: number;
+    /** Route prefixes not authenticated; default /ocelot/, /grafana/, /prometheus/, /alertmanager/. */
+    forwardAuthExcludedPrefixes?: readonly string[];
   }
 >({
   satisfies: 'APIManagement.ApiGateway',
   offerType: TRAEFIK_GATEWAY_OFFER_TYPE,
   deliveryModel: 'CaaS',
+  // Lists travel comma-separated, as the agent's defaults are written.
+  instantiate: (ctx, config) => {
+    const params: Record<string, unknown> = {...ctx.parameters, ...config};
+    for (const key of FORWARD_AUTH_LISTS) {
+      const list = config[key];
+      if (list !== undefined) {
+        params[key] = list.join(',');
+      }
+    }
+    return [
+      {
+        id: ctx.id,
+        displayName: ctx.displayName,
+        type: TRAEFIK_GATEWAY_OFFER_TYPE,
+        deliveryModel: 'CaaS',
+        parameters: params,
+        dependencies: ctx.dependencies,
+        links: ctx.links,
+      },
+    ];
+  },
   validate: (self, _all, config) => {
+    ensureValidForwardAuth(self.id, config);
     if (config.host !== undefined && !HOST_NAME.test(config.host)) {
       throw new Error(
         `Live component '${self.id}': host '${config.host}' is not a host name.`,
