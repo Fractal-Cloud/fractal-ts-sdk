@@ -226,3 +226,256 @@ export const KafkaTopic = defineOffer<
   offerType: 'Messaging.CaaS.KafkaTopic',
   deliveryModel: 'CaaS',
 });
+
+// ── AWS: SNS topic + SQS queue (satisfy 'Messaging.MessagingEntity') ─────────
+const AWS_SNS_TOPIC_TYPE = 'Messaging.PaaS.AwsSnsTopic';
+const AWS_SQS_QUEUE_TYPE = 'Messaging.PaaS.AwsSqsQueue';
+
+/** SNS topic names: 1–256 letters, digits, hyphens and underscores (standard topics). */
+const SNS_TOPIC_NAME = /^[A-Za-z0-9_-]{1,256}$/;
+/** SQS queue names: 1–80 of the same characters; the DLQ appends `-dlq`, so 76 here. */
+const SQS_QUEUE_NAME = /^[A-Za-z0-9_-]{1,76}$/;
+
+/**
+ * A standard Amazon SNS topic: the events a Domain Service publishes. Other
+ * Live Systems subscribe to it with an `AwsSqsQueue` that depends on a
+ * reference to it (`referenceTo(AwsSnsTopic, {...})`).
+ *
+ * Output fields: `topicArn`, `topicName`.
+ */
+export const AwsSnsTopic = defineOffer<
+  'Messaging.MessagingEntity',
+  {
+    /** Defaults to the component id. */
+    topicName?: string;
+    /** Server-side encryption key; defaults to the AWS-managed `alias/aws/sns`. */
+    kmsMasterKeyId?: string;
+    /**
+     * Largest message in bytes, 1024 to 1048576; the agent defaults to 262144.
+     * Above 262144 SNS accepts only SQS, Firehose and Lambda subscribers (at
+     * most 100). The queue's limit is 1 MiB, so the topic's is the end-to-end one.
+     */
+    maximumMessageSize?: number;
+  }
+>({
+  satisfies: 'Messaging.MessagingEntity',
+  offerType: AWS_SNS_TOPIC_TYPE,
+  provider: 'AWS',
+  deliveryModel: 'PaaS',
+  validate: (self, _all, config) => {
+    const size = config.maximumMessageSize;
+    if (
+      size !== undefined &&
+      (!Number.isInteger(size) || size < 1024 || size > 1048576)
+    ) {
+      throw new Error(
+        `AwsSnsTopic '${self.id}': maximumMessageSize ${size} is not a whole number of bytes from 1024 to 1048576.`,
+      );
+    }
+    if (
+      config.topicName !== undefined &&
+      !SNS_TOPIC_NAME.test(config.topicName)
+    ) {
+      throw new Error(
+        `AwsSnsTopic '${self.id}': topicName '${config.topicName}' is not an SNS ` +
+          'topic name (1-256 letters, digits, hyphens and underscores).',
+      );
+    }
+  },
+});
+
+/** The SQS knob a neutral `MessagingEntity` guardrail maps onto, and how. */
+const NEUTRAL_QUEUE_KNOBS = [
+  {
+    neutral: 'messageRetentionHours',
+    vendor: 'messageRetentionSeconds',
+    convert: (hours: number) => hours * 3600,
+  },
+  {
+    neutral: 'maxDeliveryAttempts',
+    vendor: 'maxReceiveCount',
+    convert: (attempts: number) => attempts,
+  },
+] as const;
+
+/**
+ * Map the neutral guardrails onto the queue's knobs. A knob set on the offer
+ * wins over an unlocked neutral value, but contradicting a LOCKED one is
+ * refused: the architect fixed it at design time.
+ */
+const queueParameters = (
+  ctx: InstantiationContext,
+  config: Record<string, unknown>,
+): Record<string, unknown> => {
+  const params: Record<string, unknown> = {...ctx.parameters};
+  for (const {neutral, vendor, convert} of NEUTRAL_QUEUE_KNOBS) {
+    const value = params[neutral];
+    delete params[neutral];
+    if (typeof value !== 'number') {
+      continue;
+    }
+    const mapped = convert(value);
+    const explicit = config[vendor];
+    if (explicit !== undefined) {
+      if ((ctx.locked ?? []).includes(neutral) && explicit !== mapped) {
+        throw new Error(
+          `Offer config '${vendor}: ${String(explicit)}' contradicts the locked ` +
+            `guardrail '${neutral}: ${value}' on '${ctx.id}'. Drop the override or ` +
+            `set it to ${mapped}.`,
+        );
+      }
+      continue;
+    }
+    params[vendor] = mapped;
+  }
+  return params;
+};
+
+type SqsQueueConfig = {
+  /** Defaults to the component id. The dead-letter queue is `<queueName>-dlq`. */
+  queueName?: string;
+  /** Default 60. */
+  visibilityTimeoutSeconds?: number;
+  /** Default 345600 (4 days). */
+  messageRetentionSeconds?: number;
+  /** Receives before a message moves to the dead-letter queue; default 5. */
+  maxReceiveCount?: number;
+  /** Default 1209600 (14 days). */
+  dlqRetentionSeconds?: number;
+  /** Deliver the published message as is, without the SNS envelope; default true. */
+  rawMessageDelivery?: boolean;
+  /**
+   * Deliver only messages whose `eventName` attribute is one of these. Empty or
+   * absent: every message of the topic.
+   */
+  filterEventNames?: readonly string[];
+  /** A raw SNS filter policy, in place of `filterEventNames`. */
+  filterPolicy?: Record<string, unknown> | string;
+  /** A CloudWatch alarm when the dead-letter queue holds any message; default true. */
+  dlqAlarm?: boolean;
+};
+
+const INTEGER_BOUNDS: ReadonlyArray<[keyof SqsQueueConfig, number, number]> = [
+  ['visibilityTimeoutSeconds', 0, 43200],
+  ['messageRetentionSeconds', 60, 1209600],
+  ['maxReceiveCount', 1, 1000],
+  ['dlqRetentionSeconds', 60, 1209600],
+];
+
+/**
+ * A standard Amazon SQS queue with a dead-letter queue (`<queueName>-dlq`,
+ * SSE-SQS on both). When it depends on an `AwsSnsTopic` — declared with
+ * `withTopic`, and possibly a reference to another Live System's topic — the
+ * queue's side creates the subscription and a queue policy that admits only
+ * that topic.
+ *
+ * Output fields: `queueUrl`, `queueArn`, `dlqUrl`, `dlqArn`, `subscriptionArn`.
+ */
+export const AwsSqsQueue = defineOffer<
+  'Messaging.MessagingEntity',
+  SqsQueueConfig
+>({
+  satisfies: 'Messaging.MessagingEntity',
+  offerType: AWS_SQS_QUEUE_TYPE,
+  provider: 'AWS',
+  deliveryModel: 'PaaS',
+  instantiate: (ctx, config) => {
+    const {filterEventNames, filterPolicy, ...given} = config;
+    // An explicitly undefined knob must not erase a value mapped from a guardrail.
+    const knobs = Object.fromEntries(
+      Object.entries(given).filter(([, v]) => v !== undefined),
+    );
+    const filters: Record<string, unknown> = {};
+    if (filterEventNames !== undefined && filterEventNames.length > 0) {
+      filters.filterEventNames = filterEventNames.join(',');
+    }
+    if (filterPolicy !== undefined) {
+      filters.filterPolicy =
+        typeof filterPolicy === 'string'
+          ? filterPolicy
+          : JSON.stringify(filterPolicy);
+    }
+    return [
+      {
+        id: ctx.id,
+        displayName: ctx.displayName,
+        type: AWS_SQS_QUEUE_TYPE,
+        provider: 'AWS',
+        deliveryModel: 'PaaS',
+        parameters: {...queueParameters(ctx, knobs), ...knobs, ...filters},
+        dependencies: ctx.dependencies,
+        links: ctx.links,
+      },
+    ];
+  },
+  validate: (self, all, config) => {
+    if (
+      config.queueName !== undefined &&
+      !SQS_QUEUE_NAME.test(config.queueName)
+    ) {
+      throw new Error(
+        `AwsSqsQueue '${self.id}': queueName '${config.queueName}' is not an SQS ` +
+          "queue name (1-76 letters, digits, hyphens and underscores, leaving room for '-dlq').",
+      );
+    }
+    if (self.parameters['deadLetterEnabled'] === false) {
+      throw new Error(
+        `AwsSqsQueue '${self.id}': deadLetterEnabled false cannot be honored, every ` +
+          'AwsSqsQueue has a dead-letter queue.',
+      );
+    }
+    // Checked on what is emitted, so values mapped from neutral guardrails count too.
+    for (const [key, min, max] of INTEGER_BOUNDS) {
+      const value = self.parameters[key];
+      if (
+        value !== undefined &&
+        (!Number.isInteger(value) ||
+          (value as number) < min ||
+          (value as number) > max)
+      ) {
+        throw new Error(
+          `AwsSqsQueue '${self.id}': ${key} ${String(value)} is not a whole number from ${min} to ${max}.`,
+        );
+      }
+    }
+    const messagingDependencies = all.filter(
+      c => self.dependencies.includes(c.id) && c.type.startsWith('Messaging.'),
+    );
+    const foreign = messagingDependencies.find(
+      c => c.type !== AWS_SNS_TOPIC_TYPE,
+    );
+    if (foreign) {
+      throw new Error(
+        `AwsSqsQueue '${self.id}' can subscribe only to an AwsSnsTopic, but '${foreign.id}' ` +
+          `is a ${foreign.type}.`,
+      );
+    }
+    if (messagingDependencies.length > 1) {
+      throw new Error(
+        `AwsSqsQueue '${self.id}' subscribes to at most one AwsSnsTopic, but depends on ` +
+          `[${messagingDependencies.map(c => c.id).join(', ')}]. Give each subscription its own queue.`,
+      );
+    }
+    const names = config.filterEventNames ?? [];
+    if (names.length > 0 && config.filterPolicy !== undefined) {
+      throw new Error(
+        `AwsSqsQueue '${self.id}': set either filterEventNames or filterPolicy, not both.`,
+      );
+    }
+    const badName = names.find(n => n.trim() === '' || n.includes(','));
+    if (badName !== undefined) {
+      throw new Error(
+        `AwsSqsQueue '${self.id}': filterEventNames holds '${badName}', which is blank or holds a comma.`,
+      );
+    }
+    if (
+      (names.length > 0 || config.filterPolicy !== undefined) &&
+      messagingDependencies.length === 0
+    ) {
+      throw new Error(
+        `AwsSqsQueue '${self.id}': a filter filters a subscription, but '${self.id}' subscribes ` +
+          'to no topic. Subscribe it with withTopic(topic).',
+      );
+    }
+  },
+});

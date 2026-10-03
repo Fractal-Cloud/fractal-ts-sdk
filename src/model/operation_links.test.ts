@@ -89,7 +89,9 @@ describe('links authored in Fractal Interface operations', () => {
     // neutral name.
     expect(workload.parameters.containerImage).toBe('acme/web:1.4.0');
     expect(workload.parameters.image).toBeUndefined();
-    expect(workload.parameters.maxReplicas).toBe(5);
+    // `maxReplicas` reaches the agent as the autoscaler's ceiling.
+    expect(workload.parameters.autoscaling).toEqual({maxReplicas: 5});
+    expect(workload.parameters.maxReplicas).toBeUndefined();
 
     // Both operation-authored links flow onto the workload.
     expect(workload.links).toContainEqual({

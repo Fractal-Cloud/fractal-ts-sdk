@@ -11,6 +11,7 @@ import type {
   LiveSystemComponent,
   Provider,
 } from '../core';
+import type {AwsRdsStorageType} from './aws_rds_storage_type';
 
 /**
  * A DBMS offer emits itself PLUS one Database live component per child the
@@ -43,12 +44,38 @@ const dbmsInstantiate =
     })),
   ];
 
+const AWS_RDS_STORAGE_TYPES: readonly AwsRdsStorageType[] = [
+  'gp2',
+  'gp3',
+  'io1',
+  'io2',
+  'standard',
+];
+
 // ── Storage.ObjectStorage offers ─────────────────────────────────────────────
-export const AwsS3 = defineOffer<'Storage.ObjectStorage', {region?: string}>({
+export const AwsS3 = defineOffer<
+  'Storage.ObjectStorage',
+  {
+    region?: string;
+    /**
+     * Expire every object this many days after it was written (and abort
+     * incomplete multipart uploads after a day). Absent: objects never expire.
+     */
+    lifecycleExpirationDays?: number;
+  }
+>({
   satisfies: 'Storage.ObjectStorage',
   offerType: 'Storage.PaaS.AwsS3',
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  validate: (self, _all, config) => {
+    const days = config.lifecycleExpirationDays;
+    if (days !== undefined && (!Number.isInteger(days) || days < 1)) {
+      throw new Error(
+        `AwsS3 '${self.id}': lifecycleExpirationDays ${days} is not a whole number of at least 1.`,
+      );
+    }
+  },
 });
 /**
  * Azure Storage account (blob). `sku` (a SkuName, e.g. `Standard_LRS`,
@@ -225,11 +252,24 @@ export const AwsRdsPostgresDbms = defineOffer<
     multiAz?: boolean;
     backupRetentionDays?: number;
     deletionProtection?: boolean;
+    /** Provisioned mode only; the agent defaults to gp3. */
+    storageType?: AwsRdsStorageType;
     port?: number;
   }
 >({
   satisfies: 'Storage.RelationalDbms',
   offerType: 'Storage.PaaS.AwsRdsPostgres',
+  validate: (self, _all, config) => {
+    if (
+      config.storageType !== undefined &&
+      !AWS_RDS_STORAGE_TYPES.includes(config.storageType)
+    ) {
+      throw new Error(
+        `AwsRdsPostgresDbms '${self.id}': storageType '${config.storageType}' is not ` +
+          `one of ${AWS_RDS_STORAGE_TYPES.join(', ')}.`,
+      );
+    }
+  },
   provider: 'AWS',
   deliveryModel: 'PaaS',
   instantiate: dbmsInstantiate(

@@ -12,7 +12,7 @@ import {
   AZURE_CONTAINER_APPS_ENVIRONMENT_OFFER_TYPE,
   KUBERNETES_WORKLOAD_OFFER_TYPE,
 } from './offer_type_ids';
-import {withContractImageName} from './kubernetes_workload_contract';
+import {toKubernetesWorkloadParameters} from './kubernetes_workload_contract';
 
 // ── Workload offers ──────────────────────────────────────────────────────────
 export const EcsService = defineOffer<
@@ -98,7 +98,7 @@ export const OpenshiftWorkload = defineOffer<
  * component with `containerImage is required when manifestUri is not set`.
  *
  * A `Workload` added as a CHILD of a ContainerPlatform never reaches this
- * `instantiate` — see `withContractImageName`, which both paths share.
+ * `instantiate` — see `toKubernetesWorkloadParameters`, which both paths share.
  */
 export const K8sWorkload = defineOffer<
   'CustomWorkloads.Workload',
@@ -118,7 +118,7 @@ export const K8sWorkload = defineOffer<
       // is ever added to the spec above it must be added here too — a custom
       // `instantiate` does not inherit the default path's `provider`.
       deliveryModel: 'CaaS',
-      parameters: withContractImageName(
+      parameters: toKubernetesWorkloadParameters(
         {...ctx.parameters, ...cfg},
         ctx.id,
         ctx.locked ?? [],

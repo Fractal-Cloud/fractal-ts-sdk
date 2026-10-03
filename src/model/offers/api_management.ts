@@ -62,6 +62,20 @@ const redirectRefusal = (target: string): string | undefined => {
   return undefined;
 };
 
+/** The gateway offer types a CloudFront distribution may link to as its VPC origin. */
+const TRAEFIK_OFFER_TYPE = 'APIManagement.CaaS.Traefik';
+const TRAEFIK_GATEWAY_OFFER_TYPE = 'APIManagement.CaaS.TraefikGateway';
+const VPC_ORIGIN_GATEWAY_TYPES = [
+  TRAEFIK_GATEWAY_OFFER_TYPE,
+  TRAEFIK_OFFER_TYPE,
+];
+/** Bounds CloudFront puts on its origin read and keep-alive timeouts (above 60 s needs a quota increase). */
+const ORIGIN_TIMEOUT_MIN = 1;
+const ORIGIN_TIMEOUT_MAX = 180;
+/** Bounds AWS WAF puts on a rate-based rule's limit (per 5-minute window). */
+const WAF_RATE_LIMIT_MIN = 10;
+const WAF_RATE_LIMIT_MAX = 2_000_000_000;
+
 /** The host of a target `redirectRefusal` accepted, lower case, without a trailing dot. */
 const targetHost = (target: string): string =>
   target
@@ -82,21 +96,50 @@ export const AwsCloudFront = defineOffer<
      */
     redirectTo?: string;
     /**
-     * Host names the distribution answers for (only with `redirectTo`). The agent
-     * requests an ACM certificate for them in us-east-1, validated by DNS, and
-     * attaches them once it is issued. It writes no DNS record: it publishes the
-     * validation records (`certificateValidationRecords`) and the distribution's
-     * `dnsName` / `hostedZoneId` as output fields, for the owner of each name's
-     * DNS zone to declare.
+     * Host names the distribution answers for (with `redirectTo` or an origin).
+     * The agent requests an ACM certificate for them in us-east-1, validated by
+     * DNS, and attaches them once it is issued. It writes no DNS record: it
+     * publishes the validation records (`certificateValidationRecords`) and the
+     * distribution's `dnsName` / `hostedZoneId` as output fields, for the owner of
+     * each name's DNS zone to declare.
      */
     aliases?: string[];
+    /**
+     * A custom origin: the host name CloudFront forwards to. For a VPC origin to
+     * the platform gateway, LINK this component to the `TraefikGateway` (or
+     * `Traefik`) component instead (`bp.link(cdn, gateway)`, no settings, at most
+     * one): the agent reads the internal NLB from the gateway's
+     * `loadBalancerHostname` output. A link, not a dependency, so the gateway can
+     * sit in the same Live System without a cycle, or be a reference.
+     */
+    originDomain?: string;
+    /** `https` when the origin listens with TLS (an NLB TLS listener), else `http`. */
+    originProtocol?: 'https' | 'http';
+    /** CloudFront origin response timeout; the agent defaults to 60 (1-180). */
+    originReadTimeoutSeconds?: number;
+    /**
+     * CloudFront origin keep-alive; the agent defaults to 60 (1-180). Keep it
+     * below the gateway's idle timeout (TraefikGateway `entryPointIdleTimeoutSeconds`)
+     * so CloudFront never reuses a connection the gateway already closed.
+     */
+    originKeepaliveTimeoutSeconds?: number;
+    /** Attach a WAF web ACL (us-east-1); the agent defaults to true. */
+    wafEnabled?: boolean;
+    /** Requests per 5 minutes per client IP before the WAF rate-based rule blocks; default 2000. */
+    wafRateLimitPer5Min?: number;
+    /**
+     * Host name of a regional ACM certificate for the origin (e.g. the NLB's TLS
+     * listener); the agent publishes `originCertificateArn` and
+     * `originCertificateValidationRecords`.
+     */
+    originDomainName?: string;
   }
 >({
   satisfies: 'APIManagement.ApiGateway',
   offerType: 'APIManagement.PaaS.AwsCloudFront',
   provider: 'AWS',
   deliveryModel: 'PaaS',
-  validate: (self, _all, config) => {
+  validate: (self, all, config) => {
     // Blank is no redirect, as the agent reads it; the agent trims the value.
     const target =
       config.redirectTo === undefined
@@ -119,9 +162,96 @@ export const AwsCloudFront = defineOffer<
         `Live component '${self.id}': aliases holds ${invalid.map(a => `'${a}'`).join(', ')}, not a host name.`,
       );
     }
-    if (aliases.length > 0 && target === undefined) {
+    const gateways = all.filter(
+      c =>
+        VPC_ORIGIN_GATEWAY_TYPES.includes(c.type) &&
+        self.links.some(l => l.componentId === c.id),
+    );
+    if (gateways.length > 1) {
       throw new Error(
-        `Live component '${self.id}': aliases are only served together with redirectTo for now.`,
+        `Live component '${self.id}': links to ${gateways.length} gateways ` +
+          `[${gateways.map(g => g.id).join(', ')}]: at most one can be the VPC origin.`,
+      );
+    }
+    const vpcOrigin = gateways.length === 1;
+    const tlsGateway = gateways.find(
+      g => g.parameters.tlsCertificateArn !== undefined,
+    );
+    if (tlsGateway !== undefined) {
+      throw new Error(
+        `Live component '${self.id}': a CloudFront VPC origin cannot reach an NLB with ` +
+          `a TLS listener, so the gateway '${tlsGateway.id}' behind it stays TCP-only: ` +
+          'drop its tlsCertificateArn.',
+      );
+    }
+    const originDomain = config.originDomain?.trim() ?? '';
+    const customOrigin = originDomain !== '';
+    if (customOrigin && !HOST_NAME.test(originDomain)) {
+      throw new Error(
+        `Live component '${self.id}': originDomain '${config.originDomain}' is not a host name.`,
+      );
+    }
+    if (customOrigin && vpcOrigin) {
+      throw new Error(
+        `Live component '${self.id}': forward to originDomain or a linked gateway, not both.`,
+      );
+    }
+    if (target !== undefined && (customOrigin || vpcOrigin)) {
+      throw new Error(
+        `Live component '${self.id}': a distribution serves redirectTo or an origin, not both.`,
+      );
+    }
+    if (
+      aliases.length > 0 &&
+      target === undefined &&
+      !customOrigin &&
+      !vpcOrigin
+    ) {
+      throw new Error(
+        `Live component '${self.id}': aliases need an origin (originDomain or a linked ` +
+          'gateway) or redirectTo to serve.',
+      );
+    }
+    if (
+      config.originProtocol !== undefined &&
+      !['https', 'http'].includes(config.originProtocol)
+    ) {
+      throw new Error(
+        `Live component '${self.id}': originProtocol '${config.originProtocol}' is neither https nor http.`,
+      );
+    }
+    if (
+      config.wafRateLimitPer5Min !== undefined &&
+      (!Number.isInteger(config.wafRateLimitPer5Min) ||
+        config.wafRateLimitPer5Min < WAF_RATE_LIMIT_MIN ||
+        config.wafRateLimitPer5Min > WAF_RATE_LIMIT_MAX)
+    ) {
+      throw new Error(
+        `Live component '${self.id}': wafRateLimitPer5Min ${config.wafRateLimitPer5Min} is not a whole number from ${WAF_RATE_LIMIT_MIN} to ${WAF_RATE_LIMIT_MAX}.`,
+      );
+    }
+    for (const key of [
+      'originReadTimeoutSeconds',
+      'originKeepaliveTimeoutSeconds',
+    ] as const) {
+      const value = config[key];
+      if (
+        value !== undefined &&
+        (!Number.isInteger(value) ||
+          value < ORIGIN_TIMEOUT_MIN ||
+          value > ORIGIN_TIMEOUT_MAX)
+      ) {
+        throw new Error(
+          `Live component '${self.id}': ${key} ${value} is not a whole number of seconds from ${ORIGIN_TIMEOUT_MIN} to ${ORIGIN_TIMEOUT_MAX}.`,
+        );
+      }
+    }
+    if (
+      config.originDomainName !== undefined &&
+      !HOST_NAME.test(config.originDomainName)
+    ) {
+      throw new Error(
+        `Live component '${self.id}': originDomainName '${config.originDomainName}' is not a host name.`,
       );
     }
     if (target !== undefined) {
@@ -164,11 +294,190 @@ export const Ambassador = defineOffer<
   offerType: 'APIManagement.CaaS.Ambassador',
   deliveryModel: 'CaaS',
 });
+const FORWARD_AUTH_LISTS = [
+  'forwardAuthRequestHeaders',
+  'forwardAuthResponseHeaders',
+  'forwardAuthExcludedPrefixes',
+] as const;
+const HEADER_NAME = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/;
+
+const ensureValidForwardAuth = (
+  id: string,
+  config: {
+    forwardAuthAddress?: string;
+    forwardAuthRequestHeaders?: readonly string[];
+    forwardAuthResponseHeaders?: readonly string[];
+    forwardAuthForwardBody?: boolean;
+    forwardAuthMaxBodySize?: number;
+    forwardAuthExcludedPrefixes?: readonly string[];
+  },
+): void => {
+  const refuse = (why: string): never => {
+    throw new Error(`Live component '${id}': ${why}.`);
+  };
+  const address = config.forwardAuthAddress;
+  const anyOther = Object.entries(config).some(
+    ([k, v]) =>
+      k.startsWith('forwardAuth') &&
+      k !== 'forwardAuthAddress' &&
+      v !== undefined,
+  );
+  if (address === undefined) {
+    if (anyOther) {
+      refuse('ForwardAuth settings without forwardAuthAddress do nothing');
+    }
+    return;
+  }
+  // The value is not echoed: it could carry credentials.
+  if (!/^https?:\/\/[^\s/?#@]+(\/[^\s]*)?$/.test(address)) {
+    refuse('forwardAuthAddress is not an http(s) URL without credentials');
+  }
+  for (const key of [
+    'forwardAuthRequestHeaders',
+    'forwardAuthResponseHeaders',
+  ] as const) {
+    const bad = (config[key] ?? []).find(h => !HEADER_NAME.test(h));
+    if (bad !== undefined) {
+      refuse(`${key} holds '${bad}', which is not a header name`);
+    }
+  }
+  const badPrefix = (config.forwardAuthExcludedPrefixes ?? []).find(
+    p => !p.startsWith('/') || p.includes(','),
+  );
+  if (badPrefix !== undefined) {
+    refuse(
+      `forwardAuthExcludedPrefixes holds '${badPrefix}', which is not a path prefix`,
+    );
+  }
+  const size = config.forwardAuthMaxBodySize;
+  if (size !== undefined && (!Number.isInteger(size) || size < 1)) {
+    refuse(
+      `forwardAuthMaxBodySize ${size} is not a whole number of bytes of at least 1`,
+    );
+  }
+};
+
+/** Traefik as the Java cloud agents reconcile it. For the platform gateway on EKS use `TraefikGateway`. */
 export const Traefik = defineOffer<
   'APIManagement.ApiGateway',
   {namespace?: string}
 >({
   satisfies: 'APIManagement.ApiGateway',
-  offerType: 'APIManagement.CaaS.Traefik',
+  offerType: TRAEFIK_OFFER_TYPE,
   deliveryModel: 'CaaS',
+});
+/**
+ * Traefik on a Kubernetes cluster, installed and owned by the caas-k8s agent
+ * (Helm chart, Traefik v3.6). A distinct offer from `Traefik`, which the Java
+ * agents reconcile with their own shape.
+ * On EKS it sits behind an internal Network Load Balancer
+ * (`internalLoadBalancer`), which CloudFront reaches through a VPC origin.
+ * Workloads add their routes with an outbound link to it (see
+ * `gatewayRouteSettings`), so a Domain Service references the platform's
+ * Traefik rather than owning one.
+ *
+ * Output fields: `loadBalancerHostname`, `namespace`.
+ */
+export const TraefikGateway = defineOffer<
+  'APIManagement.ApiGateway',
+  {
+    /** Default `traefik`. */
+    namespace?: string;
+    /** Default 2. */
+    replicas?: number;
+    /** Traefik Helm chart version; the agent pins a v3.6.x chart by default. */
+    chartVersion?: string;
+    /** Host a route matches when it names none, e.g. `api.fractal.cloud`. */
+    host?: string;
+    /** An internal NLB (EKS Auto Mode load balancer class); default true. */
+    internalLoadBalancer?: boolean;
+    /**
+     * Regional ACM certificate for a TLS listener on 443 of the NLB. NOT for a
+     * gateway behind a CloudFront VPC origin: a VPC origin cannot reach an NLB
+     * with a TLS listener, so that NLB stays TCP-only and the combination is
+     * refused.
+     */
+    tlsCertificateArn?: string;
+    /**
+     * Idle timeout of the entry points; default 75. Must exceed the keep-alive
+     * of whatever is in front (CloudFront's origin keep-alive).
+     */
+    entryPointIdleTimeoutSeconds?: number;
+    /**
+     * A ForwardAuth middleware on every route the workload links create (except
+     * `forwardAuthExcludedPrefixes`): each request is first sent to this URL,
+     * with its method preserved, and is refused unless it answers 2xx.
+     */
+    forwardAuthAddress?: string;
+    /** Request headers sent to the auth service; default x-clientid, x-clientsecret, origin. */
+    forwardAuthRequestHeaders?: readonly string[];
+    /** Auth-service response headers copied onto the request; default x-jwt. */
+    forwardAuthResponseHeaders?: readonly string[];
+    /** Send the request body to the auth service; default true. */
+    forwardAuthForwardBody?: boolean;
+    /** Largest body forwarded to the auth service, in bytes; default 1048576. */
+    forwardAuthMaxBodySize?: number;
+    /** Route prefixes not authenticated; default /ocelot/, /grafana/, /prometheus/, /alertmanager/. */
+    forwardAuthExcludedPrefixes?: readonly string[];
+  }
+>({
+  satisfies: 'APIManagement.ApiGateway',
+  offerType: TRAEFIK_GATEWAY_OFFER_TYPE,
+  deliveryModel: 'CaaS',
+  // Lists travel comma-separated, as the agent's defaults are written.
+  instantiate: (ctx, config) => {
+    const params: Record<string, unknown> = {...ctx.parameters, ...config};
+    for (const key of FORWARD_AUTH_LISTS) {
+      const list = config[key];
+      if (list !== undefined) {
+        params[key] = list.join(',');
+      }
+    }
+    return [
+      {
+        id: ctx.id,
+        displayName: ctx.displayName,
+        type: TRAEFIK_GATEWAY_OFFER_TYPE,
+        deliveryModel: 'CaaS',
+        parameters: params,
+        dependencies: ctx.dependencies,
+        links: ctx.links,
+      },
+    ];
+  },
+  validate: (self, _all, config) => {
+    ensureValidForwardAuth(self.id, config);
+    if (config.host !== undefined && !HOST_NAME.test(config.host)) {
+      throw new Error(
+        `Live component '${self.id}': host '${config.host}' is not a host name.`,
+      );
+    }
+    if (
+      config.replicas !== undefined &&
+      (!Number.isInteger(config.replicas) || config.replicas < 1)
+    ) {
+      throw new Error(
+        `Live component '${self.id}': replicas ${config.replicas} is not a whole number of at least 1.`,
+      );
+    }
+    if (
+      config.tlsCertificateArn !== undefined &&
+      !/^arn:aws[a-z-]*:acm:[a-z0-9-]+:\d{12}:certificate\/[A-Za-z0-9-]+$/.test(
+        config.tlsCertificateArn,
+      )
+    ) {
+      throw new Error(
+        `Live component '${self.id}': tlsCertificateArn '${config.tlsCertificateArn}' is not an ACM certificate ARN.`,
+      );
+    }
+    if (
+      config.entryPointIdleTimeoutSeconds !== undefined &&
+      (!Number.isInteger(config.entryPointIdleTimeoutSeconds) ||
+        config.entryPointIdleTimeoutSeconds < 1)
+    ) {
+      throw new Error(
+        `Live component '${self.id}': entryPointIdleTimeoutSeconds ${config.entryPointIdleTimeoutSeconds} is not a whole number of seconds of at least 1.`,
+      );
+    }
+  },
 });

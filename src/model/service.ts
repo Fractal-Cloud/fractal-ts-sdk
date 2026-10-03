@@ -118,6 +118,16 @@ const buildBody = (ls: LiveSystem) => ({
         displayName: c.displayName,
         provider: c.provider,
         deliveryModel: c.deliveryModel,
+        // Only a referencing component carries the key, so every other body is
+        // unchanged byte for byte.
+        ...(c.reference === undefined
+          ? {}
+          : {
+              reference: {
+                liveSystemId: c.reference.liveSystemId,
+                componentId: c.reference.componentId,
+              },
+            }),
         parameters: c.parameters,
         dependencies: [...c.dependencies],
         links: c.links.map(l => ({

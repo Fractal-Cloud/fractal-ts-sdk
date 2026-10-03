@@ -42,6 +42,12 @@ export type MessagingEntityNode<Id extends string = string> = ComponentNode<
   withPartitionCount: (v: number) => MessagingEntityNode<Id>;
   withDeadLetterEnabled: (v: boolean) => MessagingEntityNode<Id>;
   withMaxDeliveryAttempts: (v: number) => MessagingEntityNode<Id>;
+  /**
+   * Subscribe this entity (a queue) to `topic`: a dependency, so the queue is
+   * created after the topic and its subscription is made by the queue's side.
+   * The topic may be filled with a reference to another Live System's topic.
+   */
+  withTopic: (topic: MessagingEntityNode) => MessagingEntityNode<Id>;
   dependsOn: (other: AnyNode) => MessagingEntityNode<Id>;
 };
 const messagingEntityNode = <Id extends string>(
@@ -56,6 +62,7 @@ const messagingEntityNode = <Id extends string>(
     messagingEntityNode<Id>(guardrail(s, 'deadLetterEnabled', v)),
   withMaxDeliveryAttempts: v =>
     messagingEntityNode<Id>(guardrail(s, 'maxDeliveryAttempts', v)),
+  withTopic: topic => messagingEntityNode<Id>(addDependency(s, topic.state.id)),
   dependsOn: other => messagingEntityNode<Id>(addDependency(s, other.state.id)),
 });
 export const MessagingEntity = <const Id extends string>(cfg: {

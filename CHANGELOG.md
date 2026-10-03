@@ -11,6 +11,102 @@ of truth for what is on npm.
 
 ## Unreleased
 
+### Added — cross-Live-System references: `referenceTo(offer, {liveSystemId, componentId})`
+
+A slot can now stand in for a component another Live System owns (a shared cluster,
+DBMS or gateway, another service's topic). Select it with `referenceTo` instead of an
+offer; `liveSystemIdOf(boundedContext, liveSystemName)` builds the id the control plane
+gives a Live System (`<ownerType>/<ownerId>/<boundedContext>/<liveSystemName>`).
+
+- The slot is emitted under its local id with the offer's type, provider and delivery
+  model, a `reference` (`ComponentReference`), and no parameters, dependencies or
+  links: the control plane mirrors the target's, read-only, and no agent reconciles it.
+- Everything that depends on or links to the slot names the local id; the deploy body
+  carries `reference` unchanged, and only on referencing components.
+- Refused while building the Live System: an offer that does not satisfy the slot (also
+  a type error), a malformed id, and a referenced slot with outbound links or
+  application-added children (nothing would ever act on them).
+- Requires a control plane and agents that accept references (Phase 5); until the control
+  plane enables them, a deploy declaring one is refused with `ComponentReferencesNotEnabled`.
+  The control plane also refuses a reference to the referencing Live System itself, to
+  another organization, or whose type or provider differs from the target's, and an update
+  that turns a component this Live System owns into a reference under the same id (remove
+  it first, then add the reference).
+
+### Added — AWS messaging: `AwsSnsTopic`, `AwsSqsQueue`, `MessagingEntity.withTopic`, `MessagingEntityLink`
+
+- `AwsSnsTopic({topicName?, kmsMasterKeyId?, maximumMessageSize?})`; `maximumMessageSize`
+  up to 1 MiB (1048576) when every subscriber is SQS, Firehose or Lambda.
+- `AwsSqsQueue({queueName?, visibilityTimeoutSeconds?, messageRetentionSeconds?,
+  maxReceiveCount?, dlqRetentionSeconds?, rawMessageDelivery?, filterEventNames?,
+  filterPolicy?, dlqAlarm?})`: a queue with a dead-letter queue, subscribed to the one
+  `AwsSnsTopic` it depends on (`withTopic(topic)`, which may be a reference).
+  `filterEventNames` travels comma-separated, `filterPolicy` as JSON text. The neutral
+  `withMessageRetentionHours` / `withMaxDeliveryAttempts` map onto the queue (and are
+  range-checked there); `withDeadLetterEnabled(false)` is refused, as every queue has a
+  dead-letter queue.
+- `MessagingEntityLink` types the Workload → topic / queue link (`access`).
+
+### Added — `TraefikGateway` and the Workload → gateway route link
+
+- `TraefikGateway` (`APIManagement.CaaS.TraefikGateway`, owned by the caas-k8s agent):
+  `namespace`, `replicas`, `chartVersion`, `host`, `internalLoadBalancer`,
+  `tlsCertificateArn`, `entryPointIdleTimeoutSeconds`, and a ForwardAuth middleware
+  (`forwardAuthAddress`, `forwardAuthRequestHeaders`, `forwardAuthResponseHeaders`,
+  `forwardAuthForwardBody`, `forwardAuthMaxBodySize`, `forwardAuthExcludedPrefixes`; lists
+  travel comma-separated). `Traefik` keeps the Java agents' shape. A gateway behind a
+  CloudFront VPC origin must stay TCP-only: `tlsCertificateArn` there is refused.
+- `gatewayRouteSettings({routes: [{prefix, rewritePath?, host?}], responseTimeoutMs?,
+  idleConnTimeoutMs?, retryAttempts?, servicePort?})` builds the flat, indexed settings of
+  an outbound Workload → gateway link (`bp.link(service, gateway, gatewayRouteSettings(…))`).
+  Route declarations from one workload to one gateway merge into ONE link (the control
+  plane keeps one link per source and target), their routes numbered on. Timeouts,
+  retries and the port belong to the first declaration: a later one that contradicts
+  them, adds one the earlier routes did not set, or repeats a prefix for the same host
+  is refused.
+
+### Added — shared-platform knobs
+
+- `Eks({nodePools, controlPlaneLogTypes})`: EKS Auto Mode node pools
+  (`EksAutoModeNodePool`: architectures, instance families, capacity types, sizes) and
+  control-plane log types.
+- `AwsCloudFront`: a site mode in front of the platform gateway: `aliases` with a custom
+  origin (`originDomain`) or a VPC origin to a linked `TraefikGateway` / `Traefik`;
+  `originProtocol`, `originReadTimeoutSeconds`, `originKeepaliveTimeoutSeconds`,
+  `wafEnabled`, `wafRateLimitPer5Min`, `originDomainName`.
+- `AwsRdsPostgresDbms({storageType})`; `AwsS3({lifecycleExpirationDays})`.
+- Observability offers for the caas-k8s agent: `KubePrometheusStack`, `GrafanaLoki`,
+  `GrafanaAlloy`, `GrafanaTempo`.
+
+### Added — Workload rollout, drain, scaling, probes and secret env
+
+`withSecretEnv`, `withResources`, `withAutoscaling`, `withPodDisruptionBudget`,
+`withRollout`, `withTerminationGracePeriodSeconds`, `withPreStopSleepSeconds`,
+`withReadinessProbe` / `withLivenessProbe` / `withStartupProbe`, `withTopologySpread`,
+`withNodeSelector`. `secretEnv` takes environment-secret references only; a raw value is
+refused without echoing it.
+
+### Changed — Kubernetes workloads receive every Workload setter
+
+On `K8sWorkload` (and a Workload added under a ContainerPlatform), `port`,
+`cpuRequest` / `memoryRequest`, `maxReplicas` and `healthCheck` used to be pruned before
+the agent saw them, so the agent's defaults applied. They now arrive as
+`containerPort`, `resourceRequests`, `autoscaling.maxReplicas` and
+`readinessProbe` + `livenessProbe`. A deployed workload that set them changes on its next
+deploy: its port, its requests, an autoscaler, and its probes now follow the blueprint.
+
+An environment-secret reference in `env` used to reach the container as the reference's
+JSON; it now moves to `secretEnv`, which the agent resolves (a name in both is refused).
+
+Building a Live System with a Kubernetes workload now refuses what the agent could only
+reject or apply wrongly, so a blueprint that built before can fail here with the reason:
+a probe (including the older `healthCheck`) whose path does not start with `/`, a probe
+port outside 1-65535 or a negative timing, `autoscaling` without a `maxReplicas` of at
+least 1 or with `minReplicas` above it, a negative grace period or preStop sleep, a
+preStop sleep not shorter than the grace period, a rollout pace that is neither a count
+nor a percentage up to 100%, `maxSurge` and `maxUnavailable` both zero, and a raw value in
+`secretEnv`.
+
 ### Added — `AwsCloudFront({redirectTo, aliases})`: a whole-site redirect under your own host names
 
 - `redirectTo`: an `https://` URL. Every request the distribution receives, over

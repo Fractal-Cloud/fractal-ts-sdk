@@ -37,3 +37,51 @@ export const ObservabilityElastic = defineOffer<
   offerType: 'Observability.CaaS.Elastic',
   deliveryModel: 'CaaS',
 });
+
+// ── caas-k8s Grafana stack (Helm, on any Kubernetes cluster) ─────────────────
+// Offers only: the BFF static catalog owns the services they sit under
+// (`Observability.CaaS.Prometheus`, `.Loki`, `.Alloy`, `.Tempo`).
+
+/** kube-prometheus-stack: Prometheus, Alertmanager and Grafana. */
+export const KubePrometheusStack = defineOffer<
+  'Observability.Monitoring',
+  {namespace?: string}
+>({
+  satisfies: 'Observability.Monitoring',
+  offerType: 'Observability.CaaS.KubePrometheusStack',
+  deliveryModel: 'CaaS',
+});
+
+/**
+ * Grafana Loki. Its chunks live in object storage: link it to a bucket
+ * (`ObjectStorageLink`, `access: 'read-write'`) and the agent grants its
+ * service account access.
+ */
+export const GrafanaLoki = defineOffer<
+  'Observability.Logging',
+  {namespace?: string}
+>({
+  satisfies: 'Observability.Logging',
+  offerType: 'Observability.CaaS.GrafanaLoki',
+  deliveryModel: 'CaaS',
+});
+
+/** Grafana Alloy as a DaemonSet, shipping the cluster's logs to Loki. */
+export const GrafanaAlloy = defineOffer<
+  'Observability.Logging',
+  {namespace?: string}
+>({
+  satisfies: 'Observability.Logging',
+  offerType: 'Observability.CaaS.GrafanaAlloy',
+  deliveryModel: 'CaaS',
+});
+
+/** Grafana Tempo, with its traces in object storage (linked like Loki). */
+export const GrafanaTempo = defineOffer<
+  'Observability.Tracing',
+  {namespace?: string}
+>({
+  satisfies: 'Observability.Tracing',
+  offerType: 'Observability.CaaS.GrafanaTempo',
+  deliveryModel: 'CaaS',
+});
