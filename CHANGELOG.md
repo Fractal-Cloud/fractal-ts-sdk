@@ -11,6 +11,10 @@ of truth for what is on npm.
 
 ## Unreleased
 
+Nothing yet.
+
+## 2.9.5
+
 ### Added — cross-Live-System references: `referenceTo(offer, {liveSystemId, componentId})`
 
 A slot can now stand in for a component another Live System owns (a shared cluster,
@@ -106,6 +110,8 @@ least 1 or with `minReplicas` above it, a negative grace period or preStop sleep
 preStop sleep not shorter than the grace period, a rollout pace that is neither a count
 nor a percentage up to 100%, `maxSurge` and `maxUnavailable` both zero, and a raw value in
 `secretEnv`.
+
+## 2.9.4
 
 ### Added — `AwsCloudFront({redirectTo, aliases})`: a whole-site redirect under your own host names
 
