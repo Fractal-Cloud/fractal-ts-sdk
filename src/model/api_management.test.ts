@@ -110,17 +110,68 @@ describe('Locked Fractal model — APIManagement', () => {
     });
 
     it.each([
-      'http://fractal.cloud',
-      'fractal.cloud',
-      'https://fractal.cloud?x=1',
-      'https://fractal.cloud#top',
-      'https://user@fractal.cloud',
-      'https://fractal.cloud:8443',
-      'https://fractal.cloud:443',
-      "https://fractal.cloud/a'b",
-      'https://fractal.cloud/a b',
-    ])('refuses %s as a redirect target', target => {
-      expect(() => liveSystemWith(AwsCloudFront({redirectTo: target}))).toThrow(/redirectTo/);
+      ['http://fractal.cloud', /must start with https/],
+      ['fractal.cloud', /not a URL/],
+      ['https:fractal.cloud', /not a URL/],
+      ['https:///fractal.cloud', /host is not a DNS host name/],
+      ['https://fractal.cloud?x=1', /neither a query nor a fragment/],
+      ['https://fractal.cloud#top', /neither a query nor a fragment/],
+      ['https://user@fractal.cloud', /neither credentials nor a port/],
+      ['https://fractal.cloud:8443', /neither credentials nor a port/],
+      ['https://fractal.cloud:443', /neither credentials nor a port/],
+      ['https://[::1]', /neither credentials nor a port/],
+      ['https://my_host.example.com', /host is not a DNS host name/],
+      ['https://fract%61l.cloud', /host is not a DNS host name/],
+      ['https://bücher.de', /host is not a DNS host name/],
+      ["https://fractal.cloud/a'b", /path holds characters/],
+      ['https://fractal.cloud/a b', /path holds characters/],
+      ['https://fractal.cloud/a<b', /path holds characters/],
+      ['https://fractal.cloud/{x}', /path holds characters/],
+      ['https://fractal.cloud/ü', /path holds characters/],
+      ['https://fractal.cloud/%zz', /path holds characters/],
+    ])('refuses %s as a redirect target', (target, reason) => {
+      expect(() => liveSystemWith(AwsCloudFront({redirectTo: target}))).toThrow(
+        reason,
+      );
+    });
+
+    it.each([
+      'https://Fractal.Cloud',
+      'https://fractal.cloud/',
+      'https://fractal.cloud/docs/a%20b',
+      ' https://fractal.cloud ',
+    ])('accepts %s as a redirect target', target => {
+      expect(() =>
+        liveSystemWith(AwsCloudFront({redirectTo: target})),
+      ).not.toThrow();
+    });
+
+    it('accepts aliases in upper case or with a trailing dot', () => {
+      expect(() =>
+        liveSystemWith(
+          AwsCloudFront({
+            redirectTo: 'https://fractal.cloud',
+            aliases: ['YanchWare.com.', 'www.yanchware.com'],
+          }),
+        ),
+      ).not.toThrow();
+    });
+
+    it('reads a blank redirectTo, or no aliases, as nothing to serve', () => {
+      expect(() =>
+        liveSystemWith(AwsCloudFront({redirectTo: ' ', aliases: []})),
+      ).not.toThrow();
+    });
+
+    it("refuses an alias that is the target's own host: it would loop", () => {
+      expect(() =>
+        liveSystemWith(
+          AwsCloudFront({
+            redirectTo: 'https://fractal.cloud/docs',
+            aliases: ['www.fractal.cloud', 'Fractal.Cloud.'],
+          }),
+        ),
+      ).toThrow(/redirect to itself/);
     });
 
     it('refuses an alias that is not a host name', () => {

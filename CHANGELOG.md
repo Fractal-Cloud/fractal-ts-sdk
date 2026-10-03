@@ -32,7 +32,7 @@ URL (query, fragment, port, credentials, a quote or space), an alias that is not
 name, or aliases without `redirectTo` are refused with the reason. Requires cloud agents
 with the CloudFront redirect (the release after 8.20.2).
 
-## 2.10.0
+## 2.9.3
 
 ### Changed — **DNS zones are owned as a whole: `recordManagement: 'additive'` is gone**
 

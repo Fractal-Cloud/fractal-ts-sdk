@@ -12,39 +12,43 @@ import {defineOffer} from '../core';
 const HOST_NAME =
   /^(?=.{1,253}$)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/i;
 
-/** Why `redirectTo` cannot be a redirect target, or undefined when it can. */
+/**
+ * Why `redirectTo` cannot be a redirect target, or undefined when it can. Read on the text as
+ * written, by the cloud agent's own grammar, rather than through `URL`, which percent-encodes or
+ * normalizes what the agent refuses: `https://`, a DNS host name, and an optional path of URL path
+ * characters and well-formed percent escapes (the agent writes it into its redirect function).
+ */
 const redirectRefusal = (target: string): string | undefined => {
-  let url: URL;
-  try {
-    url = new URL(target);
-  } catch {
-    return 'it is not a URL';
+  const match = /^([a-z][a-z0-9+.-]*):\/\/([^/?#]*)([^?#]*)(.*)$/i.exec(target);
+  if (match === null) {
+    return 'it is not a URL of the form https://host[/path]';
   }
-  if (url.protocol !== 'https:') {
+  const [, scheme, authority, path, rest] = match;
+  if (scheme.toLowerCase() !== 'https') {
     return 'it must start with https://';
   }
-  if (
-    url.search !== '' ||
-    url.hash !== '' ||
-    target.includes('?') ||
-    target.includes('#')
-  ) {
+  if (rest !== '') {
     return "the request's own query string is appended, so it may carry neither a query nor a fragment";
   }
-  // Read on the text as written: URL drops a default port (`:443`) the agent refuses.
-  if (
-    url.username !== '' ||
-    url.password !== '' ||
-    /^https:\/\/[^/]*[:@]/i.test(target)
-  ) {
+  if (authority.includes('@') || authority.includes(':')) {
     return 'it may carry neither credentials nor a port';
   }
-  // The agent writes the target into the redirect function as a string literal.
-  if (/[\s'"\\]/.test(target)) {
-    return 'it holds a space, a quote or a backslash';
+  if (!HOST_NAME.test(authority.replace(/\.$/, ''))) {
+    return 'its host is not a DNS host name';
+  }
+  if (!/^(?:[A-Za-z0-9\-._~!$&()*+,;=:@/]|%[0-9A-Fa-f]{2})*$/.test(path)) {
+    return 'its path holds characters a URL path may not (or a malformed percent escape)';
   }
   return undefined;
 };
+
+/** The host of a target `redirectRefusal` accepted, lower case, without a trailing dot. */
+const targetHost = (target: string): string =>
+  target
+    .replace(/^https:\/\//i, '')
+    .split('/')[0]
+    .replace(/\.$/, '')
+    .toLowerCase();
 
 export const AwsCloudFront = defineOffer<
   'APIManagement.ApiGateway',
@@ -73,8 +77,10 @@ export const AwsCloudFront = defineOffer<
   provider: 'AWS',
   deliveryModel: 'PaaS',
   validate: (self, _all, config) => {
-    if (config.redirectTo !== undefined) {
-      const refusal = redirectRefusal(config.redirectTo);
+    // Blank is no redirect, as the agent reads it; the agent trims the value.
+    const target = config.redirectTo?.trim() || undefined;
+    if (target !== undefined) {
+      const refusal = redirectRefusal(target);
       if (refusal !== undefined) {
         throw new Error(
           `Live component '${self.id}': redirectTo '${config.redirectTo}' is not a redirect target: ${refusal}.`,
@@ -83,17 +89,28 @@ export const AwsCloudFront = defineOffer<
     }
     const aliases = config.aliases ?? [];
     const invalid = aliases.filter(
-      alias => !HOST_NAME.test(alias.replace(/\.$/, '')),
+      alias => !HOST_NAME.test(alias.trim().replace(/\.$/, '')),
     );
     if (invalid.length > 0) {
       throw new Error(
         `Live component '${self.id}': aliases holds ${invalid.map(a => `'${a}'`).join(', ')}, not a host name.`,
       );
     }
-    if (aliases.length > 0 && config.redirectTo === undefined) {
+    if (aliases.length > 0 && target === undefined) {
       throw new Error(
         `Live component '${self.id}': aliases are only served together with redirectTo for now.`,
       );
+    }
+    if (target !== undefined) {
+      const host = targetHost(target);
+      const looping = aliases.filter(
+        alias => alias.trim().replace(/\.$/, '').toLowerCase() === host,
+      );
+      if (looping.length > 0) {
+        throw new Error(
+          `Live component '${self.id}': aliases holds the redirect target's own host ${host}, which would redirect to itself forever.`,
+        );
+      }
     }
   },
 });
