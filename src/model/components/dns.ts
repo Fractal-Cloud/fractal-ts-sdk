@@ -10,7 +10,11 @@
  * refused by the agent, never adjusted.
  */
 import {ComponentNode, NodeState, newNode, guardrail} from '../core';
-import {recordManagementRefusal} from './dns_record_management';
+import {
+  canonicalRecordManagement,
+  recordManagementRefusal,
+} from './dns_record_management';
+import type {DnsRecordManagement} from './dns_record_management_mode';
 
 /** Record types a DNS zone may declare (SOA always belongs to the provider). */
 export type DnsRecordType =
@@ -62,22 +66,27 @@ export type DnsZoneGuardrails = {
   /** `required` signs or fails; `optional` signs when possible. Default `disabled`. */
   dnssec?: 'required' | 'optional' | 'disabled';
   /**
-   * A zone is owned as a whole and holds its declared `records`; nothing is
-   * written into its DNS data to say which record sets Fractal Cloud manages.
+   * How the zone treats record sets its declaration does not list. Nothing is
+   * written into the zone's DNS data to say which record sets Fractal Cloud
+   * manages; the agent remembers what it applied in control-plane state (the
+   * zone's `managedRecords`).
    *
-   * - `authoritative`: every record set the zone does not declare is deleted
-   *   (apex NS and SOA aside), whoever created it.
-   * - omitted: the same, as long as the zone holds nothing Fractal Cloud did
-   *   not write (a zone Fractal Cloud created always does). A zone holding a
-   *   record set nobody declared and Fractal Cloud did not write (an adopted
-   *   zone, one edited by hand) is held instead: none of its record sets is
-   *   changed until that record set is declared or `authoritative` is set.
+   * - `strict` (the default, also when omitted): the declaration is the whole
+   *   zone. Every record set it does not declare is deleted (apex NS and SOA
+   *   aside), whoever created it.
+   * - `lax`: record sets Fractal Cloud did not define are left alone (an ACME
+   *   DNS-01 `_acme-challenge` TXT written by cert-manager or certbot survives).
+   *   The declared record sets are still kept: changed or removed outside
+   *   Fractal Cloud, they are put back, and a declared name and type that
+   *   already exists with other values is set to the declared ones. A record
+   *   set removed from the declaration is deleted only if Fractal Cloud applied
+   *   it before.
+   * - `authoritative`: deprecated alias of `strict`, sent as `strict`.
    *
    * `'additive'` (per-record ownership) is no longer supported: this SDK
-   * refuses it and, on an environment zone entry, so does the control plane;
-   * an agent holds a zone that asks for it (changes none of its records).
+   * refuses it, as do the control plane and the agents.
    */
-  recordManagement?: 'authoritative';
+  recordManagement?: DnsRecordManagement;
   /** Default A, AAAA, CAA, CNAME, MX, NS, PTR, SRV, TXT. */
   allowedRecordTypes?: DnsRecordType[];
   /** Inclusive TTL bounds in seconds. Default 0 / 604800. */
@@ -113,7 +122,7 @@ export type DnsZoneComponentNode<Id extends string = string> = ComponentNode<
   withDnssec: (
     v: 'required' | 'optional' | 'disabled',
   ) => DnsZoneComponentNode<Id>;
-  withRecordManagement: (v: 'authoritative') => DnsZoneComponentNode<Id>;
+  withRecordManagement: (v: DnsRecordManagement) => DnsZoneComponentNode<Id>;
   withAllowedRecordTypes: (v: DnsRecordType[]) => DnsZoneComponentNode<Id>;
   withTtlBounds: (v: {
     minTtl?: number;
@@ -135,7 +144,9 @@ const dnsZoneNode = <Id extends string>(
     if (refusal !== undefined) {
       throw new Error(`withRecordManagement: ${refusal}`);
     }
-    return dnsZoneNode<Id>(guardrail(s, 'recordManagement', v));
+    return dnsZoneNode<Id>(
+      guardrail(s, 'recordManagement', canonicalRecordManagement(v)),
+    );
   },
   withAllowedRecordTypes: v =>
     dnsZoneNode<Id>(guardrail(s, 'allowedRecordTypes', v)),

@@ -64,6 +64,7 @@ export type {PodDisruptionBudget} from './components/workload/pod_disruption_bud
 export type {WorkloadRollout} from './components/workload/workload_rollout';
 export * from './components/unmanaged';
 export * from './components/dns';
+export * from './components/dns_record_management_mode';
 
 // Offer catalogue (concrete — vendor or vendor-neutral)
 export * from './offers/network_and_compute';

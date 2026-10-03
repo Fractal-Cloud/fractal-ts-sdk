@@ -165,6 +165,17 @@ describe('cloud.environments.plan()', () => {
     ]);
   });
 
+  it('reports a DNS zone switching between strict and lax as a dnsZones change', async () => {
+    const declare = (recordManagement: 'strict' | 'lax') =>
+      mgmt().withDnsZones([{name: 'fractal.cloud', recordManagement}]);
+    store('mgmt', {}, resolveEnvironment(declare('strict')).management.parameters);
+    const same = await cloud.environments.plan(declare('strict'));
+    expect(same.entries[0].action).toBe('unchanged');
+    const plan = await cloud.environments.plan(declare('lax'));
+    expect(plan.entries[0].action).toBe('update');
+    expect(plan.entries[0].changes).toEqual(['parameters.dnsZones']);
+  });
+
   it('refuses an operational tier the stored management tier would override', async () => {
     store(
       'mgmt',
