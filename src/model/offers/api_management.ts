@@ -113,7 +113,13 @@ export const AwsCloudFront = defineOffer<
      * sit in the same Live System without a cycle, or be a reference.
      */
     originDomain?: string;
-    /** `https` when the origin listens with TLS (an NLB TLS listener), else `http`. */
+    /**
+     * Protocol CloudFront uses to the origin; the agent defaults to `https` for
+     * both a VPC origin and `originDomain`. For the VPC origin the internal NLB
+     * passes TCP 443 through to the gateway, which terminates TLS with a publicly
+     * trusted certificate covering every alias (an NLB TLS listener is refused).
+     * `http` is an explicit opt-in to plain HTTP on the private VPC-origin hop.
+     */
     originProtocol?: 'https' | 'http';
     /** CloudFront origin response timeout; the agent defaults to 60 (1-180). */
     originReadTimeoutSeconds?: number;
@@ -128,9 +134,10 @@ export const AwsCloudFront = defineOffer<
     /** Requests per 5 minutes per client IP before the WAF rate-based rule blocks; default 2000. */
     wafRateLimitPer5Min?: number;
     /**
-     * Host name of a regional ACM certificate for the origin (e.g. the NLB's TLS
-     * listener); the agent publishes `originCertificateArn` and
-     * `originCertificateValidationRecords`.
+     * Host name of a regional, DNS-validated ACM certificate the agent requests
+     * in the component's region, e.g. for a public origin's load balancer; it
+     * publishes `originCertificateArn` and `originCertificateValidationRecords`.
+     * It cannot sit on an NLB used as a VPC origin, which allows no TLS listener.
      */
     originDomainName?: string;
   }

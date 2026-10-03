@@ -73,6 +73,24 @@ describe('Eks — Auto Mode node pools', () => {
     });
   });
 
+  it('emits no controlPlaneLogTypes when unset, so the agent leaves cluster logging alone', () => {
+    const eks = cluster()
+      .toLiveSystem({name: 'platform', environment, select: {eks: Eks({})}})
+      .components.find(c => c.id === 'eks')!;
+    expect(eks.parameters).not.toHaveProperty('controlPlaneLogTypes');
+  });
+
+  it('passes an explicit empty controlPlaneLogTypes, which turns logging off', () => {
+    const eks = cluster()
+      .toLiveSystem({
+        name: 'platform',
+        environment,
+        select: {eks: Eks({controlPlaneLogTypes: []})},
+      })
+      .components.find(c => c.id === 'eks')!;
+    expect(eks.parameters.controlPlaneLogTypes).toEqual([]);
+  });
+
   it('refuses offer node pools that would replace LOCKED neutral node pools', () => {
     expect(() =>
       cluster(true).toLiveSystem({

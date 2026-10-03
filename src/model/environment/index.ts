@@ -7,6 +7,7 @@
  * `management.ref()` / `management.operational(name).ref()`.
  */
 export * from './types';
+export * from './environment_secrets_backend';
 export * from './cloud_agents';
 export * from './environment';
 export type * from './dns_zone_provider';
