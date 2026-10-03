@@ -79,8 +79,9 @@ export type DnsZoneGuardrails = {
    *   The declared record sets are still kept: changed or removed outside
    *   Fractal Cloud, they are put back, and a declared name and type that
    *   already exists with other values is set to the declared ones. A record
-   *   set removed from the declaration is deleted only if Fractal Cloud applied
-   *   it before.
+   *   set removed from the declaration is deleted only if it is in the
+   *   last-applied set (`managedRecords`) the previous pass recorded; if that
+   *   state is lost, the record set is left in place.
    * - `authoritative`: deprecated alias of `strict`, sent as `strict`.
    *
    * `'additive'` (per-record ownership) is no longer supported: this SDK
@@ -109,6 +110,13 @@ export type DnsZoneOutputs = {
     digestType: number;
     digest: string;
   }[];
+  /**
+   * The last-applied set: the record sets the previous pass applied, as
+   * `"<fqdn with trailing dot> <TYPE>"` (`"www.example.com. A"`). Kept in
+   * control-plane state, never in the zone's DNS data; under `lax` a record set
+   * removed from the declaration is deleted only if it is listed here.
+   */
+  managedRecords?: string[];
 };
 
 // ── NetworkAndCompute.DnsZone ────────────────────────────────────────────────
@@ -122,7 +130,14 @@ export type DnsZoneComponentNode<Id extends string = string> = ComponentNode<
   withDnssec: (
     v: 'required' | 'optional' | 'disabled',
   ) => DnsZoneComponentNode<Id>;
-  withRecordManagement: (v: DnsRecordManagement) => DnsZoneComponentNode<Id>;
+  withRecordManagement: {
+    /** @deprecated Use `'strict'`, which `'authoritative'` is an alias of (and is sent as). */
+    (v: 'authoritative'): DnsZoneComponentNode<Id>;
+    /** `'strict'` (the default when never called) or `'lax'`. */
+    (v: 'strict' | 'lax'): DnsZoneComponentNode<Id>;
+    /** A value typed `DnsRecordManagement`; `'authoritative'` is sent as `'strict'`. */
+    (v: DnsRecordManagement): DnsZoneComponentNode<Id>;
+  };
   withAllowedRecordTypes: (v: DnsRecordType[]) => DnsZoneComponentNode<Id>;
   withTtlBounds: (v: {
     minTtl?: number;
@@ -139,7 +154,7 @@ const dnsZoneNode = <Id extends string>(
   withRecords: v => dnsZoneNode<Id>(guardrail(s, 'records', v)),
   withVisibility: v => dnsZoneNode<Id>(guardrail(s, 'visibility', v)),
   withDnssec: v => dnsZoneNode<Id>(guardrail(s, 'dnssec', v)),
-  withRecordManagement: v => {
+  withRecordManagement: (v: DnsRecordManagement) => {
     const refusal = recordManagementRefusal(v);
     if (refusal !== undefined) {
       throw new Error(`withRecordManagement: ${refusal}`);

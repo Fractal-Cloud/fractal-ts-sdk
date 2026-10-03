@@ -657,12 +657,30 @@ record sets the declaration does **not** list:
   Every record set it does not declare is deleted, apex NS and SOA aside, whoever
   created it.
 - `'lax'`: Fractal Cloud never deletes a record set it did not define. A record set
-  removed from the declaration is deleted only if Fractal Cloud applied it before; a
-  declared name and type that already exists with other values is set to the
-  declared values (the declaration wins for the names it declares).
+  removed from the declaration is deleted only if it is in the last-applied set
+  (`managedRecords`) the previous pass recorded (if that state is lost, the record set
+  is left in place); a declared name and type that already exists with other values
+  is set to the declared values (the declaration wins for the names it declares).
 
 `'authoritative'` is a deprecated alias of `'strict'` (sent as `'strict'`).
-`'additive'` is gone: it is a type error and refused before anything is sent.
+`'additive'` is gone: it is a type error and refused before anything is sent. Values
+are matched case-sensitively.
+
+> **Requires cloud agents that know `strict` and `lax`.** An older agent fails the
+> zone without changing it, including one declared `'authoritative'` (sent as
+> `'strict'`). On the new agents an **omitted** key means `strict`: a zone holding
+> record sets that nobody declared and Fractal Cloud did not write (an adopted zone,
+> one edited by hand, ACME `_acme-challenge` TXT records), which earlier agents held
+> untouched, has them deleted on its next pass. An upgraded agent acts on the
+> declaration already stored, so upgrade in this order:
+>
+> 1. For every such zone, declare `recordManagement: 'lax'` (or list the records) and
+>    deploy it.
+> 2. Then upgrade the cloud agents.
+> 3. Then deploy everything else with this version.
+>
+> Between steps 1 and 2 the older agents refuse `'lax'` and fail those zones, without
+> changing them, until they are upgraded.
 
 Use `lax` when something else writes into the zone, the usual case being ACME DNS-01:
 cert-manager or certbot creates `_acme-challenge` TXT records to prove control of the
@@ -683,8 +701,8 @@ mgmt.withDnsZones([
 
 Nothing is written into the zone's DNS data to track which record sets Fractal Cloud
 defined (no marker TXT records): the agent remembers what it applied in control-plane
-state, the zone's `managedRecords` output (`"_acme-challenge.fractal.cloud. TXT"`
-style entries). The same key applies to a Live System zone
+state, the zone's `managedRecords` output (`"www.fractal.cloud. CNAME"` style entries, typed
+on `DnsZoneOutputs`). The same key applies to a Live System zone
 (`DnsZoneComponent.withRecordManagement('lax')`).
 
 `cloud.environments.dnsZones(id)` reads what the agents reported: per zone, one

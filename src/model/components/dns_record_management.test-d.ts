@@ -4,6 +4,7 @@
  * `@ts-expect-error` is inert.
  */
 import {DnsZoneComponent, type DnsZoneGuardrails} from './dns';
+import type {DnsRecordManagement} from './dns_record_management_mode';
 
 /** The two modes, and the deprecated alias of strict, are values. */
 export const strict: DnsZoneGuardrails = {recordManagement: 'strict'};
@@ -23,6 +24,9 @@ export const builder = () => {
   DnsZoneComponent({id: 'z'}).withRecordManagement('strict');
   DnsZoneComponent({id: 'z'}).withRecordManagement('lax');
   DnsZoneComponent({id: 'z'}).withRecordManagement('authoritative');
+  /** A value typed with the exported type is accepted too. */
+  const typed: DnsRecordManagement = strict.recordManagement ?? 'lax';
+  DnsZoneComponent({id: 'z'}).withRecordManagement(typed);
   // @ts-expect-error 'additive' is not a recordManagement value
   DnsZoneComponent({id: 'z'}).withRecordManagement('additive');
 };

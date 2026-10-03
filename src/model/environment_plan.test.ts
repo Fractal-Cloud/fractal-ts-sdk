@@ -176,6 +176,19 @@ describe('cloud.environments.plan()', () => {
     expect(plan.entries[0].changes).toEqual(['parameters.dnsZones']);
   });
 
+  it('reports a zone stored as authoritative, now sent as strict, as a dnsZones change', async () => {
+    const stored = resolveEnvironment(mgmt()).management.parameters;
+    store('mgmt', {}, {
+      ...stored,
+      dnsZones: [{name: 'fractal.cloud', recordManagement: 'authoritative'}],
+    });
+    const plan = await cloud.environments.plan(
+      mgmt().withDnsZones([{name: 'fractal.cloud', recordManagement: 'authoritative'}]),
+    );
+    expect(plan.entries[0].action).toBe('update');
+    expect(plan.entries[0].changes).toEqual(['parameters.dnsZones']);
+  });
+
   it('refuses an operational tier the stored management tier would override', async () => {
     store(
       'mgmt',
