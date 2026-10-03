@@ -218,6 +218,138 @@ describe('environment parameters', () => {
     expect(() => baseMgmt().withParameter('  ', 1)).toThrow(/blank/);
   });
 
+  it('withEnvironmentSecretsBackend declares environmentSecretsBackend on both tiers', () => {
+    const tree = resolveEnvironment(
+      baseMgmt()
+        .withEnvironmentSecretsBackend('ssm-parameter-store')
+        .withOperationalEnvironment(
+          OperationalEnvironment({
+            shortName: 'prod',
+            resourceGroups: [rg('prod-rg')],
+          }).withEnvironmentSecretsBackend('secrets-manager'),
+        ),
+    );
+    expect(tree.management.parameters.environmentSecretsBackend).toBe(
+      'ssm-parameter-store',
+    );
+    expect(tree.operationals[0].parameters).toEqual({
+      environmentSecretsBackend: 'secrets-manager',
+    });
+  });
+
+  it('rejects an environmentSecretsBackend the AWS agent would fail on', () => {
+    expect(() =>
+      resolveEnvironment(
+        baseMgmt().withParameter('environmentSecretsBackend', 'vault'),
+      ),
+    ).toThrow(
+      /environmentSecretsBackend must be one of \[ssm-parameter-store, secrets-manager\], got "vault"/,
+    );
+  });
+
+  it.each(['', '  ', ' Secrets-Manager '])(
+    'accepts environmentSecretsBackend %j, as the AWS agent does (blank = default, case-insensitive)',
+    value => {
+      expect(() =>
+        resolveEnvironment(
+          baseMgmt().withParameter('environmentSecretsBackend', value),
+        ),
+      ).not.toThrow();
+    },
+  );
+
+  it('rejects a non-text environmentSecretsBackend', () => {
+    expect(() =>
+      resolveEnvironment(
+        baseMgmt().withParameter('environmentSecretsBackend', 42),
+      ),
+    ).toThrow(/environmentSecretsBackend must be one of/);
+  });
+
+  it('refuses a case-variant environmentSecretsBackend key the AWS agent would not read', () => {
+    expect(() =>
+      resolveEnvironment(
+        baseMgmt().withParameter('EnvironmentSecretsBackend', 'secrets-manager'),
+      ),
+    ).toThrow(/spelled exactly 'environmentSecretsBackend'/);
+  });
+
+  it('rejects an invalid environmentSecretsBackend on an operational environment', () => {
+    expect(() =>
+      resolveEnvironment(
+        baseMgmt().withOperationalEnvironment(
+          OperationalEnvironment({
+            shortName: 'prod',
+            resourceGroups: [rg('prod-rg')],
+          }).withEnvironmentSecretsBackend('vault' as never),
+        ),
+      ),
+    ).toThrow(/Operational environment 'prod': environmentSecretsBackend/);
+  });
+
+  describe('secret size on AWS (SSM Parameter Store holds at most 4096 bytes)', () => {
+    const big = {
+      shortName: 'kubeconfig',
+      displayName: 'Kubeconfig',
+      value: 'é'.repeat(2049), // 4098 UTF-8 bytes
+    };
+    const awsMgmt = () =>
+      baseMgmt().withAwsCloudAgent({
+        region: 'eu-central-1',
+        organizationId: 'o-abc',
+        accountId: '123456789012',
+      });
+
+    it('refuses a secret over 4096 UTF-8 bytes on the default backend, naming it but not its value', () => {
+      let message = '';
+      try {
+        resolveEnvironment(awsMgmt().withSecret(big));
+      } catch (err) {
+        message = (err as Error).message;
+      }
+      expect(message).toMatch(/secret 'kubeconfig' is 4098 bytes/);
+      expect(message).toMatch(/withEnvironmentSecretsBackend\('secrets-manager'\)/);
+      expect(message).not.toContain('éé');
+    });
+
+    it('refuses it on an operational environment with an AWS account', () => {
+      expect(() =>
+        resolveEnvironment(
+          awsMgmt().withOperationalEnvironment(
+            OperationalEnvironment({
+              shortName: 'prod',
+              resourceGroups: [rg('prod-rg')],
+            })
+              .withAwsAccount({region: 'eu-central-1', accountId: '210987654321'})
+              .withSecret(big),
+          ),
+        ),
+      ).toThrow(/Operational environment 'prod': secret 'kubeconfig'/);
+    });
+
+    it('accepts it with the secrets-manager backend', () => {
+      expect(() =>
+        resolveEnvironment(
+          awsMgmt()
+            .withEnvironmentSecretsBackend('secrets-manager')
+            .withSecret(big),
+        ),
+      ).not.toThrow();
+    });
+
+    it('accepts it on an environment without AWS', () => {
+      expect(() => resolveEnvironment(baseMgmt().withSecret(big))).not.toThrow();
+    });
+
+    it('accepts exactly 4096 bytes', () => {
+      expect(() =>
+        resolveEnvironment(
+          awsMgmt().withSecret({...big, value: 'x'.repeat(4096)}),
+        ),
+      ).not.toThrow();
+    });
+  });
+
   it('rejects a networkTier the control plane would fail on', () => {
     expect(() =>
       resolveEnvironment(baseMgmt().withParameter('networkTier', 'staging')),

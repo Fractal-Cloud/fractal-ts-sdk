@@ -35,7 +35,52 @@ of truth for what is on npm.
 
 **Requires** cloud agents that know `strict` and `lax`: an older agent refuses them
 as unknown values and fails the zone without changing it. Code that declares
-`'authoritative'` or omits the key behaves as before.
+`'authoritative'` behaves as before. **Omitting the key now means `'strict'`** on those
+agents: a zone holding record sets that nobody declared and Fractal Cloud did not write
+(an adopted zone, one edited by hand), which the agents held untouched until now, has
+them deleted on its next pass. Declare `'lax'` to keep them.
+
+### Removed (BREAKING for TypeScript callers) — `AwsSqsQueue({dlqAlarm})`
+
+The AWS agent creates no CloudWatch alarm or log group for a queue any more; dead-letter
+depth is alerted on by the self-hosted Prometheus / Grafana. The option is gone from the
+type. A `dlqAlarm: false` that still reaches the queue (plain JavaScript, a cast) is dropped,
+as it asks for what the agent does; any other value is refused while building the Live
+System instead of being sent and silently ignored.
+
+### Added — `withEnvironmentSecretsBackend('ssm-parameter-store' | 'secrets-manager')`
+
+On both environment tiers: declares the `environmentSecretsBackend` parameter that picks
+where the AWS agent stores environment secrets. `ssm-parameter-store` (the agent default)
+writes `SecureString` parameters under
+`/fractal/environment-secrets/<environmentShortName>/` with a per-environment KMS key
+(values up to 4 KB); `secrets-manager` keeps the legacy `secret-<uuid>` secrets. Any other
+value, including one set through `withParameter` or under a differently cased key the agent
+would not read, is refused before deploying, since the agent would fail the Live System on
+it. The setting is per environment (not inherited from the management environment), and
+switching does not migrate or delete secrets already in the other store.
+
+On an environment with an AWS agent or account whose backend is SSM (declared or by
+default), a `withSecret` value over 4096 UTF-8 bytes is now refused at resolve time, naming
+the secret: the agent would refuse it at patrol time. Secrets Manager allowed 64 KB, so a
+large secret (a PEM, a kubeconfig) that deployed before needs
+`withEnvironmentSecretsBackend('secrets-manager')`.
+
+### Changed — documentation of the AWS offers, to match the agent
+
+- `Eks`: the neutral `withKubernetesVersion` is honored: unset is never upgraded, a
+  newer version is applied one minor per round, and a downgrade is refused.
+- `Eks({controlPlaneLogTypes})` is opt-in: absent, a new cluster gets no control-plane
+  logging and an existing cluster's is left as it is; `[]` turns it off. The SDK never
+  sends a default.
+- `AwsCloudFront({originProtocol})` defaults to `https` for a VPC origin (the NLB passes
+  TCP 443 through to the gateway, which terminates TLS) and for `originDomain`; `http` is
+  an explicit opt-in. `originDomainName` cannot sit on an NLB used as a VPC origin.
+- `AwsRdsPostgresDbms`: `readerCount` / `multiAz` default from the environment's
+  `networkTier`; only declared keys are reconciled on an existing database; with no
+  `Subnet` dependency the agent places the database in the spoke's private subnets.
+- `AwsRdsPostgresDatabase({databaseName})`: on a referenced (shared) DBMS the default
+  name is scoped by the Live System; set it when a fixed name is needed.
 
 ## 2.9.5
 

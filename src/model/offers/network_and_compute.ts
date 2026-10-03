@@ -372,13 +372,20 @@ type EksConfig = {
    * so it is refused when that value is a locked guardrail.
    */
   nodePools?: readonly EksAutoModeNodePool[];
-  /** Control-plane logs shipped to CloudWatch; the agent defaults to api and authenticator. */
+  /**
+   * Opt-in control-plane logs, shipped to CloudWatch Logs. Absent (the default):
+   * a new cluster gets none and an existing cluster's logging is left as it is.
+   * A list is reconciled: the listed types on, every other one off, so `[]`
+   * turns logging off.
+   */
   controlPlaneLogTypes?: readonly EksControlPlaneLogType[];
 };
 
 /**
  * Amazon EKS (Auto Mode). The Kubernetes version is the neutral
- * `withKubernetesVersion`. Workloads added under it are emitted as caas-k8s
+ * `withKubernetesVersion` (`<major>.<minor>`): unset, the cluster is never
+ * upgraded; a newer version is applied one minor per round; a downgrade is
+ * refused. Workloads added under it are emitted as caas-k8s
  * Kubernetes workloads.
  */
 export const Eks = defineOffer<

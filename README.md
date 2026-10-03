@@ -557,6 +557,14 @@ Things to know:
   an operational tier that a tier STORED on the management environment would
   override is refused at deploy time, before the operational environment is
   written.
+- **`environmentSecretsBackend`** (`withEnvironmentSecretsBackend`) picks where the
+  AWS agent stores environment secrets: `'ssm-parameter-store'` (the default; SSM
+  `SecureString` parameters under `/fractal/environment-secrets/<environment>/`,
+  values up to 4096 bytes) or `'secrets-manager'` (the legacy `secret-<uuid>`
+  secrets). It applies per environment and is not inherited from the management
+  environment. Switching does not migrate or delete the secrets already in the
+  other store. Any other value, and on an AWS environment using the SSM backend a
+  secret over 4096 bytes, is refused at resolve time.
 
 ### Updating cloud agents
 

@@ -351,8 +351,6 @@ type SqsQueueConfig = {
   filterEventNames?: readonly string[];
   /** A raw SNS filter policy, in place of `filterEventNames`. */
   filterPolicy?: Record<string, unknown> | string;
-  /** A CloudWatch alarm when the dead-letter queue holds any message; default true. */
-  dlqAlarm?: boolean;
 };
 
 const INTEGER_BOUNDS: ReadonlyArray<[keyof SqsQueueConfig, number, number]> = [
@@ -369,6 +367,9 @@ const INTEGER_BOUNDS: ReadonlyArray<[keyof SqsQueueConfig, number, number]> = [
  * queue's side creates the subscription and a queue policy that admits only
  * that topic.
  *
+ * No CloudWatch alarm or log group is created: dead-letter depth is alerted on
+ * by the self-hosted Prometheus / Grafana.
+ *
  * Output fields: `queueUrl`, `queueArn`, `dlqUrl`, `dlqArn`, `subscriptionArn`.
  */
 export const AwsSqsQueue = defineOffer<
@@ -380,7 +381,13 @@ export const AwsSqsQueue = defineOffer<
   provider: 'AWS',
   deliveryModel: 'PaaS',
   instantiate: (ctx, config) => {
-    const {filterEventNames, filterPolicy, ...given} = config;
+    // dlqAlarm false is what the agent does anyway (it creates no alarm), so it
+    // is dropped rather than sent; any other value is refused in validate.
+    const {filterEventNames, filterPolicy, ...rest} = config;
+    const given = {...rest} as Record<string, unknown>;
+    if (given['dlqAlarm'] === false) {
+      delete given['dlqAlarm'];
+    }
     // An explicitly undefined knob must not erase a value mapped from a guardrail.
     const knobs = Object.fromEntries(
       Object.entries(given).filter(([, v]) => v !== undefined),
@@ -416,6 +423,15 @@ export const AwsSqsQueue = defineOffer<
       throw new Error(
         `AwsSqsQueue '${self.id}': queueName '${config.queueName}' is not an SQS ` +
           "queue name (1-76 letters, digits, hyphens and underscores, leaving room for '-dlq').",
+      );
+    }
+    if (
+      self.parameters['dlqAlarm'] !== undefined &&
+      self.parameters['dlqAlarm'] !== false
+    ) {
+      throw new Error(
+        `AwsSqsQueue '${self.id}': dlqAlarm was removed, the agent creates no CloudWatch alarm. ` +
+          'Alert on the dead-letter queue depth in Prometheus / Grafana instead.',
       );
     }
     if (self.parameters['deadLetterEnabled'] === false) {
