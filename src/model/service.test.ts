@@ -188,6 +188,37 @@ describe('liveSystems.deploy()', () => {
     expect(h.requests.map(r => r.method)).toEqual(['GET']);
   });
 
+  it('outputs: a structured output field arrives as its JSON', async () => {
+    h.state.queue = [
+      {
+        status: 200,
+        body: {
+          status: 'Active',
+          components: [
+            {
+              id: 'edge',
+              status: 'Instantiating',
+              outputFields: {
+                structured: [{name: 'a', value: 1}],
+                names: ['a', 'b'],
+                // The CloudFront offer publishes its records as JSON text already: passed through.
+                certificateValidationRecords:
+                  '[{"name":"_a1.example.com.","type":"CNAME","value":"_b2.acm-validations.aws."}]',
+              },
+            },
+          ],
+        },
+      },
+    ];
+    const state = await cloud.liveSystems.outputs(liveSystem());
+    const fields = state.components.edge.outputFields;
+    expect(JSON.parse(fields.structured)).toEqual([{name: 'a', value: 1}]);
+    expect(fields.names).toBe('["a","b"]');
+    expect(JSON.parse(fields.certificateValidationRecords)).toEqual([
+      {name: '_a1.example.com.', type: 'CNAME', value: '_b2.acm-validations.aws.'},
+    ]);
+  });
+
   it('wait: throws on terminal failure status', async () => {
     h.state.queue = [
       {status: 404}, // LS existence

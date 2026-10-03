@@ -9,7 +9,45 @@ The version published for a release is the GitHub release tag: `release.yml` run
 `npm version <tag>` at publish time, so `package.json` on `main` is not the source
 of truth for what is on npm.
 
-## 2.10.0
+## Unreleased
+
+### Added — `AwsCloudFront({redirectTo, aliases})`: a whole-site redirect under your own host names
+
+- `redirectTo`: an `https://` URL. Every request the distribution receives, over
+  HTTP or HTTPS, is answered with `301 Moved Permanently` to that URL followed by the
+  request's own path and query string, by a CloudFront Function at the edge (no
+  origin, no bucket).
+- `aliases`: the host names the distribution answers for, only together with
+  `redirectTo`. The agent requests a DNS-validated ACM certificate for them in
+  us-east-1 and attaches them once it is issued.
+
+The agent writes no DNS record for either: a DNS zone belongs to whoever declares it.
+It publishes, as output fields of the component (`cloud.liveSystems.outputs`), the
+distribution's `dnsName` and `hostedZoneId` (for an alias record) and the certificate's
+`certificateValidationRecords`; the component stays `Instantiating` until the owner of
+each name's zone declares those records and the certificate is issued.
+
+`certificateValidationRecords` is a JSON array of `{name, type, value}`, as text:
+parse it with `JSON.parse`.
+
+Both are checked when the Live System is built, by the agent's own rules: a target
+that is not `https://` + a DNS host name + an optional URL path (no query, fragment,
+port, credentials, or character a URL path may not hold), an alias that is not a host
+name, an alias equal to the target's host (a redirect loop), or aliases without
+`redirectTo` are refused with the reason. A blank `redirectTo` is no redirect.
+Requires cloud agents with the CloudFront redirect (the release after 8.20.2).
+
+### Changed — a structured output field arrives as its JSON
+
+`cloud.liveSystems.outputs` coerced every output field with `String(value)`: an
+object, or an array of objects, arrived as `[object Object]`, and an array of plain
+values comma-joined (`a,b`). Both now arrive as their JSON (`[{"name":"a"}]`,
+`["a","b"]`), which `JSON.parse` reads back; a caller that split such an array on
+commas parses it instead. Strings, numbers and booleans read as before. Output fields
+are strings by contract, and the cloud agents publish structured values as JSON text
+already, which passes through unchanged.
+
+## 2.9.3
 
 ### Changed — **DNS zones are owned as a whole: `recordManagement: 'additive'` is gone**
 
