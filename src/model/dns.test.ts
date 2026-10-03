@@ -226,6 +226,37 @@ describe('DNS Zone component', () => {
     ).not.toThrow();
   });
 
+  it('an Interface operation setting authoritative reaches the Live System as strict', () => {
+    const fractal = createFractal({
+      id: 'public-dns-op',
+      version: {major: 1, minor: 0, patch: 0},
+      boundedContextId,
+      blueprint: bp => ({
+        zone: bp.add(DnsZoneComponent({id: 'z'}).withDomainName('fractal.cloud')),
+      }),
+      operations: s => ({
+        withRecordManagement: (v: string) => s.zone.set('recordManagement', v),
+      }),
+    });
+    const select = {z: AwsRoute53HostedZone({})};
+    const viaOp = (v: string) =>
+      fractal
+        .specialize()
+        .withRecordManagement(v)
+        .toLiveSystem({name: 'dns', environment, select}).components[0].parameters;
+    expect(viaOp('authoritative').recordManagement).toBe('strict');
+    expect(viaOp('lax').recordManagement).toBe('lax');
+    const unset = fractal.toLiveSystem({name: 'dns', environment, select})
+      .components[0].parameters;
+    expect('recordManagement' in unset).toBe(false);
+  });
+
+  it('matches values case-sensitively: Strict is refused, unlike the agents', () => {
+    expect(() =>
+      DnsZoneComponent({id: 'z'}).withRecordManagement('Strict' as unknown as 'strict'),
+    ).toThrow(/recordManagement 'Strict' is not a value.*'strict'.*'lax'/);
+  });
+
   it('names a refused value that is not a string as it is', () => {
     expect(() =>
       DnsZoneComponent({id: 'z'}).withRecordManagement(true as unknown as 'strict'),
