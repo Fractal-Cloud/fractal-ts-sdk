@@ -127,4 +127,29 @@ describe('DNS zone agents', () => {
     expect(op.state.cloudAccounts).toEqual([account]);
     expect(() => resolveEnvironment(env.withOperationalEnvironment(op))).not.toThrow();
   });
+
+  it('refuses per-record ownership before anything is sent, wherever the zone is declared', () => {
+    const additive = {name: 'fractal.cloud', recordManagement: 'additive'} as unknown as DnsZone;
+    expect(() => resolveEnvironment(mgmt().withDnsZones([additive]))).toThrow(
+      /Management environment: DNS zone 'fractal\.cloud': recordManagement 'additive' is not supported: per-record ownership isn't supported yet; zones are managed authoritatively/,
+    );
+    expect(() =>
+      resolveEnvironment(
+        mgmt().withOperationalEnvironment(
+          OperationalEnvironment({shortName: 'prod'}).withDnsZones([additive]),
+        ),
+      ),
+    ).toThrow(/Operational environment 'prod': DNS zone 'fractal\.cloud': recordManagement 'additive'/);
+  });
+
+  it('accepts an authoritative zone and one that does not say', () => {
+    const {management} = resolveEnvironment(
+      mgmt().withDnsZones([zone({recordManagement: 'authoritative'}), zone({name: 'other.cloud'})]),
+    );
+    expect(management.parameters.dnsZones).toEqual([
+      {name: 'fractal.cloud', recordManagement: 'authoritative'},
+      {name: 'other.cloud'},
+    ]);
+  });
 });
+
