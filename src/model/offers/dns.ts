@@ -6,6 +6,7 @@
  * selecting these offers directly in a Live System is advanced and unsupported.
  */
 import {defineOffer} from '../core';
+import {recordManagementRefusal} from '../components/dns_record_management';
 
 /**
  * Amazon Route 53 hosted zone (public, or private and associated with the
@@ -21,4 +22,12 @@ export const AwsRoute53HostedZone = defineOffer<
   offerType: 'NetworkAndCompute.PaaS.AwsRoute53HostedZone',
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  // Catches what the guardrail's type does not reach: an operation's
+  // `ops.set`, a raw `guardrail(...)`, or an offer config cast past its type.
+  validate: self => {
+    const refusal = recordManagementRefusal(self.parameters.recordManagement);
+    if (refusal !== undefined) {
+      throw new Error(`Live component '${self.id}': ${refusal}`);
+    }
+  },
 });

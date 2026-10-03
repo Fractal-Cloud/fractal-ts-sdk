@@ -73,8 +73,9 @@ export type DnsZoneGuardrails = {
    *   zone, one edited by hand) is held instead: none of its record sets is
    *   changed until that record set is declared or `authoritative` is set.
    *
-   * `'additive'` (per-record ownership) is no longer supported: it is refused
-   * here, by the control plane, and by the agents.
+   * `'additive'` (per-record ownership) is no longer supported: this SDK
+   * refuses it and, on an environment zone entry, so does the control plane;
+   * an agent holds a zone that asks for it (changes none of its records).
    */
   recordManagement?: 'authoritative';
   /** Default A, AAAA, CAA, CNAME, MX, NS, PTR, SRV, TXT. */

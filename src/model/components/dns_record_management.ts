@@ -16,8 +16,8 @@ export const recordManagementRefusal = (value: unknown): string | undefined => {
   const shown =
     typeof value === 'string' ? `'${value}'` : JSON.stringify(value);
   return (
-    `recordManagement ${shown} is not supported: per-record ` +
-    "ownership isn't supported yet; zones are managed authoritatively. Use " +
+    `recordManagement ${shown}: per-record ownership isn't supported yet; ` +
+    'zones are managed authoritatively. Use ' +
     "'authoritative' (every record set the zone does not declare is deleted), " +
     'or omit it.'
   );

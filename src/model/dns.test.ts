@@ -133,7 +133,7 @@ describe('DNS Zone component', () => {
         'additive',
       ),
     ).toThrow(
-      /recordManagement 'additive' is not supported: per-record ownership isn't supported yet; zones are managed authoritatively/,
+      /recordManagement 'additive': per-record ownership isn't supported yet; zones are managed authoritatively/,
     );
     const zone: DnsZone = {
       name: 'fractal.cloud',
@@ -142,4 +142,40 @@ describe('DNS Zone component', () => {
     };
     expect(zone.name).toBe('fractal.cloud');
   });
+
+  it('a Live System cannot slip additive past the type either', () => {
+    const fractal = createFractal({
+      id: 'public-dns-raw',
+      version: {major: 1, minor: 0, patch: 0},
+      boundedContextId,
+      blueprint: bp => {
+        const zone = bp.add(DnsZoneComponent({id: 'z'}).withDomainName('fractal.cloud'));
+        return {zone};
+      },
+      operations: () => ({}),
+    });
+    expect(() =>
+      fractal.toLiveSystem({
+        name: 'dns',
+        environment,
+        select: {
+          z: AwsRoute53HostedZone({recordManagement: 'additive'} as unknown as {adoptExisting?: boolean}),
+        },
+      }),
+    ).toThrow(/Live component 'z': recordManagement 'additive': per-record ownership isn't supported yet/);
+    expect(() =>
+      fractal.toLiveSystem({
+        name: 'dns',
+        environment,
+        select: {z: AwsRoute53HostedZone({})},
+      }),
+    ).not.toThrow();
+  });
+
+  it('names a refused value that is not a string as it is', () => {
+    expect(() =>
+      DnsZoneComponent({id: 'z'}).withRecordManagement(true as unknown as 'authoritative'),
+    ).toThrow(/recordManagement true: per-record ownership/);
+  });
 });
+

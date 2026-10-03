@@ -28,16 +28,18 @@ belongs to the environment or Live System that declares it and holds its declare
   zone, one edited by hand) is held: its agent changes none of its record sets and
   reports the record sets in the way, until they are declared or `'authoritative'`
   is set. Before, omitting it meant `'additive'`.
-- `'additive'` is a type error, and is refused when the tree is resolved (a JavaScript
-  caller, or a cast) and by `withRecordManagement`, with the reason: per-record
-  ownership isn't supported yet; zones are managed authoritatively.
+- `'additive'` is a type error, and is refused at runtime (a JavaScript caller, or a
+  cast) with the reason, per-record ownership isn't supported yet; zones are managed
+  authoritatively: by `withRecordManagement`, when an environment is resolved
+  (`resolveEnvironment`, deploy), and when a Live System selecting
+  `AwsRoute53HostedZone` is built.
 
 **Why a minor version although a type lost a value.** The value stopped working on
 the platform, not in this package: fractal-environments refuses an environment that
 declares it (once the zone's entry is added or edited) and the cloud agents hold the
 zone, whatever SDK version sent it. Keeping it in the type would only move that
 failure from compile time to a deploy; a major version would suggest that staying on
-2.x keeps additive zones working, which it does not. Code that never set
+2.x keeps additive zones working, which it does not. Code that never mentions
 `'additive'` compiles and behaves as before.
 
 **To migrate** a zone declaring `recordManagement: 'additive'`: declare every record
