@@ -185,6 +185,28 @@ await cloud.liveSystems.deploy(liveSystem, {mode: 'wait'});
 
 Pass `baseUrl` to target a non-production control plane.
 
+### Retries through a brief control-plane outage
+
+A control-plane rollout or restart can answer `502`/`503`/`504` or drop the connection for a short while. The client repeats a call when repeating it is safe, with exponential backoff and jitter (1 s doubling to 15 s), honoring `Retry-After`; no retry starts more than 2 minutes after the first attempt (an attempt in flight is not cut short). Inside a wait-mode deploy or agent update that is not `quiet`, each retry logs one line in the wait-mode format:
+
+```
+[2026-10-02T09:00:01.000Z] WARN  Control plane unavailable, retrying  method=GET path=/environments/Personal/<owner>/dev cause=503 attempt=1 retryInMs=730 elapsed=0s
+```
+
+| Call | Repeated on |
+|---|---|
+| `GET`, `PUT` (reads; environment, secret and live-system updates are whole-state overlays) | `502`, `503`, `504`, `ECONNRESET`, `ECONNREFUSED`, `ETIMEDOUT`, `EPIPE`, `EAI_AGAIN`, socket hang up |
+| `POST`, `DELETE` (initialize, update, create, destroy) | only when nothing can have started: the control plane's drain refusal (`503`, `reasonCode: ServiceDraining`), the ingress's own plain-text `503` for a request that never reached a pod (the whole body is `no healthy upstream`, or `upstream connect error ... reset reason: connection failure` / `overflow`, and no upstream timing header), or a refused connection |
+
+A `POST .../initialize` is not idempotent — a second accepted initialize starts a second run — so it is never repeated on `502`, `504`, a reset connection or a timeout. `4xx` and `500` are never repeated. Tune or disable it with `retry`:
+
+```typescript
+createFractalCloudClient({clientId, clientSecret, retry: {maxElapsedMs: 300_000}});
+createFractalCloudClient({clientId, clientSecret, retry: false});
+```
+
+Outside those operations (`environments.get`, `list`, `liveSystems.outputs`, ...) retries are silent by default, so a script that pipes a result to a file gets no log lines in it; `retry: {quiet: false}` turns the lines on for every call, `retry: {quiet: true}` off for every call.
+
 ### Errors — safe to log
 
 Every operation throws **`FractalApiError`**, never the underlying HTTP client's
