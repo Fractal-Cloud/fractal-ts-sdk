@@ -26,7 +26,12 @@ gives a Live System (`<ownerType>/<ownerId>/<boundedContext>/<liveSystemName>`).
 - Refused while building the Live System: an offer that does not satisfy the slot (also
   a type error), a malformed id, and a referenced slot with outbound links or
   application-added children (nothing would ever act on them).
-- Requires a control plane and agents that accept references (Phase 5).
+- Requires a control plane and agents that accept references (Phase 5); until the control
+  plane enables them, a deploy declaring one is refused with `ComponentReferencesNotEnabled`.
+  The control plane also refuses a reference to the referencing Live System itself, to
+  another organization, or whose type or provider differs from the target's, and an update
+  that turns a component this Live System owns into a reference under the same id (remove
+  it first, then add the reference).
 
 ### Added — AWS messaging: `AwsSnsTopic`, `AwsSqsQueue`, `MessagingEntity.withTopic`, `MessagingEntityLink`
 
@@ -55,9 +60,10 @@ gives a Live System (`<ownerType>/<ownerId>/<boundedContext>/<liveSystemName>`).
   idleConnTimeoutMs?, retryAttempts?, servicePort?})` builds the flat, indexed settings of
   an outbound Workload → gateway link (`bp.link(service, gateway, gatewayRouteSettings(…))`).
   Route declarations from one workload to one gateway merge into ONE link (the control
-  plane keeps one link per source and target), their routes numbered on; a later
-  declaration contradicting the link's timeouts, retries or port, or repeating a prefix
-  for the same host, is refused.
+  plane keeps one link per source and target), their routes numbered on. Timeouts,
+  retries and the port belong to the first declaration: a later one that contradicts
+  them, adds one the earlier routes did not set, or repeats a prefix for the same host
+  is refused.
 
 ### Added — shared-platform knobs
 
