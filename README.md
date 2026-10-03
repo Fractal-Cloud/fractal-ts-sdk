@@ -668,11 +668,19 @@ are matched case-sensitively.
 
 > **Requires cloud agents that know `strict` and `lax`.** An older agent fails the
 > zone without changing it, including one declared `'authoritative'` (sent as
-> `'strict'`). And on the new agents an **omitted** key means `strict`: a zone holding
+> `'strict'`). On the new agents an **omitted** key means `strict`: a zone holding
 > record sets that nobody declared and Fractal Cloud did not write (an adopted zone,
-> one edited by hand, ACME challenge records), which earlier agents held untouched,
-> has them deleted on its next pass. Declare `'lax'` (or list the records) before the
-> agents are upgraded to keep them.
+> one edited by hand, ACME `_acme-challenge` TXT records), which earlier agents held
+> untouched, has them deleted on its next pass. An upgraded agent acts on the
+> declaration already stored, so upgrade in this order:
+>
+> 1. For every such zone, declare `recordManagement: 'lax'` (or list the records) and
+>    deploy it.
+> 2. Then upgrade the cloud agents.
+> 3. Then deploy everything else with this version.
+>
+> Between steps 1 and 2 the older agents refuse `'lax'` and fail those zones, without
+> changing them, until they are upgraded.
 
 Use `lax` when something else writes into the zone, the usual case being ACME DNS-01:
 cert-manager or certbot creates `_acme-challenge` TXT records to prove control of the

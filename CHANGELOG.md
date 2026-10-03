@@ -44,11 +44,20 @@ of truth for what is on npm.
 
 **Requires** cloud agents that know `strict` and `lax`: an older agent refuses them
 as unknown values and fails the zone without changing it. That includes code that
-still declares `'authoritative'`, since this version sends it as `'strict'`: upgrade
-the agents before deploying with this version. **Omitting the key now means `'strict'`** on those
-agents: a zone holding record sets that nobody declared and Fractal Cloud did not write
-(an adopted zone, one edited by hand), which the agents held untouched until now, has
-them deleted on its next pass. Declare `'lax'` to keep them.
+still declares `'authoritative'`, since this version sends it as `'strict'`.
+**Omitting the key now means `'strict'`** on the new agents: a zone holding record sets
+that nobody declared and Fractal Cloud did not write (an adopted zone, one edited by
+hand, ACME `_acme-challenge` TXT records from cert-manager or certbot), which the agents
+held untouched until now, has them deleted on its next pass. An upgraded agent acts on
+the declaration already stored, so the order matters. The one safe sequence:
+
+1. For every zone holding such record sets, declare `recordManagement: 'lax'` (or list
+   those records in `records`) and deploy it with this version.
+2. Then upgrade the cloud agents.
+3. Then deploy everything else with this version.
+
+The cost: between steps 1 and 2 the older agents refuse `'lax'` (and `'strict'`) and
+fail those zones, without changing them, until they are upgraded.
 
 ### Removed (BREAKING for TypeScript callers) — `AwsSqsQueue({dlqAlarm})`
 

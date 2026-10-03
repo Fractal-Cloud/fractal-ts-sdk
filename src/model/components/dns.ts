@@ -135,6 +135,8 @@ export type DnsZoneComponentNode<Id extends string = string> = ComponentNode<
     (v: 'authoritative'): DnsZoneComponentNode<Id>;
     /** `'strict'` (the default when never called) or `'lax'`. */
     (v: 'strict' | 'lax'): DnsZoneComponentNode<Id>;
+    /** A value typed `DnsRecordManagement`; `'authoritative'` is sent as `'strict'`. */
+    (v: DnsRecordManagement): DnsZoneComponentNode<Id>;
   };
   withAllowedRecordTypes: (v: DnsRecordType[]) => DnsZoneComponentNode<Id>;
   withTtlBounds: (v: {
