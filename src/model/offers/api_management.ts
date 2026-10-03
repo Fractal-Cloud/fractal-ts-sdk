@@ -20,8 +20,17 @@ const TARGET_HOST =
   /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$/i;
 
 /** Trims what Java's `String.trim()` trims, as the agent does: control characters and spaces only. */
-const javaTrim = (value: string): string =>
-  value.replace(/^[\x00-\x20]+|[\x00-\x20]+$/g, '');
+const javaTrim = (value: string): string => {
+  let start = 0;
+  let end = value.length;
+  while (start < end && value.charCodeAt(start) <= 0x20) {
+    start++;
+  }
+  while (end > start && value.charCodeAt(end - 1) <= 0x20) {
+    end--;
+  }
+  return value.slice(start, end);
+};
 
 /**
  * Why `redirectTo` cannot be a redirect target, or undefined when it can. Read on the text as
