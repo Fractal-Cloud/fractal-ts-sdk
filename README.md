@@ -268,6 +268,107 @@ A **Blueprint** and a **Live System** are different entities, registered by diff
 
 Deploying never registers a blueprint as a side effect. The API rejects a Live System whose Fractal is not registered, so register it first — or once, ahead of time, from wherever you govern your Fractals. `blueprints.create` accepts a **base** Fractal only; a specialized one carries application-level intent and is rejected at compile time.
 
+## Cross-Live-System references
+
+A Live System can use a component that **another Live System owns**. This is how an app team consumes shared infrastructure that ops runs: the app's Live System runs on the shared cluster instead of creating its own. To do this, fill the slot with `referenceTo(offer, {liveSystemId, componentId})` instead of an offer. `liveSystemIdOf(boundedContext, liveSystemName)` builds the id the control plane gives a Live System: `<ownerType>/<ownerId>/<boundedContext>/<liveSystemName>`.
+
+The example below is an app Live System that runs on the EKS cluster `eks`. That cluster belongs to the ops Live System `shared-eks` in the Bounded Context `fractal-cloud-platform`. The same code is typechecked in [`guides/cross-live-system-references`](guides/cross-live-system-references/src/app_live_system.ts).
+
+```typescript
+import {
+  createFractal,
+  ContainerPlatform,
+  Workload,
+  Eks,
+  K8sWorkload,
+  liveSystemIdOf,
+  referenceTo,
+} from '@fractal_cloud/sdk';
+
+// References work only inside one organization, so a single id serves both teams.
+const organizationId = process.env['ORGANIZATION_ID']!;
+
+// Builds the control-plane id of the ops Live System:
+// `Organizational/<organizationId>/fractal-cloud-platform/shared-eks`.
+const sharedEks = liveSystemIdOf(
+  {
+    ownerType: 'Organizational',
+    ownerId: organizationId,
+    name: 'fractal-cloud-platform',
+  },
+  'shared-eks',
+);
+
+export const ordersService = createFractal({
+  id: 'orders-service',
+  version: {major: 1, minor: 0, patch: 0},
+  // The app's own Bounded Context. It may differ from the target's.
+  boundedContextId: {
+    ownerType: 'Organizational',
+    ownerId: organizationId,
+    name: 'orders',
+  },
+  blueprint: bp => {
+    const cluster = bp.add(ContainerPlatform({id: 'cluster'}));
+    const api = bp.add(
+      Workload({id: 'orders-api'})
+        .withImage('ghcr.io/acme/orders-api:1.4.2')
+        .withPort(8080)
+        // The dependency names the LOCAL id `cluster`, never `eks`.
+        .dependsOn(cluster),
+    );
+    return {cluster, api};
+  },
+});
+
+export const ordersLiveSystem = ordersService.specialize().toLiveSystem({
+  name: 'orders',
+  // Must be the environment the shared cluster runs in.
+  environment: {
+    ownerType: 'Organizational',
+    ownerId: organizationId,
+    name: 'prod',
+  },
+  select: {
+    // `Eks` names the target's offer. It must satisfy the slot's Component, just
+    // as an ordinary selection must. Its configuration is never sent.
+    cluster: referenceTo(Eks, {liveSystemId: sharedEks, componentId: 'eks'}),
+    'orders-api': K8sWorkload({namespace: 'orders'}),
+  },
+});
+```
+
+The `cluster` slot is emitted like this:
+
+```json
+{
+  "id": "cluster",
+  "type": "NetworkAndCompute.PaaS.AwsEks",
+  "provider": "AWS",
+  "deliveryModel": "PaaS",
+  "reference": {
+    "liveSystemId": "Organizational/<organizationId>/fractal-cloud-platform/shared-eks",
+    "componentId": "eks"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "links": []
+}
+```
+
+Rules to know:
+
+- **Local ids.** The reference keeps the slot's own id (`cluster`). Every dependency and link in the referencing Live System names that local id: `orders-api` depends on `cluster`. The target's id (`eks`) appears only inside `reference`.
+- **No parameters, dependencies or links of its own.** A reference can never change the target. The control plane mirrors the target's parameters, output fields and status onto it, read-only, and no agent reconciles it. When the slot is built:
+  - Its guardrail parameters and dependencies are dropped. They belong to the owning Live System.
+  - Its outbound links and any children an operation added under it are refused with an error, because nothing would ever act on them. Declare the link from the other side instead: a workload links *to* the reference. For a child, make it a top-level component that depends on the reference.
+  - The offer must satisfy the slot's Component, the same as an ordinary selection. A mismatch is a compile-time error and also throws.
+- **Same environment and organization only.** The target must run in the environment the referencing Live System is deployed to, inside the same organization. The Bounded Context may differ, as `orders` and `fractal-cloud-platform` do above. Cross-environment and cross-organization references are refused (`ComponentReferenceOutsideEnvironment`).
+- **Read access.** The caller deploying the referencing Live System needs read access to the target Live System, or the control plane answers 403. A reader without that access sees the reference without the mirrored values. The response says why.
+- **Feature flag.** The control plane accepts references only when `COMPONENT_REFERENCES_ENABLED=true` is set on the Live Systems service. It is off by default. Until it is enabled, a deploy that declares a reference is refused with `ComponentReferencesNotEnabled`. It must be enabled only after every agent in the environment ships the reference skip guards. An older agent would reconcile the reference as if it owned the target.
+- **No chains.** The target must be a real component, not itself a reference (`ComponentReferenceChain`). The type and provider must equal the target's (`ComponentReferenceTypeMismatch`). The target must exist (`ComponentReferenceTargetNotFound`). A component that has already been reconciled cannot be turned into a reference in place.
+- **Lifecycle.** A component that another Live System references cannot be deleted (`409 ComponentReferencedByAnotherLiveSystem`), and neither can its Live System. Deleting the referencing Live System removes only the reference, never the target. A dependent of the reference waits until the mirrored status is Active.
+
 ## Deployment modes
 
 `cloud.liveSystems.deploy(liveSystem, options)` supports two modes.
