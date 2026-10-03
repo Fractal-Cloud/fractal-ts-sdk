@@ -305,6 +305,21 @@ describe('repeated route declarations to one gateway', () => {
     ).toThrow(/retryAttempts '0' contradicts '2'/);
   });
 
+  it('refuses a merge that adds a timeout the earlier routes did not ask for', () => {
+    expect(() =>
+      routed().specialize().withRoute({routes: [{prefix: '/members'}], responseTimeoutMs: 10000}),
+    ).toThrow(/responseTimeoutMs would also apply to the routes declared before/);
+  });
+
+  it('treats host names case-insensitively when spotting a repeated route', () => {
+    expect(() =>
+      routed()
+        .specialize()
+        .withRoute({routes: [{prefix: '/a', host: 'Fractal.Cloud'}], retryAttempts: 2})
+        .withRoute({routes: [{prefix: '/a', host: 'fractal.cloud'}], retryAttempts: 2}),
+    ).toThrow(/'\/a' twice/);
+  });
+
   it('refuses a merge that routes the same prefix and host again', () => {
     expect(() =>
       routed().specialize().withRoute({routes: [{prefix: '/accounts'}]}),
@@ -348,6 +363,11 @@ describe('TraefikGateway ForwardAuth (ocelot)', () => {
   it.each([
     ['an address that is not an http(s) URL', {forwardAuthAddress: 'ocelot:8080'}, /forwardAuthAddress/],
     ['ForwardAuth settings without an address', {forwardAuthForwardBody: true}, /without forwardAuthAddress/],
+    [
+      'an address carrying credentials, without echoing them',
+      {forwardAuthAddress: 'http://user:s3cret@ocelot/auth'},
+      /forwardAuthAddress is not an http\(s\) URL without credentials/,
+    ],
     ['a zero body size', {forwardAuthAddress: 'http://a/b', forwardAuthMaxBodySize: 0}, /forwardAuthMaxBodySize/],
     ['an excluded prefix without a leading slash', {forwardAuthAddress: 'http://a/b', forwardAuthExcludedPrefixes: ['ocelot']}, /forwardAuthExcludedPrefixes/],
     ['a header name holding a comma', {forwardAuthAddress: 'http://a/b', forwardAuthRequestHeaders: ['a,b']}, /forwardAuthRequestHeaders/],

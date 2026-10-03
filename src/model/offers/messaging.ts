@@ -380,7 +380,11 @@ export const AwsSqsQueue = defineOffer<
   provider: 'AWS',
   deliveryModel: 'PaaS',
   instantiate: (ctx, config) => {
-    const {filterEventNames, filterPolicy, ...knobs} = config;
+    const {filterEventNames, filterPolicy, ...given} = config;
+    // An explicitly undefined knob must not erase a value mapped from a guardrail.
+    const knobs = Object.fromEntries(
+      Object.entries(given).filter(([, v]) => v !== undefined),
+    );
     const filters: Record<string, unknown> = {};
     if (filterEventNames !== undefined && filterEventNames.length > 0) {
       filters.filterEventNames = filterEventNames.join(',');
@@ -414,8 +418,15 @@ export const AwsSqsQueue = defineOffer<
           "queue name (1-76 letters, digits, hyphens and underscores, leaving room for '-dlq').",
       );
     }
+    if (self.parameters['deadLetterEnabled'] === false) {
+      throw new Error(
+        `AwsSqsQueue '${self.id}': deadLetterEnabled false cannot be honored, every ` +
+          'AwsSqsQueue has a dead-letter queue.',
+      );
+    }
+    // Checked on what is emitted, so values mapped from neutral guardrails count too.
     for (const [key, min, max] of INTEGER_BOUNDS) {
-      const value = config[key];
+      const value = self.parameters[key];
       if (
         value !== undefined &&
         (!Number.isInteger(value) ||

@@ -184,9 +184,9 @@ export const AwsCloudFront = defineOffer<
           'drop its tlsCertificateArn.',
       );
     }
-    const customOrigin =
-      config.originDomain !== undefined && config.originDomain.trim() !== '';
-    if (customOrigin && !HOST_NAME.test(config.originDomain!.trim())) {
+    const originDomain = config.originDomain?.trim() ?? '';
+    const customOrigin = originDomain !== '';
+    if (customOrigin && !HOST_NAME.test(originDomain)) {
       throw new Error(
         `Live component '${self.id}': originDomain '${config.originDomain}' is not a host name.`,
       );
@@ -328,8 +328,9 @@ const ensureValidForwardAuth = (
     }
     return;
   }
-  if (!/^https?:\/\/[^\s/?#]+(\/[^\s]*)?$/.test(address)) {
-    refuse(`forwardAuthAddress '${address}' is not an http(s) URL`);
+  // The value is not echoed: it could carry credentials.
+  if (!/^https?:\/\/[^\s/?#@]+(\/[^\s]*)?$/.test(address)) {
+    refuse('forwardAuthAddress is not an http(s) URL without credentials');
   }
   for (const key of [
     'forwardAuthRequestHeaders',

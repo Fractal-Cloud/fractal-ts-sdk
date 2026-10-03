@@ -326,3 +326,36 @@ describe('AwsSnsTopic maximumMessageSize', () => {
     expect(() => topic(size)).toThrow(/maximumMessageSize/);
   });
 });
+
+describe('AwsSqsQueue review follow-ups', () => {
+  const neutralQueue = (author: (e: ReturnType<typeof MessagingEntity>) => ReturnType<typeof MessagingEntity>, queue = AwsSqsQueue({})) =>
+    createFractal({
+      id: 'neutral-queue',
+      version: {major: 1, minor: 0, patch: 0},
+      boundedContextId,
+      blueprint: bp => ({inbox: bp.add(author(MessagingEntity({id: 'inbox'})))}),
+    })
+      .toLiveSystem({name: 'x', environment, select: {inbox: queue}})
+      .components.find(c => c.id === 'inbox')!;
+
+  it('keeps a mapped guardrail when the same knob is passed as undefined', () => {
+    const inbox = neutralQueue(
+      e => e.withMaxDeliveryAttempts(7),
+      AwsSqsQueue({maxReceiveCount: undefined}),
+    );
+    expect(inbox.parameters.maxReceiveCount).toBe(7);
+  });
+
+  it('range-checks a value mapped from a neutral guardrail', () => {
+    expect(() => neutralQueue(e => e.withMessageRetentionHours(400))).toThrow(
+      /messageRetentionSeconds 1440000/,
+    );
+  });
+
+  it('refuses deadLetterEnabled false: the queue always has a dead-letter queue', () => {
+    expect(() => neutralQueue(e => e.withDeadLetterEnabled(false))).toThrow(
+      /deadLetterEnabled/,
+    );
+  });
+});
+

@@ -62,7 +62,7 @@ export const gatewayRouteSettings = (
     if (route.host !== undefined && !HOST_NAME.test(route.host)) {
       throw new Error(`Gateway route host '${route.host}' is not a host name.`);
     }
-    const key = `${route.host ?? ''} ${route.prefix}`;
+    const key = `${(route.host ?? '').toLowerCase()} ${route.prefix}`;
     if (seen.has(key)) {
       throw new Error(
         `Gateway route prefix '${route.prefix}' twice for the same host: each ` +

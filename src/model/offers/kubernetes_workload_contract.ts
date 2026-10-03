@@ -261,6 +261,38 @@ const rolloutAmount = (v: unknown): number | undefined => {
   return undefined;
 };
 
+/**
+ * An environment-secret reference placed in `env` would reach the container as
+ * the reference's JSON, not the secret. Move it to `secretEnv`, which the agent
+ * resolves from the environment's secret store; a name in both is refused.
+ */
+const moveSecretRefsToSecretEnv = (
+  params: Record<string, unknown>,
+  componentId: string,
+): void => {
+  const env = params['env'];
+  if (env === undefined || Array.isArray(env)) {
+    return;
+  }
+  const refs = Object.entries(asRecord(env)).filter(([, v]) => isSecretRef(v));
+  if (refs.length === 0) {
+    return;
+  }
+  const secretEnv: Record<string, unknown> = {...asRecord(params['secretEnv'])};
+  for (const [name] of refs) {
+    if (name in secretEnv) {
+      refuse(
+        componentId,
+        `'${name}' on '${componentId}' is in both env and secretEnv`,
+      );
+    }
+  }
+  params['env'] = Object.fromEntries(
+    Object.entries(asRecord(env)).filter(([, v]) => !isSecretRef(v)),
+  );
+  params['secretEnv'] = {...secretEnv, ...Object.fromEntries(refs)};
+};
+
 /** Refuse what the agent could only reject mid-deployment, or would apply wrongly. */
 const ensureDeployable = (
   params: Record<string, unknown>,
@@ -275,17 +307,6 @@ const ensureDeployable = (
           componentId,
           `secretEnv '${name}' on '${componentId}' is not an environment-secret ` +
             "reference: pass secretRef('<shortName>'), never the secret itself",
-        );
-      }
-    }
-  }
-  const env = params['env'];
-  if (env !== undefined && !Array.isArray(env)) {
-    for (const [name, value] of Object.entries(asRecord(env))) {
-      if (isSecretRef(value)) {
-        refuse(
-          componentId,
-          `env '${name}' on '${componentId}' is an environment-secret reference: put it in secretEnv`,
         );
       }
     }
@@ -469,6 +490,7 @@ export const toKubernetesWorkloadParameters = (
       v => ({...asRecord(v.healthCheck)}),
     );
   }
+  moveSecretRefsToSecretEnv(params, componentId);
   ensureDeployable(params, componentId);
   return params;
 };

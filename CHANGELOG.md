@@ -37,7 +37,9 @@ gives a Live System (`<ownerType>/<ownerId>/<boundedContext>/<liveSystemName>`).
   filterPolicy?, dlqAlarm?})`: a queue with a dead-letter queue, subscribed to the one
   `AwsSnsTopic` it depends on (`withTopic(topic)`, which may be a reference).
   `filterEventNames` travels comma-separated, `filterPolicy` as JSON text. The neutral
-  `withMessageRetentionHours` / `withMaxDeliveryAttempts` map onto the queue.
+  `withMessageRetentionHours` / `withMaxDeliveryAttempts` map onto the queue (and are
+  range-checked there); `withDeadLetterEnabled(false)` is refused, as every queue has a
+  dead-letter queue.
 - `MessagingEntityLink` types the Workload → topic / queue link (`access`).
 
 ### Added — `TraefikGateway` and the Workload → gateway route link
@@ -86,6 +88,18 @@ the agent saw them, so the agent's defaults applied. They now arrive as
 `containerPort`, `resourceRequests`, `autoscaling.maxReplicas` and
 `readinessProbe` + `livenessProbe`. A deployed workload that set them changes on its next
 deploy: its port, its requests, an autoscaler, and its probes now follow the blueprint.
+
+An environment-secret reference in `env` used to reach the container as the reference's
+JSON; it now moves to `secretEnv`, which the agent resolves (a name in both is refused).
+
+Building a Live System with a Kubernetes workload now refuses what the agent could only
+reject or apply wrongly, so a blueprint that built before can fail here with the reason:
+a probe (including the older `healthCheck`) whose path does not start with `/`, a probe
+port outside 1-65535 or a negative timing, `autoscaling` without a `maxReplicas` of at
+least 1 or with `minReplicas` above it, a negative grace period or preStop sleep, a
+preStop sleep not shorter than the grace period, a rollout pace that is neither a count
+nor a percentage up to 100%, `maxSurge` and `maxUnavailable` both zero, and a raw value in
+`secretEnv`.
 
 ### Added — `AwsCloudFront({redirectTo, aliases})`: a whole-site redirect under your own host names
 

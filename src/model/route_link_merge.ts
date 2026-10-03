@@ -5,9 +5,10 @@
  * declares routes to the same gateway more than once (a repeatable `withRoute`
  * operation, or a blueprint route plus an operation's) must reach it as ONE
  * link whose `routes.<n>.*` run on. Settings that are not routes (timeouts,
- * retries, the service port) apply to all of the link's routes, so a later
- * declaration that contradicts an earlier one is refused rather than either
- * silently winning.
+ * retries, the service port) apply to all of the link's routes, so they belong
+ * to the first declaration: a later one may repeat them, but one that
+ * contradicts them, or adds one the earlier routes did not ask for, is refused
+ * rather than silently changing those routes.
  */
 
 const ROUTE_KEY = /^routes\.(\d+)\.(.+)$/;
@@ -52,19 +53,25 @@ export const mergeRouteSettings = (
     if (ROUTE_KEY.test(key)) {
       continue;
     }
-    if (key in merged && merged[key] !== value) {
+    if (!(key in merged)) {
+      throw new Error(
+        `Routes from '${sourceId}' to '${targetId}' are one link: ${key} would also ` +
+          'apply to the routes declared before, which did not set it. Declare it on ' +
+          'the first route declaration.',
+      );
+    }
+    if (merged[key] !== value) {
       throw new Error(
         `Routes from '${sourceId}' to '${targetId}' are one link: ${key} ` +
           `'${String(value)}' contradicts '${String(merged[key])}' declared before. ` +
           'Timeouts, retries and the service port apply to every route of the link.',
       );
     }
-    merged[key] = value;
   }
   const routes = [...routesOf(existing), ...routesOf(added)];
   const seen = new Set<string>();
   routes.forEach((route, n) => {
-    const identity = `${String(route.host ?? '')} ${String(route.prefix)}`;
+    const identity = `${String(route.host ?? '').toLowerCase()} ${String(route.prefix)}`;
     if (seen.has(identity)) {
       throw new Error(
         `Routes from '${sourceId}' to '${targetId}' declare prefix ` +

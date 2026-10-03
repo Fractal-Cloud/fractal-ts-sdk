@@ -191,10 +191,22 @@ describe('Workload parameters on a Kubernetes workload', () => {
     }
   });
 
-  it('refuses an environment-secret reference in env, which would ship as a plain value', () => {
-    expect(() => emit(w => w, {env: {TOKEN: secretRef('t')}})).toThrow(
-      /env 'TOKEN' on 'web' is an environment-secret reference: put it in secretEnv/,
-    );
+  it('moves an environment-secret reference in env to secretEnv, where the agent resolves it', () => {
+    const web = emit(w => w, {
+      env: {LOG_LEVEL: 'info', TOKEN: secretRef('t')},
+      secretEnv: {DB_PASSWORD: secretRef('db')},
+    });
+    expect(web.parameters.env).toEqual({LOG_LEVEL: 'info'});
+    expect(web.parameters.secretEnv).toEqual({
+      DB_PASSWORD: {$envSecret: 'db'},
+      TOKEN: {$envSecret: 't'},
+    });
+  });
+
+  it('refuses a name both in env (as a reference) and in secretEnv', () => {
+    expect(() =>
+      emit(w => w, {env: {TOKEN: secretRef('t')}, secretEnv: {TOKEN: secretRef('u')}}),
+    ).toThrow(/'TOKEN' on 'web' is in both env and secretEnv/);
   });
 
   it.each([

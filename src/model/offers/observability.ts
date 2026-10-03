@@ -39,7 +39,7 @@ export const ObservabilityElastic = defineOffer<
 });
 
 // ── caas-k8s Grafana stack (Helm, on any Kubernetes cluster) ─────────────────
-// Offers only: the BFF static catalogue owns the services they sit under
+// Offers only: the BFF static catalog owns the services they sit under
 // (`Observability.CaaS.Prometheus`, `.Loki`, `.Alloy`, `.Tempo`).
 
 /** kube-prometheus-stack: Prometheus, Alertmanager and Grafana. */
