@@ -9,6 +9,44 @@ The version published for a release is the GitHub release tag: `release.yml` run
 `npm version <tag>` at publish time, so `package.json` on `main` is not the source
 of truth for what is on npm.
 
+## 2.10.0
+
+### Changed — **DNS zones are owned as a whole: `recordManagement: 'additive'` is gone**
+
+Fractal Cloud no longer keeps per-record ownership of a DNS zone: nothing is written
+into a zone's DNS data to say which record sets it manages (cloud agents 8.20 wrote a
+`_fractal-…` TXT record per record set; the next agent release deletes them). A zone
+belongs to the environment or Live System that declares it and holds its declared
+`records`.
+
+- `DnsZoneGuardrails.recordManagement` (environment `withDnsZones` entries and
+  `DnsZoneComponent.withRecordManagement`) now accepts only `'authoritative'`:
+  every record set the zone does not declare is deleted, apex NS and SOA aside.
+- Omitted, the zone is reconciled the same way as long as it holds nothing Fractal
+  Cloud did not write, which is always true of a zone Fractal Cloud created. A zone
+  holding a record set nobody declared and Fractal Cloud did not write (an adopted
+  zone, one edited by hand) is held: its agent changes none of its record sets and
+  reports the record sets in the way, until they are declared or `'authoritative'`
+  is set. Before, omitting it meant `'additive'`.
+- `'additive'` is a type error, and is refused at runtime (a JavaScript caller, or a
+  cast) with the reason, per-record ownership isn't supported yet; zones are managed
+  authoritatively: by `withRecordManagement`, when an environment is resolved
+  (`resolveEnvironment`, deploy), and when a Live System selecting
+  `AwsRoute53HostedZone` is built.
+
+**Why a minor version although a type lost a value.** The value stopped working on
+the platform, not in this package: fractal-environments refuses an environment that
+declares it (once the zone's entry is added or edited) and the cloud agents hold the
+zone, whatever SDK version sent it. Keeping it in the type would only move that
+failure from compile time to a deploy; a major version would suggest that staying on
+2.x keeps additive zones working, which it does not. Code that never mentions
+`'additive'` compiles and behaves as before.
+
+**To migrate** a zone declaring `recordManagement: 'additive'`: declare every record
+set it should keep in `records` and set `'authoritative'`, or remove the key and let
+the agent report what is in the way. A stored additive zone left unchanged does not
+make an environment update fail; editing its entry does until the value is changed.
+
 ## 2.9.2
 
 ### Added — **API calls are retried through a brief control-plane outage**

@@ -10,6 +10,7 @@
  * refused by the agent, never adjusted.
  */
 import {ComponentNode, NodeState, newNode, guardrail} from '../core';
+import {recordManagementRefusal} from './dns_record_management';
 
 /** Record types a DNS zone may declare (SOA always belongs to the provider). */
 export type DnsRecordType =
@@ -60,8 +61,23 @@ export type DnsZoneGuardrails = {
   visibility?: 'public' | 'private';
   /** `required` signs or fails; `optional` signs when possible. Default `disabled`. */
   dnssec?: 'required' | 'optional' | 'disabled';
-  /** `authoritative` deletes undeclared record sets. Default `additive`. */
-  recordManagement?: 'authoritative' | 'additive';
+  /**
+   * A zone is owned as a whole and holds its declared `records`; nothing is
+   * written into its DNS data to say which record sets Fractal Cloud manages.
+   *
+   * - `authoritative`: every record set the zone does not declare is deleted
+   *   (apex NS and SOA aside), whoever created it.
+   * - omitted: the same, as long as the zone holds nothing Fractal Cloud did
+   *   not write (a zone Fractal Cloud created always does). A zone holding a
+   *   record set nobody declared and Fractal Cloud did not write (an adopted
+   *   zone, one edited by hand) is held instead: none of its record sets is
+   *   changed until that record set is declared or `authoritative` is set.
+   *
+   * `'additive'` (per-record ownership) is no longer supported: this SDK
+   * refuses it and, on an environment zone entry, so does the control plane;
+   * an agent holds a zone that asks for it (changes none of its records).
+   */
+  recordManagement?: 'authoritative';
   /** Default A, AAAA, CAA, CNAME, MX, NS, PTR, SRV, TXT. */
   allowedRecordTypes?: DnsRecordType[];
   /** Inclusive TTL bounds in seconds. Default 0 / 604800. */
@@ -97,9 +113,7 @@ export type DnsZoneComponentNode<Id extends string = string> = ComponentNode<
   withDnssec: (
     v: 'required' | 'optional' | 'disabled',
   ) => DnsZoneComponentNode<Id>;
-  withRecordManagement: (
-    v: 'authoritative' | 'additive',
-  ) => DnsZoneComponentNode<Id>;
+  withRecordManagement: (v: 'authoritative') => DnsZoneComponentNode<Id>;
   withAllowedRecordTypes: (v: DnsRecordType[]) => DnsZoneComponentNode<Id>;
   withTtlBounds: (v: {
     minTtl?: number;
@@ -116,8 +130,13 @@ const dnsZoneNode = <Id extends string>(
   withRecords: v => dnsZoneNode<Id>(guardrail(s, 'records', v)),
   withVisibility: v => dnsZoneNode<Id>(guardrail(s, 'visibility', v)),
   withDnssec: v => dnsZoneNode<Id>(guardrail(s, 'dnssec', v)),
-  withRecordManagement: v =>
-    dnsZoneNode<Id>(guardrail(s, 'recordManagement', v)),
+  withRecordManagement: v => {
+    const refusal = recordManagementRefusal(v);
+    if (refusal !== undefined) {
+      throw new Error(`withRecordManagement: ${refusal}`);
+    }
+    return dnsZoneNode<Id>(guardrail(s, 'recordManagement', v));
+  },
   withAllowedRecordTypes: v =>
     dnsZoneNode<Id>(guardrail(s, 'allowedRecordTypes', v)),
   withTtlBounds: v => {

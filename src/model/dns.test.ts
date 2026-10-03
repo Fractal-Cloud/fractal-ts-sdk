@@ -25,7 +25,7 @@ function authorFractal() {
         DnsZoneComponent({id: 'fractal-cloud'})
           .withDomainName('fractal.cloud')
           .withDnssec('required')
-          .withRecordManagement('additive')
+          .withRecordManagement('authoritative')
           .withAllowedRecordTypes(['A', 'CNAME', 'MX', 'TXT', 'CAA'])
           .withTtlBounds({minTtl: 60, maxTtl: 86400})
           .withCaaIssuers(['letsencrypt.org'])
@@ -77,7 +77,7 @@ describe('DNS Zone component', () => {
     expect(zone.provider).toBe('AWS');
     expect(zone.parameters.adoptExisting).toBe(true);
     expect(zone.parameters.caaIssuers).toEqual(['letsencrypt.org']);
-    expect(zone.parameters.recordManagement).toBe('additive');
+    expect(zone.parameters.recordManagement).toBe('authoritative');
   });
 
   it('selecting an offer of another component is a type error AND throws', () => {
@@ -118,11 +118,64 @@ describe('DNS Zone component', () => {
     const zone: DnsZone = {
       name: 'fractal.cloud',
       dnssec: 'required',
-      recordManagement: 'additive',
+      recordManagement: 'authoritative',
       caaIssuers: ['letsencrypt.org'],
       records: [{name: 'www', type: 'CNAME', values: ['fractal.cloud.']}],
     };
     const guardrails: DnsZoneGuardrails = zone;
     expect(guardrails.dnssec).toBe('required');
   });
+
+  it('per-record ownership is no longer a value: additive is a type error AND throws', () => {
+    expect(() =>
+      DnsZoneComponent({id: 'z'}).withRecordManagement(
+        // @ts-expect-error 'additive' is no longer a recordManagement value
+        'additive',
+      ),
+    ).toThrow(
+      /recordManagement 'additive': per-record ownership isn't supported yet; zones are managed authoritatively/,
+    );
+    const zone: DnsZone = {
+      name: 'fractal.cloud',
+      // @ts-expect-error 'additive' is no longer a recordManagement value
+      recordManagement: 'additive',
+    };
+    expect(zone.name).toBe('fractal.cloud');
+  });
+
+  it('a Live System cannot slip additive past the type either', () => {
+    const fractal = createFractal({
+      id: 'public-dns-raw',
+      version: {major: 1, minor: 0, patch: 0},
+      boundedContextId,
+      blueprint: bp => {
+        const zone = bp.add(DnsZoneComponent({id: 'z'}).withDomainName('fractal.cloud'));
+        return {zone};
+      },
+      operations: () => ({}),
+    });
+    expect(() =>
+      fractal.toLiveSystem({
+        name: 'dns',
+        environment,
+        select: {
+          z: AwsRoute53HostedZone({recordManagement: 'additive'} as unknown as {adoptExisting?: boolean}),
+        },
+      }),
+    ).toThrow(/Live component 'z': recordManagement 'additive': per-record ownership isn't supported yet/);
+    expect(() =>
+      fractal.toLiveSystem({
+        name: 'dns',
+        environment,
+        select: {z: AwsRoute53HostedZone({})},
+      }),
+    ).not.toThrow();
+  });
+
+  it('names a refused value that is not a string as it is', () => {
+    expect(() =>
+      DnsZoneComponent({id: 'z'}).withRecordManagement(true as unknown as 'authoritative'),
+    ).toThrow(/recordManagement true: per-record ownership/);
+  });
 });
+

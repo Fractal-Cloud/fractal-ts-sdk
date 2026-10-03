@@ -41,6 +41,7 @@ import {
   type CloudAgent,
 } from './cloud_agents';
 import {dnsZoneAgentIds, validateDnsZoneAgents} from './dns_zone_agents';
+import {validateDnsZoneRecordManagement} from './dns_zone_record_management';
 
 const envRef = (id: EnvironmentId): OwnerRef => ({
   ownerType: id.type,
@@ -551,6 +552,9 @@ export const resolveEnvironment = (
       s.cloudAgents,
     ),
   );
+  errors.push(
+    ...validateDnsZoneRecordManagement('Management environment', s.dnsZones),
+  );
 
   const agentByProvider = new Map<string, CloudAgent>();
   for (const agent of s.cloudAgents) {
@@ -576,6 +580,7 @@ export const resolveEnvironment = (
     }
     errors.push(...validateCommon(label, os));
     errors.push(...validateDnsZoneAgents(label, os.dnsZones, os.cloudAccounts));
+    errors.push(...validateDnsZoneRecordManagement(label, os.dnsZones));
     // The control plane reads the MANAGEMENT env's tier first, so an operational
     // tier that disagrees with a declared management tier would be silently
     // ignored. Refuse it instead of letting the author believe it applies.
