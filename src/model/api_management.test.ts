@@ -129,6 +129,9 @@ describe('Locked Fractal model — APIManagement', () => {
       ['https://fractal.cloud/{x}', /path holds characters/],
       ['https://fractal.cloud/ü', /path holds characters/],
       ['https://fractal.cloud/%zz', /path holds characters/],
+      ['https://a.123', /host is not a DNS host name/],
+      ['https://999.1.1.1', /host is not a DNS host name/],
+      ['https://fractal.cloud\u00a0', /host is not a DNS host name/],
     ])('refuses %s as a redirect target', (target, reason) => {
       expect(() => liveSystemWith(AwsCloudFront({redirectTo: target}))).toThrow(
         reason,

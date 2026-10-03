@@ -13,6 +13,17 @@ const HOST_NAME =
   /^(?=.{1,253}$)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/i;
 
 /**
+ * A redirect target's host as `java.net.URI` reads one, which the agent parses it with: a host
+ * name whose last label starts with a letter (an all-digit one leaves URI without a host).
+ */
+const TARGET_HOST =
+  /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$/i;
+
+/** Trims what Java's `String.trim()` trims, as the agent does: control characters and spaces only. */
+const javaTrim = (value: string): string =>
+  value.replace(/^[\x00-\x20]+|[\x00-\x20]+$/g, '');
+
+/**
  * Why `redirectTo` cannot be a redirect target, or undefined when it can. Read on the text as
  * written, by the cloud agent's own grammar, rather than through `URL`, which percent-encodes or
  * normalizes what the agent refuses: `https://`, a DNS host name, and an optional path of URL path
@@ -33,7 +44,7 @@ const redirectRefusal = (target: string): string | undefined => {
   if (authority.includes('@') || authority.includes(':')) {
     return 'it may carry neither credentials nor a port';
   }
-  if (!HOST_NAME.test(authority.replace(/\.$/, ''))) {
+  if (!TARGET_HOST.test(authority.replace(/\.$/, ''))) {
     return 'its host is not a DNS host name';
   }
   if (!/^(?:[A-Za-z0-9\-._~!$&()*+,;=:@/]|%[0-9A-Fa-f]{2})*$/.test(path)) {
@@ -78,7 +89,10 @@ export const AwsCloudFront = defineOffer<
   deliveryModel: 'PaaS',
   validate: (self, _all, config) => {
     // Blank is no redirect, as the agent reads it; the agent trims the value.
-    const target = config.redirectTo?.trim() || undefined;
+    const target =
+      config.redirectTo === undefined
+        ? undefined
+        : javaTrim(config.redirectTo) || undefined;
     if (target !== undefined) {
       const refusal = redirectRefusal(target);
       if (refusal !== undefined) {
@@ -89,7 +103,7 @@ export const AwsCloudFront = defineOffer<
     }
     const aliases = config.aliases ?? [];
     const invalid = aliases.filter(
-      alias => !HOST_NAME.test(alias.trim().replace(/\.$/, '')),
+      alias => !HOST_NAME.test(javaTrim(alias).replace(/\.$/, '')),
     );
     if (invalid.length > 0) {
       throw new Error(
@@ -104,7 +118,7 @@ export const AwsCloudFront = defineOffer<
     if (target !== undefined) {
       const host = targetHost(target);
       const looping = aliases.filter(
-        alias => alias.trim().replace(/\.$/, '').toLowerCase() === host,
+        alias => javaTrim(alias).replace(/\.$/, '').toLowerCase() === host,
       );
       if (looping.length > 0) {
         throw new Error(
