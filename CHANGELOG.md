@@ -27,6 +27,15 @@ distribution's `dnsName` and `hostedZoneId` (for an alias record) and the certif
 `certificateValidationRecords`; the component stays `Instantiating` until the owner of
 each name's zone declares those records and the certificate is issued.
 
+`certificateValidationRecords` is a JSON array of `{name, type, value}`: parse it with
+`JSON.parse`.
+
+### Fixed — a structured output field read as `[object Object]`
+
+`cloud.liveSystems.outputs` coerced every output field with `String(value)`, so an
+array or object an agent published arrived as `[object Object]`. It now arrives as its
+JSON. Strings, numbers and booleans read as before.
+
 Both are checked when the Live System is built: a target that is not a plain https
 URL (query, fragment, port, credentials, a quote or space), an alias that is not a host
 name, or aliases without `redirectTo` are refused with the reason. Requires cloud agents

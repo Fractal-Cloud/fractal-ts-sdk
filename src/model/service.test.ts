@@ -188,6 +188,35 @@ describe('liveSystems.deploy()', () => {
     expect(h.requests.map(r => r.method)).toEqual(['GET']);
   });
 
+  it('outputs: a structured output field arrives as JSON, never as [object Object]', async () => {
+    h.state.queue = [
+      {
+        status: 200,
+        body: {
+          status: 'Active',
+          components: [
+            {
+              id: 'edge',
+              status: 'Instantiating',
+              outputFields: {
+                certificateValidationRecords: [
+                  {name: '_a1.example.com.', type: 'CNAME', value: '_b2.acm-validations.aws.'},
+                ],
+                aliases: ['example.com', 'www.example.com'],
+              },
+            },
+          ],
+        },
+      },
+    ];
+    const state = await cloud.liveSystems.outputs(liveSystem());
+    const fields = state.components.edge.outputFields;
+    expect(JSON.parse(fields.certificateValidationRecords)).toEqual([
+      {name: '_a1.example.com.', type: 'CNAME', value: '_b2.acm-validations.aws.'},
+    ]);
+    expect(JSON.parse(fields.aliases)).toEqual(['example.com', 'www.example.com']);
+  });
+
   it('wait: throws on terminal failure status', async () => {
     h.state.queue = [
       {status: 404}, // LS existence

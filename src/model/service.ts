@@ -84,9 +84,14 @@ const toLiveSystemState = (body: LiveSystemBody): LiveSystemState => {
     }
     const outputFields: Record<string, string> = {};
     for (const [key, value] of Object.entries(c.outputFields ?? {})) {
-      // Output fields are string-valued by contract; coerce defensively so the typed shape holds.
+      // Output fields are string-valued by contract; coerce defensively so the typed shape holds. A
+      // structured value becomes its JSON, which a caller can parse back, never `[object Object]`.
       outputFields[key] =
-        value === null || value === undefined ? '' : String(value);
+        value === null || value === undefined
+          ? ''
+          : typeof value === 'object'
+            ? JSON.stringify(value)
+            : String(value);
     }
     components[c.id] = {status: c.status ?? '', outputFields};
   }
