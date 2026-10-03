@@ -35,6 +35,13 @@ import {
 } from './types';
 import {findParameter} from './parameters';
 import {
+  ENVIRONMENT_SECRETS_BACKEND_PARAMETER,
+  ENVIRONMENT_SECRETS_BACKENDS,
+  isAcceptedEnvironmentSecretsBackend,
+  secretsTooLargeForBackend,
+  type EnvironmentSecretsBackend,
+} from './environment_secrets_backend';
+import {
   agentParams,
   resolveOperationalAgent,
   type CloudAccount,
@@ -158,6 +165,17 @@ export type OperationalEnvironmentNode = {
    * time.
    */
   withNetworkTier(tier: NetworkTier): OperationalEnvironmentNode;
+  /**
+   * Declare where the AWS agent stores this environment's secrets
+   * (`environmentSecretsBackend` parameter): `ssm-parameter-store` (the agent
+   * default; values up to 4096 bytes) or `secrets-manager` (the legacy layout).
+   * It applies to this environment only: unlike `networkTier` it is not
+   * inherited from the management environment. Switching does not migrate or
+   * delete the secrets already in the other store.
+   */
+  withEnvironmentSecretsBackend(
+    backend: EnvironmentSecretsBackend,
+  ): OperationalEnvironmentNode;
   withAwsAccount(cfg: {
     region: string;
     accountId: string;
@@ -220,6 +238,14 @@ const operationalNode = (s: OperationalState): OperationalEnvironmentNode => {
     withNetworkTier: tier =>
       next({
         parameters: setParameter(s.parameters, NETWORK_TIER_PARAMETER, tier),
+      }),
+    withEnvironmentSecretsBackend: backend =>
+      next({
+        parameters: setParameter(
+          s.parameters,
+          ENVIRONMENT_SECRETS_BACKEND_PARAMETER,
+          backend,
+        ),
       }),
     withAwsAccount: cfg => addAccount({provider: 'AWS', ...cfg}),
     withAzureSubscription: cfg => addAccount({provider: 'AZURE', ...cfg}),
@@ -297,6 +323,17 @@ export type ManagementEnvironmentNode = {
    * them. Read at agent-initialization time.
    */
   withNetworkTier(tier: NetworkTier): ManagementEnvironmentNode;
+  /**
+   * Declare where the AWS agent stores this environment's secrets
+   * (`environmentSecretsBackend` parameter): `ssm-parameter-store` (the agent
+   * default; values up to 4096 bytes) or `secrets-manager` (the legacy layout).
+   * It applies to this environment only: unlike `networkTier` it is not
+   * inherited from the management environment. Switching does not migrate or
+   * delete the secrets already in the other store.
+   */
+  withEnvironmentSecretsBackend(
+    backend: EnvironmentSecretsBackend,
+  ): ManagementEnvironmentNode;
   withAwsCloudAgent(cfg: {
     region: string;
     organizationId: string;
@@ -371,6 +408,14 @@ const managementNode = (s: ManagementState): ManagementEnvironmentNode => {
     withNetworkTier: tier =>
       next({
         parameters: setParameter(s.parameters, NETWORK_TIER_PARAMETER, tier),
+      }),
+    withEnvironmentSecretsBackend: backend =>
+      next({
+        parameters: setParameter(
+          s.parameters,
+          ENVIRONMENT_SECRETS_BACKEND_PARAMETER,
+          backend,
+        ),
       }),
     withAwsCloudAgent: cfg => addAgent({provider: 'AWS', ...cfg}),
     withAzureCloudAgent: cfg => addAgent({provider: 'AZURE', ...cfg}),
@@ -463,6 +508,10 @@ const buildParameters = (
 const declaredNetworkTier = (c: CommonState): unknown =>
   findParameter(c.parameters, NETWORK_TIER_PARAMETER) ?? undefined;
 
+/** The declared secrets backend, if any, read as the AWS agent reads it. */
+const declaredSecretsBackend = (c: CommonState): unknown =>
+  c.parameters[ENVIRONMENT_SECRETS_BACKEND_PARAMETER] ?? undefined;
+
 const validateCommon = (label: string, c: CommonState): string[] => {
   const errors: string[] = [];
   // `withParameter('networkTier', ...)` bypasses the typed builder; the control
@@ -471,6 +520,28 @@ const validateCommon = (label: string, c: CommonState): string[] => {
   if (tier !== undefined && !NETWORK_TIERS.includes(tier as NetworkTier)) {
     errors.push(
       `${label}: networkTier must be one of [${NETWORK_TIERS.join(', ')}], got ${JSON.stringify(tier)}.`,
+    );
+  }
+  // The AWS agent fails the Live System on any other value, at patrol time.
+  const backend =
+    findParameter(c.parameters, ENVIRONMENT_SECRETS_BACKEND_PARAMETER) ??
+    undefined;
+  // The agent reads the key with this exact spelling, so a case variant would be
+  // accepted here and silently ignored there.
+  const misspelled = Object.keys(c.parameters).find(
+    k =>
+      k !== ENVIRONMENT_SECRETS_BACKEND_PARAMETER &&
+      k.toLowerCase() === ENVIRONMENT_SECRETS_BACKEND_PARAMETER.toLowerCase(),
+  );
+  if (misspelled !== undefined) {
+    errors.push(
+      `${label}: parameter '${misspelled}' must be spelled exactly ` +
+        `'${ENVIRONMENT_SECRETS_BACKEND_PARAMETER}', the only spelling the AWS agent reads.`,
+    );
+  }
+  if (backend !== undefined && !isAcceptedEnvironmentSecretsBackend(backend)) {
+    errors.push(
+      `${label}: environmentSecretsBackend must be one of [${ENVIRONMENT_SECRETS_BACKENDS.join(', ')}], got ${JSON.stringify(backend)}.`,
     );
   }
   if (c.resourceGroups.length === 0) {
@@ -545,6 +616,15 @@ export const resolveEnvironment = (
     errors.push('Management environment: ownerId is required.');
   }
   errors.push(...validateCommon('Management environment', s));
+  if (s.cloudAgents.some(a => a.provider === 'AWS')) {
+    errors.push(
+      ...secretsTooLargeForBackend(
+        'Management environment',
+        declaredSecretsBackend(s),
+        s.secrets,
+      ),
+    );
+  }
   errors.push(
     ...validateDnsZoneAgents(
       'Management environment',
@@ -579,6 +659,15 @@ export const resolveEnvironment = (
       errors.push(`${label}: ${e}`);
     }
     errors.push(...validateCommon(label, os));
+    if (os.cloudAccounts.some(a => a.provider === 'AWS')) {
+      errors.push(
+        ...secretsTooLargeForBackend(
+          label,
+          declaredSecretsBackend(os),
+          os.secrets,
+        ),
+      );
+    }
     errors.push(...validateDnsZoneAgents(label, os.dnsZones, os.cloudAccounts));
     errors.push(...validateDnsZoneRecordManagement(label, os.dnsZones));
     // The control plane reads the MANAGEMENT env's tier first, so an operational

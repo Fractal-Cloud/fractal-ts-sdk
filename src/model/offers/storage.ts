@@ -226,9 +226,14 @@ export const GcpMySqlDbms = defineOffer<
  * Encryption at rest, private-only networking, IAM database authentication and
  * log export are applied by the agent and are deliberately not configurable.
  *
- * A DB subnet group spans at least two Availability Zones, so the Subnets this
- * DBMS lives in are declared on the blueprint component — the agent will not
- * pick them.
+ * Availability defaults (instance class, readers, Multi-AZ, backup retention,
+ * ACU range) come from the environment's `networkTier`. Only what is set here
+ * is reconciled on an existing database; an unset key applies at create only
+ * and never modifies a running one.
+ *
+ * With no `Subnet` dependency the agent places the database across the
+ * environment spoke's private subnets (at least two Availability Zones);
+ * declare `Subnet` dependencies on the blueprint component only to pin them.
  */
 export const AwsRdsPostgresDbms = defineOffer<
   'Storage.RelationalDbms',
@@ -246,9 +251,12 @@ export const AwsRdsPostgresDbms = defineOffer<
     minAcu?: number;
     /** Aurora Serverless v2 only. */
     maxAcu?: number;
-    /** Aurora mode only. Defaults to 1 so losing the writer's AZ needs no operator. */
+    /**
+     * Aurora mode only. Defaults from the environment's `networkTier`: 1 for
+     * `prod` (so losing the writer's AZ needs no operator), 0 for `nonprod`.
+     */
     readerCount?: number;
-    /** Provisioned mode only. Defaults to true. */
+    /** Provisioned mode only. Defaults from `networkTier`: true for `prod`, false for `nonprod`. */
     multiAz?: boolean;
     backupRetentionDays?: number;
     deletionProtection?: boolean;
@@ -316,7 +324,12 @@ export const GcpPostgresDatabase = defineOffer<
 export const AwsRdsPostgresDatabase = defineOffer<
   'Storage.RelationalDatabase',
   {
-    /** Defaults to the component id mapped onto a legal PostgreSQL identifier. */
+    /**
+     * Defaults to the component id mapped onto a legal PostgreSQL identifier.
+     * On a DBMS referenced from another Live System the default is scoped by
+     * this Live System (`<liveSystem>_<componentId>_<digest>`), so set it when a
+     * fixed name is needed (e.g. restoring an existing database).
+     */
     databaseName?: string;
     schema?: string;
   }

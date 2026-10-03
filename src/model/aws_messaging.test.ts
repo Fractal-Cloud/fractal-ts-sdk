@@ -151,7 +151,6 @@ describe('AwsSqsQueue', () => {
         maxReceiveCount: 3,
         dlqRetentionSeconds: 604800,
         rawMessageDelivery: false,
-        dlqAlarm: false,
       }),
     ).components.find(c => c.id === 'inbox')!;
     expect(inbox.parameters).toMatchObject({
@@ -161,8 +160,22 @@ describe('AwsSqsQueue', () => {
       maxReceiveCount: 3,
       dlqRetentionSeconds: 604800,
       rawMessageDelivery: false,
-      dlqAlarm: false,
     });
+  });
+
+  it('accepts dlqAlarm false, which is what the agent does, and does not send it', () => {
+    const inbox = build(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      AwsSqsQueue({dlqAlarm: false} as any),
+    ).components.find(c => c.id === 'inbox')!;
+    expect(inbox.parameters).not.toHaveProperty('dlqAlarm');
+  });
+
+  it('refuses dlqAlarm: the agent creates no CloudWatch alarm', () => {
+    expect(() =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      build(AwsSqsQueue({dlqAlarm: true} as any)),
+    ).toThrow(/dlqAlarm .*no CloudWatch alarm/);
   });
 
   it('maps the neutral retention and delivery-attempt guardrails onto the queue', () => {
