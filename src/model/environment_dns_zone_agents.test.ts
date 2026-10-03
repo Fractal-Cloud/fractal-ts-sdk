@@ -131,7 +131,7 @@ describe('DNS zone agents', () => {
   it('refuses per-record ownership before anything is sent, wherever the zone is declared', () => {
     const additive = {name: 'fractal.cloud', recordManagement: 'additive'} as unknown as DnsZone;
     expect(() => resolveEnvironment(mgmt().withDnsZones([additive]))).toThrow(
-      /Management environment: DNS zone 'fractal\.cloud': recordManagement 'additive': per-record ownership isn't supported yet; zones are managed authoritatively/,
+      /Management environment: DNS zone 'fractal\.cloud': recordManagement 'additive'.*per-record ownership.*Use 'strict'.*or 'lax'/s,
     );
     expect(() =>
       resolveEnvironment(
@@ -139,17 +139,43 @@ describe('DNS zone agents', () => {
           OperationalEnvironment({shortName: 'prod'}).withDnsZones([additive]),
         ),
       ),
-    ).toThrow(/Operational environment 'prod': DNS zone 'fractal\.cloud': recordManagement 'additive'/);
+    ).toThrow(/Operational environment 'prod': DNS zone 'fractal\.cloud': recordManagement 'additive'.*'strict'.*'lax'/s);
   });
 
-  it('accepts an authoritative zone and one that does not say', () => {
+  it('refuses a value that is not one, naming strict and lax', () => {
+    const odd = {name: 'fractal.cloud', recordManagement: 'Loose'} as unknown as DnsZone;
+    expect(() => resolveEnvironment(mgmt().withDnsZones([odd]))).toThrow(
+      /DNS zone 'fractal\.cloud': recordManagement 'Loose' is not a value.*'strict'.*'lax'/s,
+    );
+  });
+
+  it('sends strict and lax as declared, and nothing when the zone does not say', () => {
     const {management} = resolveEnvironment(
-      mgmt().withDnsZones([zone({recordManagement: 'authoritative'}), zone({name: 'other.cloud'})]),
+      mgmt().withDnsZones([
+        zone({recordManagement: 'strict'}),
+        zone({name: 'acme.cloud', recordManagement: 'lax'}),
+        zone({name: 'other.cloud'}),
+      ]),
     );
     expect(management.parameters.dnsZones).toEqual([
-      {name: 'fractal.cloud', recordManagement: 'authoritative'},
+      {name: 'fractal.cloud', recordManagement: 'strict'},
+      {name: 'acme.cloud', recordManagement: 'lax'},
       {name: 'other.cloud'},
     ]);
   });
-});
 
+  it('still accepts the deprecated authoritative, sent as strict', () => {
+    const op = OperationalEnvironment({shortName: 'prod'})
+      .withResourceGroup(`Organizational/${OWNER}/rg`)
+      .withDnsZones([zone({recordManagement: 'authoritative'})]);
+    const tree = resolveEnvironment(
+      mgmt().withDnsZones([zone({recordManagement: 'authoritative'})]).withOperationalEnvironment(op),
+    );
+    expect(tree.management.parameters.dnsZones).toEqual([
+      {name: 'fractal.cloud', recordManagement: 'strict'},
+    ]);
+    expect(tree.operationals[0].parameters.dnsZones).toEqual([
+      {name: 'fractal.cloud', recordManagement: 'strict'},
+    ]);
+  });
+});

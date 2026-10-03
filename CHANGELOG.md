@@ -11,6 +11,35 @@ of truth for what is on npm.
 
 ## Unreleased
 
+### Added — **DNS zones: `recordManagement: 'strict' | 'lax'`**
+
+`DnsZoneGuardrails.recordManagement` (environment `withDnsZones` entries and
+`DnsZoneComponent.withRecordManagement`) is now `'strict' | 'lax'`, exported as
+`DnsRecordManagement`:
+
+- `'strict'` (the default, also when omitted): every record set the zone does not
+  declare is deleted, apex NS and SOA aside.
+- `'lax'`: record sets Fractal Cloud did not define are left alone, so an ACME
+  DNS-01 `_acme-challenge` TXT written by cert-manager or certbot survives. The
+  declared record sets are still kept and put back when changed outside Fractal
+  Cloud; one removed from the declaration is deleted only if Fractal Cloud applied
+  it before.
+- Nothing is written into DNS data to track ownership: the agent keeps what it
+  applied in control-plane state (the zone's existing `managedRecords` output).
+- `'authoritative'` still compiles, `@deprecated`, and is sent as `'strict'`. A
+  zone stored as `authoritative` therefore shows as a `parameters.dnsZones` change
+  in `environments.plan` once it is redeclared through this version.
+- Omitted, nothing is sent and the agent applies `strict`.
+- `'additive'` stays a type error and is refused at runtime; that message, and the
+  one for any other value, now names `'strict'` and `'lax'`.
+
+**Requires** cloud agents that know `strict` and `lax`: an older agent refuses them
+as unknown values and fails the zone without changing it. Code that declares
+`'authoritative'` behaves as before. **Omitting the key now means `'strict'`** on those
+agents: a zone holding record sets that nobody declared and Fractal Cloud did not write
+(an adopted zone, one edited by hand), which the agents held untouched until now, has
+them deleted on its next pass. Declare `'lax'` to keep them.
+
 ### Removed (BREAKING for TypeScript callers) — `AwsSqsQueue({dlqAlarm})`
 
 The AWS agent creates no CloudWatch alarm or log group for a queue any more; dead-letter

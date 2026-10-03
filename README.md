@@ -647,6 +647,46 @@ mgmt
 - `dnsZoneType` is deprecated: it still selects a single agent when `agents` is not
   set.
 
+#### Records the declaration does not list: `recordManagement`
+
+A zone's `records` are always kept: a declared record set changed or removed outside
+Fractal Cloud is put back on the next pass. `recordManagement` decides what happens to
+record sets the declaration does **not** list:
+
+- `'strict'` (the default, also when omitted): the declaration is the whole zone.
+  Every record set it does not declare is deleted, apex NS and SOA aside, whoever
+  created it.
+- `'lax'`: Fractal Cloud never deletes a record set it did not define. A record set
+  removed from the declaration is deleted only if Fractal Cloud applied it before; a
+  declared name and type that already exists with other values is set to the
+  declared values (the declaration wins for the names it declares).
+
+`'authoritative'` is a deprecated alias of `'strict'` (sent as `'strict'`).
+`'additive'` is gone: it is a type error and refused before anything is sent.
+
+Use `lax` when something else writes into the zone, the usual case being ACME DNS-01:
+cert-manager or certbot creates `_acme-challenge` TXT records to prove control of the
+domain. The declaration does not list them, so under `strict` the agent would delete
+them, possibly mid-challenge; under `lax` they survive, while the declared records are
+still kept and restored:
+
+```ts
+mgmt.withDnsZones([
+  {
+    name: 'fractal.cloud',
+    recordManagement: 'lax', // cert-manager writes _acme-challenge TXT records here
+    caaIssuers: ['letsencrypt.org'],
+    records: [{name: 'www', type: 'CNAME', ttl: 300, values: ['fractal.cloud.']}],
+  },
+]);
+```
+
+Nothing is written into the zone's DNS data to track which record sets Fractal Cloud
+defined (no marker TXT records): the agent remembers what it applied in control-plane
+state, the zone's `managedRecords` output (`"_acme-challenge.fractal.cloud. TXT"`
+style entries). The same key applies to a Live System zone
+(`DnsZoneComponent.withRecordManagement('lax')`).
+
 `cloud.environments.dnsZones(id)` reads what the agents reported: per zone, one
 result per agent hosting it, with the name servers and DS records a registrar needs to
 delegate the domain.
