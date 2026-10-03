@@ -16,6 +16,8 @@
  *     (`select`), with no global provider; mixed vendors are normal.
  */
 
+import type {ComponentReference} from './component_reference';
+
 // ── Catalogue value types ────────────────────────────────────────────────────
 // Vendors only. `CaaS`/`SaaS` are NOT vendors — they are delivery models below.
 // `provider` is optional on an Offer: cloud/platform offers name their vendor;
@@ -86,6 +88,12 @@ export type LiveSystemComponent = {
   type: string; // 3-part offer type
   provider?: Provider; // absent for vendor-neutral self-hosted offers
   deliveryModel: DeliveryModel;
+  /**
+   * Present only on a slot filled with `referenceTo(...)`: the component of
+   * another Live System this one stands in for. Such a component carries no
+   * parameters, dependencies or links of its own.
+   */
+  reference?: ComponentReference;
   parameters: Record<string, unknown>;
   dependencies: readonly string[];
   links: readonly ComponentLink[];

@@ -16,12 +16,14 @@ import {
   AZURE_CONTAINER_APPS_ENVIRONMENT_OFFER_TYPE,
   KUBERNETES_WORKLOAD_OFFER_TYPE,
 } from './offer_type_ids';
-import {withContractImageName} from './kubernetes_workload_contract';
+import {toKubernetesWorkloadParameters} from './kubernetes_workload_contract';
 import type {
   InstantiationContext,
   LiveSystemComponent,
   Provider,
 } from '../core';
+import type {EksAutoModeNodePool} from './eks_auto_mode_node_pool';
+import type {EksControlPlaneLogType} from './eks_control_plane_log_type';
 
 /**
  * A ContainerPlatform offer emits itself PLUS one Workload live component per
@@ -56,7 +58,7 @@ const containerPlatformInstantiate =
       // `image` → `containerImage` translation the selected path gets; without
       // it a child workload ships a key the agent's contract does not declare
       // and fails with `containerImage is required when manifestUri is not set`.
-      parameters: withContractImageName(
+      parameters: toKubernetesWorkloadParameters(
         {...child.parameters},
         child.id,
         child.locked ?? [],
@@ -299,18 +301,122 @@ export const OpenshiftVm = defineOffer<
 });
 
 // ── ContainerPlatform ────────────────────────────────────────────────────────
+const EKS_LOG_TYPES: readonly EksControlPlaneLogType[] = [
+  'api',
+  'audit',
+  'authenticator',
+  'controllerManager',
+  'scheduler',
+];
+const EKS_ARCHITECTURES = ['arm64', 'amd64'];
+const EKS_BUILT_IN_POOLS = ['system', 'general-purpose'];
+const DNS_1123_LABEL = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
+const EKS_CAPACITY_TYPES = ['on-demand', 'spot'];
+
+const refuseEks = (id: string, why: string): never => {
+  throw new Error(`Eks '${id}': ${why}.`);
+};
+
+const ensureValidNodePools = (
+  id: string,
+  pools: readonly EksAutoModeNodePool[],
+): void => {
+  const names = new Set<string>();
+  for (const pool of pools) {
+    if (pool.name.trim() === '') {
+      refuseEks(id, 'a node pool needs a name');
+    }
+    if (!DNS_1123_LABEL.test(pool.name)) {
+      refuseEks(
+        id,
+        `node pool name '${pool.name}' is not a DNS-1123 label (a-z, 0-9 and '-', at most 63)`,
+      );
+    }
+    if (EKS_BUILT_IN_POOLS.includes(pool.name)) {
+      refuseEks(
+        id,
+        `node pool name '${pool.name}' is reserved for an EKS Auto Mode built-in pool`,
+      );
+    }
+    if (names.has(pool.name)) {
+      refuseEks(id, `node pool name '${pool.name}' twice`);
+    }
+    names.add(pool.name);
+    const badArch = (pool.architectures ?? []).find(
+      a => !EKS_ARCHITECTURES.includes(a),
+    );
+    if (badArch !== undefined) {
+      refuseEks(
+        id,
+        `node pool '${pool.name}' architectures holds '${badArch}' (arm64 or amd64)`,
+      );
+    }
+    const badCapacity = (pool.capacityTypes ?? []).find(
+      c => !EKS_CAPACITY_TYPES.includes(c),
+    );
+    if (badCapacity !== undefined) {
+      refuseEks(
+        id,
+        `node pool '${pool.name}' capacityTypes holds '${badCapacity}' (on-demand or spot)`,
+      );
+    }
+  }
+};
+
+type EksConfig = {
+  region?: string;
+  /**
+   * Custom EKS Auto Mode NodePools, e.g. Graviton on-demand
+   * `{name: 'graviton', architectures: ['arm64'], instanceFamilies: ['m7g'],
+   * capacityTypes: ['on-demand']}`. Replaces the neutral `withNodePools` value,
+   * so it is refused when that value is a locked guardrail.
+   */
+  nodePools?: readonly EksAutoModeNodePool[];
+  /** Control-plane logs shipped to CloudWatch; the agent defaults to api and authenticator. */
+  controlPlaneLogTypes?: readonly EksControlPlaneLogType[];
+};
+
+/**
+ * Amazon EKS (Auto Mode). The Kubernetes version is the neutral
+ * `withKubernetesVersion`. Workloads added under it are emitted as caas-k8s
+ * Kubernetes workloads.
+ */
 export const Eks = defineOffer<
   'NetworkAndCompute.ContainerPlatform',
-  {region?: string}
+  EksConfig
 >({
   satisfies: 'NetworkAndCompute.ContainerPlatform',
   offerType: 'NetworkAndCompute.PaaS.AwsEks',
   provider: 'AWS',
   deliveryModel: 'PaaS',
-  instantiate: containerPlatformInstantiate(
-    'NetworkAndCompute.PaaS.AwsEks',
-    'AWS',
-  ),
+  instantiate: (ctx, config) => {
+    if (
+      config.nodePools !== undefined &&
+      (ctx.locked ?? []).includes('nodePools')
+    ) {
+      throw new Error(
+        `Parameter 'nodePools' on '${ctx.id}' is a locked guardrail, and the Eks ` +
+          "offer's nodePools would replace it. Drop the offer's nodePools, or the " +
+          "'.withNodePools()' guardrail if the pools are the offer's to choose.",
+      );
+    }
+    return containerPlatformInstantiate('NetworkAndCompute.PaaS.AwsEks', 'AWS')(
+      ctx,
+      config,
+    );
+  },
+  validate: (self, _all, config) => {
+    ensureValidNodePools(self.id, config.nodePools ?? []);
+    const badLog = (config.controlPlaneLogTypes ?? []).find(
+      t => !EKS_LOG_TYPES.includes(t),
+    );
+    if (badLog !== undefined) {
+      refuseEks(
+        self.id,
+        `controlPlaneLogTypes holds '${badLog}' (one of ${EKS_LOG_TYPES.join(', ')})`,
+      );
+    }
+  },
 });
 export const Aks = defineOffer<
   'NetworkAndCompute.ContainerPlatform',

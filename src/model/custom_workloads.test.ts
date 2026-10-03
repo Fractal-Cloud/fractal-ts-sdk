@@ -169,22 +169,14 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
     });
 
     /**
-     * CHARACTERIZATION, not an endorsement. Every `WorkloadNode` setter is
-     * exercised, and the names that survive are compared with the contract.
-     * The listed keys are silently pruned in flight exactly as `image` was —
-     * the difference is only that each has an agent-side default, so they fail
-     * as a PASSING sweep that never applied the architect's guardrail rather
-     * than as a red one.
-     *
-     * They are pinned rather than fixed on purpose: `port`/`cpuRequest`/
-     * `memoryRequest` have plausible contract counterparts (`containerPort`,
-     * `resourceRequests`) whose shapes differ, and `maxReplicas`/`healthCheck`
-     * have no counterpart at all, so each is a design decision and not a
-     * rename. This list is the record of that debt; shortening it means a
-     * setter now reaches the agent, and lengthening it means a new one does
-     * not. Either way the change should be deliberate.
+     * Every `WorkloadNode` setter is exercised, and the names that survive are
+     * compared with the contract. `port`/`cpuRequest`/`memoryRequest`/
+     * `maxReplicas`/`healthCheck` used to be pruned in flight exactly as `image`
+     * was; they are now translated onto `containerPort`/`resourceRequests`/
+     * `autoscaling`/`readinessProbe`. A key appearing here means a setter no
+     * longer reaches the agent.
      */
-    it('pins the setters whose names the contract still does not declare', () => {
+    it('every setter reaches the agent under a name the contract declares', () => {
       const web = createFractal({
         id: 'custom-workloads-stack',
         version: {major: 1, minor: 0, patch: 0},
@@ -220,15 +212,7 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
         .filter(k => !declared.has(k))
         .sort();
 
-      expect(undeclared).toEqual([
-        'cpuRequest',
-        'healthCheck',
-        'maxReplicas',
-        'memoryRequest',
-        'port',
-      ]);
-      // The one this change fixes is no longer among them.
-      expect(undeclared).not.toContain('image');
+      expect(undeclared).toEqual([]);
       expect(web.parameters.containerImage).toBe('registry/app:1');
     });
   });

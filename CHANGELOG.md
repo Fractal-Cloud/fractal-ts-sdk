@@ -11,6 +11,74 @@ of truth for what is on npm.
 
 ## Unreleased
 
+### Added — cross-Live-System references: `referenceTo(offer, {liveSystemId, componentId})`
+
+A slot can now stand in for a component another Live System owns (a shared cluster,
+DBMS or gateway, another service's topic). Select it with `referenceTo` instead of an
+offer; `liveSystemIdOf(boundedContext, liveSystemName)` builds the id the control plane
+gives a Live System (`<ownerType>/<ownerId>/<boundedContext>/<liveSystemName>`).
+
+- The slot is emitted under its local id with the offer's type, provider and delivery
+  model, a `reference` (`ComponentReference`), and no parameters, dependencies or
+  links: the control plane mirrors the target's, read-only, and no agent reconciles it.
+- Everything that depends on or links to the slot names the local id; the deploy body
+  carries `reference` unchanged, and only on referencing components.
+- Refused while building the Live System: an offer that does not satisfy the slot (also
+  a type error), a malformed id, and a referenced slot with outbound links or
+  application-added children (nothing would ever act on them).
+- Requires a control plane and agents that accept references (Phase 5).
+
+### Added — AWS messaging: `AwsSnsTopic`, `AwsSqsQueue`, `MessagingEntity.withTopic`, `MessagingEntityLink`
+
+- `AwsSnsTopic({topicName?, kmsMasterKeyId?})`.
+- `AwsSqsQueue({queueName?, visibilityTimeoutSeconds?, messageRetentionSeconds?,
+  maxReceiveCount?, dlqRetentionSeconds?, rawMessageDelivery?, filterEventNames?,
+  filterPolicy?, dlqAlarm?})`: a queue with a dead-letter queue, subscribed to the one
+  `AwsSnsTopic` it depends on (`withTopic(topic)`, which may be a reference).
+  `filterEventNames` travels comma-separated, `filterPolicy` as JSON text. The neutral
+  `withMessageRetentionHours` / `withMaxDeliveryAttempts` map onto the queue.
+- `MessagingEntityLink` types the Workload → topic / queue link (`access`).
+
+### Added — `TraefikGateway` and the Workload → gateway route link
+
+- `TraefikGateway` (`APIManagement.CaaS.TraefikGateway`, owned by the caas-k8s agent):
+  `namespace`, `replicas`, `chartVersion`, `host`, `internalLoadBalancer`,
+  `tlsCertificateArn`, `entryPointIdleTimeoutSeconds`. `Traefik` keeps the Java agents'
+  shape.
+- `gatewayRouteSettings({routes: [{prefix, rewritePath?, host?}], responseTimeoutMs?,
+  idleConnTimeoutMs?, retryAttempts?, servicePort?})` builds the flat, indexed settings of
+  an outbound Workload → gateway link (`bp.link(service, gateway, gatewayRouteSettings(…))`).
+
+### Added — shared-platform knobs
+
+- `Eks({nodePools, controlPlaneLogTypes})`: EKS Auto Mode node pools
+  (`EksAutoModeNodePool`: architectures, instance families, capacity types, sizes) and
+  control-plane log types.
+- `AwsCloudFront`: a site mode in front of the platform gateway: `aliases` with a custom
+  origin (`originDomain`) or a VPC origin to a linked `TraefikGateway` / `Traefik`;
+  `originProtocol`, `originReadTimeoutSeconds`, `originKeepaliveTimeoutSeconds`,
+  `wafEnabled`, `wafRateLimitPer5Min`, `originDomainName`.
+- `AwsRdsPostgresDbms({storageType})`; `AwsS3({lifecycleExpirationDays})`.
+- Observability offers for the caas-k8s agent: `KubePrometheusStack`, `GrafanaLoki`,
+  `GrafanaAlloy`, `GrafanaTempo`.
+
+### Added — Workload rollout, drain, scaling, probes and secret env
+
+`withSecretEnv`, `withResources`, `withAutoscaling`, `withPodDisruptionBudget`,
+`withRollout`, `withTerminationGracePeriodSeconds`, `withPreStopSleepSeconds`,
+`withReadinessProbe` / `withLivenessProbe` / `withStartupProbe`, `withTopologySpread`,
+`withNodeSelector`. `secretEnv` takes environment-secret references only; a raw value is
+refused without echoing it.
+
+### Changed — Kubernetes workloads receive every Workload setter
+
+On `K8sWorkload` (and a Workload added under a ContainerPlatform), `port`,
+`cpuRequest` / `memoryRequest`, `maxReplicas` and `healthCheck` used to be pruned before
+the agent saw them, so the agent's defaults applied. They now arrive as
+`containerPort`, `resourceRequests`, `autoscaling.maxReplicas` and
+`readinessProbe` + `livenessProbe`. A deployed workload that set them changes on its next
+deploy: its port, its requests, an autoscaler, and its probes now follow the blueprint.
+
 ### Added — `AwsCloudFront({redirectTo, aliases})`: a whole-site redirect under your own host names
 
 - `redirectTo`: an `https://` URL. Every request the distribution receives, over

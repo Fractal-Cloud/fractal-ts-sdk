@@ -50,6 +50,7 @@ import {createFractal} from './core';
 import {ObjectStorage} from './components/storage';
 import {AwsS3} from './offers/storage';
 import {createFractalCloudClient} from './client';
+import {referenceTo} from './reference';
 
 const cloud = createFractalCloudClient({
   clientId: 'cid',
@@ -250,5 +251,64 @@ describe('liveSystems.deploy()', () => {
     expect(h.requests.map(r => `${r.method} ${r.url}`)).toEqual([
       `DELETE ${LS_URL}`,
     ]);
+  });
+});
+
+describe('liveSystems.deploy() with a cross-Live-System reference', () => {
+  beforeEach(() => {
+    h.requests.length = 0;
+    h.state.queue = [];
+  });
+
+  const referencing = () =>
+    createFractal({
+      id: 'bucket-consumer',
+      version: {major: 1, minor: 0, patch: 0},
+      boundedContextId: {
+        ownerType: 'Personal',
+        ownerId: OWNER,
+        name: 'reusable-templates',
+      },
+      blueprint: bp => ({
+        uploads: bp.add(ObjectStorage({id: 'uploads'}).withEncryption('at-rest')),
+      }),
+    }).toLiveSystem({
+      name: 'acme-consumer',
+      environment: {ownerType: 'Personal', ownerId: OWNER, name: 'dev'},
+      select: {
+        uploads: referenceTo(AwsS3, {
+          liveSystemId: `Personal/${OWNER}/reusable-templates/acme-storage`,
+          componentId: 'uploads',
+        }),
+      },
+    });
+
+  it('carries `reference` unchanged, with no parameters, dependencies or links', async () => {
+    h.state.queue = [{status: 404}, {status: 201}];
+    await cloud.liveSystems.deploy(referencing());
+    const post = h.requests.find(r => r.method === 'POST')!;
+    const body = post.body as {blueprintMap: Record<string, unknown>};
+    expect(body.blueprintMap.uploads).toEqual({
+      type: 'Storage.PaaS.AwsS3',
+      id: 'uploads',
+      displayName: 'uploads',
+      provider: 'AWS',
+      deliveryModel: 'PaaS',
+      reference: {
+        liveSystemId: `Personal/${OWNER}/reusable-templates/acme-storage`,
+        componentId: 'uploads',
+      },
+      parameters: {},
+      dependencies: [],
+      links: [],
+    });
+  });
+
+  it('a component without a reference has no `reference` key in the body', async () => {
+    h.state.queue = [{status: 404}, {status: 201}];
+    await cloud.liveSystems.deploy(liveSystem());
+    const post = h.requests.find(r => r.method === 'POST')!;
+    const body = post.body as {blueprintMap: Record<string, object>};
+    expect('reference' in body.blueprintMap.uploads).toBe(false);
   });
 });

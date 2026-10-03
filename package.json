@@ -41,7 +41,7 @@
     "build": "tsdown",
     "build:docs": "typedoc --entryPointStrategy Expand --exclude \"**/*+(.test|.e2e).ts\" src",
     "dev": "tsdown --watch",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.guides.json",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.guides.json && node scripts/check-unused-test-imports.mjs",
     "test": "npm run typecheck && vitest run --coverage",
     "test:watch": "vitest",
     "lint": "gts lint",

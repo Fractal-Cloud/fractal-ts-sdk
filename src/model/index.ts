@@ -12,6 +12,10 @@ export * from './core';
 // Environment-secret references (usable in component params + link settings)
 export * from './secret';
 
+// Cross-Live-System references: fill a slot with another Live System's component
+export type {ComponentReference} from './component_reference';
+export * from './reference';
+
 // Shared HTTP contract (credentials type surfaced publicly)
 export type {Credentials, ApiConfig} from './http';
 export type {RetryOptions} from './retry';
@@ -44,16 +48,29 @@ export * from './components/network_and_compute';
 export * from './components/storage';
 export * from './components/big_data';
 export * from './components/messaging';
+export type {MessagingEntityLink} from './components/messaging_entity_link';
 export * from './components/api_management';
+export type {GatewayRoute} from './components/gateway_route';
+export type {GatewayRouteOptions} from './components/gateway_route_options';
+export * from './components/gateway_route_settings';
 export * from './components/observability';
 export * from './components/security';
 export * from './components/custom_workloads';
+export type {ResourceQuantities} from './components/workload/resource_quantities';
+export type {WorkloadResources} from './components/workload/workload_resources';
+export type {WorkloadAutoscaling} from './components/workload/workload_autoscaling';
+export type {WorkloadProbe} from './components/workload/workload_probe';
+export type {PodDisruptionBudget} from './components/workload/pod_disruption_budget';
+export type {WorkloadRollout} from './components/workload/workload_rollout';
 export * from './components/unmanaged';
 export * from './components/dns';
 
 // Offer catalogue (concrete — vendor or vendor-neutral)
 export * from './offers/network_and_compute';
+export type {EksAutoModeNodePool} from './offers/eks_auto_mode_node_pool';
+export type {EksControlPlaneLogType} from './offers/eks_control_plane_log_type';
 export * from './offers/storage';
+export type {AwsRdsStorageType} from './offers/aws_rds_storage_type';
 export * from './offers/big_data';
 export * from './offers/messaging';
 export * from './offers/api_management';
