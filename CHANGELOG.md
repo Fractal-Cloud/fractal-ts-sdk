@@ -9,6 +9,29 @@ The version published for a release is the GitHub release tag: `release.yml` run
 `npm version <tag>` at publish time, so `package.json` on `main` is not the source
 of truth for what is on npm.
 
+## Unreleased
+
+### Added — `AwsCloudFront({redirectTo, aliases})`: a whole-site redirect under your own host names
+
+- `redirectTo`: an `https://` URL. Every request the distribution receives, over
+  HTTP or HTTPS, is answered with `301 Moved Permanently` to that URL followed by the
+  request's own path and query string, by a CloudFront Function at the edge (no
+  origin, no bucket).
+- `aliases`: the host names the distribution answers for, only together with
+  `redirectTo`. The agent requests a DNS-validated ACM certificate for them in
+  us-east-1 and attaches them once it is issued.
+
+The agent writes no DNS record for either: a DNS zone belongs to whoever declares it.
+It publishes, as output fields of the component (`cloud.liveSystems.outputs`), the
+distribution's `dnsName` and `hostedZoneId` (for an alias record) and the certificate's
+`certificateValidationRecords`; the component stays `Instantiating` until the owner of
+each name's zone declares those records and the certificate is issued.
+
+Both are checked when the Live System is built: a target that is not a plain https
+URL (query, fragment, port, credentials, a quote or space), an alias that is not a host
+name, or aliases without `redirectTo` are refused with the reason. Requires cloud agents
+with the CloudFront redirect (the release after 8.20.2).
+
 ## 2.10.0
 
 ### Changed — **DNS zones are owned as a whole: `recordManagement: 'additive'` is gone**

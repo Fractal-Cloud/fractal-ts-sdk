@@ -83,4 +83,64 @@ describe('Locked Fractal model — APIManagement', () => {
       }),
     ).toThrow(/Missing offer selection/);
   });
+
+  describe('AwsCloudFront whole-site redirect', () => {
+    function redirectFractal() {
+      return createFractal({
+        id: 'redirect-sample',
+        version: {major: 1, minor: 0, patch: 0},
+        boundedContextId,
+        blueprint: bp => ({edge: bp.add(ApiGateway({id: 'edge'}))}),
+      });
+    }
+    const liveSystemWith = (offer: ReturnType<typeof AwsCloudFront>) =>
+      redirectFractal().toLiveSystem({name: 'redirects', environment, select: {edge: offer}});
+
+    it('carries redirectTo and aliases to the live component as the agent reads them', () => {
+      const ls = liveSystemWith(
+        AwsCloudFront({
+          redirectTo: 'https://fractal.cloud',
+          aliases: ['yanchware.com', 'www.yanchware.com'],
+        }),
+      );
+
+      const edge = ls.components.find(c => c.id === 'edge')!;
+      expect(edge.parameters.redirectTo).toBe('https://fractal.cloud');
+      expect(edge.parameters.aliases).toEqual(['yanchware.com', 'www.yanchware.com']);
+    });
+
+    it.each([
+      'http://fractal.cloud',
+      'fractal.cloud',
+      'https://fractal.cloud?x=1',
+      'https://fractal.cloud#top',
+      'https://user@fractal.cloud',
+      'https://fractal.cloud:8443',
+      'https://fractal.cloud:443',
+      "https://fractal.cloud/a'b",
+      'https://fractal.cloud/a b',
+    ])('refuses %s as a redirect target', target => {
+      expect(() => liveSystemWith(AwsCloudFront({redirectTo: target}))).toThrow(/redirectTo/);
+    });
+
+    it('refuses an alias that is not a host name', () => {
+      expect(() =>
+        liveSystemWith(
+          AwsCloudFront({redirectTo: 'https://fractal.cloud', aliases: ['not a host']}),
+        ),
+      ).toThrow(/aliases/);
+    });
+
+    it('refuses aliases without a redirect, which the agent does not serve yet', () => {
+      expect(() => liveSystemWith(AwsCloudFront({aliases: ['cdn.example.com']}))).toThrow(
+        /aliases.*redirectTo/,
+      );
+    });
+
+    it('leaves a CloudFront offer without them as it was', () => {
+      const edge = liveSystemWith(AwsCloudFront({})).components.find(c => c.id === 'edge')!;
+      expect(edge.parameters.redirectTo).toBeUndefined();
+      expect(edge.parameters.aliases).toBeUndefined();
+    });
+  });
 });

@@ -49,16 +49,16 @@
     "posttest": "npm run lint"
   },
   "devDependencies": {
-    "@types/node": "^22.7.5",
-    "@types/superagent": "^8.1.9",
-    "@vitest/coverage-v8": "^4.0.18",
+    "@types/node": "^26.6.4",
+    "@types/superagent": "^8.1.11",
+    "@vitest/coverage-v8": "^5.0.3",
     "gts": "^7.0.0",
-    "tsdown": "^0.20.3",
-    "typedoc": "^0.28.15",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.16"
+    "tsdown": "^0.23.0",
+    "typedoc": "^0.28.20",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.3"
   },
   "dependencies": {
-    "superagent": "^10.3.0"
+    "superagent": "^10.4.1"
   }
 }
