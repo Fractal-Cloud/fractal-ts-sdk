@@ -19,7 +19,7 @@ import type {GrafanaAlloyConfig} from './grafana_alloy_config';
 import type {GrafanaObjectStorageBackendConfig} from './grafana_object_storage_backend_config';
 import type {KubePrometheusStackConfig} from './kube_prometheus_stack_config';
 import {TRAEFIK_GATEWAY_OFFER_TYPE} from './offer_type_ids';
-import {routesOfLink} from './route_link_routes';
+import {parseRouteLink, routeRefusal} from './route_link_routes';
 import type {SqsExporterConfig} from './sqs_exporter_config';
 
 // ── Observability.Monitoring offers ──────────────────────────────────────────
@@ -167,10 +167,12 @@ const ensureDatasource = (id: string, key: string, value?: string): void => {
 };
 
 /**
- * Grafana's routes on a `TraefikGateway` (a route link, as a workload's): the
- * agent serves Grafana at `/` and strips the sub-path itself, so a sub-path must
- * end with `/` and no route may set `rewritePath`. A referenced gateway is
- * checked too: the rule is about the link, not the gateway.
+ * Grafana's routes on a `TraefikGateway` (a route link, as a workload's), refused
+ * as the agent refuses them: the link must carry routes, each well-formed (see
+ * `routeRefusal`); and since the agent serves Grafana at `/` and strips the
+ * sub-path itself, a sub-path must end with `/` and no route may set
+ * `rewritePath`. A referenced gateway is checked too, except for the host it
+ * would default a route to, which is not known here.
  */
 const ensureGrafanaRoutes = (
   self: LiveSystemComponent,
@@ -181,18 +183,36 @@ const ensureGrafanaRoutes = (
     if (gateway === undefined || gateway.type !== TRAEFIK_GATEWAY_OFFER_TYPE) {
       continue;
     }
-    for (const route of routesOfLink(link.settings)) {
-      const prefix = route.prefix ?? '';
-      if (route.rewritePath !== undefined && route.rewritePath !== '') {
-        refuse(
-          self.id,
-          `Grafana route ${route.host ?? ''}${prefix} sets rewritePath; the agent strips the sub-path itself`,
+    const why = (reason: string): never =>
+      refuse(self.id, `Grafana route link to ${gateway.id}: ${reason}`);
+    let routes: ReturnType<typeof parseRouteLink> = [];
+    try {
+      routes = parseRouteLink(link.settings);
+    } catch (e) {
+      why(e instanceof Error ? e.message : String(e));
+    }
+    if (routes.length === 0) {
+      why(`the route link from ${self.id} has no routes: set routes.0.prefix`);
+    }
+    const hostKnown = gateway.reference === undefined;
+    const gatewayHost =
+      typeof gateway.parameters.host === 'string'
+        ? gateway.parameters.host.trim()
+        : '';
+    for (const parsed of routes) {
+      const route = {...parsed, host: parsed.host || gatewayHost};
+      const refusal = routeRefusal(route, hostKnown);
+      if (refusal !== undefined) {
+        why(`route link from ${self.id}: ${refusal}`);
+      }
+      if (route.rewritePath !== '') {
+        why(
+          `Grafana route ${route.host}${route.prefix} sets rewritePath; the agent strips the sub-path itself`,
         );
       }
-      if (prefix !== '/' && !prefix.endsWith('/')) {
-        refuse(
-          self.id,
-          `Grafana route prefix '${prefix}' must end with "/" (for example /grafana/)`,
+      if (route.prefix !== '/' && !route.prefix.endsWith('/')) {
+        why(
+          `Grafana route prefix '${route.prefix}' must end with "/" (for example /grafana/)`,
         );
       }
     }
@@ -248,9 +268,9 @@ export const KubePrometheusStack = defineOffer<
  * `access: 'read-write'`), through its own Pod Identity role.
  *
  * Output fields: `namespace`, `releaseName`, `chartVersion`, `url`, `pushUrl`,
- * `bucketName`, `retentionDays`, `storageClassName`, `serviceAccountName`, `podIdentityRoleArn`,
- * `podIdentityAssociationId`, `workloadRoleName`, `workloadRoleArn`,
- * `workloadRoleDrift`.
+ * `bucketName`, `retentionDays`, `storageClassName`, `serviceAccountName`,
+ * `podIdentityRoleArn`, `podIdentityAssociationId`, `workloadRoleName`,
+ * `workloadRoleArn`, `workloadRoleDrift`.
  */
 export const GrafanaLoki = defineOffer<
   'Observability.Logging',
@@ -305,9 +325,9 @@ export const GrafanaAlloy = defineOffer<
  *
  * Output fields: `namespace`, `releaseName`, `chartVersion`, `url`,
  * `otlpGrpcEndpoint`, `otlpHttpEndpoint`, `bucketName`, `retentionDays`,
- * `storageClassName`,
- * `serviceAccountName`, `podIdentityRoleArn`, `podIdentityAssociationId`,
- * `workloadRoleName`, `workloadRoleArn`, `workloadRoleDrift`.
+ * `storageClassName`, `serviceAccountName`, `podIdentityRoleArn`,
+ * `podIdentityAssociationId`, `workloadRoleName`, `workloadRoleArn`,
+ * `workloadRoleDrift`.
  */
 export const GrafanaTempo = defineOffer<
   'Observability.Tracing',
@@ -381,6 +401,12 @@ export const SqsExporter = defineOffer<
       refuse(
         self.id,
         'imagePullSecrets is an empty list: it is sent blank, which the agent reads as unset; omit it',
+      );
+    }
+    if ((config.imagePullSecrets ?? []).some(n => n.trim() === '')) {
+      refuse(
+        self.id,
+        'imagePullSecrets holds a blank entry, which the agent would drop: remove it',
       );
     }
     const badSecret = (config.imagePullSecrets ?? []).find(

@@ -19,7 +19,7 @@ import {
   isCertificateHost,
 } from './certificate_hosts';
 import {TRAEFIK_GATEWAY_OFFER_TYPE} from './offer_type_ids';
-import {routesOfLink} from './route_link_routes';
+import {parseRouteLink} from './route_link_routes';
 import type {TraefikGatewayConfig} from './traefik_gateway_config';
 
 // ── ApiGateway ───────────────────────────────────────────────────────────────
@@ -429,12 +429,6 @@ const ensureValidForwardAuth = (
   }
 };
 
-/** The explicit route hosts of a route link (a route without one takes the gateway's `host`). */
-const routeHostsOf = (settings: Record<string, unknown>): string[] =>
-  routesOfLink(settings)
-    .map(r => r.host ?? '')
-    .filter(h => h !== '');
-
 /**
  * On a TLS gateway every route host must be covered by its certificate: the
  * workload's agent refuses the route otherwise. A route that names no host takes
@@ -453,9 +447,17 @@ const ensureRoutesCovered = (
       if (link.componentId !== self.id) {
         continue;
       }
-      const uncovered = routeHostsOf(link.settings).find(
-        h => !certificateCovers(hosts, h),
-      );
+      let routeHosts: string[] = [];
+      try {
+        routeHosts = parseRouteLink(link.settings)
+          .map(r => r.host)
+          .filter(h => h !== '');
+      } catch (e) {
+        throw new Error(
+          `Route link from '${source.id}' to '${self.id}': ${e instanceof Error ? e.message : String(e)}.`,
+        );
+      }
+      const uncovered = routeHosts.find(h => !certificateCovers(hosts, h));
       if (uncovered !== undefined) {
         throw new Error(
           `Route link from '${source.id}' to '${self.id}': route host ` +

@@ -61,7 +61,12 @@ defaults are the agent's and the SDK sends only what you set.
   14 / 7).
 - **Grafana route**: `KubePrometheusStack` may link to a `TraefikGateway` with the
   workload route settings (`gatewayRouteSettings({routes: [{prefix: '/grafana/'}]})`);
-  a sub-path not ending with `/`, or a `rewritePath`, is refused.
+  a sub-path not ending with `/`, or a `rewritePath`, is refused. The link is read
+  and refused as the agent reads it: no routes, a route without a prefix, a prefix or
+  rewritePath not starting with `/`, a backtick, a host that is not a DNS name, a
+  nested entry that is not an object or an unknown `routes.<n>.<field>` key. The same
+  reading applies to route links checked against a TLS gateway's certificate. A blank
+  `imagePullSecrets` entry on `SqsExporter` is refused rather than dropped.
 - **Documented outputs** of caas-k8s #43: `storageClassName` on
   `KubePrometheusStack`, `GrafanaLoki` and `GrafanaTempo` (unset on EKS, the agent
   uses its `fractal-gp3` class when the EBS CSI driver of Auto Mode exists),

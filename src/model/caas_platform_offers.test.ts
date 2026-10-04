@@ -267,6 +267,12 @@ describe('SqsExporter', () => {
     ).not.toThrow();
   });
 
+  it('sends padded imagePullSecrets as given: the agent trims each', () => {
+    expect(
+      exporter({imagePullSecrets: [' dockerhub ']}).parameters.imagePullSecrets,
+    ).toBe(' dockerhub ');
+  });
+
   it('carries imagePullSecrets comma-separated', () => {
     expect(
       exporter({imagePullSecrets: ['dockerhub', 'mirror-pull']}).parameters,
@@ -302,6 +308,10 @@ describe('SqsExporter', () => {
     [{image: ' '}, /image ' ' is blank/],
     [{queueUrls: []}, /queueUrls is an empty list/],
     [{imagePullSecrets: []}, /imagePullSecrets is an empty list/],
+    [
+      {imagePullSecrets: ['dockerhub', ' ']},
+      /imagePullSecrets holds a blank entry, which the agent would drop: remove it/,
+    ],
     [
       {imagePullSecrets: ['Docker_Hub']},
       /imagePullSecrets entry 'Docker_Hub' is not a Secret name/,
@@ -863,6 +873,27 @@ describe('scrapeInterval and samplingRate are refused, never pruned', () => {
     );
   });
 
+  it('refuses the key even when set to undefined past the type', () => {
+    expect(() =>
+      createFractal({
+        id: 'unhonored-undefined',
+        version,
+        boundedContextId,
+        blueprint: bp => ({
+          metrics: bp.add(
+            Monitoring({id: 'metrics'}).withScrapeInterval(
+              undefined as unknown as number,
+            ),
+          ),
+        }),
+      }).toLiveSystem({
+        name: 'platform',
+        environment,
+        select: {metrics: Prometheus({})},
+      }),
+    ).toThrow(/'metrics': scrapeInterval is not honored/);
+  });
+
   it('builds without them', () => {
     expect(() => build(Prometheus({}), Jaeger({}))).not.toThrow();
   });
@@ -1125,11 +1156,101 @@ describe('KubePrometheusStack route link to a TraefikGateway', () => {
     );
   });
 
+  const grafanaLink = (
+    settings: Record<string, unknown>,
+    gateway: ReturnType<typeof TraefikGateway> = TraefikGateway({
+      host: 'api.fractal.cloud',
+    }),
+    target: 'traefik' | 'bucket' = 'traefik',
+  ) =>
+    createFractal({
+      id: 'platform-grafana-raw',
+      version,
+      boundedContextId,
+      blueprint: bp => {
+        const traefik = bp.add(ApiGateway({id: 'traefik'}));
+        const bucket = bp.add(ObjectStorage({id: 'bucket'}));
+        const prometheus = bp.add(Monitoring({id: 'prometheus'}));
+        bp.link(prometheus, target === 'traefik' ? traefik : bucket, settings);
+        return {traefik, bucket, prometheus};
+      },
+    }).toLiveSystem({
+      name: 'platform',
+      environment,
+      select: {
+        traefik: gateway,
+        bucket: AwsS3({}),
+        prometheus: KubePrometheusStack({}),
+      },
+    });
+
+  it.each([
+    [{}, /the route link from prometheus has no routes: set routes.0.prefix/],
+    [{routes: []}, /the route link from prometheus has no routes/],
+    [{'routes.0.host': 'api.fractal.cloud'}, /routes\.0\.prefix is required/],
+    [
+      {'routes.0.prefix': 'grafana/'},
+      /route prefix "grafana\/" must start with "\/"/,
+    ],
+    [
+      {'routes.0.prefix': '/grafana/', 'routes.0.rewritePath': '/'},
+      /Grafana route api.fractal.cloud\/grafana\/ sets rewritePath/,
+    ],
+    [
+      {'routes.0.prefix': '/grafana/', 'routes.0.host': 'bad_host.example'},
+      /route host "bad_host.example" is not a DNS name/,
+    ],
+    [{routes: ['/grafana/']}, /routes\[0\] is not an object/],
+  ])('refuses the Grafana link %o', (settings, reason) => {
+    expect(() => grafanaLink(settings)).toThrow(reason);
+  });
+
+  it('accepts an empty rewritePath', () => {
+    expect(() =>
+      grafanaLink({routes: [{prefix: '/grafana/', rewritePath: ''}]}),
+    ).not.toThrow();
+  });
+
+  it('checks a link to a referenced gateway too', () => {
+    expect(() =>
+      grafanaLink(
+        {'routes.0.prefix': '/grafana', 'routes.0.host': 'api.fractal.cloud'},
+        referenceTo(TraefikGateway, {
+          liveSystemId: liveSystemIdOf(PLATFORM, 'gateway'),
+          componentId: 'traefik',
+        }),
+      ),
+    ).toThrow(/Grafana route prefix '\/grafana' must end with/);
+  });
+
+  it('ignores a link to a component that is not a gateway', () => {
+    expect(() =>
+      grafanaLink({access: 'read'}, undefined, 'bucket'),
+    ).not.toThrow();
+  });
+
+  it('refuses a Grafana host the TLS gateway certificate does not cover', () => {
+    expect(() =>
+      grafanaLink(
+        {
+          'routes.0.prefix': '/grafana/',
+          'routes.0.host': 'grafana.example.com',
+        },
+        TraefikGateway({
+          host: 'api.fractal.cloud',
+          tlsClusterIssuer: 'letsencrypt',
+        }),
+      ),
+    ).toThrow(
+      /Route link from 'prometheus' to 'traefik': route host "grafana.example.com" is not covered/,
+    );
+  });
+
   it('refuses a rewritePath: the agent strips the sub-path itself', () => {
     expect(() =>
       routedGrafana({prefix: '/grafana/', rewritePath: '/'}),
     ).toThrow(
-      /Grafana route \/grafana\/ sets rewritePath; the agent strips the sub-path itself/,
+      /Grafana route api.fractal.cloud\/grafana\/ sets rewritePath; the agent strips the sub-path itself/,
     );
   });
 });
