@@ -669,6 +669,18 @@ Values are matched case-sensitively.
 
 > **`lax` requires cloud agents newer than 8.21.** Agents up to 8.21 accept only
 > `'authoritative'` and fail a `lax` zone without changing it.
+>
+> **Upgrading the agents deletes undeclared record sets in zones that omit the key.**
+> Agents up to 8.21 hold an unset zone that holds record sets nobody declared and
+> Fractal Cloud did not write (an adopted zone, records made by hand, ACME
+> `_acme-challenge` TXT records): nothing in it changes. Newer agents read an unset
+> `recordManagement` as `'authoritative'` and delete those record sets. Before
+> upgrading the agents, declare `recordManagement: 'lax'` (or list the records) on
+> such zones and deploy; until the agents are upgraded, they fail those `lax` zones
+> without changing them.
+>
+> A zone stored as `'strict'` by SDK 2.9.6 fails until it is redeclared with this
+> version (`environments.plan` shows a `parameters.dnsZones` update).
 
 Use `lax` when something else writes into the zone, the usual case being ACME DNS-01:
 cert-manager or certbot creates `_acme-challenge` TXT records to prove control of the

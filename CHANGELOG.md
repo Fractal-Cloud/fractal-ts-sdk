@@ -40,6 +40,24 @@ nothing is sent, as before 2.9.6. A wire-format test pins these values.
 type error, and is refused at runtime (as are `'additive'` and any other value) with
 a message naming `'authoritative'` and `'lax'`.
 
+A zone stored as `'strict'` by 2.9.6 keeps failing until it is redeclared with
+2.9.7; `environments.plan` shows that redeclaration as a `parameters.dnsZones`
+update.
+
+**Before upgrading the cloud agents, check zones that omit `recordManagement`.**
+Agents up to 8.21 hold an unset zone that holds record sets nobody declared and
+Fractal Cloud did not write (an adopted zone, records made by hand, ACME
+`_acme-challenge` TXT records from cert-manager or certbot): nothing in it changes.
+The next agents release reads an unset `recordManagement` as `'authoritative'` and
+deletes those record sets on the zone's next pass. The safe sequence:
+
+1. With 2.9.7, declare `recordManagement: 'lax'` (or list those records in
+   `records`) on every such zone, and deploy it.
+2. Then upgrade the cloud agents.
+
+Between steps 1 and 2, agents up to 8.21 fail those `lax` zones without changing
+them, until they are upgraded. This replaces the upgrade sequence given for 2.9.6.
+
 Also in this release:
 
 - `DnsZoneOutputs.managedRecords` (`"<fqdn with trailing dot> <TYPE>"`) is typed.
@@ -48,6 +66,8 @@ Also in this release:
   previous pass.
 
 ## 2.9.6
+
+> Superseded by 2.9.7: `'strict'` is removed, and the upgrade advice below is replaced by the 2.9.7 entry.
 
 ### Added — **DNS zones: `recordManagement: 'strict' | 'lax'`**
 
@@ -60,42 +80,23 @@ Also in this release:
 - `'lax'`: record sets Fractal Cloud did not define are left alone, so an ACME
   DNS-01 `_acme-challenge` TXT written by cert-manager or certbot survives. The
   declared record sets are still kept and put back when changed outside Fractal
-  Cloud; one removed from the declaration is deleted only if it is in the
-  last-applied set (`managedRecords`) the previous pass recorded. If that state is
-  lost, the record set is left in place.
+  Cloud; one removed from the declaration is deleted only if Fractal Cloud applied
+  it before.
 - Nothing is written into DNS data to track ownership: the agent keeps what it
-  applied in control-plane state (the zone's existing `managedRecords` output, now
-  typed on `DnsZoneOutputs`: `"<fqdn with trailing dot> <TYPE>"`).
-- `'authoritative'` still compiles and is documented as deprecated. It is sent as
-  `'strict'` on every path: environment zones, `withRecordManagement`, and a Live
-  System zone whose value was set by an Interface operation or a raw guardrail.
-  `withRecordManagement('authoritative')` resolves to a `@deprecated` overload, so
-  editors flag it; on a `DnsZone` object the property value is not flagged
-  (TypeScript does not surface `@deprecated` on a union member). A zone stored as
-  `authoritative` shows as a `parameters.dnsZones` change in `environments.plan`
-  once it is redeclared through this version.
-- Values are matched case-sensitively (`'Strict'` is refused), although the agents
-  accept any case.
+  applied in control-plane state (the zone's existing `managedRecords` output).
+- `'authoritative'` still compiles, `@deprecated`, and is sent as `'strict'`. A
+  zone stored as `authoritative` therefore shows as a `parameters.dnsZones` change
+  in `environments.plan` once it is redeclared through this version.
 - Omitted, nothing is sent and the agent applies `strict`.
 - `'additive'` stays a type error and is refused at runtime; that message, and the
   one for any other value, now names `'strict'` and `'lax'`.
 
 **Requires** cloud agents that know `strict` and `lax`: an older agent refuses them
-as unknown values and fails the zone without changing it. That includes code that
-still declares `'authoritative'`, since this version sends it as `'strict'`.
-**Omitting the key now means `'strict'`** on the new agents: a zone holding record sets
-that nobody declared and Fractal Cloud did not write (an adopted zone, one edited by
-hand, ACME `_acme-challenge` TXT records from cert-manager or certbot), which the agents
-held untouched until now, has them deleted on its next pass. An upgraded agent acts on
-the declaration already stored, so the order matters. The one safe sequence:
-
-1. For every zone holding such record sets, declare `recordManagement: 'lax'` (or list
-   those records in `records`) and deploy it with this version.
-2. Then upgrade the cloud agents.
-3. Then deploy everything else with this version.
-
-The cost: between steps 1 and 2 the older agents refuse `'lax'` (and `'strict'`) and
-fail those zones, without changing them, until they are upgraded.
+as unknown values and fails the zone without changing it. Code that declares
+`'authoritative'` behaves as before. **Omitting the key now means `'strict'`** on those
+agents: a zone holding record sets that nobody declared and Fractal Cloud did not write
+(an adopted zone, one edited by hand), which the agents held untouched until now, has
+them deleted on its next pass. Declare `'lax'` to keep them.
 
 ### Removed (BREAKING for TypeScript callers) — `AwsSqsQueue({dlqAlarm})`
 
