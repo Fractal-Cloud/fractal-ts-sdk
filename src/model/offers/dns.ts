@@ -7,7 +7,7 @@
  */
 import {defineOffer} from '../core';
 import {
-  canonicalRecordManagement,
+  wireRecordManagement,
   recordManagementRefusal,
 } from '../components/dns_record_management';
 
@@ -25,19 +25,17 @@ export const AwsRoute53HostedZone = defineOffer<
   offerType: 'NetworkAndCompute.PaaS.AwsRoute53HostedZone',
   provider: 'AWS',
   deliveryModel: 'PaaS',
-  // The deprecated 'authoritative' is sent as 'strict' whichever way it got
-  // into the blueprint (the builder canonicalizes it already; an operation's
-  // `ops.set` or a raw `guardrail(...)` does not).
+  // 'strict' is sent as 'authoritative', which every agent accepts, whichever
+  // way it got into the blueprint (the builder converts it already; an
+  // operation's `ops.set` or a raw `guardrail(...)` does not).
   instantiate: (ctx, config) => {
     const parameters: Record<string, unknown> = {
       ...ctx.parameters,
       ...(config as Record<string, unknown>),
     };
-    if (parameters.recordManagement !== undefined) {
-      parameters.recordManagement = canonicalRecordManagement(
-        parameters.recordManagement,
-      );
-    }
+    parameters.recordManagement = wireRecordManagement(
+      parameters.recordManagement ?? 'strict',
+    );
     return [
       {
         id: ctx.id,

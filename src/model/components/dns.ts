@@ -11,7 +11,7 @@
  */
 import {ComponentNode, NodeState, newNode, guardrail} from '../core';
 import {
-  canonicalRecordManagement,
+  wireRecordManagement,
   recordManagementRefusal,
 } from './dns_record_management';
 import type {DnsRecordManagement} from './dns_record_management_mode';
@@ -82,7 +82,7 @@ export type DnsZoneGuardrails = {
    *   set removed from the declaration is deleted only if it is in the
    *   last-applied set (`managedRecords`) the previous pass recorded; if that
    *   state is lost, the record set is left in place.
-   * - `authoritative`: deprecated alias of `strict`, sent as `strict`.
+   * - `authoritative`: deprecated alias of `strict`. Both are sent as `authoritative`.
    *
    * `'additive'` (per-record ownership) is no longer supported: this SDK
    * refuses it, as do the control plane and the agents.
@@ -131,11 +131,11 @@ export type DnsZoneComponentNode<Id extends string = string> = ComponentNode<
     v: 'required' | 'optional' | 'disabled',
   ) => DnsZoneComponentNode<Id>;
   withRecordManagement: {
-    /** @deprecated Use `'strict'`, which `'authoritative'` is an alias of (and is sent as). */
+    /** @deprecated Use `'strict'`, which `'authoritative'` is an alias of. */
     (v: 'authoritative'): DnsZoneComponentNode<Id>;
     /** `'strict'` (the default when never called) or `'lax'`. */
     (v: 'strict' | 'lax'): DnsZoneComponentNode<Id>;
-    /** A value typed `DnsRecordManagement`; `'authoritative'` is sent as `'strict'`. */
+    /** A value typed `DnsRecordManagement`; `'strict'` is sent as `'authoritative'`. */
     (v: DnsRecordManagement): DnsZoneComponentNode<Id>;
   };
   withAllowedRecordTypes: (v: DnsRecordType[]) => DnsZoneComponentNode<Id>;
@@ -160,7 +160,7 @@ const dnsZoneNode = <Id extends string>(
       throw new Error(`withRecordManagement: ${refusal}`);
     }
     return dnsZoneNode<Id>(
-      guardrail(s, 'recordManagement', canonicalRecordManagement(v)),
+      guardrail(s, 'recordManagement', wireRecordManagement(v)),
     );
   },
   withAllowedRecordTypes: v =>

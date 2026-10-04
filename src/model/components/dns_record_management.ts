@@ -4,9 +4,18 @@
  * environment's DNS zones. Internal: not exported from the package.
  */
 
-/** What the SDK sends for a declared value: the deprecated alias as `'strict'`. */
-export const canonicalRecordManagement = <T>(value: T): T | 'strict' =>
-  value === 'authoritative' ? 'strict' : value;
+/**
+ * What the SDK sends for a declared value. Cloud agents up to 8.21 accept only
+ * `'authoritative'` and fail a zone carrying anything else, so `'strict'` (and
+ * the alias itself) goes on the wire as `'authoritative'`, which every agent
+ * reads as strict. Omitted is strict, so it is sent the same way: agents up to
+ * 8.21 hold a zone that does not say, while later ones read it as strict, and
+ * sending `'authoritative'` makes both behave alike. `'lax'` goes as chosen.
+ * The SDK sends `'strict'` only once every agent accepts it, as a coordinated
+ * change.
+ */
+export const wireRecordManagement = <T>(value: T): T | 'authoritative' =>
+  value === 'strict' ? 'authoritative' : value;
 
 /**
  * Why `value` cannot be a zone's `recordManagement`, or `undefined` when it can

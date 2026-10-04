@@ -11,6 +11,46 @@ of truth for what is on npm.
 
 ## Unreleased
 
+Nothing yet.
+
+## 2.9.7
+
+### Fixed — **2.9.6 regression: DNS zones failed on the cloud agents in service**
+
+2.9.6 sent `recordManagement: 'strict'` (for `'strict'` and for `'authoritative'`).
+Cloud agents up to 8.21 accept only `'authoritative'` and mark a zone carrying any
+other value Fatal, so every DNS zone deployed with 2.9.6 failed (its record sets
+were not changed).
+
+2.9.7 sends `'authoritative'`, which every agent reads as strict, for `'strict'`,
+for `'authoritative'` and when `recordManagement` is omitted, on every path
+(`withDnsZones`, `DnsZoneComponent.withRecordManagement`, an Interface operation or
+a raw guardrail reaching `AwsRoute53HostedZone`). `'lax'` is sent only when chosen;
+agents up to 8.21 refuse it and fail that zone without changing it. A wire-format
+test pins these values.
+
+**An omitted `recordManagement` is now sent as `'authoritative'`.** Agents up to
+8.21 held a zone that did not say and that holds record sets nobody declared and
+Fractal Cloud did not write (an adopted zone, one edited by hand, ACME
+`_acme-challenge` TXT records): nothing in it changed. Sent as `'authoritative'`,
+those record sets are deleted on the zone's next pass, as the newer agents do for
+an omitted key anyway. Before deploying with 2.9.7, declare `'lax'` (or list the
+records) on such a zone.
+
+The SDK switches to sending `'strict'` only once every agent accepts it: a
+coordinated future release, announced here.
+
+Also in this release:
+
+- `withRecordManagement('authoritative')` resolves to an overload marked
+  `@deprecated`, and a value typed `DnsRecordManagement` is accepted.
+- `DnsZoneOutputs.managedRecords` (`"<fqdn with trailing dot> <TYPE>"`) is typed.
+- The README and this file describe `lax` precisely: a record set removed from
+  the declaration is deleted only if it is in the last-applied set
+  (`managedRecords`) from the previous pass.
+
+## 2.9.6
+
 ### Added — **DNS zones: `recordManagement: 'strict' | 'lax'`**
 
 `DnsZoneGuardrails.recordManagement` (environment `withDnsZones` entries and

@@ -37,7 +37,7 @@ const zone = (extra: Partial<DnsZone> = {}): DnsZone => ({name: 'fractal.cloud',
 describe('DNS zone agents', () => {
   it('sends no selection when none is made: every DNS-capable agent hosts the zone', () => {
     const {management} = resolveEnvironment(mgmt().withDnsZones([zone()]));
-    expect(management.parameters.dnsZones).toEqual([{name: 'fractal.cloud'}]);
+    expect(management.parameters.dnsZones).toEqual([{name: 'fractal.cloud', recordManagement: 'authoritative'}]);
   });
 
   it('leaves DNSSEC across the default hosts to the control plane, which knows which agents host DNS zones', () => {
@@ -54,8 +54,8 @@ describe('DNS zone agents', () => {
       mgmt().withDnsZones([zone({agents: [gcp, ' Azure ']}), zone({name: 'aruba.cloud', agents: ['aria:Aruba', 'aria:_edge.1']})]),
     );
     expect(management.parameters.dnsZones).toEqual([
-      {name: 'fractal.cloud', agents: ['gcp', 'azure']},
-      {name: 'aruba.cloud', agents: ['aria:aruba', 'aria:_edge.1']},
+      {name: 'fractal.cloud', agents: ['gcp', 'azure'], recordManagement: 'authoritative'},
+      {name: 'aruba.cloud', agents: ['aria:aruba', 'aria:_edge.1'], recordManagement: 'authoritative'},
     ]);
   });
 
@@ -63,7 +63,7 @@ describe('DNS zone agents', () => {
     const agents: DnsZoneAgent[] = ['gcp'];
     const {management} = resolveEnvironment(mgmt().withDnsZones([zone({agents})]));
     agents.push('azure');
-    expect(management.parameters.dnsZones).toEqual([{name: 'fractal.cloud', agents: ['gcp']}]);
+    expect(management.parameters.dnsZones).toEqual([{name: 'fractal.cloud', agents: ['gcp'], recordManagement: 'authoritative'}]);
   });
 
   it('refuses an agent object the environment does not declare', () => {
@@ -117,7 +117,7 @@ describe('DNS zone agents', () => {
       .withDnsZones([zone({agents: [gcp]})]);
     const {management} = resolveEnvironment(env);
     expect(management.cloudAgents).toEqual([gcp]);
-    expect(management.parameters.dnsZones).toEqual([{name: 'fractal.cloud', agents: ['gcp']}]);
+    expect(management.parameters.dnsZones).toEqual([{name: 'fractal.cloud', agents: ['gcp'], recordManagement: 'authoritative'}]);
 
     const account = {provider: 'GCP' as const, region: 'europe-west1', projectId: 'prod-p'};
     const op = OperationalEnvironment({shortName: 'prod'})
@@ -149,7 +149,7 @@ describe('DNS zone agents', () => {
     );
   });
 
-  it('sends strict and lax as declared, and nothing when the zone does not say', () => {
+  it('sends strict and an unset value as authoritative, and lax as declared', () => {
     const {management} = resolveEnvironment(
       mgmt().withDnsZones([
         zone({recordManagement: 'strict'}),
@@ -158,13 +158,13 @@ describe('DNS zone agents', () => {
       ]),
     );
     expect(management.parameters.dnsZones).toEqual([
-      {name: 'fractal.cloud', recordManagement: 'strict'},
+      {name: 'fractal.cloud', recordManagement: 'authoritative'},
       {name: 'acme.cloud', recordManagement: 'lax'},
-      {name: 'other.cloud'},
+      {name: 'other.cloud', recordManagement: 'authoritative'},
     ]);
   });
 
-  it('still accepts the deprecated authoritative, sent as strict', () => {
+  it('still accepts the deprecated authoritative, sent as itself', () => {
     const op = OperationalEnvironment({shortName: 'prod'})
       .withResourceGroup(`Organizational/${OWNER}/rg`)
       .withDnsZones([zone({recordManagement: 'authoritative'})]);
@@ -172,10 +172,10 @@ describe('DNS zone agents', () => {
       mgmt().withDnsZones([zone({recordManagement: 'authoritative'})]).withOperationalEnvironment(op),
     );
     expect(tree.management.parameters.dnsZones).toEqual([
-      {name: 'fractal.cloud', recordManagement: 'strict'},
+      {name: 'fractal.cloud', recordManagement: 'authoritative'},
     ]);
     expect(tree.operationals[0].parameters.dnsZones).toEqual([
-      {name: 'fractal.cloud', recordManagement: 'strict'},
+      {name: 'fractal.cloud', recordManagement: 'authoritative'},
     ]);
   });
 });

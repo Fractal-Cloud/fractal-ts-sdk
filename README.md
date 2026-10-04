@@ -662,25 +662,21 @@ record sets the declaration does **not** list:
   is left in place); a declared name and type that already exists with other values
   is set to the declared values (the declaration wins for the names it declares).
 
-`'authoritative'` is a deprecated alias of `'strict'` (sent as `'strict'`).
+`'authoritative'` is a deprecated alias of `'strict'`. On the wire the SDK sends
+`'authoritative'` for `'strict'`, for `'authoritative'` and when the key is omitted,
+because cloud agents up to 8.21 accept only that value; `'lax'` is sent only when
+chosen. The SDK switches to sending `'strict'` once every agent accepts it, as a
+coordinated release.
 `'additive'` is gone: it is a type error and refused before anything is sent. Values
 are matched case-sensitively.
 
-> **Requires cloud agents that know `strict` and `lax`.** An older agent fails the
-> zone without changing it, including one declared `'authoritative'` (sent as
-> `'strict'`). On the new agents an **omitted** key means `strict`: a zone holding
-> record sets that nobody declared and Fractal Cloud did not write (an adopted zone,
-> one edited by hand, ACME `_acme-challenge` TXT records), which earlier agents held
-> untouched, has them deleted on its next pass. An upgraded agent acts on the
-> declaration already stored, so upgrade in this order:
->
-> 1. For every such zone, declare `recordManagement: 'lax'` (or list the records) and
->    deploy it.
-> 2. Then upgrade the cloud agents.
-> 3. Then deploy everything else with this version.
->
-> Between steps 1 and 2 the older agents refuse `'lax'` and fail those zones, without
-> changing them, until they are upgraded.
+> **`lax` requires cloud agents that know it**; older agents (up to 8.21) fail a
+> `lax` zone without changing it. An **omitted** key is sent as `'authoritative'`,
+> so it is strict on every agent: a zone holding record sets that nobody declared
+> and Fractal Cloud did not write (an adopted zone, one edited by hand, ACME
+> `_acme-challenge` TXT records), which agents up to 8.21 held untouched when the key
+> was omitted, has them deleted on its next pass. Declare `recordManagement: 'lax'`
+> (or list the records) on such a zone before deploying with this version.
 
 Use `lax` when something else writes into the zone, the usual case being ACME DNS-01:
 cert-manager or certbot creates `_acme-challenge` TXT records to prove control of the

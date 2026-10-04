@@ -49,7 +49,7 @@ import {
 } from './cloud_agents';
 import {dnsZoneAgentIds, validateDnsZoneAgents} from './dns_zone_agents';
 import {validateDnsZoneRecordManagement} from './dns_zone_record_management';
-import {canonicalRecordManagement} from '../components/dns_record_management';
+import {wireRecordManagement} from '../components/dns_record_management';
 
 const envRef = (id: EnvironmentId): OwnerRef => ({
   ownerType: id.type,
@@ -501,9 +501,9 @@ const buildParameters = (
       const agents = dnsZoneAgentIds(z);
       const zone: Record<string, unknown> =
         agents === undefined ? {...z} : {...z, agents};
-      if (z.recordManagement !== undefined) {
-        zone.recordManagement = canonicalRecordManagement(z.recordManagement);
-      }
+      zone.recordManagement = wireRecordManagement(
+        z.recordManagement ?? 'strict',
+      );
       return zone;
     });
   }

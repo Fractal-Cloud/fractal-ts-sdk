@@ -77,7 +77,7 @@ describe('DNS Zone component', () => {
     expect(zone.provider).toBe('AWS');
     expect(zone.parameters.adoptExisting).toBe(true);
     expect(zone.parameters.caaIssuers).toEqual(['letsencrypt.org']);
-    expect(zone.parameters.recordManagement).toBe('strict');
+    expect(zone.parameters.recordManagement).toBe('authoritative');
   });
 
   it('selecting an offer of another component is a type error AND throws', () => {
@@ -135,10 +135,10 @@ describe('DNS Zone component', () => {
       operations: () => ({}),
     }).blueprint.components[0].parameters.recordManagement;
 
-  it('strict and lax are recorded as declared', () => {
+  it('strict is recorded as authoritative, which every agent accepts; lax as declared', () => {
     expect(
       recordManagementOf(DnsZoneComponent({id: 'z'}).withRecordManagement('strict')),
-    ).toBe('strict');
+    ).toBe('authoritative');
     expect(
       recordManagementOf(DnsZoneComponent({id: 'z'}).withRecordManagement('lax')),
     ).toBe('lax');
@@ -155,10 +155,10 @@ describe('DNS Zone component', () => {
     expect('recordManagement' in params).toBe(false);
   });
 
-  it('authoritative is still accepted, and sent as strict', () => {
+  it('authoritative is still accepted, and sent as itself', () => {
     expect(
       recordManagementOf(DnsZoneComponent({id: 'z'}).withRecordManagement('authoritative')),
-    ).toBe('strict');
+    ).toBe('authoritative');
   });
 
   it('a lax zone reaches the Route 53 live component as declared', () => {
@@ -226,7 +226,7 @@ describe('DNS Zone component', () => {
     ).not.toThrow();
   });
 
-  it('an Interface operation setting authoritative reaches the Live System as strict', () => {
+  it('an Interface operation setting strict reaches the Live System as authoritative', () => {
     const fractal = createFractal({
       id: 'public-dns-op',
       version: {major: 1, minor: 0, patch: 0},
@@ -244,11 +244,12 @@ describe('DNS Zone component', () => {
         .specialize()
         .withRecordManagement(v)
         .toLiveSystem({name: 'dns', environment, select}).components[0].parameters;
-    expect(viaOp('authoritative').recordManagement).toBe('strict');
+    expect(viaOp('authoritative').recordManagement).toBe('authoritative');
+    expect(viaOp('strict').recordManagement).toBe('authoritative');
     expect(viaOp('lax').recordManagement).toBe('lax');
     const unset = fractal.toLiveSystem({name: 'dns', environment, select})
       .components[0].parameters;
-    expect('recordManagement' in unset).toBe(false);
+    expect(unset.recordManagement).toBe('authoritative');
   });
 
   it('matches values case-sensitively: Strict is refused, unlike the agents', () => {
