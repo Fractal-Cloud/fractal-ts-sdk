@@ -46,7 +46,10 @@ const cdnOf = (config: CloudFrontConfig, access: string | null = 'read') =>
     .toLiveSystem({
       name: 'site',
       environment,
-      select: {content: AwsS3({region: BUCKET_REGION}), cdn: AwsCloudFront(config)},
+      select: {
+        content: AwsS3({region: BUCKET_REGION}),
+        cdn: AwsCloudFront(config),
+      },
     })
     .components.find(c => c.id === 'cdn')!;
 
@@ -78,19 +81,29 @@ describe('AwsCloudFront — static site from an S3 bucket', () => {
 
   it('sends errorDocument only when set, for a classic static site', () => {
     expect(
-      cdnOf({aliases: ['docs.example.com'], errorDocument: '404.html'}).parameters,
+      cdnOf({aliases: ['docs.example.com'], errorDocument: '404.html'})
+        .parameters,
     ).toEqual({aliases: ['docs.example.com'], errorDocument: '404.html'});
     expect(
-      cdnOf({aliases: ['docs.example.com'], errorDocument: '404.html', spaFallback: false})
-        .parameters,
-    ).toEqual({aliases: ['docs.example.com'], errorDocument: '404.html', spaFallback: false});
+      cdnOf({
+        aliases: ['docs.example.com'],
+        errorDocument: '404.html',
+        spaFallback: false,
+      }).parameters,
+    ).toEqual({
+      aliases: ['docs.example.com'],
+      errorDocument: '404.html',
+      spaFallback: false,
+    });
   });
 
   it('accepts a read-write link: the distribution is granted read only', () => {
-    expect(() => cdnOf({aliases: ['a.example.com']}, 'read-write')).not.toThrow();
+    expect(() =>
+      cdnOf({aliases: ['a.example.com']}, 'read-write'),
+    ).not.toThrow();
   });
 
-  it('accepts a distribution declared in the bucket\'s own region', () => {
+  it("accepts a distribution declared in the bucket's own region", () => {
     expect(() =>
       cdnOf({aliases: ['a.example.com'], region: BUCKET_REGION}),
     ).not.toThrow();
@@ -183,7 +196,12 @@ describe('AwsCloudFront — static site from an S3 bucket', () => {
 
   it.each([
     ['a write link', {aliases: ['a.example.com']}, 'write', /reads it/],
-    ['a blank access', {aliases: ['a.example.com']}, '', /declares no 'access'/],
+    [
+      'a blank access',
+      {aliases: ['a.example.com']},
+      '',
+      /declares no 'access'/,
+    ],
     [
       'an unknown access',
       {aliases: ['a.example.com']},
@@ -276,7 +294,11 @@ describe('AwsCloudFront — static site from an S3 bucket', () => {
     ],
     [
       'errorDocument together with spaFallback',
-      {aliases: ['a.example.com'], errorDocument: '404.html', spaFallback: true},
+      {
+        aliases: ['a.example.com'],
+        errorDocument: '404.html',
+        spaFallback: true,
+      },
       'read',
       /errorDocument .* spaFallback|spaFallback .* errorDocument/,
     ],
@@ -365,6 +387,49 @@ describe('AwsCloudFront — static site from an S3 bucket', () => {
       }),
     ).toThrow(/exactly one origin/);
   });
+
+  it.each([
+    [
+      'an NLB TLS listener',
+      {
+        tlsCertificateArn:
+          'arn:aws:acm:eu-central-1:111122223333:certificate/abc-123',
+      },
+    ],
+    [
+      'Traefik TLS whose certificate does not cover the alias',
+      {host: 'api.example.com', tlsClusterIssuer: 'letsencrypt'},
+    ],
+    ['no TLS at all', {host: 'api.example.com'}],
+  ])(
+    'reports two origins first for a bucket and a gateway with %s',
+    (_why, gateway) => {
+      const f = createFractal({
+        id: 'site',
+        version: {major: 1, minor: 0, patch: 0},
+        boundedContextId,
+        blueprint: bp => {
+          const content = bp.add(ObjectStorage({id: 'content'}));
+          const traefik = bp.add(ApiGateway({id: 'traefik'}));
+          const cdn = bp.add(ApiGateway({id: 'cdn'}));
+          bp.link(cdn, content, {access: 'read'});
+          bp.link(cdn, traefik);
+          return {content, traefik, cdn};
+        },
+      });
+      expect(() =>
+        f.toLiveSystem({
+          name: 'site',
+          environment,
+          select: {
+            content: AwsS3({}),
+            traefik: TraefikGateway(gateway),
+            cdn: AwsCloudFront({aliases: ['a.example.com']}),
+          },
+        }),
+      ).toThrow(/^Live component 'cdn': serve from exactly one origin/);
+    },
+  );
 
   it('refuses two buckets', () => {
     const f = createFractal({

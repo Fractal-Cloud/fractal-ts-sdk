@@ -362,16 +362,6 @@ export const AwsCloudFront = defineOffer<
       );
     }
     const vpcOrigin = gateways.length === 1;
-    const tlsGateway = gateways.find(
-      g => g.parameters.tlsCertificateArn !== undefined,
-    );
-    if (tlsGateway !== undefined) {
-      throw new Error(
-        `Live component '${self.id}': a CloudFront VPC origin cannot reach an NLB with ` +
-          `a TLS listener, so the gateway '${tlsGateway.id}' behind it stays TCP-only: ` +
-          'drop its tlsCertificateArn.',
-      );
-    }
     const originDomain = config.originDomain?.trim() ?? '';
     const customOrigin = originDomain !== '';
     if (customOrigin && !HOST_NAME.test(originDomain)) {
@@ -389,6 +379,17 @@ export const AwsCloudFront = defineOffer<
       throw new Error(
         `Live component '${self.id}': serve from exactly one origin: a linked bucket, ` +
           'a linked gateway or originDomain.',
+      );
+    }
+    // Which origin is wrong comes after whether there is exactly one.
+    const tlsGateway = gateways.find(
+      g => g.parameters.tlsCertificateArn !== undefined,
+    );
+    if (tlsGateway !== undefined) {
+      throw new Error(
+        `Live component '${self.id}': a CloudFront VPC origin cannot reach an NLB with ` +
+          `a TLS listener, so the gateway '${tlsGateway.id}' behind it stays TCP-only: ` +
+          'drop its tlsCertificateArn.',
       );
     }
     if (target !== undefined && (customOrigin || vpcOrigin || bucketOrigin)) {

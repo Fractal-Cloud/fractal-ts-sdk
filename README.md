@@ -1038,6 +1038,27 @@ one of the two intents.
 |---|---|---|---|---|
 | `ApiGateway` | `AwsCloudFront` | `AzureApiManagement` | `GcpApiGateway` | `Ambassador` · `Traefik` · `TraefikGateway` |
 
+#### `AwsCloudFront` origins
+
+A distribution serves exactly one of: a linked `AwsS3` bucket (a static site), a
+linked `TraefikGateway` or `Traefik` (a VPC origin), an `originDomain`, or
+`redirectTo`. For a static site, link the distribution to the bucket with
+`{access: 'read'} satisfies ObjectStorageLink` (`read-write` is accepted and granted
+read only; the bucket may be a reference). The agent serves it through an origin
+access control, with directory indexes and compression. Optional site keys, sent only
+when set and accepted only with a bucket origin:
+
+| Key | Default |
+|---|---|
+| `defaultRootObject` | `index.html` (the object for `/` and every `<path>/`) |
+| `spaFallback` | unset: answer a missing key with the root object and 200 when `true` |
+| `errorDocument` | unset: the object served with 404 for a missing key; excludes `spaFallback` |
+
+Object keys are letters, digits and `._/-`, with no leading `/` or `.`, no `..`, at
+most 255 characters. A bucket and a distribution that both declare `region`
+differently are refused. The bucket origin and its keys need cloud agents v8.22.0 or
+later.
+
 #### `TraefikGateway` (`APIManagement.CaaS.TraefikGateway`, caas-k8s agent)
 
 Traefik v3.6 installed by Helm on the cluster. On EKS it sits behind an internal
