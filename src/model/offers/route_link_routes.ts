@@ -7,6 +7,9 @@
  */
 import {isKubernetesName} from './caas_param_checks';
 
+/** The largest index `strconv.Atoi` reads on a 64-bit agent. */
+const MAX_INT64 = 9223372036854775807n;
+
 /** One route of a route link: what the gateway matches and rewrites ('' = unset). */
 type LinkRoute = {prefix: string; rewritePath: string; host: string};
 
@@ -60,8 +63,13 @@ export const parseRouteLink = (
     const rest = key.slice('routes.'.length);
     const dot = rest.indexOf('.');
     const index = dot < 0 ? '' : rest.slice(0, dot);
-    // strconv.Atoi's grammar (an optional sign), and no negative index.
-    if (!/^[+-]?\d+$/.test(index) || Number(index) < 0) {
+    // strconv.Atoi's grammar (an optional sign) and range (int64), and no
+    // negative index.
+    if (
+      !/^[+-]?\d+$/.test(index) ||
+      BigInt(index) < 0n ||
+      BigInt(index) > MAX_INT64
+    ) {
       throw new Error(`route setting "${key}" is not routes.<n>.<field>`);
     }
     const field = rest.slice(dot + 1);

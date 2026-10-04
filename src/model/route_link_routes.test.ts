@@ -60,6 +60,10 @@ describe('parseRouteLink', () => {
     ],
     [{'routes.3.host': 'a.b'}, /routes\.3\.prefix is required/],
     [
+      {'routes.9223372036854775808.prefix': '/a'},
+      /route setting "routes.9223372036854775808.prefix" is not routes.<n>.<field>/,
+    ],
+    [
       {'routes.-1.prefix': '/a'},
       /route setting "routes.-1.prefix" is not routes.<n>.<field>/,
     ],
