@@ -177,7 +177,8 @@ Validation, mirroring the agent:
 - The link takes `access` only. `read` and `read-write` are accepted (the distribution
   is granted read only). `write`, a missing `access`, and any other key such as
   `accessMode` are refused.
-- A bucket declared in another region than the distribution is refused.
+- A bucket and a distribution that both declare `region`, differently, are refused
+  (the agent also refuses a mismatch with the environment's default region).
 - `defaultRootObject` and `errorDocument` must be object keys: letters, digits and
   `._/-`, no leading `/` or `.`, no `..`, at most 255 characters.
 - The site keys are refused without a bucket origin: on a redirect, on a distribution

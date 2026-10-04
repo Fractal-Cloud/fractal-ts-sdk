@@ -159,7 +159,7 @@ const siteBucketOrigin = (
   }
   for (const {link, target} of buckets) {
     const others = Object.keys(link.settings)
-      .filter(k => k !== ACCESS_SETTING)
+      .filter(k => k !== ACCESS_SETTING && link.settings[k] !== undefined)
       .sort();
     if (others.length > 0) {
       throw new Error(
@@ -221,7 +221,7 @@ const siteBucketOrigin = (
   );
   if (declared.length > 0 && !bucketOrigin) {
     throw new Error(
-      `Live component '${self.id}': ${declared.join(', ')} apply to a linked bucket origin only.`,
+      `Live component '${self.id}': ${declared.join(', ')} ${declared.length === 1 ? 'applies' : 'apply'} to a linked bucket origin only.`,
     );
   }
   return bucketOrigin;
