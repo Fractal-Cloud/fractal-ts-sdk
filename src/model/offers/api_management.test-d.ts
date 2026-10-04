@@ -15,3 +15,8 @@ AwsCloudFront({
 AwsCloudFront({spaFallback: 'true'});
 // @ts-expect-error `rootObject` is not a key of this config — the agent reads `defaultRootObject`.
 AwsCloudFront({rootObject: 'index.html'});
+
+// A classic static site: the object served with 404 for a missing key.
+AwsCloudFront({aliases: ['docs.example.com'], errorDocument: '404.html'});
+// @ts-expect-error `notFoundPage` is not a key of this config — the agent reads `errorDocument`.
+AwsCloudFront({notFoundPage: '404.html'});
