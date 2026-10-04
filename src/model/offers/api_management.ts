@@ -18,6 +18,8 @@ import {
   gatewayCertificateHosts,
   isCertificateHost,
 } from './certificate_hosts';
+import {TRAEFIK_GATEWAY_OFFER_TYPE} from './offer_type_ids';
+import {routesOfLink} from './route_link_routes';
 import type {TraefikGatewayConfig} from './traefik_gateway_config';
 
 // ── ApiGateway ───────────────────────────────────────────────────────────────
@@ -77,7 +79,6 @@ const redirectRefusal = (target: string): string | undefined => {
 
 /** The gateway offer types a CloudFront distribution may link to as its VPC origin. */
 const TRAEFIK_OFFER_TYPE = 'APIManagement.CaaS.Traefik';
-const TRAEFIK_GATEWAY_OFFER_TYPE = 'APIManagement.CaaS.TraefikGateway';
 const VPC_ORIGIN_GATEWAY_TYPES = [
   TRAEFIK_GATEWAY_OFFER_TYPE,
   TRAEFIK_OFFER_TYPE,
@@ -312,6 +313,8 @@ export const AwsCloudFront = defineOffer<
     if (
       origin !== undefined &&
       certificateHosts !== undefined &&
+      // No hosts at all is the gateway's own refusal (TLS needs the hosts).
+      certificateHosts.length > 0 &&
       config.originProtocol !== 'http'
     ) {
       const uncovered = (config.aliases ?? []).find(
@@ -358,7 +361,6 @@ export const Ambassador = defineOffer<
 const TRAEFIK_GATEWAY_LISTS = [
   'forwardAuthRequestHeaders',
   'forwardAuthResponseHeaders',
-  'forwardAuthExcludedPrefixes',
   'forwardAuthExemptComponentIds',
   'tlsHosts',
   'loadBalancerSourceRanges',
@@ -373,7 +375,6 @@ const ensureValidForwardAuth = (
     forwardAuthResponseHeaders?: readonly string[];
     forwardAuthForwardBody?: boolean;
     forwardAuthMaxBodySize?: number;
-    forwardAuthExcludedPrefixes?: readonly string[];
     forwardAuthExemptComponentIds?: readonly string[];
   },
 ): void => {
@@ -406,15 +407,6 @@ const ensureValidForwardAuth = (
       refuse(id, `${key} holds '${bad}', which is not a header name`);
     }
   }
-  const badPrefix = (config.forwardAuthExcludedPrefixes ?? []).find(
-    p => !p.startsWith('/') || p.includes(','),
-  );
-  if (badPrefix !== undefined) {
-    refuse(
-      id,
-      `forwardAuthExcludedPrefixes holds '${badPrefix}', which is not a path prefix`,
-    );
-  }
   const badExempt = (config.forwardAuthExemptComponentIds ?? []).find(
     c =>
       c.trim() === '' ||
@@ -437,34 +429,11 @@ const ensureValidForwardAuth = (
   }
 };
 
-/**
- * The explicit route hosts of a workload -> gateway route link. As the agent
- * reads it, a nested `routes` array, when present, replaces the flat
- * `routes.<n>.*` keys.
- */
-const routeHostsOf = (settings: Record<string, unknown>): string[] => {
-  const hosts: string[] = [];
-  const nested = settings.routes;
-  if (Array.isArray(nested)) {
-    for (const route of nested) {
-      if (
-        typeof route === 'object' &&
-        route !== null &&
-        'host' in route &&
-        typeof route.host === 'string'
-      ) {
-        hosts.push(route.host);
-      }
-    }
-  } else {
-    for (const [key, value] of Object.entries(settings)) {
-      if (/^routes\.\d+\.host$/.test(key) && typeof value === 'string') {
-        hosts.push(value);
-      }
-    }
-  }
-  return hosts.map(h => h.trim()).filter(h => h !== '');
-};
+/** The explicit route hosts of a route link (a route without one takes the gateway's `host`). */
+const routeHostsOf = (settings: Record<string, unknown>): string[] =>
+  routesOfLink(settings)
+    .map(r => r.host ?? '')
+    .filter(h => h !== '');
 
 /**
  * On a TLS gateway every route host must be covered by its certificate: the
@@ -560,7 +529,7 @@ const ensureValidTraefikTls = (
     config.host !== undefined &&
     !certificateCovers(
       hosts.map(h => h.trim()),
-      config.host,
+      config.host.trim(),
     )
   ) {
     refuse(
@@ -597,9 +566,10 @@ export const Traefik = defineOffer<
  * `entryPoint` (`web` while plain HTTP is served, else `websecure`),
  * `loadBalancerHostname`, `forwardAuthEnabled`, `forwardAuthMiddlewareName` /
  * `forwardAuthMiddlewareNamespace` (with ForwardAuth),
- * `forwardAuthExcludedPrefixes`, `forwardAuthExemptComponents` (qualified
+ * `forwardAuthExemptComponents` (qualified
  * `<liveSystemId>/<componentId>`, always), `tlsEnabled`, `plainHttpEnabled`
- * (always), `tlsEntryPoint`, `tlsSecretName`, `tlsHosts` (with TLS),
+ * (always), `tlsEntryPoint`, `tlsSecretName`, `tlsHosts`,
+ * `tlsCertificateExpiresAt` (with TLS),
  * `tlsCertificateName` (`traefik-tls`, when the gateway requested the
  * Certificate).
  */
@@ -632,6 +602,13 @@ export const TraefikGateway = defineOffer<
     ];
   },
   validate: (self, all, config) => {
+    if (config.forwardAuthExcludedPrefixes !== undefined) {
+      refuse(
+        self.id,
+        'forwardAuthExcludedPrefixes was removed: the agent no longer reads it and a path ' +
+          'never exempts a route. Exempt workloads with forwardAuthExemptComponentIds',
+      );
+    }
     ensureNamespace(self.id, config.namespace);
     // An empty list travels as a blank string, which the agent reads as unset:
     // it would apply its default (e.g. still exempt `ocelot`) rather than none.

@@ -27,3 +27,10 @@ export const KUBERNETES_WORKLOAD_OFFER_TYPE =
  */
 export const AZURE_CONTAINER_APPS_ENVIRONMENT_OFFER_TYPE =
   'NetworkAndCompute.PaaS.AzureContainerAppsEnvironment';
+
+/**
+ * The caas-k8s Traefik gateway. Two offer modules name it: the offer lives in
+ * `api_management.ts`, and `KubePrometheusStack` (`observability.ts`) checks the
+ * Grafana route link it may carry to one.
+ */
+export const TRAEFIK_GATEWAY_OFFER_TYPE = 'APIManagement.CaaS.TraefikGateway';

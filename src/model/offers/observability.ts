@@ -18,6 +18,8 @@ import {
 import type {GrafanaAlloyConfig} from './grafana_alloy_config';
 import type {GrafanaObjectStorageBackendConfig} from './grafana_object_storage_backend_config';
 import type {KubePrometheusStackConfig} from './kube_prometheus_stack_config';
+import {TRAEFIK_GATEWAY_OFFER_TYPE} from './offer_type_ids';
+import {routesOfLink} from './route_link_routes';
 import type {SqsExporterConfig} from './sqs_exporter_config';
 
 // ── Observability.Monitoring offers ──────────────────────────────────────────
@@ -68,7 +70,9 @@ const SQS_QUEUE_URL =
 /**
  * Neutral parameters of `Monitoring` and `Tracing` that no agent reads: no
  * observability offer declares them, so the platform would prune them before any
- * agent saw them. They are refused instead of being dropped in silence.
+ * agent saw them. They are refused instead of being dropped in silence. A key
+ * that is present with the value `undefined` (e.g. `withScrapeInterval(undefined)`
+ * past the type) is refused too: the call is the mistake, whatever its value.
  */
 const UNHONORED_NEUTRAL_KEYS = ['scrapeInterval', 'samplingRate'] as const;
 
@@ -163,12 +167,53 @@ const ensureDatasource = (id: string, key: string, value?: string): void => {
 };
 
 /**
+ * Grafana's routes on a `TraefikGateway` (a route link, as a workload's): the
+ * agent serves Grafana at `/` and strips the sub-path itself, so a sub-path must
+ * end with `/` and no route may set `rewritePath`. A referenced gateway is
+ * checked too: the rule is about the link, not the gateway.
+ */
+const ensureGrafanaRoutes = (
+  self: LiveSystemComponent,
+  all: readonly LiveSystemComponent[],
+): void => {
+  for (const link of self.links) {
+    const gateway = all.find(c => c.id === link.componentId);
+    if (gateway === undefined || gateway.type !== TRAEFIK_GATEWAY_OFFER_TYPE) {
+      continue;
+    }
+    for (const route of routesOfLink(link.settings)) {
+      const prefix = route.prefix ?? '';
+      if (route.rewritePath !== undefined && route.rewritePath !== '') {
+        refuse(
+          self.id,
+          `Grafana route ${route.host ?? ''}${prefix} sets rewritePath; the agent strips the sub-path itself`,
+        );
+      }
+      if (prefix !== '/' && !prefix.endsWith('/')) {
+        refuse(
+          self.id,
+          `Grafana route prefix '${prefix}' must end with "/" (for example /grafana/)`,
+        );
+      }
+    }
+  }
+};
+
+/**
  * kube-prometheus-stack: Prometheus, Alertmanager and Grafana (chart 91.9.0,
  * objects `kps-*`), selecting every ServiceMonitor and PrometheusRule in the
  * cluster.
  *
+ * Grafana may be routed through a `TraefikGateway` with a route link, as a
+ * workload's (`bp.link(stack, gateway, gatewayRouteSettings({routes: [{prefix:
+ * '/grafana/'}]}))`): the agent routes to `kps-grafana:80`, strips the sub-path
+ * (which must end with `/`) and sets Grafana's `root_url`. The route goes
+ * through ForwardAuth unless the gateway's `forwardAuthExemptComponentIds`
+ * lists this component.
+ *
  * Output fields: `namespace`, `releaseName`, `chartVersion`, `prometheusUrl`,
- * `alertmanagerUrl`, `grafanaUrl`, `grafanaAdminSecretName`.
+ * `alertmanagerUrl`, `grafanaUrl`, `grafanaAdminSecretName`, `storageClassName`
+ * (the class the volume was created with, kept), `gatewayRoutes`.
  */
 export const KubePrometheusStack = defineOffer<
   'Observability.Monitoring',
@@ -177,11 +222,12 @@ export const KubePrometheusStack = defineOffer<
   satisfies: 'Observability.Monitoring',
   offerType: 'Observability.CaaS.KubePrometheusStack',
   deliveryModel: 'CaaS',
-  validate: (self, _all, config) => {
+  validate: (self, all, config) => {
     ensureNoUnhonoredKeys(self);
     ensureNamespace(self.id, config.namespace);
     ensureStorageClass(self.id, config.storageClassName);
     ensureRetention(self);
+    ensureGrafanaRoutes(self, all);
     if (
       config.prometheusStorageGi !== undefined &&
       !isWholeAtLeastOne(config.prometheusStorageGi)
@@ -202,7 +248,7 @@ export const KubePrometheusStack = defineOffer<
  * `access: 'read-write'`), through its own Pod Identity role.
  *
  * Output fields: `namespace`, `releaseName`, `chartVersion`, `url`, `pushUrl`,
- * `bucketName`, `retentionDays`, `serviceAccountName`, `podIdentityRoleArn`,
+ * `bucketName`, `retentionDays`, `storageClassName`, `serviceAccountName`, `podIdentityRoleArn`,
  * `podIdentityAssociationId`, `workloadRoleName`, `workloadRoleArn`,
  * `workloadRoleDrift`.
  */
@@ -259,6 +305,7 @@ export const GrafanaAlloy = defineOffer<
  *
  * Output fields: `namespace`, `releaseName`, `chartVersion`, `url`,
  * `otlpGrpcEndpoint`, `otlpHttpEndpoint`, `bucketName`, `retentionDays`,
+ * `storageClassName`,
  * `serviceAccountName`, `podIdentityRoleArn`, `podIdentityAssociationId`,
  * `workloadRoleName`, `workloadRoleArn`, `workloadRoleDrift`.
  */
@@ -298,10 +345,13 @@ export const SqsExporter = defineOffer<
   offerType: 'Observability.CaaS.SqsExporter',
   deliveryModel: 'CaaS',
   instantiate: (ctx, config) => {
-    const {queueUrls, ...rest} = config;
+    const {queueUrls, imagePullSecrets, ...rest} = config;
     const params: Record<string, unknown> = {...ctx.parameters, ...rest};
     if (queueUrls !== undefined) {
       params.queueUrls = queueUrls.join(',');
+    }
+    if (imagePullSecrets !== undefined) {
+      params.imagePullSecrets = imagePullSecrets.join(',');
     }
     return [
       {
@@ -325,13 +375,30 @@ export const SqsExporter = defineOffer<
       );
     }
     if (
+      config.imagePullSecrets !== undefined &&
+      config.imagePullSecrets.length === 0
+    ) {
+      refuse(
+        self.id,
+        'imagePullSecrets is an empty list: it is sent blank, which the agent reads as unset; omit it',
+      );
+    }
+    const badSecret = (config.imagePullSecrets ?? []).find(
+      n => !isKubernetesName(n.trim()),
+    );
+    if (badSecret !== undefined) {
+      refuse(
+        self.id,
+        `imagePullSecrets entry '${badSecret}' is not a Secret name`,
+      );
+    }
+    if (
       config.nodeSelector !== undefined &&
       Object.keys(config.nodeSelector).length === 0
     ) {
       refuse(
         self.id,
-        'nodeSelector is empty: the agent reads an empty selector as unset and keeps its default; ' +
-          'name the labels the pods need',
+        'nodeSelector is empty: the agent reads an empty selector as unset; omit it',
       );
     }
     const badUrl = (config.queueUrls ?? []).find(
@@ -353,7 +420,7 @@ export const SqsExporter = defineOffer<
     if (config.image !== undefined && config.image.trim() === '') {
       refuse(
         self.id,
-        `image '${config.image}' is blank: omit it for the pinned default`,
+        `image '${config.image}' is blank: omit it for the agent's own image`,
       );
     }
     for (const [key, value] of Object.entries(config.nodeSelector ?? {})) {

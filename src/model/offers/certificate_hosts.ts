@@ -18,15 +18,16 @@ export const isCertificateHost = (host: string): boolean => {
 /**
  * Whether a certificate for `hosts` is valid for `host`, as a TLS client checks
  * it: an exact name, case-insensitively, or `*.parent` standing for exactly one
- * label in front of `parent`.
+ * label in front of `parent`. Callers pass values already trimmed as the agent
+ * that reads them trims them.
  */
 export const certificateCovers = (
   hosts: readonly string[],
   host: string,
 ): boolean => {
-  const wanted = host.trim().replace(/\.$/, '').toLowerCase();
+  const wanted = host.replace(/\.$/, '').toLowerCase();
   return hosts.some(h => {
-    const name = h.trim().replace(/\.$/, '').toLowerCase();
+    const name = h.replace(/\.$/, '').toLowerCase();
     if (name === wanted) {
       return true;
     }

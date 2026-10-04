@@ -267,6 +267,12 @@ describe('SqsExporter', () => {
     ).not.toThrow();
   });
 
+  it('carries imagePullSecrets comma-separated', () => {
+    expect(
+      exporter({imagePullSecrets: ['dockerhub', 'mirror-pull']}).parameters,
+    ).toEqual({imagePullSecrets: 'dockerhub,mirror-pull'});
+  });
+
   it('watches only queueUrls when no queue is linked', () => {
     expect(exporter({queueUrls: [QUEUE_URL]}, false).parameters.queueUrls).toBe(
       QUEUE_URL,
@@ -295,6 +301,11 @@ describe('SqsExporter', () => {
     [{monitorIntervalSeconds: 1.5}, /monitorIntervalSeconds 1.5 is not/],
     [{image: ' '}, /image ' ' is blank/],
     [{queueUrls: []}, /queueUrls is an empty list/],
+    [{imagePullSecrets: []}, /imagePullSecrets is an empty list/],
+    [
+      {imagePullSecrets: ['Docker_Hub']},
+      /imagePullSecrets entry 'Docker_Hub' is not a Secret name/,
+    ],
     [{nodeSelector: {}}, /nodeSelector is empty/],
     [
       {nodeSelector: {'kubernetes.io/arch': 64}},
@@ -1013,5 +1024,112 @@ describe('TLS gateway certificate coverage', () => {
         select: {traefik: TraefikGateway(TLS), orders: K8sWorkload({})},
       }),
     ).not.toThrow();
+  });
+});
+
+// ── CloudFront aliases: wildcards, case, trimming, and a gateway without hosts ─
+describe('CloudFront alias coverage edge cases', () => {
+  const edge = (
+    aliases: string[],
+    gatewayConfig: Parameters<typeof TraefikGateway>[0],
+  ) =>
+    createFractal({
+      id: 'platform-edge-first',
+      version,
+      boundedContextId,
+      blueprint: bp => {
+        // The distribution is validated before the gateway.
+        const cdn = bp.add(ApiGateway({id: 'cdn'}));
+        const traefik = bp.add(ApiGateway({id: 'traefik'}));
+        bp.link(cdn, traefik);
+        return {cdn, traefik};
+      },
+    }).toLiveSystem({
+      name: 'platform',
+      environment,
+      select: {
+        cdn: AwsCloudFront({aliases}),
+        traefik: TraefikGateway(gatewayConfig),
+      },
+    });
+  const TLS = {
+    host: 'api.fractal.cloud',
+    tlsClusterIssuer: 'letsencrypt',
+    tlsHosts: ['api.fractal.cloud', '*.apps.fractal.cloud'],
+  };
+
+  it('accepts case-folded and padded aliases the certificate covers, through its wildcard too', () => {
+    expect(() =>
+      edge([' API.Fractal.Cloud ', 'X.Apps.Fractal.Cloud.'], TLS),
+    ).not.toThrow();
+  });
+
+  it('refuses an alias two labels below a wildcard', () => {
+    expect(() => edge(['a.b.apps.fractal.cloud'], TLS)).toThrow(
+      /alias a.b.apps.fractal.cloud is not covered by the certificate of gateway 'traefik'/,
+    );
+  });
+
+  it('refuses a wildcard alias, which the agent does not accept as a host name', () => {
+    expect(() => edge(['*.apps.fractal.cloud'], TLS)).toThrow(
+      /aliases holds '\*.apps.fractal.cloud', not a host name/,
+    );
+  });
+
+  it("leaves a TLS gateway without hosts to the gateway's own refusal", () => {
+    expect(() =>
+      edge(['api.fractal.cloud'], {tlsClusterIssuer: 'letsencrypt'}),
+    ).toThrow(
+      /^Live component 'traefik': TLS needs the hosts the certificate covers/,
+    );
+  });
+});
+
+// ── Grafana route: KubePrometheusStack -> TraefikGateway ──────────────────────
+describe('KubePrometheusStack route link to a TraefikGateway', () => {
+  const routedGrafana = (route: {prefix: string; rewritePath?: string}) =>
+    createFractal({
+      id: 'platform-grafana',
+      version,
+      boundedContextId,
+      blueprint: bp => {
+        const traefik = bp.add(ApiGateway({id: 'traefik'}));
+        const prometheus = bp.add(Monitoring({id: 'prometheus'}));
+        bp.link(prometheus, traefik, gatewayRouteSettings({routes: [route]}));
+        return {traefik, prometheus};
+      },
+    }).toLiveSystem({
+      name: 'platform',
+      environment,
+      select: {
+        traefik: TraefikGateway({host: 'api.fractal.cloud'}),
+        prometheus: KubePrometheusStack({}),
+      },
+    });
+
+  it('carries the workload route settings', () => {
+    expect(
+      only(routedGrafana({prefix: '/grafana/'}).components, 'prometheus').links,
+    ).toEqual([
+      {componentId: 'traefik', settings: {'routes.0.prefix': '/grafana/'}},
+    ]);
+  });
+
+  it('accepts the root prefix', () => {
+    expect(() => routedGrafana({prefix: '/'})).not.toThrow();
+  });
+
+  it('refuses a sub-path that does not end with a slash', () => {
+    expect(() => routedGrafana({prefix: '/grafana'})).toThrow(
+      /Grafana route prefix '\/grafana' must end with "\/" \(for example \/grafana\/\)/,
+    );
+  });
+
+  it('refuses a rewritePath: the agent strips the sub-path itself', () => {
+    expect(() =>
+      routedGrafana({prefix: '/grafana/', rewritePath: '/'}),
+    ).toThrow(
+      /Grafana route \/grafana\/ sets rewritePath; the agent strips the sub-path itself/,
+    );
   });
 });

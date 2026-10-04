@@ -14,15 +14,14 @@ export type SqsExporterConfig = {
   /** Seconds between two reads of the queue attributes; the agent defaults to 30. */
   monitorIntervalSeconds?: number;
   /**
-   * Exporter image. Unset (the SDK sends nothing), the agent's pinned default
-   * applies; the SDK deliberately does not repeat it, so a new agent default
-   * (e.g. a multi-arch image) reaches existing Live Systems unchanged.
+   * Exporter image with the exporter as its entrypoint. Unset (the SDK sends
+   * nothing): the agent's own multi-arch (amd64 and arm64) release image, run
+   * as `sqs-exporter`. That image is private on Docker Hub: give the namespace a
+   * pull secret (`imagePullSecrets`) or set this to a mirror.
    */
   image?: string;
-  /**
-   * Pod nodeSelector, a non-empty label map. Unset (the SDK sends nothing), the
-   * agent's default applies, matched to its default image. Set it together with
-   * `image` when the image supports only some architectures.
-   */
+  /** Secrets in the namespace to pull the image with. Sent comma-separated. */
+  imagePullSecrets?: readonly string[];
+  /** Pod nodeSelector, a non-empty label map. Unset: none. */
   nodeSelector?: Readonly<Record<string, string>>;
 };

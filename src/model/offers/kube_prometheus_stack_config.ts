@@ -8,8 +8,12 @@ export type KubePrometheusStackConfig = {
   /** Namespace of the release; the agent defaults to `monitoring`. */
   namespace?: string;
   /**
-   * StorageClass of Prometheus' volume. Unset, the volume is ephemeral (EKS Auto
-   * Mode has no default StorageClass).
+   * StorageClass of Prometheus' volume. Unset on EKS: `fractal-gp3`, which the agent creates
+   * when absent (encrypted gp3, EKS Auto Mode's EBS CSI driver,
+   * WaitForFirstConsumer), if that CSI driver exists; otherwise the volume is
+   * ephemeral, so set it on EKS without Auto Mode. The class chosen is
+   * published as the `storageClassName` output and kept: a release installed
+   * earlier without that output stays ephemeral.
    */
   storageClassName?: string;
   /** Size of Prometheus' volume in GiB, with `storageClassName`; the agent defaults to 50. */

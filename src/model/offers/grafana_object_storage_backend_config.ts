@@ -10,8 +10,12 @@ export type GrafanaObjectStorageBackendConfig = {
   /** Namespace of the release; the agent defaults to `monitoring`. */
   namespace?: string;
   /**
-   * StorageClass of a volume for the write-ahead log. Unset, it is ephemeral (EKS
-   * Auto Mode has no default StorageClass).
+   * StorageClass of a volume for the write-ahead log. Unset on EKS: `fractal-gp3`, which the agent creates
+   * when absent (encrypted gp3, EKS Auto Mode's EBS CSI driver,
+   * WaitForFirstConsumer), if that CSI driver exists; otherwise the volume is
+   * ephemeral, so set it on EKS without Auto Mode. The class chosen is
+   * published as the `storageClassName` output and kept: a release installed
+   * earlier without that output stays ephemeral.
    */
   storageClassName?: string;
   /** Chart values deep-merged over the agent's, for operators. */

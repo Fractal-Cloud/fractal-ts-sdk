@@ -26,9 +26,10 @@ defaults are the agent's and the SDK sends only what you set.
   while building the Live System.
 - **`SqsExporter`** (`Observability.CaaS.SqsExporter`) on `Monitoring`. Keys:
   `namespace` (`monitoring`), `queueUrls` (string[], sent comma-separated),
-  `monitorIntervalSeconds` (`30`), `image` and `nodeSelector` (both unset by
-  default: the SDK sends nothing and the agent's default image and selector apply;
-  an empty selector is refused, as the agent would read it as unset). Link it,
+  `monitorIntervalSeconds` (`30`), `image` (unset: the agent's own multi-arch
+  release image, private on Docker Hub), `imagePullSecrets` (string[], sent
+  comma-separated) and `nodeSelector` (unset: none; an empty selector is refused,
+  as the agent would read it as unset). The SDK sends no default. Link it,
   without settings, to
   the `AwsSqsQueue` components it watches (references included); an exporter with
   neither a linked queue nor `queueUrls` is refused.
@@ -58,6 +59,14 @@ defaults are the agent's and the SDK sends only what you set.
   gain `storageClassName` and `values`; `GrafanaAlloy` gains `lokiPushUrl` and
   `values`. Retention stays the component's `withRetentionDays` (agent defaults 15 /
   14 / 7).
+- **Grafana route**: `KubePrometheusStack` may link to a `TraefikGateway` with the
+  workload route settings (`gatewayRouteSettings({routes: [{prefix: '/grafana/'}]})`);
+  a sub-path not ending with `/`, or a `rewritePath`, is refused.
+- **Documented outputs** of caas-k8s #43: `storageClassName` on
+  `KubePrometheusStack`, `GrafanaLoki` and `GrafanaTempo` (unset on EKS, the agent
+  uses its `fractal-gp3` class when the EBS CSI driver of Auto Mode exists),
+  `tlsCertificateExpiresAt` on `TraefikGateway`, `gatewayRoutes` on
+  `KubePrometheusStack`.
 - The config types are exported: `CertManagerConfig`, `SqsExporterConfig`,
   `TraefikGatewayConfig`, `KubePrometheusStackConfig`,
   `GrafanaObjectStorageBackendConfig`, `GrafanaAlloyConfig`.
@@ -89,7 +98,7 @@ built.
 ### Changed (agent behavior) — ForwardAuth exempts workloads, not paths
 
 With caas-k8s agents of this contract, a gateway with `forwardAuthAddress` no longer
-exempts routes by path. The old default, `forwardAuthExcludedPrefixes`
+exempts routes by path. The old default of the removed `forwardAuthExcludedPrefixes`,
 `/ocelot/,/grafana/,/prometheus/,/alertmanager/`, served those paths without
 authentication; now only the routes of the workloads in
 `forwardAuthExemptComponentIds` (default `ocelot`, of the gateway's own Live System)
@@ -114,11 +123,11 @@ A URL with a malformed percent-escape (`%` not followed by two hex digits) is
 refused for `acmeServer`, `forwardAuthAddress`, `lokiPushUrl`, `lokiUrl`, `tempoUrl`
 and `queueUrls`. A queue URL may now carry a `#fragment`, which the agent accepts.
 
-### Deprecated — `TraefikGateway({forwardAuthExcludedPrefixes})`
+### Removed (BREAKING) — `TraefikGateway({forwardAuthExcludedPrefixes})`
 
-The agent keeps the key only for routes it writes for its own add-ons (none exist)
-and never applies it to a workload route. It still compiles and is still sent.
-Exempt workloads with `forwardAuthExemptComponentIds`.
+The caas-k8s agent removed the key and its output. Its type is now `never`, and a
+value that still reaches the gateway (plain JavaScript, a cast) is refused while
+building the Live System. Exempt workloads with `forwardAuthExemptComponentIds`.
 
 ### Added — **DNS zones: `recordManagement: 'strict' | 'lax'`**
 

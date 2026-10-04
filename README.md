@@ -1046,7 +1046,7 @@ comma-separated. Defaults are the agent's; the SDK sends only what you set.
 | `forwardAuthForwardBody` | boolean | `true` |
 | `forwardAuthMaxBodySize` | number | `1048576` |
 | `forwardAuthExemptComponentIds` | string[] | `ocelot`: workloads whose own routes skip ForwardAuth, a bare component id of the gateway's Live System or `<liveSystemId>/<componentId>` |
-| `forwardAuthExcludedPrefixes` | string[] | **deprecated**: never applied to workload routes any more |
+| `forwardAuthExcludedPrefixes` | — | **removed** from the agent; setting it is refused (a type error, and refused at runtime) |
 | `values` | object | none (chart values deep-merged over the agent's) |
 
 Traefik terminates TLS itself when `tlsSecretName` (explicit, or defaulted from
@@ -1087,10 +1087,11 @@ is not a CIDR.
 Output fields: `namespace`, `serviceName`, `releaseName`, `host`, `entryPoint`
 (`web` while plain HTTP is served, else `websecure`), `loadBalancerHostname`,
 `forwardAuthEnabled`, `forwardAuthMiddlewareName` / `forwardAuthMiddlewareNamespace`
-(with ForwardAuth), `forwardAuthExcludedPrefixes`, `forwardAuthExemptComponents`
-(always, qualified), `tlsEnabled` and `plainHttpEnabled` (always), `tlsEntryPoint`,
-`tlsSecretName`, `tlsHosts` (with TLS), `tlsCertificateName` (when the gateway
-requested the Certificate).
+(with ForwardAuth), `forwardAuthExemptComponents` (always, qualified), `tlsEnabled`
+and `plainHttpEnabled` (always), `tlsEntryPoint`, `tlsSecretName`, `tlsHosts`,
+`tlsCertificateExpiresAt` (with TLS), `tlsCertificateName` (when the gateway
+requested the Certificate). The gateway stays in progress until the served
+certificate covers every `tlsHosts` entry and has not expired.
 
 ### Observability (self-hosted, CaaS)
 
@@ -1112,10 +1113,28 @@ component's neutral `withRetentionDays` (sent as `retentionDays`), not an offer 
 
 | Offer | Keys (agent defaults) | Links and dependencies |
 |---|---|---|
-| `KubePrometheusStack` (`Observability.CaaS.KubePrometheusStack`) | `namespace`, `storageClassName` (none = ephemeral), `prometheusStorageGi` (`50`), `lokiUrl` / `tempoUrl` (the Loki / Tempo service in the namespace; `none` = no datasource), `alertRules`, `alertmanagerConfig`, `values`; `retentionDays` `15` | none |
-| `GrafanaLoki` (`Observability.CaaS.GrafanaLoki`) | `namespace`, `storageClassName` (none = ephemeral WAL), `values`; `retentionDays` `14` | exactly one link to an `AwsS3` bucket with `{access: 'read-write'}` |
+| `KubePrometheusStack` (`Observability.CaaS.KubePrometheusStack`) | `namespace`, `storageClassName` (see below), `prometheusStorageGi` (`50`), `lokiUrl` / `tempoUrl` (the Loki / Tempo service in the namespace; `none` = no datasource), `alertRules`, `alertmanagerConfig`, `values`; `retentionDays` `15` | optional route link to a `TraefikGateway` for Grafana (below) |
+| `GrafanaLoki` (`Observability.CaaS.GrafanaLoki`) | `namespace`, `storageClassName` (see below), `values`; `retentionDays` `14` | exactly one link to an `AwsS3` bucket with `{access: 'read-write'}` |
 | `GrafanaTempo` (`Observability.CaaS.GrafanaTempo`) | as Loki; `retentionDays` `7` | as Loki |
 | `GrafanaAlloy` (`Observability.CaaS.GrafanaAlloy`) | `namespace`, `lokiPushUrl` (none = the `pushUrl` of the Loki it depends on), `values` | a dependency on a `GrafanaLoki` component, unless `lokiPushUrl` is set |
+
+Without `storageClassName`, `KubePrometheusStack`, `GrafanaLoki` and `GrafanaTempo`
+on EKS use `fractal-gp3`, which the agent creates when absent (encrypted gp3, EKS
+Auto Mode's EBS CSI driver, `WaitForFirstConsumer`), provided that CSI driver
+exists; otherwise their volumes are ephemeral, so set `storageClassName` on EKS
+without Auto Mode. The class chosen is published as the `storageClassName` output
+and kept: a release installed before that output stays ephemeral.
+
+Grafana can be routed through a `TraefikGateway` with the workload route link:
+
+```ts
+bp.link(prometheus, gateway, gatewayRouteSettings({routes: [{prefix: '/grafana/'}]}));
+```
+
+The agent routes to `kps-grafana:80` and strips the sub-path, which must end with
+`/` (a `rewritePath` is refused); the route goes through ForwardAuth unless the
+gateway's `forwardAuthExemptComponentIds` lists the stack. `KubePrometheusStack`
+then publishes `gatewayRoutes`.
 
 #### `SqsExporter` (`Observability.CaaS.SqsExporter`)
 
@@ -1130,12 +1149,13 @@ may only `sqs:GetQueueAttributes` on those exact queues.
 | `namespace` | string | `monitoring` |
 | `queueUrls` | string[] | none: queues watched besides the linked ones (`https://sqs.<region>.amazonaws.com/<account>/<name>`) |
 | `monitorIntervalSeconds` | number | `30` |
-| `image` | string | unset: the agent's pinned default image |
-| `nodeSelector` | `Record<string, string>` (non-empty) | unset: the agent's default, matched to its default image |
+| `image` | string | unset: the agent's own multi-arch (amd64 and arm64) release image |
+| `imagePullSecrets` | string[] | none: Secrets in the namespace to pull the image with |
+| `nodeSelector` | `Record<string, string>` (non-empty) | none |
 
-The SDK never sends a default for `image` or `nodeSelector`, so a change of the
-agent's default image (the caas-k8s agent is moving from an amd64-only image to a
-multi-arch one for Graviton clusters) reaches every exporter that leaves them unset.
+The agent's own image is private on Docker Hub: give the namespace a pull secret
+(`imagePullSecrets`) or set `image` to a mirror. The SDK sends no `image` or
+`nodeSelector` unless you set them, so the agent's default always applies.
 
 An exporter with no linked queue and no `queueUrls` is refused. Metrics:
 `sqs_approximatenumberofmessages`, `…_delayed`, `…_notvisible`, label `queue`;

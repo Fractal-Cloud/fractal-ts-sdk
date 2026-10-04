@@ -73,12 +73,11 @@ export type TraefikGatewayConfig = {
   /** Largest body forwarded to the auth service, in bytes; default 1048576. */
   forwardAuthMaxBodySize?: number;
   /**
-   * @deprecated Never applied to a workload's route any more: path prefixes no
-   * longer exempt anything from ForwardAuth. The agent reserves it for routes it
-   * writes for its own add-on backends (none exist yet). Exempt a workload with
+   * @deprecated Removed: the agent no longer reads it, and a path never exempts
+   * a route from ForwardAuth. Setting it is refused; exempt workloads with
    * `forwardAuthExemptComponentIds`.
    */
-  forwardAuthExcludedPrefixes?: readonly string[];
+  forwardAuthExcludedPrefixes?: never;
   /**
    * Workloads whose own routes skip ForwardAuth; default `ocelot`. A bare
    * component id is a workload of the gateway's own Live System, otherwise
