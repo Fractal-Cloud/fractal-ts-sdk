@@ -5,7 +5,7 @@
  *   - the caas-k8s observability offers (kube-prometheus-stack, Loki, Tempo, Alloy).
  */
 import {describe, it, expect} from 'vitest';
-import {createFractal} from './core';
+import {addDependency, createFractal} from './core';
 import {Logging, Monitoring, Tracing} from './components/observability';
 import {ObjectStorage, RelationalDbms} from './components/storage';
 import {
@@ -90,16 +90,31 @@ describe('caas-k8s observability offers', () => {
       id: 'platform-observability',
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
-      blueprint: bp => ({
-        metrics: bp.add(Monitoring({id: 'metrics'})),
-        logs: bp.add(Logging({id: 'logs'})),
-        shipper: bp.add(Logging({id: 'shipper'})),
-        traces: bp.add(Tracing({id: 'traces'})),
-      }),
+      blueprint: bp => {
+        const chunks = bp.add(ObjectStorage({id: 'chunks'}));
+        const metrics = bp.add(Monitoring({id: 'metrics'}));
+        const logs = bp.add(Logging({id: 'logs'}));
+        const shipper = Logging({id: 'shipper'});
+        const traces = bp.add(Tracing({id: 'traces'}));
+        bp.link(logs, chunks, {access: 'read-write'});
+        bp.link(traces, chunks, {access: 'read-write'});
+        return {
+          chunks,
+          metrics,
+          logs,
+          // Alloy ships to the Loki it depends on.
+          shipper: bp.add({
+            ...shipper,
+            state: addDependency(shipper.state, 'logs'),
+          }),
+          traces,
+        };
+      },
     }).toLiveSystem({
       name: 'platform',
       environment,
       select: {
+        chunks: AwsS3({}),
         metrics: KubePrometheusStack({namespace: 'monitoring'}),
         logs: GrafanaLoki({namespace: 'monitoring'}),
         shipper: GrafanaAlloy({namespace: 'monitoring'}),
@@ -109,10 +124,11 @@ describe('caas-k8s observability offers', () => {
     expect(
       ls.components.map(c => [c.id, c.type, c.deliveryModel, c.provider]),
     ).toEqual([
+      ['chunks', 'Storage.PaaS.AwsS3', 'PaaS', 'AWS'],
       ['metrics', 'Observability.CaaS.KubePrometheusStack', 'CaaS', undefined],
       ['logs', 'Observability.CaaS.GrafanaLoki', 'CaaS', undefined],
-      ['shipper', 'Observability.CaaS.GrafanaAlloy', 'CaaS', undefined],
       ['traces', 'Observability.CaaS.GrafanaTempo', 'CaaS', undefined],
+      ['shipper', 'Observability.CaaS.GrafanaAlloy', 'CaaS', undefined],
     ]);
   });
 });

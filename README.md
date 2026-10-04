@@ -745,6 +745,26 @@ for (const zone of dns?.zones ?? []) {
   before the call: the API would answer 404, which would read as a missing
   environment.
 
+#### Deleting many record sets at once: `allowBulkDelete`
+
+Cloud agents v8.22.0 and later guard a zone against mass deletion: a pass that
+would delete at least 3 record sets **and** more than half of the zone is refused
+and reported instead of applied. When such a deletion is intended, declare
+`allowBulkDelete: true` on the zone (the `withDnsZones` entry, or
+`DnsZoneComponent.withAllowBulkDelete(true)`):
+
+```ts
+env.withDnsZones([{name: 'fractal.cloud', records, allowBulkDelete: true}]);
+```
+
+It applies once per declaration change: the agent records a fingerprint of the
+declaration when it applies the bulk delete, and while the declaration stays the
+same the guard applies again and the agent reports that the flag should be
+removed. Remove it afterwards. The default is `false`, and omitted, nothing is
+sent. Only agents v8.22.0 and later accept the key; do not declare it on an
+environment whose agents are older. A value that is not a boolean is refused
+before anything is sent.
+
 ---
 
 ## Deploy from CI
@@ -1016,15 +1036,177 @@ one of the two intents.
 
 | Component | AWS | Azure | GCP | Self-hosted |
 |---|---|---|---|---|
-| `ApiGateway` | `AwsCloudFront` | `AzureApiManagement` | `GcpApiGateway` | `Ambassador` · `Traefik` |
+| `ApiGateway` | `AwsCloudFront` | `AzureApiManagement` | `GcpApiGateway` | `Ambassador` · `Traefik` · `TraefikGateway` |
+
+#### `AwsCloudFront` origins
+
+A distribution serves exactly one of: a linked `AwsS3` bucket (a static site), a
+linked `TraefikGateway` or `Traefik` (a VPC origin), an `originDomain`, or
+`redirectTo`. For a static site, link the distribution to the bucket with
+`{access: 'read'} satisfies ObjectStorageLink` (`read-write` is accepted and granted
+read only; the bucket may be a reference). The agent serves it through an origin
+access control, with directory indexes and compression. Optional site keys, sent only
+when set and accepted only with a bucket origin:
+
+| Key | Default |
+|---|---|
+| `defaultRootObject` | `index.html` (the object for `/` and every `<path>/`) |
+| `spaFallback` | unset: answer a missing key with the root object and 200 when `true` |
+| `errorDocument` | unset: the object served with 404 for a missing key; excludes `spaFallback` |
+
+Object keys are letters, digits and `._/-`, with no leading `/` or `.`, no `..`, at
+most 255 characters. A bucket and a distribution that both declare `region`
+differently are refused. The bucket origin and its keys need cloud agents v8.22.0 or
+later.
+
+#### `TraefikGateway` (`APIManagement.CaaS.TraefikGateway`, caas-k8s agent)
+
+Traefik v3.6 installed by Helm on the cluster. On EKS it sits behind an internal
+NLB that stays TCP only. List values are arrays in the SDK and travel
+comma-separated. Defaults are the agent's; the SDK sends only what you set.
+
+| Key | Type | Default |
+|---|---|---|
+| `namespace` | string | `traefik` |
+| `replicas` | number | `2` |
+| `chartVersion` | string | `39.0.9` (Traefik v3.6.15) |
+| `host` | string | none (default host of every route) |
+| `internalLoadBalancer` | boolean | `true` |
+| `tlsCertificateArn` | string | none (NLB TLS listener; not behind a CloudFront VPC origin, not with Traefik TLS) |
+| `tlsClusterIssuer` | string | none: cert-manager ClusterIssuer the gateway requests its Certificate `traefik-tls` from |
+| `tlsSecretName` | string | `traefik-tls` with `tlsClusterIssuer`, else none (set alone: an operator-provided certificate) |
+| `tlsHosts` | string[] | `[host]`: exact names or `*.one-label` wildcards; must cover `host`, every route host and every viewer host CloudFront forwards |
+| `plainHttp` | boolean | `true` without TLS, `false` with TLS (`false` without TLS is refused) |
+| `entryPointIdleTimeoutSeconds` | number | `75` |
+| `loadBalancerSourceRanges` | string[] (CIDRs) | none |
+| `forwardAuthAddress` | string (http(s) URL) | none = no ForwardAuth |
+| `forwardAuthRequestHeaders` | string[] | `authorization,cookie,x-clientid,x-clientsecret,origin` |
+| `forwardAuthResponseHeaders` | string[] | `x-jwt` |
+| `forwardAuthForwardBody` | boolean | `true` |
+| `forwardAuthMaxBodySize` | number | `1048576` |
+| `forwardAuthExemptComponentIds` | string[] | `ocelot`: workloads whose own routes skip ForwardAuth, a bare component id of the gateway's Live System or `<liveSystemId>/<componentId>` |
+| `forwardAuthExcludedPrefixes` | — | **removed** from the agent; setting it is refused (a type error, and refused at runtime) |
+| `values` | object | none (chart values deep-merged over the agent's) |
+
+Traefik terminates TLS itself when `tlsSecretName` (explicit, or defaulted from
+`tlsClusterIssuer`) is set: TCP 443 passes through the NLB to `websecure`, which is
+what a CloudFront VPC origin can reach with `originProtocol: 'https'`. To move a
+gateway to TLS without downtime, enable it with `plainHttp: true`, switch CloudFront
+to `https`, then drop `plainHttp`.
+
+```ts
+TraefikGateway({
+  host: 'api.fractal.cloud',
+  tlsClusterIssuer: 'letsencrypt',        // a CertManager's clusterIssuerName
+  plainHttp: true,                        // only while CloudFront still uses http
+  forwardAuthAddress: 'http://ocelot.security.svc.cluster.local:8080/',
+  forwardAuthExemptComponentIds: [`${liveSystemIdOf(platform, 'ocelot')}/ocelot`],
+});
+```
+
+An empty list is refused for every list key: it would travel blank, which the agent
+reads as unset and replaces with its default (`forwardAuthExemptComponentIds: []`
+would still exempt `ocelot`). Path prefixes no longer exempt a workload route: the
+old default `/grafana/`, `/prometheus/`, `/alertmanager/` exemptions are gone, so
+those routes are authenticated unless their workload is listed.
+
+With TLS, every route host a workload link names (`routes.<n>.host`) and, while
+CloudFront reaches the gateway over `https`, every `AwsCloudFront` alias must be
+covered by the certificate (`tlsHosts`, else `host`; `*.parent` covers exactly one
+label), checked when the gateway is in the same Live System. An `AwsCloudFront`
+that reaches a same-Live-System gateway without TLS over `https` (its default) is
+refused: that load balancer has no listener on 443.
+
+Refused while building the Live System: `tlsHosts` or `plainHttp: false` without
+TLS, `tlsCertificateArn` with Traefik TLS, TLS without `tlsHosts` or `host`, a
+malformed certificate host, a `host` the certificate does not cover, an invalid
+Kubernetes name, an exempt id that starts or ends with `/`, and a source range that
+is not a CIDR.
+
+Output fields: `namespace`, `serviceName`, `releaseName`, `host`, `entryPoint`
+(`web` while plain HTTP is served, else `websecure`), `loadBalancerHostname`,
+`forwardAuthEnabled`, `forwardAuthMiddlewareName` / `forwardAuthMiddlewareNamespace`
+(with ForwardAuth), `forwardAuthExemptComponents` (always, qualified), `tlsEnabled`
+and `plainHttpEnabled` (always), `tlsEntryPoint`, `tlsSecretName`, `tlsHosts`,
+`tlsCertificateExpiresAt` (with TLS), `tlsCertificateName` (when the gateway
+requested the Certificate). The gateway stays in progress until the served
+certificate covers every `tlsHosts` entry and has not expired.
 
 ### Observability (self-hosted, CaaS)
 
+`Monitoring.withScrapeInterval` and `Tracing.withSamplingRate` are deprecated: no
+agent reads `scrapeInterval` or `samplingRate`, so every Monitoring and Tracing offer
+refuses a Live System that sets them instead of letting the platform drop them.
+
 | Component | Offer |
 |---|---|
-| `Monitoring` | `Prometheus` |
-| `Tracing` | `Jaeger` |
-| `Logging` | `ObservabilityElastic` |
+| `Monitoring` | `Prometheus` · `KubePrometheusStack` · `SqsExporter` |
+| `Tracing` | `Jaeger` · `GrafanaTempo` |
+| `Logging` | `ObservabilityElastic` · `GrafanaLoki` · `GrafanaAlloy` |
+
+#### The caas-k8s Grafana stack
+
+Installed by the caas-k8s agent with Helm; namespace default `monitoring`. No
+CloudWatch anywhere: Grafana has no CloudWatch datasource. The retention is the
+component's neutral `withRetentionDays` (sent as `retentionDays`), not an offer key.
+
+| Offer | Keys (agent defaults) | Links and dependencies |
+|---|---|---|
+| `KubePrometheusStack` (`Observability.CaaS.KubePrometheusStack`) | `namespace`, `storageClassName` (see below), `prometheusStorageGi` (`50`), `lokiUrl` / `tempoUrl` (the Loki / Tempo service in the namespace; `none` = no datasource), `alertRules`, `alertmanagerConfig`, `values`; `retentionDays` `15` | optional route link to a `TraefikGateway` for Grafana (below) |
+| `GrafanaLoki` (`Observability.CaaS.GrafanaLoki`) | `namespace`, `storageClassName` (see below), `values`; `retentionDays` `14` | exactly one link to an `AwsS3` bucket with `{access: 'read-write'}` |
+| `GrafanaTempo` (`Observability.CaaS.GrafanaTempo`) | as Loki; `retentionDays` `7` | as Loki |
+| `GrafanaAlloy` (`Observability.CaaS.GrafanaAlloy`) | `namespace`, `lokiPushUrl` (none = the `pushUrl` of the Loki it depends on), `values` | a dependency on a `GrafanaLoki` component, unless `lokiPushUrl` is set |
+
+Without `storageClassName`, `KubePrometheusStack`, `GrafanaLoki` and `GrafanaTempo`
+on EKS use `fractal-gp3`, which the agent creates when absent (encrypted gp3, EKS
+Auto Mode's EBS CSI driver, `WaitForFirstConsumer`), provided that CSI driver
+exists; otherwise their volumes are ephemeral, so set `storageClassName` on EKS
+without Auto Mode. The class chosen is published as the `storageClassName` output
+and kept: a release installed before that output stays ephemeral.
+
+Grafana can be routed through a `TraefikGateway` with the workload route link:
+
+```ts
+bp.link(prometheus, gateway, gatewayRouteSettings({routes: [{prefix: '/grafana/'}]}));
+```
+
+The agent routes to `kps-grafana:80` and strips the sub-path, which must end with
+`/` (a `rewritePath` is refused); the route goes through ForwardAuth unless the
+gateway's `forwardAuthExemptComponentIds` lists the stack. `KubePrometheusStack`
+then publishes `gatewayRoutes`.
+
+#### `SqsExporter` (`Observability.CaaS.SqsExporter`)
+
+A Prometheus exporter of SQS queue depth (EKS only), scraped by
+`KubePrometheusStack` through a ServiceMonitor. Link it (no settings) to every
+`AwsSqsQueue` it watches, references to other Live Systems' queues included: it
+watches the queue and, once published, its dead-letter queue. Its Pod Identity role
+may only `sqs:GetQueueAttributes` on those exact queues.
+
+| Key | Type | Default |
+|---|---|---|
+| `namespace` | string | `monitoring` |
+| `queueUrls` | string[] | none: queues watched besides the linked ones (`https://sqs.<region>.amazonaws.com/<account>/<name>`) |
+| `monitorIntervalSeconds` | number | `30` |
+| `image` | string | unset: the agent's own multi-arch (amd64 and arm64) release image |
+| `imagePullSecrets` | string[] | none: Secrets in the namespace to pull the image with |
+| `nodeSelector` | `Record<string, string>` (non-empty) | none |
+
+The agent's own image is private on Docker Hub: give the namespace a pull secret
+(`imagePullSecrets`) or set `image` to a mirror. The SDK sends no `image` or
+`nodeSelector` unless you set them, so the agent's default always applies.
+
+An exporter with no linked queue and no `queueUrls` is refused. Metrics:
+`sqs_approximatenumberofmessages`, `…_delayed`, `…_notvisible`, label `queue`;
+alert on dead letters with `KubePrometheusStack({alertRules})`.
+
+#### Pod Identity role outputs
+
+`K8sWorkload`, `CertManager`, `GrafanaLoki`, `GrafanaTempo` and `SqsExporter`
+publish, besides `podIdentityRoleArn` / `podIdentityAssociationId`, the output fields
+`workloadRoleName`, `workloadRoleArn` and `workloadRoleDrift` (`{"corrected": [...],
+"at": "<RFC 3339>"}`, the last trust-policy or permissions-boundary correction). Read
+them from `liveSystems.state(...)` like any other output field.
 
 ### Security
 
@@ -1032,6 +1214,35 @@ one of the two intents.
 |---|---|---|
 | `ServiceMesh` | — | `Ocelot` |
 | `IdentityProvider` | `Cognito` | `Keycloak` |
+| `CertificateManager` | — | `CertManager` |
+
+#### `CertManager` (`Security.CaaS.CertManager`, caas-k8s agent)
+
+cert-manager v1.21.2 (pinned by the agent, not a parameter) on EKS, with a Let's
+Encrypt ClusterIssuer that solves DNS-01 in Route 53 by assuming a zone role. A
+`TraefikGateway` names its issuer in `tlsClusterIssuer`.
+
+| Key | Type | Default |
+|---|---|---|
+| `hostedZoneId` | string | required: Route 53 zone id (`Z...`) |
+| `role` | string | required: zone role ARN (`arn:aws:iam::<account>:role/...`) |
+| `email` | string | required: ACME account email |
+| `acmeServer` | `'production' \| 'staging' \| 'https://...'` | `production` |
+| `clusterIssuerName` | string | `letsencrypt` |
+| `namespace` | string | `cert-manager` |
+
+```ts
+CertManager({
+  hostedZoneId: 'Z0123456789ABCDEFGHIJ',
+  role: 'arn:aws:iam::111122223333:role/fractal-acme-dns01',
+  email: 'platform@example.com',
+});
+```
+
+Output fields: `namespace`, `releaseName`, `chartVersion`, `clusterIssuerName`,
+`acmeServer` (the directory URL), `hostedZoneId`, `role`, `serviceAccountName`,
+`podIdentityRoleArn`, `podIdentityAssociationId`, plus the Pod Identity role outputs
+listed under Observability.
 
 ### Unmanaged (external / SaaS)
 

@@ -11,6 +11,7 @@
  */
 import {ComponentNode, NodeState, newNode, guardrail} from '../core';
 import {recordManagementRefusal} from './dns_record_management';
+import {allowBulkDeleteRefusal} from './dns_bulk_delete';
 import type {DnsRecordManagement} from './dns_record_management_mode';
 
 /** Record types a DNS zone may declare (SOA always belongs to the provider). */
@@ -94,6 +95,18 @@ export type DnsZoneGuardrails = {
   caaIssuers?: string[];
   /** Whether NS records below the apex may be declared. Default false. */
   allowSubdomainDelegation?: boolean;
+  /**
+   * One-shot override of the agents' mass-delete guard. Default false: an agent
+   * refuses a pass that would delete at least 3 record sets AND more than half
+   * of the zone, and reports it instead of deleting. `true` lets one such pass
+   * through. It applies once per declaration change: the agent records a
+   * fingerprint of the declaration when it applies a bulk delete, and while the
+   * declaration stays the same the guard applies again and the agent reports
+   * that the flag should be removed. Remove it afterwards.
+   *
+   * Accepted only by cloud agents v8.22.0 and later.
+   */
+  allowBulkDelete?: boolean;
 };
 
 /** Output fields every DNS zone offer publishes. */
@@ -136,6 +149,8 @@ export type DnsZoneComponentNode<Id extends string = string> = ComponentNode<
   }) => DnsZoneComponentNode<Id>;
   withCaaIssuers: (v: string[]) => DnsZoneComponentNode<Id>;
   withSubdomainDelegation: (v: boolean) => DnsZoneComponentNode<Id>;
+  /** See `DnsZoneGuardrails.allowBulkDelete` (cloud agents v8.22.0 and later). */
+  withAllowBulkDelete: (v: boolean) => DnsZoneComponentNode<Id>;
 };
 const dnsZoneNode = <Id extends string>(
   s: NodeState,
@@ -179,6 +194,13 @@ const dnsZoneNode = <Id extends string>(
   withCaaIssuers: v => dnsZoneNode<Id>(guardrail(s, 'caaIssuers', v)),
   withSubdomainDelegation: v =>
     dnsZoneNode<Id>(guardrail(s, 'allowSubdomainDelegation', v)),
+  withAllowBulkDelete: v => {
+    const refusal = allowBulkDeleteRefusal(v);
+    if (refusal !== undefined) {
+      throw new Error(`withAllowBulkDelete: ${refusal}`);
+    }
+    return dnsZoneNode<Id>(guardrail(s, 'allowBulkDelete', v));
+  },
 });
 /**
  * Named `DnsZoneComponent` because `DnsZone` is already the environment's DNS

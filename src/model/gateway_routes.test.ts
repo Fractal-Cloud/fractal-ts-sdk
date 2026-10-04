@@ -262,7 +262,10 @@ describe('repeated route declarations to one gateway', () => {
         bp.link(
           service,
           gateway,
-          gatewayRouteSettings({routes: [{prefix: '/accounts'}], retryAttempts: 2}),
+          gatewayRouteSettings({
+            routes: [{prefix: '/accounts'}],
+            retryAttempts: 2,
+          }),
         );
         return {gateway, service};
       },
@@ -272,15 +275,29 @@ describe('repeated route declarations to one gateway', () => {
       }),
     });
   const select = {
-    gateway: referenceTo(TraefikGateway, {liveSystemId: OWNER_LS, componentId: 'traefik'}),
+    gateway: referenceTo(TraefikGateway, {
+      liveSystemId: OWNER_LS,
+      componentId: 'traefik',
+    }),
     service: K8sWorkload({}),
   };
 
   it('merge into ONE link, appending the routes', () => {
     const service = routed()
       .specialize()
-      .withRoute({routes: [{prefix: '/members'}, {prefix: '/swagger/accounts', rewritePath: '/swagger/v1.0/swagger.json'}]})
-      .withRoute({routes: [{prefix: '/site', host: 'fractal.cloud'}], retryAttempts: 2})
+      .withRoute({
+        routes: [
+          {prefix: '/members'},
+          {
+            prefix: '/swagger/accounts',
+            rewritePath: '/swagger/v1.0/swagger.json',
+          },
+        ],
+      })
+      .withRoute({
+        routes: [{prefix: '/site', host: 'fractal.cloud'}],
+        retryAttempts: 2,
+      })
       .toLiveSystem({name: 'accounts', environment, select})
       .components.find(c => c.id === 'service')!;
     expect(service.links).toEqual([
@@ -301,28 +318,42 @@ describe('repeated route declarations to one gateway', () => {
 
   it('refuses a merge whose timeouts or retries contradict the link so far', () => {
     expect(() =>
-      routed().specialize().withRoute({routes: [{prefix: '/members'}], retryAttempts: 0}),
+      routed()
+        .specialize()
+        .withRoute({routes: [{prefix: '/members'}], retryAttempts: 0}),
     ).toThrow(/retryAttempts '0' contradicts '2'/);
   });
 
   it('refuses a merge that adds a timeout the earlier routes did not ask for', () => {
     expect(() =>
-      routed().specialize().withRoute({routes: [{prefix: '/members'}], responseTimeoutMs: 10000}),
-    ).toThrow(/responseTimeoutMs would also apply to the routes declared before/);
+      routed()
+        .specialize()
+        .withRoute({routes: [{prefix: '/members'}], responseTimeoutMs: 10000}),
+    ).toThrow(
+      /responseTimeoutMs would also apply to the routes declared before/,
+    );
   });
 
   it('treats host names case-insensitively when spotting a repeated route', () => {
     expect(() =>
       routed()
         .specialize()
-        .withRoute({routes: [{prefix: '/a', host: 'Fractal.Cloud'}], retryAttempts: 2})
-        .withRoute({routes: [{prefix: '/a', host: 'fractal.cloud'}], retryAttempts: 2}),
+        .withRoute({
+          routes: [{prefix: '/a', host: 'Fractal.Cloud'}],
+          retryAttempts: 2,
+        })
+        .withRoute({
+          routes: [{prefix: '/a', host: 'fractal.cloud'}],
+          retryAttempts: 2,
+        }),
     ).toThrow(/'\/a' twice/);
   });
 
   it('refuses a merge that routes the same prefix and host again', () => {
     expect(() =>
-      routed().specialize().withRoute({routes: [{prefix: '/accounts'}]}),
+      routed()
+        .specialize()
+        .withRoute({routes: [{prefix: '/accounts'}]}),
     ).toThrow(/'\/accounts' twice/);
   });
 });
@@ -348,7 +379,6 @@ describe('TraefikGateway ForwardAuth (ocelot)', () => {
         forwardAuthResponseHeaders: ['x-jwt'],
         forwardAuthForwardBody: true,
         forwardAuthMaxBodySize: 1048576,
-        forwardAuthExcludedPrefixes: ['/ocelot/', '/grafana/'],
       }).parameters,
     ).toEqual({
       forwardAuthAddress: 'http://ocelot.security.svc:8080/auth',
@@ -356,21 +386,43 @@ describe('TraefikGateway ForwardAuth (ocelot)', () => {
       forwardAuthResponseHeaders: 'x-jwt',
       forwardAuthForwardBody: true,
       forwardAuthMaxBodySize: 1048576,
-      forwardAuthExcludedPrefixes: '/ocelot/,/grafana/',
     });
   });
 
   it.each([
-    ['an address that is not an http(s) URL', {forwardAuthAddress: 'ocelot:8080'}, /forwardAuthAddress/],
-    ['ForwardAuth settings without an address', {forwardAuthForwardBody: true}, /without forwardAuthAddress/],
+    [
+      'an address that is not an http(s) URL',
+      {forwardAuthAddress: 'ocelot:8080'},
+      /forwardAuthAddress/,
+    ],
+    [
+      'ForwardAuth settings without an address',
+      {forwardAuthForwardBody: true},
+      /without forwardAuthAddress/,
+    ],
     [
       'an address carrying credentials, without echoing them',
       {forwardAuthAddress: 'http://user:s3cret@ocelot/auth'},
       /forwardAuthAddress is not an http\(s\) URL without credentials/,
     ],
-    ['a zero body size', {forwardAuthAddress: 'http://a/b', forwardAuthMaxBodySize: 0}, /forwardAuthMaxBodySize/],
-    ['an excluded prefix without a leading slash', {forwardAuthAddress: 'http://a/b', forwardAuthExcludedPrefixes: ['ocelot']}, /forwardAuthExcludedPrefixes/],
-    ['a header name holding a comma', {forwardAuthAddress: 'http://a/b', forwardAuthRequestHeaders: ['a,b']}, /forwardAuthRequestHeaders/],
+    [
+      'a zero body size',
+      {forwardAuthAddress: 'http://a/b', forwardAuthMaxBodySize: 0},
+      /forwardAuthMaxBodySize/,
+    ],
+    [
+      'forwardAuthExcludedPrefixes, which the agent removed',
+      {
+        forwardAuthAddress: 'http://a/b',
+        forwardAuthExcludedPrefixes: ['/ocelot/'] as never,
+      },
+      /forwardAuthExcludedPrefixes was removed: the agent no longer reads it.*forwardAuthExemptComponentIds/,
+    ],
+    [
+      'a header name holding a comma',
+      {forwardAuthAddress: 'http://a/b', forwardAuthRequestHeaders: ['a,b']},
+      /forwardAuthRequestHeaders/,
+    ],
   ])('refuses %s', (_why, config, reason) => {
     expect(() => gatewayWith(config)).toThrow(reason);
   });
@@ -395,7 +447,8 @@ describe('TraefikGateway behind a CloudFront VPC origin', () => {
         environment,
         select: {
           traefik: TraefikGateway({
-            tlsCertificateArn: 'arn:aws:acm:eu-central-1:123456789012:certificate/abc',
+            tlsCertificateArn:
+              'arn:aws:acm:eu-central-1:123456789012:certificate/abc',
           }),
           cdn: AwsCloudFront({aliases: ['api.fractal.cloud']}),
         },

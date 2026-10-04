@@ -11,6 +11,129 @@ of truth for what is on npm.
 
 ## Unreleased
 
+### Added — the caas-k8s platform offers: cert-manager, the SQS exporter, Traefik TLS
+
+All keys are the ones the caas-k8s agent declares in each offer's catalog `Config`;
+defaults are the agent's and the SDK sends only what you set.
+
+- **`CertManager`** (`Security.CaaS.CertManager`, vendor-neutral CaaS) on a new
+  abstract component **`CertificateManager`** (`Security.CertificateManager`).
+  Keys: `hostedZoneId`, `role` (the zone role ARN), `email` (all required),
+  `acmeServer` (`production` | `staging` | an `https://` directory URL; default
+  `production`), `clusterIssuerName` (default `letsencrypt`), `namespace` (default
+  `cert-manager`). The chart (v1.21.2) is pinned by the agent and is not a key.
+  A malformed zone id, role ARN, email, ACME server or Kubernetes name is refused
+  while building the Live System.
+- **`SqsExporter`** (`Observability.CaaS.SqsExporter`) on `Monitoring`. Keys:
+  `namespace` (`monitoring`), `queueUrls` (string[], sent comma-separated),
+  `monitorIntervalSeconds` (`30`), `image` (unset: the agent's own multi-arch
+  release image, private on Docker Hub), `imagePullSecrets` (string[], sent
+  comma-separated) and `nodeSelector` (unset: none; an empty selector is refused,
+  as the agent would read it as unset). The SDK sends no default. Link it,
+  without settings, to
+  the `AwsSqsQueue` components it watches (references included); an exporter with
+  neither a linked queue nor `queueUrls` is refused.
+- **`TraefikGateway`**: Traefik-terminated TLS with `tlsClusterIssuer`,
+  `tlsSecretName` (default `traefik-tls` with an issuer), `tlsHosts` (string[],
+  default `[host]`) and `plainHttp` (default `true` without TLS, `false` with TLS);
+  ForwardAuth exemption by workload with `forwardAuthExemptComponentIds` (string[],
+  default `ocelot`; `<liveSystemId>/<componentId>` for another Live System); and the
+  existing agent keys the SDK did not expose, `loadBalancerSourceRanges` (string[]
+  of CIDRs) and `values`. Refused as the agent refuses them: `tlsHosts` or
+  `plainHttp: false` without TLS, `tlsCertificateArn` together with Traefik TLS,
+  TLS without `tlsHosts` or `host`, a malformed certificate host, a `host` the
+  certificate does not cover, an exempt id starting or ending with `/`, a source
+  range that is not a CIDR. A Traefik TLS gateway is accepted as a CloudFront VPC
+  origin. With TLS, a route host of a workload link and, over `https`, an
+  `AwsCloudFront` alias that the certificate (`tlsHosts`, else `host`; wildcards
+  cover one label) does not cover are refused, as the agent refuses the route. A
+  route link carrying a nested `routes` array is read from that array only, as the
+  agent reads it.
+- **`AwsCloudFront`**: a VPC origin over `https` (the agent default) to a
+  `TraefikGateway` of the same Live System that does not terminate TLS is refused:
+  its load balancer has no listener on 443. Give the gateway TLS or set
+  `originProtocol: 'http'`. A referenced gateway is not checked.
+- **Grafana stack keys**: `KubePrometheusStack` gains `storageClassName`,
+  `prometheusStorageGi` (`50`), `lokiUrl`, `tempoUrl` (`none` = no datasource),
+  `alertRules`, `alertmanagerConfig`, `values`; `GrafanaLoki` and `GrafanaTempo`
+  gain `storageClassName` and `values`; `GrafanaAlloy` gains `lokiPushUrl` and
+  `values`. Retention stays the component's `withRetentionDays` (agent defaults 15 /
+  14 / 7).
+- **Grafana route**: `KubePrometheusStack` may link to a `TraefikGateway` with the
+  workload route settings (`gatewayRouteSettings({routes: [{prefix: '/grafana/'}]})`);
+  a sub-path not ending with `/`, or a `rewritePath`, is refused. The link is read
+  and refused as the agent reads it: no routes, a route without a prefix, a prefix or
+  rewritePath not starting with `/`, a backtick, a host that is not a DNS name, a
+  nested entry that is not an object or an unknown `routes.<n>.<field>` key. The same
+  reading applies to route links checked against a TLS gateway's certificate. A blank
+  `imagePullSecrets` entry on `SqsExporter` is refused rather than dropped.
+- **Documented outputs** of caas-k8s #43: `storageClassName` on
+  `KubePrometheusStack`, `GrafanaLoki` and `GrafanaTempo` (unset on EKS, the agent
+  uses its `fractal-gp3` class when the EBS CSI driver of Auto Mode exists),
+  `tlsCertificateExpiresAt` on `TraefikGateway`, `gatewayRoutes` on
+  `KubePrometheusStack`.
+- The config types are exported: `CertManagerConfig`, `SqsExporterConfig`,
+  `TraefikGatewayConfig`, `KubePrometheusStackConfig`,
+  `GrafanaObjectStorageBackendConfig`, `GrafanaAlloyConfig`.
+- Documented output fields, including `workloadRoleName`, `workloadRoleArn` and
+  `workloadRoleDrift` on every component with a Pod Identity role (`K8sWorkload`,
+  `CertManager`, `GrafanaLoki`, `GrafanaTempo`, `SqsExporter`). The SDK has no typed
+  output helpers; they are read from `liveSystems.state(...)` as before.
+
+### Added — DNS zones: `allowBulkDelete` (cloud agents v8.22.0 and later)
+
+`DnsZoneGuardrails.allowBulkDelete?: boolean` (environment `withDnsZones` entries
+and `DnsZoneComponent.withAllowBulkDelete`), default `false`. The agents refuse a
+pass that would delete at least 3 record sets and more than half of a zone;
+`true` lets one such pass through. It applies once per declaration change (the
+agent fingerprints the declaration when it applies a bulk delete, and an unchanged
+declaration is guarded again with a request to remove the flag): remove it
+afterwards. Omitted, nothing is sent. A non-boolean value is refused before
+deploying. **Requires** cloud agents v8.22.0 or later, which are the only ones
+that accept the key.
+
+### Changed — refused earlier: Loki, Tempo and Alloy without what the agent needs
+
+`GrafanaLoki` and `GrafanaTempo` now require exactly one link to an `AwsS3` bucket
+with `{access: 'read-write'}`, and `GrafanaAlloy` a dependency on a `GrafanaLoki`
+component unless `lokiPushUrl` is set. The agent already failed such components
+after deploying; a Live System that relied on that is now refused while being
+built.
+
+### Changed (agent behavior) — ForwardAuth exempts workloads, not paths
+
+With caas-k8s agents of this contract, a gateway with `forwardAuthAddress` no longer
+exempts routes by path. The old default of the removed `forwardAuthExcludedPrefixes`,
+`/ocelot/,/grafana/,/prometheus/,/alertmanager/`, served those paths without
+authentication; now only the routes of the workloads in
+`forwardAuthExemptComponentIds` (default `ocelot`, of the gateway's own Live System)
+skip ForwardAuth. Grafana, Prometheus or Alertmanager routed through the gateway are
+authenticated from then on, and an `ocelot` workload in another Live System must be
+listed by its qualified id `<liveSystemId>/<componentId>`. An empty list is refused
+for every `TraefikGateway` list key: it would travel blank, and the agent reads blank
+as unset and applies its default (so `[]` would still exempt `ocelot`).
+
+### Changed (BREAKING) — `scrapeInterval` and `samplingRate` are refused
+
+`Monitoring.withScrapeInterval` and `Tracing.withSamplingRate` are deprecated. No
+agent reads `scrapeInterval` or `samplingRate` and no offer declares them, so the
+platform pruned them before any agent saw them. Every Monitoring offer
+(`Prometheus`, `KubePrometheusStack`, `SqsExporter`) and Tracing offer (`Jaeger`,
+`GrafanaTempo`) now refuses a Live System whose component carries either key,
+whether set as a guardrail or through an operation. Remove the call.
+
+### Changed — URL checks read URLs as the agent does
+
+A URL with a malformed percent-escape (`%` not followed by two hex digits) is
+refused for `acmeServer`, `forwardAuthAddress`, `lokiPushUrl`, `lokiUrl`, `tempoUrl`
+and `queueUrls`. A queue URL may now carry a `#fragment`, which the agent accepts.
+
+### Removed (BREAKING) — `TraefikGateway({forwardAuthExcludedPrefixes})`
+
+The caas-k8s agent removed the key and its output. Its type is now `never`, and a
+value that still reaches the gateway (plain JavaScript, a cast) is refused while
+building the Live System. Exempt workloads with `forwardAuthExemptComponentIds`.
+
 ### Added — **Amazon RDS for MySQL: `AwsRdsMySqlDbms`, `AwsRdsMySqlDatabase`**
 
 `Storage.PaaS.AwsRdsMySql` and `Storage.PaaS.AwsRdsMySqlDatabase`, the MySQL twins of
@@ -36,17 +159,31 @@ offer.
 LINK the distribution to an `AwsS3` bucket with the object-storage link
 `{access: 'read'} satisfies ObjectStorageLink` (at most one; the bucket may be a
 reference). The agent serves the bucket through an origin access control and grants
-this distribution alone in the bucket policy. Two optional keys, sent only when set,
+this distribution alone in the bucket policy. Three optional keys, sent only when set,
 apply to a bucket origin only:
-- `defaultRootObject`: the object for `/`; the agent applies `index.html` when unset.
-- `spaFallback`: answer missing paths with the root object and 200.
+- `defaultRootObject`: the object for `/` and for every `<path>/`; the agent applies
+  `index.html` when unset.
+- `spaFallback`: answer missing keys with the root object and 200.
+- `errorDocument`: the object served with 404 for a missing key (e.g. `404.html`).
+  It excludes `spaFallback`.
 
-Validation:
+Directory indexes (`<path>/` → `<path>/<defaultRootObject>`) and compression need no
+key: a bucket origin always has them.
+
+Validation, mirroring the agent:
 - `aliases` with a bucket link and no `originDomain` is accepted.
 - A bucket link combined with `originDomain`, a linked gateway or `redirectTo` is
-  refused.
-- A link granting anything but `read` is refused, as are two bucket links.
-- The site keys are refused without a bucket origin.
+  refused, as are two bucket links.
+- The link takes `access` only. `read` and `read-write` are accepted (the distribution
+  is granted read only). `write`, a missing `access`, and any other key such as
+  `accessMode` are refused.
+- A bucket and a distribution that both declare `region`, differently, are refused
+  (the agent also refuses a mismatch with the environment's default region).
+- `defaultRootObject` and `errorDocument` must be object keys: letters, digits and
+  `._/-`, no leading `/` or `.`, no `..`, at most 255 characters.
+- The site keys are refused without a bucket origin: on a redirect, on a distribution
+  without aliases or a linked origin, or on a gateway or `originDomain` origin.
+  `spaFallback: false` sets nothing and is accepted anywhere.
 
 **Requires** cloud agents v8.22.0 or later. An older agent does not know the MySQL
 offers, `cloudwatchLogExports` on PostgreSQL, the bucket origin or the site keys. Its
