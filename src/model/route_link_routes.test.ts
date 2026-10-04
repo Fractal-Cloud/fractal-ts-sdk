@@ -36,6 +36,17 @@ describe('parseRouteLink', () => {
     ]);
   });
 
+  it('accepts the largest int64 index and +0, keeping huge indexes apart', () => {
+    expect(
+      parseRouteLink({
+        'routes.9223372036854775807.prefix': '/last',
+        'routes.9007199254740993.prefix': '/b',
+        'routes.9007199254740992.prefix': '/a',
+        'routes.+0.prefix': '/first',
+      }).map(r => r.prefix),
+    ).toEqual(['/first', '/a', '/b', '/last']);
+  });
+
   it('reads a signed index as strconv.Atoi does', () => {
     expect(parseRouteLink({'routes.+1.prefix': '/a'})).toEqual([
       {prefix: '/a', rewritePath: '', host: ''},

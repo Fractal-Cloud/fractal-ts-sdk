@@ -55,7 +55,9 @@ export const parseRouteLink = (
       return route;
     });
   }
-  const byIndex = new Map<number, Record<string, unknown>>();
+  // Keyed by the exact index, as the agent's map[int]: a Number would merge
+  // indexes beyond 2^53.
+  const byIndex = new Map<bigint, Record<string, unknown>>();
   for (const [key, value] of Object.entries(settings)) {
     if (!key.startsWith('routes.')) {
       continue;
@@ -78,12 +80,12 @@ export const parseRouteLink = (
         `route setting "${key}" is not one of prefix, rewritePath, host`,
       );
     }
-    const n = Number(index);
+    const n = BigInt(index);
     text(value, `route setting "${key}"`);
     byIndex.set(n, {...(byIndex.get(n) ?? {}), [field]: value});
   }
   return [...byIndex.entries()]
-    .sort(([a], [b]) => a - b)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([n, r]) => {
       const route = fromObject(r, `routes.${n}`);
       if (route.prefix === '') {

@@ -745,8 +745,6 @@ for (const zone of dns?.zones ?? []) {
   before the call: the API would answer 404, which would read as a missing
   environment.
 
----
-
 #### Deleting many record sets at once: `allowBulkDelete`
 
 Cloud agents v8.22.0 and later guard a zone against mass deletion: a pass that
@@ -766,6 +764,8 @@ removed. Remove it afterwards. The default is `false`, and omitted, nothing is
 sent. Only agents v8.22.0 and later accept the key; do not declare it on an
 environment whose agents are older. A value that is not a boolean is refused
 before anything is sent.
+
+---
 
 ## Deploy from CI
 

@@ -9,9 +9,9 @@
  * DNS, Azure DNS) enforces the same keys: a declared record outside them is
  * refused by the agent, never adjusted.
  */
-import {allowBulkDeleteRefusal} from './dns_bulk_delete';
 import {ComponentNode, NodeState, newNode, guardrail} from '../core';
 import {recordManagementRefusal} from './dns_record_management';
+import {allowBulkDeleteRefusal} from './dns_bulk_delete';
 import type {DnsRecordManagement} from './dns_record_management_mode';
 
 /** Record types a DNS zone may declare (SOA always belongs to the provider). */
