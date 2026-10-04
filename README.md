@@ -998,15 +998,121 @@ one of the two intents.
 
 | Component | AWS | Azure | GCP | Self-hosted |
 |---|---|---|---|---|
-| `ApiGateway` | `AwsCloudFront` | `AzureApiManagement` | `GcpApiGateway` | `Ambassador` · `Traefik` |
+| `ApiGateway` | `AwsCloudFront` | `AzureApiManagement` | `GcpApiGateway` | `Ambassador` · `Traefik` · `TraefikGateway` |
+
+#### `TraefikGateway` (`APIManagement.CaaS.TraefikGateway`, caas-k8s agent)
+
+Traefik v3.6 installed by Helm on the cluster. On EKS it sits behind an internal
+NLB that stays TCP only. List values are arrays in the SDK and travel
+comma-separated. Defaults are the agent's; the SDK sends only what you set.
+
+| Key | Type | Default |
+|---|---|---|
+| `namespace` | string | `traefik` |
+| `replicas` | number | `2` |
+| `chartVersion` | string | `39.0.9` (Traefik v3.6.15) |
+| `host` | string | none (default host of every route) |
+| `internalLoadBalancer` | boolean | `true` |
+| `tlsCertificateArn` | string | none (NLB TLS listener; not behind a CloudFront VPC origin, not with Traefik TLS) |
+| `tlsClusterIssuer` | string | none: cert-manager ClusterIssuer the gateway requests its Certificate `traefik-tls` from |
+| `tlsSecretName` | string | `traefik-tls` with `tlsClusterIssuer`, else none (set alone: an operator-provided certificate) |
+| `tlsHosts` | string[] | `[host]`: exact names or `*.one-label` wildcards; must cover `host`, every route host and every viewer host CloudFront forwards |
+| `plainHttp` | boolean | `true` without TLS, `false` with TLS (`false` without TLS is refused) |
+| `entryPointIdleTimeoutSeconds` | number | `75` |
+| `loadBalancerSourceRanges` | string[] (CIDRs) | none |
+| `forwardAuthAddress` | string (http(s) URL) | none = no ForwardAuth |
+| `forwardAuthRequestHeaders` | string[] | `authorization,cookie,x-clientid,x-clientsecret,origin` |
+| `forwardAuthResponseHeaders` | string[] | `x-jwt` |
+| `forwardAuthForwardBody` | boolean | `true` |
+| `forwardAuthMaxBodySize` | number | `1048576` |
+| `forwardAuthExemptComponentIds` | string[] | `ocelot`: workloads whose own routes skip ForwardAuth, a bare component id of the gateway's Live System or `<liveSystemId>/<componentId>` |
+| `forwardAuthExcludedPrefixes` | string[] | **deprecated**: never applied to workload routes any more |
+| `values` | object | none (chart values deep-merged over the agent's) |
+
+Traefik terminates TLS itself when `tlsSecretName` (explicit, or defaulted from
+`tlsClusterIssuer`) is set: TCP 443 passes through the NLB to `websecure`, which is
+what a CloudFront VPC origin can reach with `originProtocol: 'https'`. To move a
+gateway to TLS without downtime, enable it with `plainHttp: true`, switch CloudFront
+to `https`, then drop `plainHttp`.
+
+```ts
+TraefikGateway({
+  host: 'api.fractal.cloud',
+  tlsClusterIssuer: 'letsencrypt',        // a CertManager's clusterIssuerName
+  plainHttp: true,                        // only while CloudFront still uses http
+  forwardAuthAddress: 'http://ocelot.security.svc.cluster.local:8080/',
+  forwardAuthExemptComponentIds: [`${liveSystemIdOf(platform, 'ocelot')}/ocelot`],
+});
+```
+
+An empty list is refused for every list key: it would travel blank, which the agent
+reads as unset and replaces with its default (`forwardAuthExemptComponentIds: []`
+would still exempt `ocelot`). Path prefixes no longer exempt a workload route: the
+old default `/grafana/`, `/prometheus/`, `/alertmanager/` exemptions are gone, so
+those routes are authenticated unless their workload is listed.
+
+Refused while building the Live System: `tlsHosts` or `plainHttp: false` without
+TLS, `tlsCertificateArn` with Traefik TLS, TLS without `tlsHosts` or `host`, a
+malformed certificate host, a `host` the certificate does not cover, an invalid
+Kubernetes name, an exempt id that starts or ends with `/`, and a source range that
+is not a CIDR.
+
+Output fields: `namespace`, `serviceName`, `releaseName`, `host`, `entryPoint`
+(`web` while plain HTTP is served, else `websecure`), `loadBalancerHostname`,
+`forwardAuthEnabled`, `forwardAuthMiddlewareName` / `forwardAuthMiddlewareNamespace`
+(with ForwardAuth), `forwardAuthExcludedPrefixes`, `forwardAuthExemptComponents`
+(always, qualified), `tlsEnabled` and `plainHttpEnabled` (always), `tlsEntryPoint`,
+`tlsSecretName`, `tlsHosts` (with TLS), `tlsCertificateName` (when the gateway
+requested the Certificate).
 
 ### Observability (self-hosted, CaaS)
 
 | Component | Offer |
 |---|---|
-| `Monitoring` | `Prometheus` |
-| `Tracing` | `Jaeger` |
-| `Logging` | `ObservabilityElastic` |
+| `Monitoring` | `Prometheus` · `KubePrometheusStack` · `SqsExporter` |
+| `Tracing` | `Jaeger` · `GrafanaTempo` |
+| `Logging` | `ObservabilityElastic` · `GrafanaLoki` · `GrafanaAlloy` |
+
+#### The caas-k8s Grafana stack
+
+Installed by the caas-k8s agent with Helm; namespace default `monitoring`. No
+CloudWatch anywhere: Grafana has no CloudWatch datasource. The retention is the
+component's neutral `withRetentionDays` (sent as `retentionDays`), not an offer key.
+
+| Offer | Keys (agent defaults) | Links and dependencies |
+|---|---|---|
+| `KubePrometheusStack` (`Observability.CaaS.KubePrometheusStack`) | `namespace`, `storageClassName` (none = ephemeral), `prometheusStorageGi` (`50`), `lokiUrl` / `tempoUrl` (the Loki / Tempo service in the namespace; `none` = no datasource), `alertRules`, `alertmanagerConfig`, `values`; `retentionDays` `15` | none |
+| `GrafanaLoki` (`Observability.CaaS.GrafanaLoki`) | `namespace`, `storageClassName` (none = ephemeral WAL), `values`; `retentionDays` `14` | exactly one link to an `AwsS3` bucket with `{access: 'read-write'}` |
+| `GrafanaTempo` (`Observability.CaaS.GrafanaTempo`) | as Loki; `retentionDays` `7` | as Loki |
+| `GrafanaAlloy` (`Observability.CaaS.GrafanaAlloy`) | `namespace`, `lokiPushUrl` (none = the `pushUrl` of the Loki it depends on), `values` | a dependency on a `GrafanaLoki` component, unless `lokiPushUrl` is set |
+
+#### `SqsExporter` (`Observability.CaaS.SqsExporter`)
+
+A Prometheus exporter of SQS queue depth (EKS only), scraped by
+`KubePrometheusStack` through a ServiceMonitor. Link it (no settings) to every
+`AwsSqsQueue` it watches, references to other Live Systems' queues included: it
+watches the queue and, once published, its dead-letter queue. Its Pod Identity role
+may only `sqs:GetQueueAttributes` on those exact queues.
+
+| Key | Type | Default |
+|---|---|---|
+| `namespace` | string | `monitoring` |
+| `queueUrls` | string[] | none: queues watched besides the linked ones (`https://sqs.<region>.amazonaws.com/<account>/<name>`) |
+| `monitorIntervalSeconds` | number | `30` |
+| `image` | string | `ghcr.io/jmriebold/sqs-prometheus-exporter:1.1.0@sha256:7564…` (linux/amd64 only) |
+| `nodeSelector` | `Record<string, string>` | `{"kubernetes.io/arch": "amd64"}` |
+
+An exporter with no linked queue and no `queueUrls` is refused. Metrics:
+`sqs_approximatenumberofmessages`, `…_delayed`, `…_notvisible`, label `queue`;
+alert on dead letters with `KubePrometheusStack({alertRules})`.
+
+#### Pod Identity role outputs
+
+`K8sWorkload`, `CertManager`, `GrafanaLoki`, `GrafanaTempo` and `SqsExporter`
+publish, besides `podIdentityRoleArn` / `podIdentityAssociationId`, the output fields
+`workloadRoleName`, `workloadRoleArn` and `workloadRoleDrift` (`{"corrected": [...],
+"at": "<RFC 3339>"}`, the last trust-policy or permissions-boundary correction). Read
+them from `liveSystems.state(...)` like any other output field.
 
 ### Security
 
@@ -1014,6 +1120,35 @@ one of the two intents.
 |---|---|---|
 | `ServiceMesh` | — | `Ocelot` |
 | `IdentityProvider` | `Cognito` | `Keycloak` |
+| `CertificateManager` | — | `CertManager` |
+
+#### `CertManager` (`Security.CaaS.CertManager`, caas-k8s agent)
+
+cert-manager v1.21.2 (pinned by the agent, not a parameter) on EKS, with a Let's
+Encrypt ClusterIssuer that solves DNS-01 in Route 53 by assuming a zone role. A
+`TraefikGateway` names its issuer in `tlsClusterIssuer`.
+
+| Key | Type | Default |
+|---|---|---|
+| `hostedZoneId` | string | required: Route 53 zone id (`Z...`) |
+| `role` | string | required: zone role ARN (`arn:aws:iam::<account>:role/...`) |
+| `email` | string | required: ACME account email |
+| `acmeServer` | `'production' \| 'staging' \| 'https://...'` | `production` |
+| `clusterIssuerName` | string | `letsencrypt` |
+| `namespace` | string | `cert-manager` |
+
+```ts
+CertManager({
+  hostedZoneId: 'Z0123456789ABCDEFGHIJ',
+  role: 'arn:aws:iam::111122223333:role/fractal-acme-dns01',
+  email: 'platform@example.com',
+});
+```
+
+Output fields: `namespace`, `releaseName`, `chartVersion`, `clusterIssuerName`,
+`acmeServer` (the directory URL), `hostedZoneId`, `role`, `serviceAccountName`,
+`podIdentityRoleArn`, `podIdentityAssociationId`, plus the Pod Identity role outputs
+listed under Observability.
 
 ### Unmanaged (external / SaaS)
 

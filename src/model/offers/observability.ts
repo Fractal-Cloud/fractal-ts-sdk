@@ -6,7 +6,18 @@
  * vendor-neutral self-hosted CaaS offers (Prometheus/Jaeger/Elastic on any
  * cluster), so they omit `provider`.
  */
-import {defineOffer} from '../core';
+import {defineOffer, type LiveSystemComponent} from '../core';
+import {
+  ensureNamespace,
+  isHttpUrl,
+  isKubernetesName,
+  isWholeAtLeastOne,
+  refuse,
+} from './caas_param_checks';
+import type {GrafanaAlloyConfig} from './grafana_alloy_config';
+import type {GrafanaObjectStorageBackendConfig} from './grafana_object_storage_backend_config';
+import type {KubePrometheusStackConfig} from './kube_prometheus_stack_config';
+import type {SqsExporterConfig} from './sqs_exporter_config';
 
 // ── Observability.Monitoring offers ──────────────────────────────────────────
 export const Prometheus = defineOffer<
@@ -40,48 +51,300 @@ export const ObservabilityElastic = defineOffer<
 
 // ── caas-k8s Grafana stack (Helm, on any Kubernetes cluster) ─────────────────
 // Offers only: the BFF static catalog owns the services they sit under
-// (`Observability.CaaS.Prometheus`, `.Loki`, `.Alloy`, `.Tempo`).
+// (`Observability.CaaS.Prometheus`, `.Loki`, `.Alloy`, `.Tempo`). No CloudWatch
+// anywhere: Grafana has no CloudWatch datasource.
 
-/** kube-prometheus-stack: Prometheus, Alertmanager and Grafana. */
+const GRAFANA_LOKI_OFFER_TYPE = 'Observability.CaaS.GrafanaLoki';
+/** The bucket offers Loki and Tempo keep their data in (the agent also reads the legacy id). */
+const S3_BUCKET_TYPES = ['Storage.PaaS.AwsS3', 'Storage.PaaS.S3'];
+const SQS_QUEUE_TYPE = 'Messaging.PaaS.AwsSqsQueue';
+/** A queue URL the exporter can poll and derive the queue ARN from, as the agent reads it. */
+const SQS_QUEUE_URL =
+  /^[Hh][Tt][Tt][Pp][Ss]:\/\/sqs\.[a-z0-9-]+\.amazonaws\.com\/[0-9]{12}\/[A-Za-z0-9_-]{1,80}(\.fifo)?$/;
+
+/** The component's neutral `retentionDays` (from `withRetentionDays`), when set, must be at least one day. */
+const ensureRetention = (self: LiveSystemComponent): void => {
+  const days = self.parameters.retentionDays;
+  if (
+    days !== undefined &&
+    !(typeof days === 'number' && isWholeAtLeastOne(days))
+  ) {
+    refuse(
+      self.id,
+      `retentionDays ${String(days)} is not a whole number of at least 1`,
+    );
+  }
+};
+
+const ensureStorageClass = (id: string, storageClassName?: string): void => {
+  if (
+    storageClassName !== undefined &&
+    !isKubernetesName(storageClassName.trim())
+  ) {
+    refuse(
+      id,
+      `storageClassName '${storageClassName}' is not a Kubernetes name`,
+    );
+  }
+};
+
+/** Loki and Tempo keep their data in exactly one S3 bucket, linked read-write. */
+const ensureOneReadWriteBucket = (
+  self: LiveSystemComponent,
+  all: readonly LiveSystemComponent[],
+): void => {
+  const bucketLinks = self.links.filter(l =>
+    all.some(c => c.id === l.componentId && S3_BUCKET_TYPES.includes(c.type)),
+  );
+  if (bucketLinks.length === 0) {
+    throw new Error(
+      `Live component '${self.id}' keeps its data in S3: link it to a ` +
+        `${S3_BUCKET_TYPES[0]} bucket with access read-write.`,
+    );
+  }
+  if (bucketLinks.length > 1) {
+    throw new Error(
+      `Live component '${self.id}' links to ${bucketLinks.length} buckets; ` +
+        'link exactly one, with access read-write.',
+    );
+  }
+  const [link] = bucketLinks;
+  if (link.settings.access !== 'read-write') {
+    refuse(
+      self.id,
+      `the link from '${self.id}' to bucket '${link.componentId}' needs access read-write, ` +
+        `got '${String(link.settings.access)}'`,
+    );
+  }
+};
+
+const ensureBackend = (
+  self: LiveSystemComponent,
+  all: readonly LiveSystemComponent[],
+  config: GrafanaObjectStorageBackendConfig,
+): void => {
+  ensureNamespace(self.id, config.namespace);
+  ensureStorageClass(self.id, config.storageClassName);
+  ensureRetention(self);
+  ensureOneReadWriteBucket(self, all);
+};
+
+/** A Grafana datasource URL: `none` (no datasource) or an absolute http(s) URL. */
+const ensureDatasource = (id: string, key: string, value?: string): void => {
+  if (
+    value !== undefined &&
+    value.trim().toLowerCase() !== 'none' &&
+    !isHttpUrl(value.trim())
+  ) {
+    refuse(id, `${key} '${value}' is neither none nor an absolute http(s) URL`);
+  }
+};
+
+/**
+ * kube-prometheus-stack: Prometheus, Alertmanager and Grafana (chart 91.9.0,
+ * objects `kps-*`), selecting every ServiceMonitor and PrometheusRule in the
+ * cluster.
+ *
+ * Output fields: `namespace`, `releaseName`, `chartVersion`, `prometheusUrl`,
+ * `alertmanagerUrl`, `grafanaUrl`, `grafanaAdminSecretName`.
+ */
 export const KubePrometheusStack = defineOffer<
   'Observability.Monitoring',
-  {namespace?: string}
+  KubePrometheusStackConfig
 >({
   satisfies: 'Observability.Monitoring',
   offerType: 'Observability.CaaS.KubePrometheusStack',
   deliveryModel: 'CaaS',
+  validate: (self, _all, config) => {
+    ensureNamespace(self.id, config.namespace);
+    ensureStorageClass(self.id, config.storageClassName);
+    ensureRetention(self);
+    if (
+      config.prometheusStorageGi !== undefined &&
+      !isWholeAtLeastOne(config.prometheusStorageGi)
+    ) {
+      refuse(
+        self.id,
+        `prometheusStorageGi ${config.prometheusStorageGi} is not a whole number of at least 1`,
+      );
+    }
+    ensureDatasource(self.id, 'lokiUrl', config.lokiUrl);
+    ensureDatasource(self.id, 'tempoUrl', config.tempoUrl);
+  },
 });
 
 /**
- * Grafana Loki. Its chunks live in object storage: link it to a bucket
- * (`ObjectStorageLink`, `access: 'read-write'`) and the agent grants its
- * service account access.
+ * Grafana Loki, monolithic (grafana-community chart 18.13.7, Loki 3.7.8). Its
+ * chunks live in the one S3 bucket it links to (`ObjectStorageLink`,
+ * `access: 'read-write'`), through its own Pod Identity role.
+ *
+ * Output fields: `namespace`, `releaseName`, `chartVersion`, `url`, `pushUrl`,
+ * `bucketName`, `retentionDays`, `serviceAccountName`, `podIdentityRoleArn`,
+ * `podIdentityAssociationId`, `workloadRoleName`, `workloadRoleArn`,
+ * `workloadRoleDrift`.
  */
 export const GrafanaLoki = defineOffer<
   'Observability.Logging',
-  {namespace?: string}
+  GrafanaObjectStorageBackendConfig
 >({
   satisfies: 'Observability.Logging',
-  offerType: 'Observability.CaaS.GrafanaLoki',
+  offerType: GRAFANA_LOKI_OFFER_TYPE,
   deliveryModel: 'CaaS',
+  validate: ensureBackend,
 });
 
-/** Grafana Alloy as a DaemonSet, shipping the cluster's logs to Loki. */
+/**
+ * Grafana Alloy as a DaemonSet (chart 1.13.0, Alloy v1.20.0), shipping the
+ * cluster's pod logs to Loki: to `lokiPushUrl`, or else to the `GrafanaLoki`
+ * component it depends on.
+ *
+ * Output fields: `namespace`, `releaseName`, `chartVersion`, `lokiPushUrl`.
+ */
 export const GrafanaAlloy = defineOffer<
   'Observability.Logging',
-  {namespace?: string}
+  GrafanaAlloyConfig
 >({
   satisfies: 'Observability.Logging',
   offerType: 'Observability.CaaS.GrafanaAlloy',
   deliveryModel: 'CaaS',
+  validate: (self, all, config) => {
+    ensureNamespace(self.id, config.namespace);
+    if (config.lokiPushUrl !== undefined) {
+      if (!isHttpUrl(config.lokiPushUrl.trim())) {
+        refuse(
+          self.id,
+          `lokiPushUrl '${config.lokiPushUrl}' is not an absolute http(s) URL`,
+        );
+      }
+      return;
+    }
+    const dependsOnLoki = self.dependencies.some(id =>
+      all.some(c => c.id === id && c.type === GRAFANA_LOKI_OFFER_TYPE),
+    );
+    if (!dependsOnLoki) {
+      throw new Error(
+        `Live component '${self.id}' ships logs to Loki: make it depend on an ` +
+          `${GRAFANA_LOKI_OFFER_TYPE} component, or set lokiPushUrl.`,
+      );
+    }
+  },
 });
 
-/** Grafana Tempo, with its traces in object storage (linked like Loki). */
+/**
+ * Grafana Tempo, single binary (grafana-community chart 3.1.0), with its traces
+ * in the one S3 bucket it links to, like `GrafanaLoki`.
+ *
+ * Output fields: `namespace`, `releaseName`, `chartVersion`, `url`,
+ * `otlpGrpcEndpoint`, `otlpHttpEndpoint`, `bucketName`, `retentionDays`,
+ * `serviceAccountName`, `podIdentityRoleArn`, `podIdentityAssociationId`,
+ * `workloadRoleName`, `workloadRoleArn`, `workloadRoleDrift`.
+ */
 export const GrafanaTempo = defineOffer<
   'Observability.Tracing',
-  {namespace?: string}
+  GrafanaObjectStorageBackendConfig
 >({
   satisfies: 'Observability.Tracing',
   offerType: 'Observability.CaaS.GrafanaTempo',
   deliveryModel: 'CaaS',
+  validate: ensureBackend,
+});
+
+// ── caas-k8s Prometheus exporters ────────────────────────────────────────────
+// Under the service `Observability.CaaS.PrometheusExporter`, which the caas-k8s
+// agent declares under the BFF component `Observability.CaaS.Monitoring`.
+
+/**
+ * A Prometheus exporter of SQS queue depth (EKS only): a Deployment, a Service
+ * (port `metrics`, 8080) and a ServiceMonitor that `KubePrometheusStack` scrapes.
+ * It watches every `AwsSqsQueue` it links to (no settings; a reference to
+ * another Live System's queue works too), the queue and, once published, its
+ * dead-letter queue, plus any `queueUrls`. Its Pod Identity role may only
+ * `sqs:GetQueueAttributes` on those exact queues. Metrics:
+ * `sqs_approximatenumberofmessages`, `..._delayed`, `..._notvisible`, label
+ * `queue`; alert on dead letters with `KubePrometheusStack({alertRules})`.
+ *
+ * Output fields: `namespace`, `serviceName`, `serviceMonitorName`, `queueCount`,
+ * `serviceAccountName`, `podIdentityRoleArn`, `podIdentityAssociationId`,
+ * `workloadRoleName`, `workloadRoleArn`, `workloadRoleDrift`.
+ */
+export const SqsExporter = defineOffer<
+  'Observability.Monitoring',
+  SqsExporterConfig
+>({
+  satisfies: 'Observability.Monitoring',
+  offerType: 'Observability.CaaS.SqsExporter',
+  deliveryModel: 'CaaS',
+  instantiate: (ctx, config) => {
+    const {queueUrls, ...rest} = config;
+    const params: Record<string, unknown> = {...ctx.parameters, ...rest};
+    if (queueUrls !== undefined) {
+      params.queueUrls = queueUrls.join(',');
+    }
+    return [
+      {
+        id: ctx.id,
+        displayName: ctx.displayName,
+        type: 'Observability.CaaS.SqsExporter',
+        deliveryModel: 'CaaS',
+        parameters: params,
+        dependencies: ctx.dependencies,
+        links: ctx.links,
+      },
+    ];
+  },
+  validate: (self, all, config) => {
+    ensureNamespace(self.id, config.namespace);
+    if (config.queueUrls !== undefined && config.queueUrls.length === 0) {
+      refuse(
+        self.id,
+        'queueUrls is an empty list: it is sent blank, which the agent reads as unset; omit it',
+      );
+    }
+    if (
+      config.nodeSelector !== undefined &&
+      Object.keys(config.nodeSelector).length === 0
+    ) {
+      refuse(
+        self.id,
+        'nodeSelector is empty: the agent reads an empty selector as unset and keeps its amd64 default; ' +
+          'name the labels the pods need',
+      );
+    }
+    const badUrl = (config.queueUrls ?? []).find(
+      u => !SQS_QUEUE_URL.test(u.trim()),
+    );
+    if (badUrl !== undefined) {
+      refuse(
+        self.id,
+        `queueUrls holds '${badUrl}', which is not https://sqs.<region>.amazonaws.com/<account>/<name>`,
+      );
+    }
+    const interval = config.monitorIntervalSeconds;
+    if (interval !== undefined && !isWholeAtLeastOne(interval)) {
+      refuse(
+        self.id,
+        `monitorIntervalSeconds ${interval} is not a whole number of seconds of at least 1`,
+      );
+    }
+    if (config.image !== undefined && config.image.trim() === '') {
+      refuse(
+        self.id,
+        `image '${config.image}' is blank: omit it for the pinned default`,
+      );
+    }
+    for (const [key, value] of Object.entries(config.nodeSelector ?? {})) {
+      if (typeof value !== 'string') {
+        refuse(self.id, `nodeSelector '${key}' is not a string`);
+      }
+    }
+    const linkedQueues = self.links.filter(l =>
+      all.some(c => c.id === l.componentId && c.type === SQS_QUEUE_TYPE),
+    );
+    if (linkedQueues.length === 0 && (config.queueUrls ?? []).length === 0) {
+      throw new Error(
+        `Live component '${self.id}' watches no queue: link it to ${SQS_QUEUE_TYPE} ` +
+          'components or set queueUrls.',
+      );
+    }
+  },
 });

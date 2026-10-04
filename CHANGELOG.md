@@ -11,6 +11,79 @@ of truth for what is on npm.
 
 ## Unreleased
 
+### Added — the caas-k8s platform offers: cert-manager, the SQS exporter, Traefik TLS
+
+All keys are the ones the caas-k8s agent declares in each offer's catalog `Config`;
+defaults are the agent's and the SDK sends only what you set.
+
+- **`CertManager`** (`Security.CaaS.CertManager`, vendor-neutral CaaS) on a new
+  abstract component **`CertificateManager`** (`Security.CertificateManager`).
+  Keys: `hostedZoneId`, `role` (the zone role ARN), `email` (all required),
+  `acmeServer` (`production` | `staging` | an `https://` directory URL; default
+  `production`), `clusterIssuerName` (default `letsencrypt`), `namespace` (default
+  `cert-manager`). The chart (v1.21.2) is pinned by the agent and is not a key.
+  A malformed zone id, role ARN, email, ACME server or Kubernetes name is refused
+  while building the Live System.
+- **`SqsExporter`** (`Observability.CaaS.SqsExporter`) on `Monitoring`. Keys:
+  `namespace` (`monitoring`), `queueUrls` (string[], sent comma-separated),
+  `monitorIntervalSeconds` (`30`), `image` (the agent's pinned amd64-only image),
+  `nodeSelector` (`{"kubernetes.io/arch": "amd64"}`; an empty selector is refused,
+  as the agent would keep the default). Link it, without settings, to
+  the `AwsSqsQueue` components it watches (references included); an exporter with
+  neither a linked queue nor `queueUrls` is refused.
+- **`TraefikGateway`**: Traefik-terminated TLS with `tlsClusterIssuer`,
+  `tlsSecretName` (default `traefik-tls` with an issuer), `tlsHosts` (string[],
+  default `[host]`) and `plainHttp` (default `true` without TLS, `false` with TLS);
+  ForwardAuth exemption by workload with `forwardAuthExemptComponentIds` (string[],
+  default `ocelot`; `<liveSystemId>/<componentId>` for another Live System); and the
+  existing agent keys the SDK did not expose, `loadBalancerSourceRanges` (string[]
+  of CIDRs) and `values`. Refused as the agent refuses them: `tlsHosts` or
+  `plainHttp: false` without TLS, `tlsCertificateArn` together with Traefik TLS,
+  TLS without `tlsHosts` or `host`, a malformed certificate host, a `host` the
+  certificate does not cover, an exempt id starting or ending with `/`, a source
+  range that is not a CIDR. A Traefik TLS gateway is accepted as a CloudFront VPC
+  origin.
+- **Grafana stack keys**: `KubePrometheusStack` gains `storageClassName`,
+  `prometheusStorageGi` (`50`), `lokiUrl`, `tempoUrl` (`none` = no datasource),
+  `alertRules`, `alertmanagerConfig`, `values`; `GrafanaLoki` and `GrafanaTempo`
+  gain `storageClassName` and `values`; `GrafanaAlloy` gains `lokiPushUrl` and
+  `values`. Retention stays the component's `withRetentionDays` (agent defaults 15 /
+  14 / 7).
+- The config types are exported: `CertManagerConfig`, `SqsExporterConfig`,
+  `TraefikGatewayConfig`, `KubePrometheusStackConfig`,
+  `GrafanaObjectStorageBackendConfig`, `GrafanaAlloyConfig`.
+- Documented output fields, including `workloadRoleName`, `workloadRoleArn` and
+  `workloadRoleDrift` on every component with a Pod Identity role (`K8sWorkload`,
+  `CertManager`, `GrafanaLoki`, `GrafanaTempo`, `SqsExporter`). The SDK has no typed
+  output helpers; they are read from `liveSystems.state(...)` as before.
+
+### Changed — refused earlier: Loki, Tempo and Alloy without what the agent needs
+
+`GrafanaLoki` and `GrafanaTempo` now require exactly one link to an `AwsS3` bucket
+with `{access: 'read-write'}`, and `GrafanaAlloy` a dependency on a `GrafanaLoki`
+component unless `lokiPushUrl` is set. The agent already failed such components
+after deploying; a Live System that relied on that is now refused while being
+built.
+
+### Changed (agent behavior) — ForwardAuth exempts workloads, not paths
+
+With caas-k8s agents of this contract, a gateway with `forwardAuthAddress` no longer
+exempts routes by path. The old default, `forwardAuthExcludedPrefixes`
+`/ocelot/,/grafana/,/prometheus/,/alertmanager/`, served those paths without
+authentication; now only the routes of the workloads in
+`forwardAuthExemptComponentIds` (default `ocelot`, of the gateway's own Live System)
+skip ForwardAuth. Grafana, Prometheus or Alertmanager routed through the gateway are
+authenticated from then on, and an `ocelot` workload in another Live System must be
+listed by its qualified id `<liveSystemId>/<componentId>`. An empty list is refused
+for every `TraefikGateway` list key: it would travel blank, and the agent reads blank
+as unset and applies its default (so `[]` would still exempt `ocelot`).
+
+### Deprecated — `TraefikGateway({forwardAuthExcludedPrefixes})`
+
+The agent keeps the key only for routes it writes for its own add-ons (none exist)
+and never applies it to a workload route. It still compiles and is still sent.
+Exempt workloads with `forwardAuthExemptComponentIds`.
+
 ### Added — **DNS zones: `recordManagement: 'strict' | 'lax'`**
 
 `DnsZoneGuardrails.recordManagement` (environment `withDnsZones` entries and

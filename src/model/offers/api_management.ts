@@ -6,6 +6,13 @@
  * its config type. Vendor-neutral self-hosted offers (CaaS) OMIT `provider`.
  */
 import {defineOffer} from '../core';
+import {
+  ensureNamespace,
+  isCidr,
+  isKubernetesName,
+  refuse,
+} from './caas_param_checks';
+import type {TraefikGatewayConfig} from './traefik_gateway_config';
 
 // ── ApiGateway ───────────────────────────────────────────────────────────────
 /** What a host name in `aliases` may be: dot-separated labels of letters, digits and inner hyphens. */
@@ -301,10 +308,14 @@ export const Ambassador = defineOffer<
   offerType: 'APIManagement.CaaS.Ambassador',
   deliveryModel: 'CaaS',
 });
-const FORWARD_AUTH_LISTS = [
+/** The list knobs of `TraefikGateway`, sent comma-separated as the agent reads them. */
+const TRAEFIK_GATEWAY_LISTS = [
   'forwardAuthRequestHeaders',
   'forwardAuthResponseHeaders',
   'forwardAuthExcludedPrefixes',
+  'forwardAuthExemptComponentIds',
+  'tlsHosts',
+  'loadBalancerSourceRanges',
 ] as const;
 const HEADER_NAME = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/;
 
@@ -317,11 +328,9 @@ const ensureValidForwardAuth = (
     forwardAuthForwardBody?: boolean;
     forwardAuthMaxBodySize?: number;
     forwardAuthExcludedPrefixes?: readonly string[];
+    forwardAuthExemptComponentIds?: readonly string[];
   },
 ): void => {
-  const refuse = (why: string): never => {
-    throw new Error(`Live component '${id}': ${why}.`);
-  };
   const address = config.forwardAuthAddress;
   const anyOther = Object.entries(config).some(
     ([k, v]) =>
@@ -331,13 +340,13 @@ const ensureValidForwardAuth = (
   );
   if (address === undefined) {
     if (anyOther) {
-      refuse('ForwardAuth settings without forwardAuthAddress do nothing');
+      refuse(id, 'ForwardAuth settings without forwardAuthAddress do nothing');
     }
     return;
   }
   // The value is not echoed: it could carry credentials.
   if (!/^https?:\/\/[^\s/?#@]+(\/[^\s]*)?$/.test(address)) {
-    refuse('forwardAuthAddress is not an http(s) URL without credentials');
+    refuse(id, 'forwardAuthAddress is not an http(s) URL without credentials');
   }
   for (const key of [
     'forwardAuthRequestHeaders',
@@ -345,7 +354,7 @@ const ensureValidForwardAuth = (
   ] as const) {
     const bad = (config[key] ?? []).find(h => !HEADER_NAME.test(h));
     if (bad !== undefined) {
-      refuse(`${key} holds '${bad}', which is not a header name`);
+      refuse(id, `${key} holds '${bad}', which is not a header name`);
     }
   }
   const badPrefix = (config.forwardAuthExcludedPrefixes ?? []).find(
@@ -353,13 +362,126 @@ const ensureValidForwardAuth = (
   );
   if (badPrefix !== undefined) {
     refuse(
+      id,
       `forwardAuthExcludedPrefixes holds '${badPrefix}', which is not a path prefix`,
+    );
+  }
+  const badExempt = (config.forwardAuthExemptComponentIds ?? []).find(
+    c =>
+      c.trim() === '' ||
+      c.startsWith('/') ||
+      c.endsWith('/') ||
+      c.includes(','),
+  );
+  if (badExempt !== undefined) {
+    refuse(
+      id,
+      `forwardAuthExemptComponentIds entry '${badExempt}' is neither a component id nor <liveSystemId>/<componentId>`,
     );
   }
   const size = config.forwardAuthMaxBodySize;
   if (size !== undefined && (!Number.isInteger(size) || size < 1)) {
     refuse(
+      id,
       `forwardAuthMaxBodySize ${size} is not a whole number of bytes of at least 1`,
+    );
+  }
+};
+
+/** What a certificate host in `tlsHosts` may be, once a leading `*.` is set aside, as the agent reads it. */
+const isCertificateHost = (host: string): boolean => {
+  const name = host.startsWith('*.') ? host.slice(2) : host;
+  return (
+    !name.includes('*') &&
+    name.includes('.') &&
+    isKubernetesName(name.toLowerCase())
+  );
+};
+
+/** Whether a certificate for `hosts` is valid for `host`, as a TLS client checks it. */
+const certificateCovers = (hosts: readonly string[], host: string): boolean => {
+  const wanted = host.replace(/\.$/, '').toLowerCase();
+  return hosts.some(h => {
+    const name = h.replace(/\.$/, '').toLowerCase();
+    if (name === wanted) {
+      return true;
+    }
+    if (!name.startsWith('*.')) {
+      return false;
+    }
+    const dot = wanted.indexOf('.');
+    return dot > 0 && wanted.slice(dot + 1) === name.slice(2);
+  });
+};
+
+/**
+ * Traefik-terminated TLS, refused as the agent refuses it: TLS is on iff
+ * `tlsSecretName` or `tlsClusterIssuer` is set; without it `tlsHosts` and
+ * `plainHttp: false` serve nothing; with it, port 443 cannot also carry an NLB
+ * TLS listener, and the certificate must cover `host`.
+ */
+const ensureValidTraefikTls = (
+  id: string,
+  config: TraefikGatewayConfig,
+): void => {
+  const tls =
+    config.tlsSecretName !== undefined || config.tlsClusterIssuer !== undefined;
+  if (!tls) {
+    if (config.tlsHosts !== undefined && config.tlsHosts.length > 0) {
+      refuse(
+        id,
+        'tlsHosts is set, but neither tlsSecretName nor tlsClusterIssuer: the gateway has no certificate',
+      );
+    }
+    if (config.plainHttp === false) {
+      refuse(
+        id,
+        'plainHttp is false and the gateway has no TLS (tlsSecretName or tlsClusterIssuer): it would serve nothing',
+      );
+    }
+    return;
+  }
+  for (const key of ['tlsSecretName', 'tlsClusterIssuer'] as const) {
+    const name = config[key];
+    if (name !== undefined && !isKubernetesName(name.trim())) {
+      refuse(id, `${key} '${name}' is not a Kubernetes name`);
+    }
+  }
+  if (config.tlsCertificateArn !== undefined) {
+    refuse(
+      id,
+      'tlsCertificateArn and Traefik TLS (tlsSecretName or tlsClusterIssuer) both need port 443: choose one',
+    );
+  }
+  const hosts =
+    config.tlsHosts !== undefined && config.tlsHosts.length > 0
+      ? config.tlsHosts
+      : config.host !== undefined
+        ? [config.host]
+        : [];
+  if (hosts.length === 0) {
+    refuse(
+      id,
+      'TLS needs the hosts the certificate covers: set tlsHosts, or host',
+    );
+  }
+  const bad = hosts.find(h => !isCertificateHost(h.trim()));
+  if (bad !== undefined) {
+    refuse(
+      id,
+      `tlsHosts entry '${bad}' is not a host name or a one-label wildcard (*.example.com)`,
+    );
+  }
+  if (
+    config.host !== undefined &&
+    !certificateCovers(
+      hosts.map(h => h.trim()),
+      config.host,
+    )
+  ) {
+    refuse(
+      id,
+      `host '${config.host}', the default host of every route, is not covered by tlsHosts ${hosts.join(',')}`,
     );
   }
 };
@@ -383,50 +505,23 @@ export const Traefik = defineOffer<
  * `gatewayRouteSettings`), so a Domain Service references the platform's
  * Traefik rather than owning one.
  *
- * Output fields: `loadBalancerHostname`, `namespace`.
+ * With `tlsClusterIssuer` (or `tlsSecretName`) Traefik terminates TLS itself on
+ * `websecure`: the NLB passes TCP 443 through, which a CloudFront VPC origin
+ * can reach with `originProtocol: 'https'`.
+ *
+ * Output fields: `namespace`, `serviceName`, `releaseName`, `host`,
+ * `entryPoint` (`web` while plain HTTP is served, else `websecure`),
+ * `loadBalancerHostname`, `forwardAuthEnabled`, `forwardAuthMiddlewareName` /
+ * `forwardAuthMiddlewareNamespace` (with ForwardAuth),
+ * `forwardAuthExcludedPrefixes`, `forwardAuthExemptComponents` (qualified
+ * `<liveSystemId>/<componentId>`, always), `tlsEnabled`, `plainHttpEnabled`
+ * (always), `tlsEntryPoint`, `tlsSecretName`, `tlsHosts` (with TLS),
+ * `tlsCertificateName` (`traefik-tls`, when the gateway requested the
+ * Certificate).
  */
 export const TraefikGateway = defineOffer<
   'APIManagement.ApiGateway',
-  {
-    /** Default `traefik`. */
-    namespace?: string;
-    /** Default 2. */
-    replicas?: number;
-    /** Traefik Helm chart version; the agent pins a v3.6.x chart by default. */
-    chartVersion?: string;
-    /** Host a route matches when it names none, e.g. `api.fractal.cloud`. */
-    host?: string;
-    /** An internal NLB (EKS Auto Mode load balancer class); default true. */
-    internalLoadBalancer?: boolean;
-    /**
-     * Regional ACM certificate for a TLS listener on 443 of the NLB. NOT for a
-     * gateway behind a CloudFront VPC origin: a VPC origin cannot reach an NLB
-     * with a TLS listener, so that NLB stays TCP-only and the combination is
-     * refused.
-     */
-    tlsCertificateArn?: string;
-    /**
-     * Idle timeout of the entry points; default 75. Must exceed the keep-alive
-     * of whatever is in front (CloudFront's origin keep-alive).
-     */
-    entryPointIdleTimeoutSeconds?: number;
-    /**
-     * A ForwardAuth middleware on every route the workload links create (except
-     * `forwardAuthExcludedPrefixes`): each request is first sent to this URL,
-     * with its method preserved, and is refused unless it answers 2xx.
-     */
-    forwardAuthAddress?: string;
-    /** Request headers sent to the auth service; default x-clientid, x-clientsecret, origin. */
-    forwardAuthRequestHeaders?: readonly string[];
-    /** Auth-service response headers copied onto the request; default x-jwt. */
-    forwardAuthResponseHeaders?: readonly string[];
-    /** Send the request body to the auth service; default true. */
-    forwardAuthForwardBody?: boolean;
-    /** Largest body forwarded to the auth service, in bytes; default 1048576. */
-    forwardAuthMaxBodySize?: number;
-    /** Route prefixes not authenticated; default /ocelot/, /grafana/, /prometheus/, /alertmanager/. */
-    forwardAuthExcludedPrefixes?: readonly string[];
-  }
+  TraefikGatewayConfig
 >({
   satisfies: 'APIManagement.ApiGateway',
   offerType: TRAEFIK_GATEWAY_OFFER_TYPE,
@@ -434,7 +529,7 @@ export const TraefikGateway = defineOffer<
   // Lists travel comma-separated, as the agent's defaults are written.
   instantiate: (ctx, config) => {
     const params: Record<string, unknown> = {...ctx.parameters, ...config};
-    for (const key of FORWARD_AUTH_LISTS) {
+    for (const key of TRAEFIK_GATEWAY_LISTS) {
       const list = config[key];
       if (list !== undefined) {
         params[key] = list.join(',');
@@ -453,7 +548,28 @@ export const TraefikGateway = defineOffer<
     ];
   },
   validate: (self, _all, config) => {
+    ensureNamespace(self.id, config.namespace);
+    // An empty list travels as a blank string, which the agent reads as unset:
+    // it would apply its default (e.g. still exempt `ocelot`) rather than none.
+    for (const key of TRAEFIK_GATEWAY_LISTS) {
+      if (config[key]?.length === 0) {
+        refuse(
+          self.id,
+          `${key} is an empty list: it is sent blank, which the agent reads as unset and replaces with its default; omit it`,
+        );
+      }
+    }
     ensureValidForwardAuth(self.id, config);
+    ensureValidTraefikTls(self.id, config);
+    const badRange = (config.loadBalancerSourceRanges ?? []).find(
+      r => !isCidr(r),
+    );
+    if (badRange !== undefined) {
+      refuse(
+        self.id,
+        `loadBalancerSourceRanges entry '${badRange}' is not a CIDR`,
+      );
+    }
     if (config.host !== undefined && !HOST_NAME.test(config.host)) {
       throw new Error(
         `Live component '${self.id}': host '${config.host}' is not a host name.`,
