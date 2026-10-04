@@ -36,6 +36,12 @@ describe('parseRouteLink', () => {
     ]);
   });
 
+  it('reads a signed index as strconv.Atoi does', () => {
+    expect(parseRouteLink({'routes.+1.prefix': '/a'})).toEqual([
+      {prefix: '/a', rewritePath: '', host: ''},
+    ]);
+  });
+
   it('finds no routes in settings without route keys', () => {
     expect(parseRouteLink({})).toEqual([]);
   });
@@ -53,6 +59,15 @@ describe('parseRouteLink', () => {
       /route setting "routes.0.path" is not one of prefix, rewritePath, host/,
     ],
     [{'routes.3.host': 'a.b'}, /routes\.3\.prefix is required/],
+    [
+      {'routes.-1.prefix': '/a'},
+      /route setting "routes.-1.prefix" is not routes.<n>.<field>/,
+    ],
+    [
+      {'routes.0.prefix': ['/a']},
+      /route setting "routes.0.prefix" is not text/,
+    ],
+    [{routes: [{prefix: {path: '/a'}}]}, /routes\[0\]\.prefix is not text/],
   ])('refuses %o', (settings, reason) => {
     expect(() => parseRouteLink(settings)).toThrow(reason);
   });

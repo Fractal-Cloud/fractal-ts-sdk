@@ -10,14 +10,25 @@ import {isKubernetesName} from './caas_param_checks';
 /** One route of a route link: what the gateway matches and rewrites ('' = unset). */
 type LinkRoute = {prefix: string; rewritePath: string; host: string};
 
-/** A setting value as the agent's `outputString` reads it: trimmed text, '' when absent. */
-const text = (value: unknown): string =>
-  value === undefined || value === null ? '' : String(value).trim();
+/**
+ * A setting value as the agent's `outputString` reads a scalar: trimmed text, ''
+ * when absent. A list or an object is refused (`what` names it): the agent would
+ * print it Go-style and refuse the route later for a less useful reason.
+ */
+const text = (value: unknown, what: string): string => {
+  if (value === undefined || value === null) {
+    return '';
+  }
+  if (typeof value === 'object') {
+    throw new Error(`${what} is not text`);
+  }
+  return String(value).trim();
+};
 
-const fromObject = (r: Record<string, unknown>): LinkRoute => ({
-  prefix: text(r.prefix),
-  rewritePath: text(r.rewritePath),
-  host: text(r.host),
+const fromObject = (r: Record<string, unknown>, name: string): LinkRoute => ({
+  prefix: text(r.prefix, `${name}.prefix`),
+  rewritePath: text(r.rewritePath, `${name}.rewritePath`),
+  host: text(r.host, `${name}.host`),
 });
 
 /**
@@ -34,7 +45,7 @@ export const parseRouteLink = (
       if (typeof item !== 'object' || item === null || Array.isArray(item)) {
         throw new Error(`routes[${i}] is not an object`);
       }
-      const route = fromObject(item as Record<string, unknown>);
+      const route = fromObject(item as Record<string, unknown>, `routes[${i}]`);
       if (route.prefix === '') {
         throw new Error(`routes[${i}].prefix is required`);
       }
@@ -49,7 +60,8 @@ export const parseRouteLink = (
     const rest = key.slice('routes.'.length);
     const dot = rest.indexOf('.');
     const index = dot < 0 ? '' : rest.slice(0, dot);
-    if (!/^\d+$/.test(index)) {
+    // strconv.Atoi's grammar (an optional sign), and no negative index.
+    if (!/^[+-]?\d+$/.test(index) || Number(index) < 0) {
       throw new Error(`route setting "${key}" is not routes.<n>.<field>`);
     }
     const field = rest.slice(dot + 1);
@@ -59,12 +71,13 @@ export const parseRouteLink = (
       );
     }
     const n = Number(index);
+    text(value, `route setting "${key}"`);
     byIndex.set(n, {...(byIndex.get(n) ?? {}), [field]: value});
   }
   return [...byIndex.entries()]
     .sort(([a], [b]) => a - b)
     .map(([n, r]) => {
-      const route = fromObject(r);
+      const route = fromObject(r, `routes.${n}`);
       if (route.prefix === '') {
         throw new Error(`routes.${n}.prefix is required`);
       }

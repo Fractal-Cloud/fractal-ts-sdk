@@ -989,6 +989,28 @@ describe('TLS gateway certificate coverage', () => {
     );
   });
 
+  it('refuses a malformed workload route link to a TLS gateway', () => {
+    expect(() =>
+      createFractal({
+        id: 'platform-malformed-route',
+        version,
+        boundedContextId,
+        blueprint: bp => {
+          const traefik = bp.add(ApiGateway({id: 'traefik'}));
+          const api = bp.add(Workload({id: 'orders'}));
+          bp.link(api, traefik, {'routes.0.path': '/orders'});
+          return {traefik, api};
+        },
+      }).toLiveSystem({
+        name: 'platform',
+        environment,
+        select: {traefik: TraefikGateway(TLS), orders: K8sWorkload({})},
+      }),
+    ).toThrow(
+      /Route link from 'orders' to 'traefik': route setting "routes.0.path" is not one of prefix, rewritePath, host/,
+    );
+  });
+
   it('refuses a CloudFront alias the certificate does not cover', () => {
     expect(() => routed(undefined, ['www.fractal.cloud'], TLS)).toThrow(
       /'cdn': alias www.fractal.cloud is not covered by the certificate of gateway 'traefik' \(api.fractal.cloud,\*.apps.fractal.cloud\)/,
@@ -1250,7 +1272,7 @@ describe('KubePrometheusStack route link to a TraefikGateway', () => {
     expect(() =>
       routedGrafana({prefix: '/grafana/', rewritePath: '/'}),
     ).toThrow(
-      /Grafana route api.fractal.cloud\/grafana\/ sets rewritePath; the agent strips the sub-path itself/,
+      /^Live component 'prometheus': Grafana route api.fractal.cloud\/grafana\/ sets rewritePath; the agent strips the sub-path itself/,
     );
   });
 });

@@ -205,13 +205,16 @@ const ensureGrafanaRoutes = (
       if (refusal !== undefined) {
         why(`route link from ${self.id}: ${refusal}`);
       }
+      // The agent returns its Grafana-specific refusals bare, not as a link error.
       if (route.rewritePath !== '') {
-        why(
+        refuse(
+          self.id,
           `Grafana route ${route.host}${route.prefix} sets rewritePath; the agent strips the sub-path itself`,
         );
       }
       if (route.prefix !== '/' && !route.prefix.endsWith('/')) {
-        why(
+        refuse(
+          self.id,
           `Grafana route prefix '${route.prefix}' must end with "/" (for example /grafana/)`,
         );
       }
