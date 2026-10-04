@@ -25,7 +25,7 @@ function authorFractal() {
         DnsZoneComponent({id: 'fractal-cloud'})
           .withDomainName('fractal.cloud')
           .withDnssec('required')
-          .withRecordManagement('strict')
+          .withRecordManagement('authoritative')
           .withAllowedRecordTypes(['A', 'CNAME', 'MX', 'TXT', 'CAA'])
           .withTtlBounds({minTtl: 60, maxTtl: 86400})
           .withCaaIssuers(['letsencrypt.org'])
@@ -135,16 +135,16 @@ describe('DNS Zone component', () => {
       operations: () => ({}),
     }).blueprint.components[0].parameters.recordManagement;
 
-  it('strict is recorded as authoritative, which every agent accepts; lax as declared', () => {
+  it('authoritative and lax are recorded as declared', () => {
     expect(
-      recordManagementOf(DnsZoneComponent({id: 'z'}).withRecordManagement('strict')),
+      recordManagementOf(DnsZoneComponent({id: 'z'}).withRecordManagement('authoritative')),
     ).toBe('authoritative');
     expect(
       recordManagementOf(DnsZoneComponent({id: 'z'}).withRecordManagement('lax')),
     ).toBe('lax');
   });
 
-  it('omitted, nothing is sent: the agent applies strict', () => {
+  it('omitted, nothing is sent: the agent applies authoritative', () => {
     const params = createFractal({
       id: 'rm',
       version: {major: 1, minor: 0, patch: 0},
@@ -153,12 +153,6 @@ describe('DNS Zone component', () => {
       operations: () => ({}),
     }).blueprint.components[0].parameters;
     expect('recordManagement' in params).toBe(false);
-  });
-
-  it('authoritative is still accepted, and sent as itself', () => {
-    expect(
-      recordManagementOf(DnsZoneComponent({id: 'z'}).withRecordManagement('authoritative')),
-    ).toBe('authoritative');
   });
 
   it('a lax zone reaches the Route 53 live component as declared', () => {
@@ -181,20 +175,26 @@ describe('DNS Zone component', () => {
     expect(ls.components[0].parameters.recordManagement).toBe('lax');
   });
 
-  it('per-record ownership is no longer a value: additive is refused, naming strict and lax', () => {
+  it('per-record ownership is no longer a value: additive is refused, naming authoritative and lax', () => {
     expect(() =>
       DnsZoneComponent({id: 'z'}).withRecordManagement(
-        'additive' as unknown as 'strict',
+        'additive' as unknown as 'lax',
       ),
     ).toThrow(
-      /withRecordManagement: recordManagement 'additive'.*per-record ownership.*Use 'strict'.*or 'lax'/,
+      /withRecordManagement: recordManagement 'additive'.*per-record ownership.*Use 'authoritative'.*or 'lax'/,
     );
   });
 
-  it('refuses any other value, naming strict and lax', () => {
+  it('refuses any other value, naming authoritative and lax', () => {
     expect(() =>
-      DnsZoneComponent({id: 'z'}).withRecordManagement('loose' as unknown as 'strict'),
-    ).toThrow(/recordManagement 'loose' is not a value.*'strict'.*'lax'/);
+      DnsZoneComponent({id: 'z'}).withRecordManagement('loose' as unknown as 'lax'),
+    ).toThrow(/recordManagement 'loose' is not a value.*'authoritative'.*'lax'/);
+  });
+
+  it('refuses strict, which is not a value, naming authoritative and lax', () => {
+    expect(() =>
+      DnsZoneComponent({id: 'z'}).withRecordManagement('strict' as unknown as 'lax'),
+    ).toThrow(/recordManagement 'strict' is not a value.*'authoritative'.*'lax'/);
   });
 
   it('a Live System cannot slip additive past the type either', () => {
@@ -216,7 +216,7 @@ describe('DNS Zone component', () => {
           z: AwsRoute53HostedZone({recordManagement: 'additive'} as unknown as {adoptExisting?: boolean}),
         },
       }),
-    ).toThrow(/Live component 'z': recordManagement 'additive'.*'strict'.*'lax'/);
+    ).toThrow(/Live component 'z': recordManagement 'additive'.*'authoritative'.*'lax'/);
     expect(() =>
       fractal.toLiveSystem({
         name: 'dns',
@@ -226,7 +226,7 @@ describe('DNS Zone component', () => {
     ).not.toThrow();
   });
 
-  it('an Interface operation setting strict reaches the Live System as authoritative', () => {
+  it('a value set by an Interface operation reaches the Live System as chosen; strict is refused', () => {
     const fractal = createFractal({
       id: 'public-dns-op',
       version: {major: 1, minor: 0, patch: 0},
@@ -245,22 +245,24 @@ describe('DNS Zone component', () => {
         .withRecordManagement(v)
         .toLiveSystem({name: 'dns', environment, select}).components[0].parameters;
     expect(viaOp('authoritative').recordManagement).toBe('authoritative');
-    expect(viaOp('strict').recordManagement).toBe('authoritative');
     expect(viaOp('lax').recordManagement).toBe('lax');
     const unset = fractal.toLiveSystem({name: 'dns', environment, select})
       .components[0].parameters;
-    expect(unset.recordManagement).toBe('authoritative');
+    expect('recordManagement' in unset).toBe(false);
+    expect(() => viaOp('strict')).toThrow(
+      /Live component 'z': recordManagement 'strict' is not a value.*'authoritative'.*'lax'/,
+    );
   });
 
-  it('matches values case-sensitively: Strict is refused, unlike the agents', () => {
+  it('matches values case-sensitively: Authoritative is refused, unlike the agents', () => {
     expect(() =>
-      DnsZoneComponent({id: 'z'}).withRecordManagement('Strict' as unknown as 'strict'),
-    ).toThrow(/recordManagement 'Strict' is not a value.*'strict'.*'lax'/);
+      DnsZoneComponent({id: 'z'}).withRecordManagement('Authoritative' as unknown as 'lax'),
+    ).toThrow(/recordManagement 'Authoritative' is not a value.*'authoritative'.*'lax'/);
   });
 
   it('names a refused value that is not a string as it is', () => {
     expect(() =>
-      DnsZoneComponent({id: 'z'}).withRecordManagement(true as unknown as 'strict'),
-    ).toThrow(/recordManagement true is not a value.*'strict'.*'lax'/);
+      DnsZoneComponent({id: 'z'}).withRecordManagement(true as unknown as 'lax'),
+    ).toThrow(/recordManagement true is not a value.*'authoritative'.*'lax'/);
   });
 });

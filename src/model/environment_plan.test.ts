@@ -165,29 +165,36 @@ describe('cloud.environments.plan()', () => {
     ]);
   });
 
-  it('reports a DNS zone switching between strict and lax as a dnsZones change', async () => {
-    const declare = (recordManagement: 'strict' | 'lax') =>
+  it('reports a DNS zone switching between authoritative and lax as a dnsZones change', async () => {
+    const declare = (recordManagement: 'authoritative' | 'lax') =>
       mgmt().withDnsZones([{name: 'fractal.cloud', recordManagement}]);
-    store('mgmt', {}, resolveEnvironment(declare('strict')).management.parameters);
-    const same = await cloud.environments.plan(declare('strict'));
+    store('mgmt', {}, resolveEnvironment(declare('authoritative')).management.parameters);
+    const same = await cloud.environments.plan(declare('authoritative'));
     expect(same.entries[0].action).toBe('unchanged');
     const plan = await cloud.environments.plan(declare('lax'));
     expect(plan.entries[0].action).toBe('update');
     expect(plan.entries[0].changes).toEqual(['parameters.dnsZones']);
   });
 
-  it('a zone stored as authoritative and redeclared as strict or authoritative is unchanged', async () => {
+  it('a zone stored as authoritative and redeclared as authoritative is unchanged', async () => {
     const stored = resolveEnvironment(mgmt()).management.parameters;
     store('mgmt', {}, {
       ...stored,
       dnsZones: [{name: 'fractal.cloud', recordManagement: 'authoritative'}],
     });
-    for (const recordManagement of ['authoritative', 'strict'] as const) {
-      const plan = await cloud.environments.plan(
-        mgmt().withDnsZones([{name: 'fractal.cloud', recordManagement}]),
-      );
-      expect(plan.entries[0].action).toBe('unchanged');
-    }
+    const plan = await cloud.environments.plan(
+      mgmt().withDnsZones([{name: 'fractal.cloud', recordManagement: 'authoritative'}]),
+    );
+    expect(plan.entries[0].action).toBe('unchanged');
+  });
+
+  it('a zone stored without recordManagement and redeclared without it is unchanged', async () => {
+    const stored = resolveEnvironment(mgmt()).management.parameters;
+    store('mgmt', {}, {...stored, dnsZones: [{name: 'fractal.cloud'}]});
+    const plan = await cloud.environments.plan(
+      mgmt().withDnsZones([{name: 'fractal.cloud'}]),
+    );
+    expect(plan.entries[0].action).toBe('unchanged');
   });
 
   it('refuses an operational tier the stored management tier would override', async () => {

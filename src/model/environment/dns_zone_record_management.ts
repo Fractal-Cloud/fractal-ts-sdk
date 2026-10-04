@@ -1,7 +1,7 @@
 /**
  * environment/dns_zone_record_management.ts — refuses, before anything is sent,
- * a declared DNS zone whose `recordManagement` is not `strict` or `lax` (or the
- * deprecated `authoritative`), such as the removed per-record `additive`.
+ * a declared DNS zone whose `recordManagement` is not `authoritative` or
+ * `lax`, such as the removed per-record `additive`.
  */
 import {recordManagementRefusal} from '../components/dns_record_management';
 import type {DnsZone} from './types';

@@ -4,12 +4,8 @@
  */
 
 /**
- * `'strict'` (the default): every record set the zone does not declare is
- * deleted. `'lax'`: record sets Fractal Cloud did not define are left alone.
- * `'authoritative'` is accepted as an alias of `'strict'`; both are sent as `'authoritative'`, which every agent accepts.
+ * `'authoritative'` (the default, also when omitted): every record set the
+ * zone does not declare is deleted. `'lax'`: record sets Fractal Cloud did not
+ * define are left alone. Sent exactly as chosen.
  */
-export type DnsRecordManagement =
-  | 'strict'
-  | 'lax'
-  /** @deprecated Use `'strict'`, which it is an alias of. */
-  | 'authoritative';
+export type DnsRecordManagement = 'authoritative' | 'lax';

@@ -653,36 +653,28 @@ A zone's `records` are always kept: a declared record set changed or removed out
 Fractal Cloud is put back on the next pass. `recordManagement` decides what happens to
 record sets the declaration does **not** list:
 
-- `'strict'` (the default, also when omitted): the declaration is the whole zone.
-  Every record set it does not declare is deleted, apex NS and SOA aside, whoever
-  created it.
+- `'authoritative'` (the default, also when omitted): the declaration is the whole
+  zone. Every record set it does not declare is deleted, apex NS and SOA aside,
+  whoever created it.
 - `'lax'`: Fractal Cloud never deletes a record set it did not define. A record set
   removed from the declaration is deleted only if it is in the last-applied set
   (`managedRecords`) the previous pass recorded (if that state is lost, the record set
   is left in place); a declared name and type that already exists with other values
   is set to the declared values (the declaration wins for the names it declares).
 
-`'authoritative'` is a deprecated alias of `'strict'`. On the wire the SDK sends
-`'authoritative'` for `'strict'`, for `'authoritative'` and when the key is omitted,
-because cloud agents up to 8.21 accept only that value; `'lax'` is sent only when
-chosen. The SDK switches to sending `'strict'` once every agent accepts it, as a
-coordinated release.
-`'additive'` is gone: it is a type error and refused before anything is sent. Values
-are matched case-sensitively.
+The SDK sends the value exactly as chosen; when the key is omitted, nothing is sent
+and the agent applies `'authoritative'`. Any other value (`'additive'`, the removed
+per-record ownership, included) is a type error and refused before anything is sent.
+Values are matched case-sensitively.
 
-> **`lax` requires cloud agents that know it**; older agents (up to 8.21) fail a
-> `lax` zone without changing it. An **omitted** key is sent as `'authoritative'`,
-> so it is strict on every agent: a zone holding record sets that nobody declared
-> and Fractal Cloud did not write (an adopted zone, one edited by hand, ACME
-> `_acme-challenge` TXT records), which agents up to 8.21 held untouched when the key
-> was omitted, has them deleted on its next pass. Declare `recordManagement: 'lax'`
-> (or list the records) on such a zone before deploying with this version.
+> **`lax` requires cloud agents newer than 8.21.** Agents up to 8.21 accept only
+> `'authoritative'` and fail a `lax` zone without changing it.
 
 Use `lax` when something else writes into the zone, the usual case being ACME DNS-01:
 cert-manager or certbot creates `_acme-challenge` TXT records to prove control of the
-domain. The declaration does not list them, so under `strict` the agent would delete
-them, possibly mid-challenge; under `lax` they survive, while the declared records are
-still kept and restored:
+domain. The declaration does not list them, so under `authoritative` the agent would
+delete them, possibly mid-challenge; under `lax` they survive, while the declared
+records are still kept and restored:
 
 ```ts
 mgmt.withDnsZones([

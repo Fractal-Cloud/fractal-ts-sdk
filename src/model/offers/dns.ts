@@ -6,10 +6,7 @@
  * selecting these offers directly in a Live System is advanced and unsupported.
  */
 import {defineOffer} from '../core';
-import {
-  wireRecordManagement,
-  recordManagementRefusal,
-} from '../components/dns_record_management';
+import {recordManagementRefusal} from '../components/dns_record_management';
 
 /**
  * Amazon Route 53 hosted zone (public, or private and associated with the
@@ -25,30 +22,6 @@ export const AwsRoute53HostedZone = defineOffer<
   offerType: 'NetworkAndCompute.PaaS.AwsRoute53HostedZone',
   provider: 'AWS',
   deliveryModel: 'PaaS',
-  // 'strict' is sent as 'authoritative', which every agent accepts, whichever
-  // way it got into the blueprint (the builder converts it already; an
-  // operation's `ops.set` or a raw `guardrail(...)` does not).
-  instantiate: (ctx, config) => {
-    const parameters: Record<string, unknown> = {
-      ...ctx.parameters,
-      ...(config as Record<string, unknown>),
-    };
-    parameters.recordManagement = wireRecordManagement(
-      parameters.recordManagement ?? 'strict',
-    );
-    return [
-      {
-        id: ctx.id,
-        displayName: ctx.displayName,
-        type: 'NetworkAndCompute.PaaS.AwsRoute53HostedZone',
-        provider: 'AWS',
-        deliveryModel: 'PaaS',
-        parameters,
-        dependencies: ctx.dependencies,
-        links: ctx.links,
-      },
-    ];
-  },
   // Catches what the guardrail's type does not reach: an operation's
   // `ops.set`, a raw `guardrail(...)`, or an offer config cast past its type.
   validate: self => {
