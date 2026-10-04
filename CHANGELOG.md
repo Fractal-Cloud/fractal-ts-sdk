@@ -26,9 +26,10 @@ defaults are the agent's and the SDK sends only what you set.
   while building the Live System.
 - **`SqsExporter`** (`Observability.CaaS.SqsExporter`) on `Monitoring`. Keys:
   `namespace` (`monitoring`), `queueUrls` (string[], sent comma-separated),
-  `monitorIntervalSeconds` (`30`), `image` (the agent's pinned amd64-only image),
-  `nodeSelector` (`{"kubernetes.io/arch": "amd64"}`; an empty selector is refused,
-  as the agent would keep the default). Link it, without settings, to
+  `monitorIntervalSeconds` (`30`), `image` and `nodeSelector` (both unset by
+  default: the SDK sends nothing and the agent's default image and selector apply;
+  an empty selector is refused, as the agent would read it as unset). Link it,
+  without settings, to
   the `AwsSqsQueue` components it watches (references included); an exporter with
   neither a linked queue nor `queueUrls` is refused.
 - **`TraefikGateway`**: Traefik-terminated TLS with `tlsClusterIssuer`,
@@ -42,7 +43,15 @@ defaults are the agent's and the SDK sends only what you set.
   TLS without `tlsHosts` or `host`, a malformed certificate host, a `host` the
   certificate does not cover, an exempt id starting or ending with `/`, a source
   range that is not a CIDR. A Traefik TLS gateway is accepted as a CloudFront VPC
-  origin.
+  origin. With TLS, a route host of a workload link and, over `https`, an
+  `AwsCloudFront` alias that the certificate (`tlsHosts`, else `host`; wildcards
+  cover one label) does not cover are refused, as the agent refuses the route. A
+  route link carrying a nested `routes` array is read from that array only, as the
+  agent reads it.
+- **`AwsCloudFront`**: a VPC origin over `https` (the agent default) to a
+  `TraefikGateway` of the same Live System that does not terminate TLS is refused:
+  its load balancer has no listener on 443. Give the gateway TLS or set
+  `originProtocol: 'http'`. A referenced gateway is not checked.
 - **Grafana stack keys**: `KubePrometheusStack` gains `storageClassName`,
   `prometheusStorageGi` (`50`), `lokiUrl`, `tempoUrl` (`none` = no datasource),
   `alertRules`, `alertmanagerConfig`, `values`; `GrafanaLoki` and `GrafanaTempo`
@@ -56,6 +65,18 @@ defaults are the agent's and the SDK sends only what you set.
   `workloadRoleDrift` on every component with a Pod Identity role (`K8sWorkload`,
   `CertManager`, `GrafanaLoki`, `GrafanaTempo`, `SqsExporter`). The SDK has no typed
   output helpers; they are read from `liveSystems.state(...)` as before.
+
+### Added — DNS zones: `allowBulkDelete` (cloud agents v8.22.0 and later)
+
+`DnsZoneGuardrails.allowBulkDelete?: boolean` (environment `withDnsZones` entries
+and `DnsZoneComponent.withAllowBulkDelete`), default `false`. The agents refuse a
+pass that would delete at least 3 record sets and more than half of a zone;
+`true` lets one such pass through. It applies once per declaration change (the
+agent fingerprints the declaration when it applies a bulk delete, and an unchanged
+declaration is guarded again with a request to remove the flag): remove it
+afterwards. Omitted, nothing is sent. A non-boolean value is refused before
+deploying. **Requires** cloud agents v8.22.0 or later, which are the only ones
+that accept the key.
 
 ### Changed — refused earlier: Loki, Tempo and Alloy without what the agent needs
 
@@ -77,6 +98,21 @@ authenticated from then on, and an `ocelot` workload in another Live System must
 listed by its qualified id `<liveSystemId>/<componentId>`. An empty list is refused
 for every `TraefikGateway` list key: it would travel blank, and the agent reads blank
 as unset and applies its default (so `[]` would still exempt `ocelot`).
+
+### Changed (BREAKING) — `scrapeInterval` and `samplingRate` are refused
+
+`Monitoring.withScrapeInterval` and `Tracing.withSamplingRate` are deprecated. No
+agent reads `scrapeInterval` or `samplingRate` and no offer declares them, so the
+platform pruned them before any agent saw them. Every Monitoring offer
+(`Prometheus`, `KubePrometheusStack`, `SqsExporter`) and Tracing offer (`Jaeger`,
+`GrafanaTempo`) now refuses a Live System whose component carries either key,
+whether set as a guardrail or through an operation. Remove the call.
+
+### Changed — URL checks read URLs as the agent does
+
+A URL with a malformed percent-escape (`%` not followed by two hex digits) is
+refused for `acmeServer`, `forwardAuthAddress`, `lokiPushUrl`, `lokiUrl`, `tempoUrl`
+and `queueUrls`. A queue URL may now carry a `#fragment`, which the agent accepts.
 
 ### Deprecated — `TraefikGateway({forwardAuthExcludedPrefixes})`
 

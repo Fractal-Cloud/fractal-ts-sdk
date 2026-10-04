@@ -9,6 +9,7 @@
 import {defineOffer, type LiveSystemComponent} from '../core';
 import {
   ensureNamespace,
+  hasMalformedEscape,
   isHttpUrl,
   isKubernetesName,
   isWholeAtLeastOne,
@@ -27,6 +28,7 @@ export const Prometheus = defineOffer<
   satisfies: 'Observability.Monitoring',
   offerType: 'Observability.CaaS.Prometheus',
   deliveryModel: 'CaaS',
+  validate: self => ensureNoUnhonoredKeys(self),
 });
 
 // ── Observability.Tracing offers ─────────────────────────────────────────────
@@ -37,6 +39,7 @@ export const Jaeger = defineOffer<
   satisfies: 'Observability.Tracing',
   offerType: 'Observability.CaaS.Jaeger',
   deliveryModel: 'CaaS',
+  validate: self => ensureNoUnhonoredKeys(self),
 });
 
 // ── Observability.Logging offers ─────────────────────────────────────────────
@@ -60,7 +63,25 @@ const S3_BUCKET_TYPES = ['Storage.PaaS.AwsS3', 'Storage.PaaS.S3'];
 const SQS_QUEUE_TYPE = 'Messaging.PaaS.AwsSqsQueue';
 /** A queue URL the exporter can poll and derive the queue ARN from, as the agent reads it. */
 const SQS_QUEUE_URL =
-  /^[Hh][Tt][Tt][Pp][Ss]:\/\/sqs\.[a-z0-9-]+\.amazonaws\.com\/[0-9]{12}\/[A-Za-z0-9_-]{1,80}(\.fifo)?$/;
+  /^[Hh][Tt][Tt][Pp][Ss]:\/\/sqs\.[a-z0-9-]+\.amazonaws\.com\/[0-9]{12}\/[A-Za-z0-9_-]{1,80}(\.fifo)?(#\S*)?$/;
+
+/**
+ * Neutral parameters of `Monitoring` and `Tracing` that no agent reads: no
+ * observability offer declares them, so the platform would prune them before any
+ * agent saw them. They are refused instead of being dropped in silence.
+ */
+const UNHONORED_NEUTRAL_KEYS = ['scrapeInterval', 'samplingRate'] as const;
+
+const ensureNoUnhonoredKeys = (self: LiveSystemComponent): void => {
+  const key = UNHONORED_NEUTRAL_KEYS.find(k => k in self.parameters);
+  if (key !== undefined) {
+    refuse(
+      self.id,
+      `${key} is not honored by ${self.type}: no agent reads it and the platform would ` +
+        'drop it before deploying. Remove it (withScrapeInterval / withSamplingRate are deprecated)',
+    );
+  }
+};
 
 /** The component's neutral `retentionDays` (from `withRetentionDays`), when set, must be at least one day. */
 const ensureRetention = (self: LiveSystemComponent): void => {
@@ -123,6 +144,7 @@ const ensureBackend = (
   all: readonly LiveSystemComponent[],
   config: GrafanaObjectStorageBackendConfig,
 ): void => {
+  ensureNoUnhonoredKeys(self);
   ensureNamespace(self.id, config.namespace);
   ensureStorageClass(self.id, config.storageClassName);
   ensureRetention(self);
@@ -156,6 +178,7 @@ export const KubePrometheusStack = defineOffer<
   offerType: 'Observability.CaaS.KubePrometheusStack',
   deliveryModel: 'CaaS',
   validate: (self, _all, config) => {
+    ensureNoUnhonoredKeys(self);
     ensureNamespace(self.id, config.namespace);
     ensureStorageClass(self.id, config.storageClassName);
     ensureRetention(self);
@@ -293,6 +316,7 @@ export const SqsExporter = defineOffer<
     ];
   },
   validate: (self, all, config) => {
+    ensureNoUnhonoredKeys(self);
     ensureNamespace(self.id, config.namespace);
     if (config.queueUrls !== undefined && config.queueUrls.length === 0) {
       refuse(
@@ -306,12 +330,12 @@ export const SqsExporter = defineOffer<
     ) {
       refuse(
         self.id,
-        'nodeSelector is empty: the agent reads an empty selector as unset and keeps its amd64 default; ' +
+        'nodeSelector is empty: the agent reads an empty selector as unset and keeps its default; ' +
           'name the labels the pods need',
       );
     }
     const badUrl = (config.queueUrls ?? []).find(
-      u => !SQS_QUEUE_URL.test(u.trim()),
+      u => !SQS_QUEUE_URL.test(u.trim()) || hasMalformedEscape(u),
     );
     if (badUrl !== undefined) {
       refuse(

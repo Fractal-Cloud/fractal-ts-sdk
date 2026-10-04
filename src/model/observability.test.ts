@@ -64,11 +64,30 @@ describe('Observability domain', () => {
     expect(trace.locked).toContain('samplingRate');
   });
 
-  it('builds a vendor-neutral CaaS LiveSystem; dev-open param flows', () => {
-    const ls = authorFractal()
-      .specialize()
-      .withScrape(15)
-      .toLiveSystem({name: 'acme-obs', environment, select: fullSelect()});
+  it('refuses scrapeInterval and samplingRate: no offer honors them', () => {
+    expect(() =>
+      authorFractal()
+        .specialize()
+        .withScrape(15)
+        .toLiveSystem({name: 'acme-obs', environment, select: fullSelect()}),
+    ).toThrow(
+      /'monitoring': scrapeInterval is not honored by Observability.CaaS.Prometheus/,
+    );
+  });
+
+  it('builds a vendor-neutral CaaS LiveSystem', () => {
+    const ls = createFractal({
+      id: 'observability-stack',
+      version: {major: 1, minor: 0, patch: 0},
+      boundedContextId,
+      blueprint: bp => ({
+        monitoring: bp.add(
+          Monitoring({id: 'monitoring'}).withRetentionDays(30),
+        ),
+        tracing: bp.add(Tracing({id: 'tracing'}).withRetentionDays(7)),
+        logging: bp.add(Logging({id: 'logging'}).withRetentionDays(14)),
+      }),
+    }).toLiveSystem({name: 'acme-obs', environment, select: fullSelect()});
 
     const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
     // offer types resolved
@@ -80,8 +99,6 @@ describe('Observability domain', () => {
     expect(byId['monitoring'].deliveryModel).toBe('CaaS');
     // guardrail flowed
     expect(byId['monitoring'].parameters.retentionDays).toBe(30);
-    // dev-open param flowed
-    expect(byId['monitoring'].parameters.scrapeInterval).toBe(15);
   });
 
   it('selecting a wrong offer for a Component is a type error AND throws', () => {

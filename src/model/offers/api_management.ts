@@ -5,13 +5,19 @@
  * type, its vendor (provider) and delivery model, and carries vendor knobs in
  * its config type. Vendor-neutral self-hosted offers (CaaS) OMIT `provider`.
  */
-import {defineOffer} from '../core';
+import {defineOffer, type LiveSystemComponent} from '../core';
 import {
   ensureNamespace,
+  hasMalformedEscape,
   isCidr,
   isKubernetesName,
   refuse,
 } from './caas_param_checks';
+import {
+  certificateCovers,
+  gatewayCertificateHosts,
+  isCertificateHost,
+} from './certificate_hosts';
 import type {TraefikGatewayConfig} from './traefik_gateway_config';
 
 // ── ApiGateway ───────────────────────────────────────────────────────────────
@@ -279,6 +285,46 @@ export const AwsCloudFront = defineOffer<
         );
       }
     }
+    // CloudFront checks the origin certificate against the viewer host it
+    // forwards, so over https every alias must be covered by a TLS gateway's
+    // certificate, by the rule the gateway's agent applies to route hosts.
+    const origin = gateways.length === 1 ? gateways[0] : undefined;
+    const certificateHosts =
+      origin === undefined
+        ? undefined
+        : gatewayCertificateHosts(origin.parameters);
+    // Without Traefik TLS the gateway's NLB has no listener on 443, so an https
+    // VPC origin (the agent default) reaches nothing. Only a TraefikGateway of
+    // this Live System is known well enough to tell; a reference is not.
+    if (
+      origin !== undefined &&
+      origin.type === TRAEFIK_GATEWAY_OFFER_TYPE &&
+      origin.reference === undefined &&
+      certificateHosts === undefined &&
+      config.originProtocol !== 'http'
+    ) {
+      throw new Error(
+        `Live component '${self.id}': CloudFront reaches gateway '${origin.id}' over https, ` +
+          'but it does not terminate TLS (no tlsClusterIssuer or tlsSecretName), so its ' +
+          "load balancer has no listener on 443: give the gateway TLS, or set originProtocol: 'http'.",
+      );
+    }
+    if (
+      origin !== undefined &&
+      certificateHosts !== undefined &&
+      config.originProtocol !== 'http'
+    ) {
+      const uncovered = (config.aliases ?? []).find(
+        alias => !certificateCovers(certificateHosts, javaTrim(alias)),
+      );
+      if (uncovered !== undefined) {
+        throw new Error(
+          `Live component '${self.id}': alias ${javaTrim(uncovered)} is not covered by the ` +
+            `certificate of gateway '${origin.id}' (${certificateHosts.join(',')}): add it ` +
+            "to the gateway's tlsHosts, or have CloudFront reach the gateway over http.",
+        );
+      }
+    }
   },
 });
 export const AzureApiManagement = defineOffer<
@@ -345,7 +391,10 @@ const ensureValidForwardAuth = (
     return;
   }
   // The value is not echoed: it could carry credentials.
-  if (!/^https?:\/\/[^\s/?#@]+(\/[^\s]*)?$/.test(address)) {
+  if (
+    !/^https?:\/\/[^\s/?#@]+(\/[^\s]*)?$/.test(address) ||
+    hasMalformedEscape(address)
+  ) {
     refuse(id, 'forwardAuthAddress is not an http(s) URL without credentials');
   }
   for (const key of [
@@ -388,30 +437,65 @@ const ensureValidForwardAuth = (
   }
 };
 
-/** What a certificate host in `tlsHosts` may be, once a leading `*.` is set aside, as the agent reads it. */
-const isCertificateHost = (host: string): boolean => {
-  const name = host.startsWith('*.') ? host.slice(2) : host;
-  return (
-    !name.includes('*') &&
-    name.includes('.') &&
-    isKubernetesName(name.toLowerCase())
-  );
+/**
+ * The explicit route hosts of a workload -> gateway route link. As the agent
+ * reads it, a nested `routes` array, when present, replaces the flat
+ * `routes.<n>.*` keys.
+ */
+const routeHostsOf = (settings: Record<string, unknown>): string[] => {
+  const hosts: string[] = [];
+  const nested = settings.routes;
+  if (Array.isArray(nested)) {
+    for (const route of nested) {
+      if (
+        typeof route === 'object' &&
+        route !== null &&
+        'host' in route &&
+        typeof route.host === 'string'
+      ) {
+        hosts.push(route.host);
+      }
+    }
+  } else {
+    for (const [key, value] of Object.entries(settings)) {
+      if (/^routes\.\d+\.host$/.test(key) && typeof value === 'string') {
+        hosts.push(value);
+      }
+    }
+  }
+  return hosts.map(h => h.trim()).filter(h => h !== '');
 };
 
-/** Whether a certificate for `hosts` is valid for `host`, as a TLS client checks it. */
-const certificateCovers = (hosts: readonly string[], host: string): boolean => {
-  const wanted = host.replace(/\.$/, '').toLowerCase();
-  return hosts.some(h => {
-    const name = h.replace(/\.$/, '').toLowerCase();
-    if (name === wanted) {
-      return true;
+/**
+ * On a TLS gateway every route host must be covered by its certificate: the
+ * workload's agent refuses the route otherwise. A route that names no host takes
+ * the gateway's `host`, which the gateway's own check already covers.
+ */
+const ensureRoutesCovered = (
+  self: LiveSystemComponent,
+  all: readonly LiveSystemComponent[],
+): void => {
+  const hosts = gatewayCertificateHosts(self.parameters);
+  if (hosts === undefined || hosts.length === 0) {
+    return;
+  }
+  for (const source of all) {
+    for (const link of source.links) {
+      if (link.componentId !== self.id) {
+        continue;
+      }
+      const uncovered = routeHostsOf(link.settings).find(
+        h => !certificateCovers(hosts, h),
+      );
+      if (uncovered !== undefined) {
+        throw new Error(
+          `Route link from '${source.id}' to '${self.id}': route host ` +
+            `"${uncovered}" is not covered by the certificate of gateway ${self.id} ` +
+            `(${hosts.join(',')}); add it to the gateway's tlsHosts.`,
+        );
+      }
     }
-    if (!name.startsWith('*.')) {
-      return false;
-    }
-    const dot = wanted.indexOf('.');
-    return dot > 0 && wanted.slice(dot + 1) === name.slice(2);
-  });
+  }
 };
 
 /**
@@ -547,7 +631,7 @@ export const TraefikGateway = defineOffer<
       },
     ];
   },
-  validate: (self, _all, config) => {
+  validate: (self, all, config) => {
     ensureNamespace(self.id, config.namespace);
     // An empty list travels as a blank string, which the agent reads as unset:
     // it would apply its default (e.g. still exempt `ocelot`) rather than none.
@@ -570,6 +654,7 @@ export const TraefikGateway = defineOffer<
         `loadBalancerSourceRanges entry '${badRange}' is not a CIDR`,
       );
     }
+    ensureRoutesCovered(self, all);
     if (config.host !== undefined && !HOST_NAME.test(config.host)) {
       throw new Error(
         `Live component '${self.id}': host '${config.host}' is not a host name.`,

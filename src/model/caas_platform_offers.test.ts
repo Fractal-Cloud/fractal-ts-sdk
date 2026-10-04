@@ -17,17 +17,22 @@ import {
   type LiveSystemComponent,
 } from './core';
 import {ApiGateway} from './components/api_management';
+import {Workload} from './components/custom_workloads';
+import {gatewayRouteSettings} from './components/gateway_route_settings';
 import {CertificateManager} from './components/certificate_manager';
 import {MessagingEntity} from './components/messaging';
 import {Logging, Monitoring, Tracing} from './components/observability';
 import {ObjectStorage} from './components/storage';
 import {AwsCloudFront, TraefikGateway} from './offers/api_management';
 import {AwsSqsQueue} from './offers/messaging';
+import {K8sWorkload} from './offers/custom_workloads';
 import {
   GrafanaAlloy,
   GrafanaLoki,
   GrafanaTempo,
+  Jaeger,
   KubePrometheusStack,
+  Prometheus,
   SqsExporter,
 } from './offers/observability';
 import {CertManager} from './offers/security';
@@ -157,6 +162,10 @@ describe('CertManager', () => {
       /acmeServer 'http:\/\/acme.example.com\/directory' is neither production, staging nor an https/,
     ],
     [
+      {acmeServer: 'https://acme.example.com/dir%zz'},
+      /acmeServer 'https:\/\/acme.example.com\/dir%zz' is neither/,
+    ],
+    [
       {clusterIssuerName: 'Lets_Encrypt'},
       /clusterIssuerName 'Lets_Encrypt' is not a Kubernetes name/,
     ],
@@ -243,6 +252,21 @@ describe('SqsExporter', () => {
     });
   });
 
+  it('leaves image and nodeSelector to the agent when unset', () => {
+    const params = exporter({namespace: 'monitoring'}).parameters;
+    expect(params).toEqual({namespace: 'monitoring'});
+    expect('image' in params || 'nodeSelector' in params).toBe(false);
+  });
+
+  it('accepts a queue URL with a fragment, as the agent does', () => {
+    expect(() =>
+      exporter({
+        queueUrls: [`${QUEUE_URL}#orders`],
+        monitorIntervalSeconds: 30,
+      }),
+    ).not.toThrow();
+  });
+
   it('watches only queueUrls when no queue is linked', () => {
     expect(exporter({queueUrls: [QUEUE_URL]}, false).parameters.queueUrls).toBe(
       QUEUE_URL,
@@ -265,6 +289,8 @@ describe('SqsExporter', () => {
       /queueUrls holds/,
     ],
     [{queueUrls: [`${QUEUE_URL},x`]}, /queueUrls holds/],
+    [{queueUrls: [`${QUEUE_URL}?Action=x`]}, /queueUrls holds/],
+    [{queueUrls: [`${QUEUE_URL}#a%zz`]}, /queueUrls holds/],
     [{monitorIntervalSeconds: 0}, /monitorIntervalSeconds 0 is not/],
     [{monitorIntervalSeconds: 1.5}, /monitorIntervalSeconds 1.5 is not/],
     [{image: ' '}, /image ' ' is blank/],
@@ -342,9 +368,22 @@ describe('TraefikGateway platform keys', () => {
   it('accepts IPv6 ranges with an embedded IPv4 tail', () => {
     expect(() =>
       gateway({
-        loadBalancerSourceRanges: ['::ffff:10.0.0.0/104', '::/0', 'fe80::1/128'],
+        loadBalancerSourceRanges: [
+          '::ffff:10.0.0.0/104',
+          '::/0',
+          'fe80::1/128',
+        ],
       }),
     ).not.toThrow();
+  });
+
+  it('accepts an exempt id with an inner slash, as the agent does', () => {
+    expect(
+      gateway({
+        forwardAuthAddress: 'http://auth/',
+        forwardAuthExemptComponentIds: ['org/1/platform/ocelot'],
+      }).parameters.forwardAuthExemptComponentIds,
+    ).toBe('org/1/platform/ocelot');
   });
 
   it('carries loadBalancerSourceRanges comma-separated and values as an object', () => {
@@ -437,6 +476,10 @@ describe('TraefikGateway platform keys', () => {
       /forwardAuthExemptComponentIds entry 'a,b'/,
     ],
     [
+      {forwardAuthAddress: 'http://auth/%zz'},
+      /forwardAuthAddress is not an http\(s\) URL/,
+    ],
+    [
       {forwardAuthExemptComponentIds: ['ocelot']},
       /ForwardAuth settings without forwardAuthAddress do nothing/,
     ],
@@ -452,18 +495,9 @@ describe('TraefikGateway platform keys', () => {
       {loadBalancerSourceRanges: ['1.2.3.4::1/64']},
       /loadBalancerSourceRanges entry '1.2.3.4::1\/64' is not a CIDR/,
     ],
-    [
-      {loadBalancerSourceRanges: ['2001:db8::1::/64']},
-      /is not a CIDR/,
-    ],
-    [
-      {loadBalancerSourceRanges: ['1:2:3:4:5:6:7:8:9/64']},
-      /is not a CIDR/,
-    ],
-    [
-      {loadBalancerSourceRanges: ['2001:dg8::/32']},
-      /is not a CIDR/,
-    ],
+    [{loadBalancerSourceRanges: ['2001:db8::1::/64']}, /is not a CIDR/],
+    [{loadBalancerSourceRanges: ['1:2:3:4:5:6:7:8:9/64']}, /is not a CIDR/],
+    [{loadBalancerSourceRanges: ['2001:dg8::/32']}, /is not a CIDR/],
     [
       {
         forwardAuthAddress: 'http://auth/',
@@ -478,9 +512,16 @@ describe('TraefikGateway platform keys', () => {
       },
       /forwardAuthRequestHeaders is an empty list/,
     ],
-    [{loadBalancerSourceRanges: []}, /loadBalancerSourceRanges is an empty list/],
     [
-      {host: 'api.fractal.cloud', tlsClusterIssuer: 'letsencrypt', tlsHosts: []},
+      {loadBalancerSourceRanges: []},
+      /loadBalancerSourceRanges is an empty list/,
+    ],
+    [
+      {
+        host: 'api.fractal.cloud',
+        tlsClusterIssuer: 'letsencrypt',
+        tlsHosts: [],
+      },
       /tlsHosts is an empty list/,
     ],
     [
@@ -718,6 +759,12 @@ describe('caas-k8s observability parameters and links', () => {
       /lokiPushUrl 'loki:3100' is not an absolute http\(s\) URL/,
     ],
     [
+      'a lokiPushUrl with a malformed percent-escape',
+      {alloy: GrafanaAlloy({lokiPushUrl: 'http://loki:3100/%g1'})},
+      {},
+      /lokiPushUrl 'http:\/\/loki:3100\/%g1' is not an absolute http\(s\) URL/,
+    ],
+    [
       'a lokiUrl that is neither none nor http(s)',
       {prometheus: KubePrometheusStack({lokiUrl: 'ftp://loki'})},
       {},
@@ -743,5 +790,228 @@ describe('caas-k8s observability parameters and links', () => {
     ],
   ])('refuses %s', (_name, select, opts, reason) => {
     expect(() => stack(select, opts)).toThrow(reason);
+  });
+});
+
+// ── Neutral parameters no offer honors ───────────────────────────────────────
+describe('scrapeInterval and samplingRate are refused, never pruned', () => {
+  const build = (
+    monitoring: ReturnType<typeof Prometheus>,
+    tracing: ReturnType<typeof Jaeger>,
+    scrape?: number,
+    sampling?: number,
+  ) =>
+    createFractal({
+      id: 'unhonored',
+      version,
+      boundedContextId,
+      blueprint: bp => {
+        const m = Monitoring({id: 'metrics'});
+        const t = Tracing({id: 'traces'});
+        return {
+          metrics: bp.add(
+            scrape === undefined ? m : m.withScrapeInterval(scrape),
+          ),
+          traces: bp.add(
+            sampling === undefined ? t : t.withSamplingRate(sampling),
+          ),
+          bucket: bp.add(ObjectStorage({id: 'bucket'})),
+        };
+      },
+    }).toLiveSystem({
+      name: 'platform',
+      environment,
+      select: {metrics: monitoring, traces: tracing, bucket: AwsS3({})},
+    });
+
+  it.each([
+    ['Prometheus', Prometheus({}), 'Observability.CaaS.Prometheus'],
+    [
+      'KubePrometheusStack',
+      KubePrometheusStack({}),
+      'Observability.CaaS.KubePrometheusStack',
+    ],
+    [
+      'SqsExporter',
+      SqsExporter({
+        queueUrls: ['https://sqs.eu-central-1.amazonaws.com/111122223333/q'],
+      }),
+      'Observability.CaaS.SqsExporter',
+    ],
+  ])('refuses scrapeInterval on %s', (_name, offer, type) => {
+    expect(() => build(offer, Jaeger({}), 15)).toThrow(
+      new RegExp(
+        `'metrics': scrapeInterval is not honored by ${type.replace(/\./g, '\\.')}`,
+      ),
+    );
+  });
+
+  it('refuses samplingRate on Jaeger', () => {
+    expect(() => build(Prometheus({}), Jaeger({}), undefined, 0.1)).toThrow(
+      /'traces': samplingRate is not honored by Observability.CaaS.Jaeger/,
+    );
+  });
+
+  it('builds without them', () => {
+    expect(() => build(Prometheus({}), Jaeger({}))).not.toThrow();
+  });
+});
+
+describe('samplingRate on GrafanaTempo', () => {
+  it('is refused', () => {
+    expect(() =>
+      createFractal({
+        id: 'tempo-sampling',
+        version,
+        boundedContextId,
+        blueprint: bp => {
+          const bucket = bp.add(ObjectStorage({id: 'bucket'}));
+          const traces = bp.add(Tracing({id: 'traces'}).withSamplingRate(0.5));
+          bp.link(traces, bucket, {access: 'read-write'});
+          return {bucket, traces};
+        },
+      }).toLiveSystem({
+        name: 'platform',
+        environment,
+        select: {bucket: AwsS3({}), traces: GrafanaTempo({})},
+      }),
+    ).toThrow(
+      /'traces': samplingRate is not honored by Observability.CaaS.GrafanaTempo/,
+    );
+  });
+});
+
+// ── TLS gateway: route hosts and CloudFront aliases must be covered ──────────
+describe('TLS gateway certificate coverage', () => {
+  const routed = (
+    routeHost: string | undefined,
+    aliases: string[],
+    gatewayConfig: Parameters<typeof TraefikGateway>[0],
+    originProtocol?: 'https' | 'http',
+  ) =>
+    createFractal({
+      id: 'platform-routes',
+      version,
+      boundedContextId,
+      blueprint: bp => {
+        const traefik = bp.add(ApiGateway({id: 'traefik'}));
+        const cdn = bp.add(ApiGateway({id: 'cdn'}));
+        const api = bp.add(Workload({id: 'orders'}));
+        bp.link(
+          api,
+          traefik,
+          gatewayRouteSettings({
+            routes: [
+              routeHost === undefined
+                ? {prefix: '/orders'}
+                : {prefix: '/orders', host: routeHost},
+            ],
+          }),
+        );
+        bp.link(cdn, traefik);
+        return {traefik, cdn, api};
+      },
+    }).toLiveSystem({
+      name: 'platform',
+      environment,
+      select: {
+        traefik: TraefikGateway(gatewayConfig),
+        cdn: AwsCloudFront(
+          originProtocol === undefined ? {aliases} : {aliases, originProtocol},
+        ),
+        orders: K8sWorkload({}),
+      },
+    });
+  const TLS = {
+    host: 'api.fractal.cloud',
+    tlsClusterIssuer: 'letsencrypt',
+    tlsHosts: ['api.fractal.cloud', '*.apps.fractal.cloud'],
+  };
+
+  it('accepts covered route hosts and aliases, wildcards included', () => {
+    expect(() =>
+      routed(
+        'orders.apps.fractal.cloud',
+        ['api.fractal.cloud', 'Web.Apps.Fractal.Cloud'],
+        TLS,
+      ),
+    ).not.toThrow();
+    expect(() => routed(undefined, ['api.fractal.cloud'], TLS)).not.toThrow();
+  });
+
+  it('refuses a route host the certificate does not cover', () => {
+    expect(() =>
+      routed('a.b.apps.fractal.cloud', ['api.fractal.cloud'], TLS),
+    ).toThrow(
+      /^Route link from 'orders' to 'traefik': route host "a.b.apps.fractal.cloud" is not covered by the certificate of gateway traefik \(api.fractal.cloud,\*.apps.fractal.cloud\); add it to the gateway's tlsHosts/,
+    );
+  });
+
+  it('refuses a CloudFront alias the certificate does not cover', () => {
+    expect(() => routed(undefined, ['www.fractal.cloud'], TLS)).toThrow(
+      /'cdn': alias www.fractal.cloud is not covered by the certificate of gateway 'traefik' \(api.fractal.cloud,\*.apps.fractal.cloud\)/,
+    );
+  });
+
+  it('defaults the certificate hosts to the gateway host', () => {
+    expect(() =>
+      routed('other.fractal.cloud', ['api.fractal.cloud'], {
+        host: 'api.fractal.cloud',
+        tlsSecretName: 'api-tls',
+      }),
+    ).toThrow(
+      /route host "other.fractal.cloud" is not covered .*\(api.fractal.cloud\)/,
+    );
+  });
+
+  it('checks nothing when the gateway has no TLS or CloudFront uses http', () => {
+    expect(() =>
+      routed(
+        'other.fractal.cloud',
+        ['www.fractal.cloud'],
+        {host: 'api.fractal.cloud'},
+        'http',
+      ),
+    ).not.toThrow();
+    expect(() =>
+      routed(
+        undefined,
+        ['www.fractal.cloud'],
+        {...TLS, plainHttp: true},
+        'http',
+      ),
+    ).not.toThrow();
+  });
+
+  it('refuses an https VPC origin to a gateway that does not terminate TLS', () => {
+    expect(() =>
+      routed(undefined, ['api.fractal.cloud'], {host: 'api.fractal.cloud'}),
+    ).toThrow(
+      /'cdn': CloudFront reaches gateway 'traefik' over https, but it does not terminate TLS/,
+    );
+  });
+
+  it('reads a nested routes array instead of the flat keys, as the agent does', () => {
+    expect(() =>
+      createFractal({
+        id: 'platform-nested-routes',
+        version,
+        boundedContextId,
+        blueprint: bp => {
+          const traefik = bp.add(ApiGateway({id: 'traefik'}));
+          const api = bp.add(Workload({id: 'orders'}));
+          bp.link(api, traefik, {
+            routes: [{prefix: '/orders', host: 'api.fractal.cloud'}],
+            'routes.0.prefix': '/ignored',
+            'routes.0.host': 'ignored.example.com',
+          });
+          return {traefik, api};
+        },
+      }).toLiveSystem({
+        name: 'platform',
+        environment,
+        select: {traefik: TraefikGateway(TLS), orders: K8sWorkload({})},
+      }),
+    ).not.toThrow();
   });
 });

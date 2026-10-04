@@ -729,6 +729,26 @@ for (const zone of dns?.zones ?? []) {
 
 ---
 
+#### Deleting many record sets at once: `allowBulkDelete`
+
+Cloud agents v8.22.0 and later guard a zone against mass deletion: a pass that
+would delete at least 3 record sets **and** more than half of the zone is refused
+and reported instead of applied. When such a deletion is intended, declare
+`allowBulkDelete: true` on the zone (the `withDnsZones` entry, or
+`DnsZoneComponent.withAllowBulkDelete(true)`):
+
+```ts
+env.withDnsZones([{name: 'fractal.cloud', records, allowBulkDelete: true}]);
+```
+
+It applies once per declaration change: the agent records a fingerprint of the
+declaration when it applies the bulk delete, and while the declaration stays the
+same the guard applies again and the agent reports that the flag should be
+removed. Remove it afterwards. The default is `false`, and omitted, nothing is
+sent. Only agents v8.22.0 and later accept the key; do not declare it on an
+environment whose agents are older. A value that is not a boolean is refused
+before anything is sent.
+
 ## Deploy from CI
 
 The SDK carries the CI plumbing an environments-as-code repository would
@@ -1051,6 +1071,13 @@ would still exempt `ocelot`). Path prefixes no longer exempt a workload route: t
 old default `/grafana/`, `/prometheus/`, `/alertmanager/` exemptions are gone, so
 those routes are authenticated unless their workload is listed.
 
+With TLS, every route host a workload link names (`routes.<n>.host`) and, while
+CloudFront reaches the gateway over `https`, every `AwsCloudFront` alias must be
+covered by the certificate (`tlsHosts`, else `host`; `*.parent` covers exactly one
+label), checked when the gateway is in the same Live System. An `AwsCloudFront`
+that reaches a same-Live-System gateway without TLS over `https` (its default) is
+refused: that load balancer has no listener on 443.
+
 Refused while building the Live System: `tlsHosts` or `plainHttp: false` without
 TLS, `tlsCertificateArn` with Traefik TLS, TLS without `tlsHosts` or `host`, a
 malformed certificate host, a `host` the certificate does not cover, an invalid
@@ -1066,6 +1093,10 @@ Output fields: `namespace`, `serviceName`, `releaseName`, `host`, `entryPoint`
 requested the Certificate).
 
 ### Observability (self-hosted, CaaS)
+
+`Monitoring.withScrapeInterval` and `Tracing.withSamplingRate` are deprecated: no
+agent reads `scrapeInterval` or `samplingRate`, so every Monitoring and Tracing offer
+refuses a Live System that sets them instead of letting the platform drop them.
 
 | Component | Offer |
 |---|---|
@@ -1099,8 +1130,12 @@ may only `sqs:GetQueueAttributes` on those exact queues.
 | `namespace` | string | `monitoring` |
 | `queueUrls` | string[] | none: queues watched besides the linked ones (`https://sqs.<region>.amazonaws.com/<account>/<name>`) |
 | `monitorIntervalSeconds` | number | `30` |
-| `image` | string | `ghcr.io/jmriebold/sqs-prometheus-exporter:1.1.0@sha256:7564…` (linux/amd64 only) |
-| `nodeSelector` | `Record<string, string>` | `{"kubernetes.io/arch": "amd64"}` |
+| `image` | string | unset: the agent's pinned default image |
+| `nodeSelector` | `Record<string, string>` (non-empty) | unset: the agent's default, matched to its default image |
+
+The SDK never sends a default for `image` or `nodeSelector`, so a change of the
+agent's default image (the caas-k8s agent is moving from an amd64-only image to a
+multi-arch one for Graviton clusters) reaches every exporter that leaves them unset.
 
 An exporter with no linked queue and no `queueUrls` is refused. Metrics:
 `sqs_approximatenumberofmessages`, `…_delayed`, `…_notvisible`, label `queue`;

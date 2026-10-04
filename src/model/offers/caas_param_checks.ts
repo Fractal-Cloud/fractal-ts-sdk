@@ -28,7 +28,12 @@ export const isKubernetesName = (value: string): boolean =>
 export const isNamespaceName = (value: string): boolean =>
   DNS1123_LABEL.test(value);
 
-export const isHttpUrl = (value: string): boolean => HTTP_URL.test(value);
+/** A `%` not followed by two hex digits, which Go's url.Parse (the agent's) refuses. */
+export const hasMalformedEscape = (value: string): boolean =>
+  /%(?![0-9A-Fa-f]{2})/.test(value);
+
+export const isHttpUrl = (value: string): boolean =>
+  HTTP_URL.test(value) && !hasMalformedEscape(value);
 
 export const isWholeAtLeastOne = (value: number): boolean =>
   Number.isInteger(value) && value >= 1;

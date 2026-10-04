@@ -17,6 +17,11 @@ export type MonitoringNode<Id extends string = string> = ComponentNode<
   'Observability.Monitoring'
 > & {
   withRetentionDays: (v: number) => MonitoringNode<Id>;
+  /**
+   * @deprecated No agent reads `scrapeInterval` and no offer declares it, so every
+   * Monitoring offer refuses a Live System that sets it rather than letting the
+   * platform drop it. Scrape intervals belong to the scraping offer's own config.
+   */
   withScrapeInterval: (v: number) => MonitoringNode<Id>;
 };
 const monitoringNode = <Id extends string>(
@@ -41,6 +46,11 @@ export type TracingNode<Id extends string = string> = ComponentNode<
   'Observability.Tracing'
 > & {
   withRetentionDays: (v: number) => TracingNode<Id>;
+  /**
+   * @deprecated No agent reads `samplingRate` and no offer declares it, so every
+   * Tracing offer refuses a Live System that sets it rather than letting the
+   * platform drop it. Sampling is decided by the instrumented workloads.
+   */
   withSamplingRate: (v: number) => TracingNode<Id>;
 };
 const tracingNode = <Id extends string>(s: NodeState): TracingNode<Id> => ({

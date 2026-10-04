@@ -6,7 +6,12 @@
  * self-hosted offers (e.g. Ocelot / Keycloak on any cluster) omit `provider`.
  */
 import {defineOffer} from '../core';
-import {ensureNamespace, isKubernetesName, refuse} from './caas_param_checks';
+import {
+  ensureNamespace,
+  hasMalformedEscape,
+  isKubernetesName,
+  refuse,
+} from './caas_param_checks';
 import type {CertManagerConfig} from './cert_manager_config';
 
 // ── Security.ServiceMesh offers ──────────────────────────────────────────────
@@ -66,7 +71,8 @@ const EMAIL = new RegExp(`^${ATOM}(\\.${ATOM})*@${ATOM}(\\.${ATOM})*$`);
 
 const isAcmeServer = (value: string): boolean =>
   ['production', 'staging'].includes(value.trim().toLowerCase()) ||
-  /^https:\/\/[^\s/?#]+([/?#]\S*)?$/i.test(value.trim());
+  (/^https:\/\/[^\s/?#]+([/?#]\S*)?$/i.test(value.trim()) &&
+    !hasMalformedEscape(value));
 
 /**
  * cert-manager on a Kubernetes cluster (EKS), installed and owned by the

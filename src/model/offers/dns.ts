@@ -6,6 +6,7 @@
  * selecting these offers directly in a Live System is advanced and unsupported.
  */
 import {defineOffer} from '../core';
+import {allowBulkDeleteRefusal} from '../components/dns_bulk_delete';
 import {recordManagementRefusal} from '../components/dns_record_management';
 
 /**
@@ -25,7 +26,9 @@ export const AwsRoute53HostedZone = defineOffer<
   // Catches what the guardrail's type does not reach: an operation's
   // `ops.set`, a raw `guardrail(...)`, or an offer config cast past its type.
   validate: self => {
-    const refusal = recordManagementRefusal(self.parameters.recordManagement);
+    const refusal =
+      recordManagementRefusal(self.parameters.recordManagement) ??
+      allowBulkDeleteRefusal(self.parameters.allowBulkDelete);
     if (refusal !== undefined) {
       throw new Error(`Live component '${self.id}': ${refusal}`);
     }

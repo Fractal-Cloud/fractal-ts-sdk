@@ -14,15 +14,15 @@ export type SqsExporterConfig = {
   /** Seconds between two reads of the queue attributes; the agent defaults to 30. */
   monitorIntervalSeconds?: number;
   /**
-   * Exporter image. The agent pins
-   * `ghcr.io/jmriebold/sqs-prometheus-exporter:1.1.0@sha256:7564828a...`, which is
-   * published for linux/amd64 only.
+   * Exporter image. Unset (the SDK sends nothing), the agent's pinned default
+   * applies; the SDK deliberately does not repeat it, so a new agent default
+   * (e.g. a multi-arch image) reaches existing Live Systems unchanged.
    */
   image?: string;
   /**
-   * Pod nodeSelector; the agent defaults to `{"kubernetes.io/arch": "amd64"}`,
-   * matching the default image. A Graviton-only cluster needs an arm64 `image`
-   * and this overridden.
+   * Pod nodeSelector, a non-empty label map. Unset (the SDK sends nothing), the
+   * agent's default applies, matched to its default image. Set it together with
+   * `image` when the image supports only some architectures.
    */
   nodeSelector?: Readonly<Record<string, string>>;
 };
