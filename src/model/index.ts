@@ -73,6 +73,7 @@ export type {EksAutoModeNodePool} from './offers/eks_auto_mode_node_pool';
 export type {EksControlPlaneLogType} from './offers/eks_control_plane_log_type';
 export * from './offers/storage';
 export type {AwsRdsStorageType} from './offers/aws_rds_storage_type';
+export type {AwsRdsDbmsConfig} from './offers/aws_rds_dbms_config';
 export * from './offers/big_data';
 export * from './offers/messaging';
 export * from './offers/api_management';

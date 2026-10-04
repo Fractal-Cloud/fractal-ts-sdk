@@ -90,6 +90,77 @@ const ORIGIN_TIMEOUT_MAX = 180;
 const WAF_RATE_LIMIT_MIN = 10;
 const WAF_RATE_LIMIT_MAX = 2_000_000_000;
 
+/** The bucket offer types a CloudFront distribution may link to as its origin. */
+const S3_ORIGIN_BUCKET_TYPES = ['Storage.PaaS.AwsS3'];
+/** CloudFront's limit on a default root object name. */
+const DEFAULT_ROOT_OBJECT_MAX_LENGTH = 255;
+
+/**
+ * Whether the distribution serves a linked bucket, after refusing what the agent would refuse
+ * about it: more than one bucket, a link granting anything but `read` (the ObjectStorageLink
+ * contract; a distribution only reads), and the bucket-only site settings without a bucket.
+ */
+const siteBucketOrigin = (
+  self: LiveSystemComponent,
+  all: readonly LiveSystemComponent[],
+  config: {defaultRootObject?: unknown; spaFallback?: unknown},
+): boolean => {
+  const bucketLinks = self.links.filter(l =>
+    all.some(
+      c => c.id === l.componentId && S3_ORIGIN_BUCKET_TYPES.includes(c.type),
+    ),
+  );
+  if (bucketLinks.length > 1) {
+    throw new Error(
+      `Live component '${self.id}': links to ${bucketLinks.length} buckets ` +
+        `[${bucketLinks.map(l => l.componentId).join(', ')}]: at most one can be the origin.`,
+    );
+  }
+  for (const link of bucketLinks) {
+    if (link.settings.access !== 'read') {
+      throw new Error(
+        `Live component '${self.id}': links to the bucket '${link.componentId}' with access ` +
+          `'${String(link.settings.access ?? '')}': a distribution reads its bucket, so only 'read' is accepted.`,
+      );
+    }
+  }
+  const bucketOrigin = bucketLinks.length === 1;
+  const root = config.defaultRootObject;
+  if (root !== undefined) {
+    if (
+      typeof root !== 'string' ||
+      root.trim() === '' ||
+      root !== root.trim() ||
+      root.startsWith('/') ||
+      root.length > DEFAULT_ROOT_OBJECT_MAX_LENGTH
+    ) {
+      throw new Error(
+        `Live component '${self.id}': defaultRootObject '${String(root)}' is not an object name ` +
+          `(non-blank, no leading '/', at most ${DEFAULT_ROOT_OBJECT_MAX_LENGTH} characters).`,
+      );
+    }
+    if (!bucketOrigin) {
+      throw new Error(
+        `Live component '${self.id}': defaultRootObject applies to a linked bucket origin only.`,
+      );
+    }
+  }
+  const fallback = config.spaFallback;
+  if (fallback !== undefined) {
+    if (typeof fallback !== 'boolean') {
+      throw new Error(
+        `Live component '${self.id}': spaFallback '${String(fallback)}' is not a boolean.`,
+      );
+    }
+    if (!bucketOrigin) {
+      throw new Error(
+        `Live component '${self.id}': spaFallback applies to a linked bucket origin only.`,
+      );
+    }
+  }
+  return bucketOrigin;
+};
+
 /** The host of a target `redirectRefusal` accepted, lower case, without a trailing dot. */
 const targetHost = (target: string): string =>
   target
@@ -125,6 +196,14 @@ export const AwsCloudFront = defineOffer<
      * one): the agent reads the internal NLB from the gateway's
      * `loadBalancerHostname` output. A link, not a dependency, so the gateway can
      * sit in the same Live System without a cycle, or be a reference.
+     *
+     * For a static site, LINK this component to an `AwsS3` bucket instead, with
+     * the object-storage link `{access: 'read'} satisfies ObjectStorageLink`
+     * (at most one; the bucket may be a reference): the agent serves the bucket
+     * through an origin access control and grants this distribution alone in
+     * the bucket policy, so the bucket stays private. See `defaultRootObject`
+     * and `spaFallback`. A distribution has exactly one origin: a linked
+     * bucket, a linked gateway or `originDomain`.
      */
     originDomain?: string;
     /**
@@ -154,6 +233,18 @@ export const AwsCloudFront = defineOffer<
      * It cannot sit on an NLB used as a VPC origin, which allows no TLS listener.
      */
     originDomainName?: string;
+    /**
+     * A bucket origin only: the object served for a request to the root (`/`),
+     * e.g. `index.html`. An object name, without a leading `/`. Unset, the
+     * agent applies `index.html` to a bucket origin.
+     */
+    defaultRootObject?: string;
+    /**
+     * A bucket origin only: serve a single-page app, answering every path the
+     * bucket does not hold with the root object and status 200, for the
+     * browser router to resolve. Unset is false: a missing object stays 404.
+     */
+    spaFallback?: boolean;
   }
 >({
   satisfies: 'APIManagement.ApiGateway',
@@ -217,7 +308,14 @@ export const AwsCloudFront = defineOffer<
         `Live component '${self.id}': forward to originDomain or a linked gateway, not both.`,
       );
     }
-    if (target !== undefined && (customOrigin || vpcOrigin)) {
+    const bucketOrigin = siteBucketOrigin(self, all, config);
+    if (bucketOrigin && (customOrigin || vpcOrigin)) {
+      throw new Error(
+        `Live component '${self.id}': serve from exactly one origin: a linked bucket, ` +
+          'a linked gateway or originDomain.',
+      );
+    }
+    if (target !== undefined && (customOrigin || vpcOrigin || bucketOrigin)) {
       throw new Error(
         `Live component '${self.id}': a distribution serves redirectTo or an origin, not both.`,
       );
@@ -226,11 +324,12 @@ export const AwsCloudFront = defineOffer<
       aliases.length > 0 &&
       target === undefined &&
       !customOrigin &&
-      !vpcOrigin
+      !vpcOrigin &&
+      !bucketOrigin
     ) {
       throw new Error(
-        `Live component '${self.id}': aliases need an origin (originDomain or a linked ` +
-          'gateway) or redirectTo to serve.',
+        `Live component '${self.id}': aliases need an origin (originDomain, a linked ` +
+          'gateway or a linked bucket) or redirectTo to serve.',
       );
     }
     if (

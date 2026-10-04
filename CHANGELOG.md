@@ -134,6 +134,48 @@ The caas-k8s agent removed the key and its output. Its type is now `never`, and 
 value that still reaches the gateway (plain JavaScript, a cast) is refused while
 building the Live System. Exempt workloads with `forwardAuthExemptComponentIds`.
 
+### Added — **Amazon RDS for MySQL: `AwsRdsMySqlDbms`, `AwsRdsMySqlDatabase`**
+
+`Storage.PaaS.AwsRdsMySql` and `Storage.PaaS.AwsRdsMySqlDatabase`, the MySQL twins of
+the PostgreSQL offers. They take exactly the same keys (`AwsRdsDbmsConfig`), have the
+same two modes, and the database link is the same RelationalDatabase link (`access`), so
+a linked workload gets the same `DB_*` environment. The agent's defaults follow the
+engine: version 8.4, port 3306. The SDK sends no default. `administratorLogin` is
+refused above 16 characters on MySQL and 63 on PostgreSQL (each engine's limit, which
+the agent already enforced). `AwsRdsMySqlDatabase` takes
+`databaseName` only: MySQL has no schema below a database.
+
+### Added — **`cloudwatchLogExports` on both RDS DBMS offers (opt-in)**
+
+`AwsRdsPostgresDbms` and `AwsRdsMySqlDbms` take an optional `cloudwatchLogExports:
+string[]`. Unset, nothing is sent and the database's exports are left as they are
+(none on a new one). `[]` is sent, and turns exports off. The SDK refuses a value that
+is not a list of non-blank strings, or that names a type twice (compared trimmed, in
+lower case, as the agent does); the agent refuses a type the engine and mode do not
+offer.
+
+### Added — **`AwsCloudFront`: a static site from an S3 bucket**
+
+LINK the distribution to an `AwsS3` bucket with the object-storage link
+`{access: 'read'} satisfies ObjectStorageLink` (at most one; the bucket may be a
+reference). The agent serves the bucket through an origin access control and grants
+this distribution alone in the bucket policy. Two optional keys, sent only when set,
+apply to a bucket origin only:
+- `defaultRootObject`: the object for `/`; the agent applies `index.html` when unset.
+- `spaFallback`: answer missing paths with the root object and 200.
+
+Validation:
+- `aliases` with a bucket link and no `originDomain` is accepted.
+- A bucket link combined with `originDomain`, a linked gateway or `redirectTo` is
+  refused.
+- A link granting anything but `read` is refused, as are two bucket links.
+- The site keys are refused without a bucket origin.
+
+**Requires** cloud agents v8.22.0 or later. An older agent does not know the MySQL
+offers, `cloudwatchLogExports` on PostgreSQL, the bucket origin or the site keys. Its
+control plane prunes undeclared keys, so on such an agent the bucket link alone would
+not serve the site. Release this SDK (a minor) only after those agents are deployed.
+
 ## 2.9.7
 
 ### Fixed — **2.9.6 regression: DNS zones failed on the cloud agents in service**
