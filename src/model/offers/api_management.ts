@@ -92,71 +92,137 @@ const WAF_RATE_LIMIT_MAX = 2_000_000_000;
 
 /** The bucket offer types a CloudFront distribution may link to as its origin. */
 const S3_ORIGIN_BUCKET_TYPES = ['Storage.PaaS.AwsS3'];
-/** CloudFront's limit on a default root object name. */
-const DEFAULT_ROOT_OBJECT_MAX_LENGTH = 255;
+/**
+ * An object key a bucket site may name (`defaultRootObject`, `errorDocument`), as the agent reads
+ * one: letters, digits and `._/-`, not starting with `.` or `/`, at most 255 characters, no `..`.
+ */
+const OBJECT_KEY = /^[A-Za-z0-9_-][A-Za-z0-9._/-]{0,254}$/;
+/** The settings a bucket link takes: `access` only (the ObjectStorageLink contract). */
+const ACCESS_SETTING = 'access';
+const STORAGE_ACCESS_VALUES = ['read', 'write', 'read-write'];
+/** The keys that apply to a bucket origin only. */
+const SITE_KEYS = [
+  'defaultRootObject',
+  'spaFallback',
+  'errorDocument',
+] as const;
+
+/** Refuses an object key the agent would refuse. */
+const refuseBadObjectKey = (
+  self: LiveSystemComponent,
+  key: 'defaultRootObject' | 'errorDocument',
+  value: unknown,
+): void => {
+  if (value === undefined) {
+    return;
+  }
+  if (
+    typeof value !== 'string' ||
+    !OBJECT_KEY.test(value) ||
+    value.includes('..')
+  ) {
+    throw new Error(
+      `Live component '${self.id}': ${key} '${String(value)}' is not an object key: letters, digits ` +
+        "and '._/-', no leading '/' or '.', no '..', at most 255 characters (e.g. 'index.html').",
+    );
+  }
+};
 
 /**
  * Whether the distribution serves a linked bucket, after refusing what the agent would refuse
- * about it: more than one bucket, a link granting anything but `read` (the ObjectStorageLink
- * contract; a distribution only reads), and the bucket-only site settings without a bucket.
+ * about it: more than one bucket, link settings other than an `access` that lets it read (`read`
+ * or `read-write`; the distribution is only ever granted read), a bucket declared in another
+ * region, malformed site keys, `spaFallback` together with `errorDocument`, and site keys set
+ * without a bucket origin (`spaFallback: false` sets nothing).
  */
 const siteBucketOrigin = (
   self: LiveSystemComponent,
   all: readonly LiveSystemComponent[],
-  config: {defaultRootObject?: unknown; spaFallback?: unknown},
+  config: {
+    region?: unknown;
+    defaultRootObject?: unknown;
+    spaFallback?: unknown;
+    errorDocument?: unknown;
+  },
 ): boolean => {
-  const bucketLinks = self.links.filter(l =>
-    all.some(
-      c => c.id === l.componentId && S3_ORIGIN_BUCKET_TYPES.includes(c.type),
-    ),
-  );
-  if (bucketLinks.length > 1) {
+  const buckets = self.links.flatMap(l => {
+    const target = all.find(c => c.id === l.componentId);
+    return target !== undefined && S3_ORIGIN_BUCKET_TYPES.includes(target.type)
+      ? [{link: l, target}]
+      : [];
+  });
+  if (buckets.length > 1) {
     throw new Error(
-      `Live component '${self.id}': links to ${bucketLinks.length} buckets ` +
-        `[${bucketLinks.map(l => l.componentId).join(', ')}]: at most one can be the origin.`,
+      `Live component '${self.id}': links to ${buckets.length} buckets ` +
+        `[${buckets.map(b => b.link.componentId).join(', ')}]: at most one can be the origin.`,
     );
   }
-  for (const link of bucketLinks) {
-    if (link.settings.access !== 'read') {
+  for (const {link, target} of buckets) {
+    const others = Object.keys(link.settings)
+      .filter(k => k !== ACCESS_SETTING)
+      .sort();
+    if (others.length > 0) {
       throw new Error(
-        `Live component '${self.id}': links to the bucket '${link.componentId}' with access ` +
-          `'${String(link.settings.access ?? '')}': a distribution reads its bucket, so only 'read' is accepted.`,
+        `Live component '${self.id}': the link to the bucket '${link.componentId}' carries ` +
+          `${others.join(', ')}; a bucket link takes '${ACCESS_SETTING}' only (read, write or read-write).`,
       );
     }
-  }
-  const bucketOrigin = bucketLinks.length === 1;
-  const root = config.defaultRootObject;
-  if (root !== undefined) {
+    const raw = link.settings[ACCESS_SETTING];
+    const access = typeof raw === 'string' ? raw.trim() : '';
+    if (access === '') {
+      throw new Error(
+        `Live component '${self.id}': the link to the bucket '${link.componentId}' declares no ` +
+          `'${ACCESS_SETTING}'; set it to read.`,
+      );
+    }
+    if (!STORAGE_ACCESS_VALUES.includes(access)) {
+      throw new Error(
+        `Live component '${self.id}': the link to the bucket '${link.componentId}': '${ACCESS_SETTING}' ` +
+          `is '${access}'; it must be read, write or read-write.`,
+      );
+    }
+    if (access === 'write') {
+      throw new Error(
+        `Live component '${self.id}': the link to the bucket '${link.componentId}' asks for write ` +
+          'access; a distribution serving it reads it. Set access to read.',
+      );
+    }
+    const bucketRegion = target.parameters.region;
     if (
-      typeof root !== 'string' ||
-      root.trim() === '' ||
-      root !== root.trim() ||
-      root.startsWith('/') ||
-      root.length > DEFAULT_ROOT_OBJECT_MAX_LENGTH
+      typeof config.region === 'string' &&
+      typeof bucketRegion === 'string' &&
+      config.region !== bucketRegion
     ) {
       throw new Error(
-        `Live component '${self.id}': defaultRootObject '${String(root)}' is not an object name ` +
-          `(non-blank, no leading '/', at most ${DEFAULT_ROOT_OBJECT_MAX_LENGTH} characters).`,
-      );
-    }
-    if (!bucketOrigin) {
-      throw new Error(
-        `Live component '${self.id}': defaultRootObject applies to a linked bucket origin only.`,
+        `Live component '${self.id}': the bucket '${link.componentId}' is in region ${bucketRegion} ` +
+          `and this distribution's component in ${config.region}; a bucket origin is in the component's own region.`,
       );
     }
   }
-  const fallback = config.spaFallback;
-  if (fallback !== undefined) {
-    if (typeof fallback !== 'boolean') {
-      throw new Error(
-        `Live component '${self.id}': spaFallback '${String(fallback)}' is not a boolean.`,
-      );
-    }
-    if (!bucketOrigin) {
-      throw new Error(
-        `Live component '${self.id}': spaFallback applies to a linked bucket origin only.`,
-      );
-    }
+  const bucketOrigin = buckets.length === 1;
+  refuseBadObjectKey(self, 'defaultRootObject', config.defaultRootObject);
+  refuseBadObjectKey(self, 'errorDocument', config.errorDocument);
+  if (
+    config.spaFallback !== undefined &&
+    typeof config.spaFallback !== 'boolean'
+  ) {
+    throw new Error(
+      `Live component '${self.id}': spaFallback '${String(config.spaFallback)}' is not a boolean.`,
+    );
+  }
+  if (config.spaFallback === true && config.errorDocument !== undefined) {
+    throw new Error(
+      `Live component '${self.id}': spaFallback answers every missing key with the root object, so ` +
+        'no errorDocument would ever be served. Set one of them.',
+    );
+  }
+  const declared = SITE_KEYS.filter(k =>
+    k === 'spaFallback' ? config.spaFallback === true : config[k] !== undefined,
+  );
+  if (declared.length > 0 && !bucketOrigin) {
+    throw new Error(
+      `Live component '${self.id}': ${declared.join(', ')} apply to a linked bucket origin only.`,
+    );
   }
   return bucketOrigin;
 };
@@ -234,17 +300,27 @@ export const AwsCloudFront = defineOffer<
      */
     originDomainName?: string;
     /**
-     * A bucket origin only: the object served for a request to the root (`/`),
-     * e.g. `index.html`. An object name, without a leading `/`. Unset, the
-     * agent applies `index.html` to a bucket origin.
+     * A bucket origin only: the object served for a request to the root (`/`)
+     * and to every `<path>/`, e.g. `index.html`. An object key, without a
+     * leading `/`. Unset, the agent applies `index.html` to a bucket origin.
      */
     defaultRootObject?: string;
     /**
      * A bucket origin only: serve a single-page app, answering every path the
      * bucket does not hold with the root object and status 200, for the
      * browser router to resolve. Unset is false: a missing object stays 404.
+     * Excludes `errorDocument`.
      */
     spaFallback?: boolean;
+    /**
+     * A bucket origin only: the object served, with status 404, for a key the
+     * bucket does not hold (e.g. `404.html`). An object key without a leading
+     * `/`. Unset, a missing key is a plain 404. Excludes `spaFallback`.
+     *
+     * A bucket origin also serves `<path>/` as `<path>/<defaultRootObject>`
+     * and compresses, with no key.
+     */
+    errorDocument?: string;
   }
 >({
   satisfies: 'APIManagement.ApiGateway',

@@ -23,6 +23,9 @@ const boundedContextId = {name: 'platform'};
 
 type CloudFrontConfig = Parameters<typeof AwsCloudFront>[0];
 
+/** The region the sites' bucket is declared in. */
+const BUCKET_REGION = 'eu-west-1';
+
 /** A site: a bucket and a distribution, linked with `access` (no link when null). */
 const site = (access: string | null) =>
   createFractal({
@@ -44,7 +47,7 @@ const cdnOf = (config: CloudFrontConfig, access: string | null = 'read') =>
     .toLiveSystem({
       name: 'site',
       environment,
-      select: {content: AwsS3({}), cdn: AwsCloudFront(config)},
+      select: {content: AwsS3({region: BUCKET_REGION}), cdn: AwsCloudFront(config)},
     })
     .components.find(c => c.id === 'cdn')!;
 
@@ -72,6 +75,56 @@ describe('AwsCloudFront — static site from an S3 bucket', () => {
     expect(cdnOf({aliases: ['docs.example.com']}).parameters).toEqual({
       aliases: ['docs.example.com'],
     });
+  });
+
+  it('sends errorDocument only when set, for a classic static site', () => {
+    expect(
+      cdnOf({aliases: ['docs.example.com'], errorDocument: '404.html'}).parameters,
+    ).toEqual({aliases: ['docs.example.com'], errorDocument: '404.html'});
+    expect(
+      cdnOf({aliases: ['docs.example.com'], errorDocument: '404.html', spaFallback: false})
+        .parameters,
+    ).toEqual({aliases: ['docs.example.com'], errorDocument: '404.html', spaFallback: false});
+  });
+
+  it('accepts a read-write link: the distribution is granted read only', () => {
+    expect(() => cdnOf({aliases: ['a.example.com']}, 'read-write')).not.toThrow();
+  });
+
+  it('accepts a distribution declared in the bucket\'s own region', () => {
+    expect(() =>
+      cdnOf({aliases: ['a.example.com'], region: BUCKET_REGION}),
+    ).not.toThrow();
+  });
+
+  it('refuses a bucket link carrying any key besides access', () => {
+    const f = createFractal({
+      id: 'site',
+      version: {major: 1, minor: 0, patch: 0},
+      boundedContextId,
+      blueprint: bp => {
+        const content = bp.add(ObjectStorage({id: 'content'}));
+        const cdn = bp.add(ApiGateway({id: 'cdn'}));
+        bp.link(cdn, content, {access: 'read', accessMode: 'read'});
+        return {content, cdn};
+      },
+    });
+    expect(() =>
+      f.toLiveSystem({
+        name: 'site',
+        environment,
+        select: {
+          content: AwsS3({}),
+          cdn: AwsCloudFront({aliases: ['a.example.com']}),
+        },
+      }),
+    ).toThrow(/accessMode.*'access' only/);
+  });
+
+  it('accepts spaFallback false anywhere: it declares nothing', () => {
+    expect(() =>
+      cdnOf({originDomain: 'o.example.com', spaFallback: false}, null),
+    ).not.toThrow();
   });
 
   it('sends an explicit spaFallback false', () => {
@@ -130,14 +183,14 @@ describe('AwsCloudFront — static site from an S3 bucket', () => {
   });
 
   it.each([
-    ['a write link', {aliases: ['a.example.com']}, 'write', /only 'read'/],
+    ['a write link', {aliases: ['a.example.com']}, 'write', /reads it/],
+    ['a blank access', {aliases: ['a.example.com']}, '', /declares no 'access'/],
     [
-      'a read-write link',
+      'an unknown access',
       {aliases: ['a.example.com']},
-      'read-write',
-      /only 'read'/,
+      'readonly',
+      /must be read, write or read-write/,
     ],
-    ['a blank access', {aliases: ['a.example.com']}, '', /only 'read'/],
     [
       'a bucket together with originDomain',
       {aliases: ['a.example.com'], originDomain: 'o.example.com'},
@@ -204,6 +257,60 @@ describe('AwsCloudFront — static site from an S3 bucket', () => {
       null,
       /spaFallback .* bucket/,
     ],
+    [
+      'errorDocument without a bucket origin',
+      {originDomain: 'o.example.com', errorDocument: '404.html'},
+      null,
+      /errorDocument .* bucket/,
+    ],
+    [
+      'errorDocument on a redirect',
+      {redirectTo: 'https://x.example.com', errorDocument: '404.html'},
+      null,
+      /errorDocument .* bucket/,
+    ],
+    [
+      'defaultRootObject in origin mode (no aliases, no linked origin)',
+      {defaultRootObject: 'index.html'},
+      null,
+      /defaultRootObject .* bucket/,
+    ],
+    [
+      'errorDocument together with spaFallback',
+      {aliases: ['a.example.com'], errorDocument: '404.html', spaFallback: true},
+      'read',
+      /errorDocument .* spaFallback|spaFallback .* errorDocument/,
+    ],
+    [
+      'an errorDocument with a leading slash',
+      {aliases: ['a.example.com'], errorDocument: '/404.html'},
+      'read',
+      /errorDocument/,
+    ],
+    [
+      'a blank errorDocument',
+      {aliases: ['a.example.com'], errorDocument: ' '},
+      'read',
+      /errorDocument/,
+    ],
+    [
+      'an errorDocument climbing out with ..',
+      {aliases: ['a.example.com'], errorDocument: 'a/../404.html'},
+      'read',
+      /errorDocument/,
+    ],
+    [
+      'a defaultRootObject with a character outside letters, digits and ._/-',
+      {aliases: ['a.example.com'], defaultRootObject: 'index page.html'},
+      'read',
+      /defaultRootObject/,
+    ],
+    [
+      'a bucket in another region than the distribution',
+      {aliases: ['a.example.com'], region: 'eu-central-1'},
+      'read',
+      /region/,
+    ],
   ])('refuses %s', (_why, config, access, reason) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(() => cdnOf(config as any, access)).toThrow(reason);
@@ -230,7 +337,7 @@ describe('AwsCloudFront — static site from an S3 bucket', () => {
           cdn: AwsCloudFront({aliases: ['a.example.com']}),
         },
       }),
-    ).toThrow(/only 'read'/);
+    ).toThrow(/declares no 'access'/);
   });
 
   it('refuses a bucket together with a linked gateway', () => {

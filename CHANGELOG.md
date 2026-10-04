@@ -159,17 +159,30 @@ offer.
 LINK the distribution to an `AwsS3` bucket with the object-storage link
 `{access: 'read'} satisfies ObjectStorageLink` (at most one; the bucket may be a
 reference). The agent serves the bucket through an origin access control and grants
-this distribution alone in the bucket policy. Two optional keys, sent only when set,
+this distribution alone in the bucket policy. Three optional keys, sent only when set,
 apply to a bucket origin only:
-- `defaultRootObject`: the object for `/`; the agent applies `index.html` when unset.
-- `spaFallback`: answer missing paths with the root object and 200.
+- `defaultRootObject`: the object for `/` and for every `<path>/`; the agent applies
+  `index.html` when unset.
+- `spaFallback`: answer missing keys with the root object and 200.
+- `errorDocument`: the object served with 404 for a missing key (e.g. `404.html`).
+  It excludes `spaFallback`.
 
-Validation:
+Directory indexes (`<path>/` → `<path>/<defaultRootObject>`) and compression need no
+key: a bucket origin always has them.
+
+Validation, mirroring the agent:
 - `aliases` with a bucket link and no `originDomain` is accepted.
 - A bucket link combined with `originDomain`, a linked gateway or `redirectTo` is
-  refused.
-- A link granting anything but `read` is refused, as are two bucket links.
-- The site keys are refused without a bucket origin.
+  refused, as are two bucket links.
+- The link takes `access` only. `read` and `read-write` are accepted (the distribution
+  is granted read only). `write`, a missing `access`, and any other key such as
+  `accessMode` are refused.
+- A bucket declared in another region than the distribution is refused.
+- `defaultRootObject` and `errorDocument` must be object keys: letters, digits and
+  `._/-`, no leading `/` or `.`, no `..`, at most 255 characters.
+- The site keys are refused without a bucket origin: on a redirect, on a distribution
+  without aliases or a linked origin, or on a gateway or `originDomain` origin.
+  `spaFallback: false` sets nothing and is accepted anywhere.
 
 **Requires** cloud agents v8.22.0 or later. An older agent does not know the MySQL
 offers, `cloudwatchLogExports` on PostgreSQL, the bucket origin or the site keys. Its
