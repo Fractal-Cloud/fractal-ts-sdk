@@ -52,7 +52,9 @@ export const validateAwsRdsDbms = (
       `${offer} '${self.id}': cloudwatchLogExports must be a list of log type names.`,
     );
   }
-  const repeated = exports.filter((t, i) => exports.indexOf(t) !== i);
+  // The agent compares log types trimmed and in lower case, so a repeat is one in that form too.
+  const normalized = exports.map(t => t.trim().toLowerCase());
+  const repeated = normalized.filter((t, i) => normalized.indexOf(t) !== i);
   if (repeated.length > 0) {
     throw new Error(
       `${offer} '${self.id}': cloudwatchLogExports lists ${[...new Set(repeated)].join(', ')} more than once.`,

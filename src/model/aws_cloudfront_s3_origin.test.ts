@@ -81,7 +81,8 @@ describe('AwsCloudFront — static site from an S3 bucket', () => {
   });
 
   it('serves a bucket without aliases (the distribution domain only)', () => {
-    expect(() => cdnOf({})).not.toThrow();
+    // spaFallback is refused without a bucket origin, so this proves the bucket is the origin.
+    expect(cdnOf({spaFallback: true}).parameters).toEqual({spaFallback: true});
   });
 
   it('takes the link settings from the ObjectStorageLink contract', () => {
@@ -160,6 +161,30 @@ describe('AwsCloudFront — static site from an S3 bucket', () => {
       {aliases: ['a.example.com'], defaultRootObject: ' '},
       'read',
       /defaultRootObject/,
+    ],
+    [
+      'a defaultRootObject longer than 255 characters',
+      {aliases: ['a.example.com'], defaultRootObject: 'a'.repeat(256)},
+      'read',
+      /defaultRootObject/,
+    ],
+    [
+      'a defaultRootObject with surrounding spaces',
+      {aliases: ['a.example.com'], defaultRootObject: ' index.html'},
+      'read',
+      /defaultRootObject/,
+    ],
+    [
+      'a bucket together with redirectTo, without aliases',
+      {redirectTo: 'https://x.example.com'},
+      'read',
+      /redirectTo or an origin, not both/,
+    ],
+    [
+      'site keys with no origin at all',
+      {defaultRootObject: 'index.html'},
+      null,
+      /defaultRootObject .* bucket/,
     ],
     [
       'a spaFallback that is not a boolean',

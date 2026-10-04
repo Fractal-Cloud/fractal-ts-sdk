@@ -140,6 +140,26 @@ describe('AwsRdsMySqlDbms and AwsRdsMySqlDatabase', () => {
   });
 });
 
+describe('administratorLogin on AwsRdsPostgresDbms', () => {
+  it('refuses a master user name longer than PostgreSQL allows (63 characters)', () => {
+    const pg = (administratorLogin: string) =>
+      createFractal({
+        id: 'pg',
+        version: {major: 1, minor: 0, patch: 0},
+        boundedContextId,
+        blueprint: bp => ({dbms: bp.add(RelationalDbms({id: 'pg'}))}),
+      }).toLiveSystem({
+        name: 'pg',
+        environment,
+        select: {pg: AwsRdsPostgresDbms({administratorLogin})},
+      });
+    expect(() => pg('a'.repeat(64))).toThrow(
+      /AwsRdsPostgresDbms 'pg': administratorLogin .* longer than 63/,
+    );
+    expect(() => pg('a'.repeat(63))).not.toThrow();
+  });
+});
+
 describe('cloudwatchLogExports on both RDS DBMS offers (opt-in)', () => {
   const postgresWith = (config: PostgresConfig) =>
     createFractal({
@@ -190,6 +210,11 @@ describe('cloudwatchLogExports on both RDS DBMS offers (opt-in)', () => {
     ['a log type that is not a string', [42], /cloudwatchLogExports/],
     ['a blank log type', [' '], /cloudwatchLogExports/],
     ['a log type listed twice', ['error', 'error'], /cloudwatchLogExports/],
+    [
+      'a log type listed twice in another case or with spaces',
+      ['error', ' ERROR'],
+      /cloudwatchLogExports/,
+    ],
   ])('refuses %s', (_why, types, reason) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const exports = types as any;

@@ -18,15 +18,18 @@ the PostgreSQL offers. They take exactly the same keys (`AwsRdsDbmsConfig`), hav
 same two modes, and the database link is the same RelationalDatabase link (`access`), so
 a linked workload gets the same `DB_*` environment. The agent's defaults follow the
 engine: version 8.4, port 3306. The SDK sends no default. `administratorLogin` is
-refused above 16 characters (MySQL's limit). `AwsRdsMySqlDatabase` takes
+refused above 16 characters on MySQL and 63 on PostgreSQL (each engine's limit, which
+the agent already enforced). `AwsRdsMySqlDatabase` takes
 `databaseName` only: MySQL has no schema below a database.
 
 ### Added — **`cloudwatchLogExports` on both RDS DBMS offers (opt-in)**
 
 `AwsRdsPostgresDbms` and `AwsRdsMySqlDbms` take an optional `cloudwatchLogExports:
 string[]`. Unset, nothing is sent and the database's exports are left as they are
-(none on a new one). `[]` is sent, and turns exports off. A list that is not log type
-names, or that names one twice, is refused.
+(none on a new one). `[]` is sent, and turns exports off. The SDK refuses a value that
+is not a list of non-blank strings, or that names a type twice (compared trimmed, in
+lower case, as the agent does); the agent refuses a type the engine and mode do not
+offer.
 
 ### Added — **`AwsCloudFront`: a static site from an S3 bucket**
 

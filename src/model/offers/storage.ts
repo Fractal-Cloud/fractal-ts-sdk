@@ -47,6 +47,8 @@ const dbmsInstantiate =
 
 /** The longest master user name MySQL accepts. */
 const MYSQL_MAX_LOGIN_LENGTH = 16;
+/** The longest master user name PostgreSQL accepts (NAMEDATALEN - 1). */
+const POSTGRES_MAX_LOGIN_LENGTH = 63;
 
 // ── Storage.ObjectStorage offers ─────────────────────────────────────────────
 export const AwsS3 = defineOffer<
@@ -239,7 +241,12 @@ export const AwsRdsPostgresDbms = defineOffer<
   satisfies: 'Storage.RelationalDbms',
   offerType: 'Storage.PaaS.AwsRdsPostgres',
   validate: (self, _all, config) =>
-    validateAwsRdsDbms('AwsRdsPostgresDbms', self, config),
+    validateAwsRdsDbms(
+      'AwsRdsPostgresDbms',
+      self,
+      config,
+      POSTGRES_MAX_LOGIN_LENGTH,
+    ),
   provider: 'AWS',
   deliveryModel: 'PaaS',
   instantiate: dbmsInstantiate(
@@ -248,6 +255,7 @@ export const AwsRdsPostgresDbms = defineOffer<
     'Storage.PaaS.AwsRdsPostgresDatabase',
   ),
 });
+
 /**
  * Amazon RDS for MySQL, the MySQL twin of `AwsRdsPostgresDbms`: the same keys,
  * the same two modes (`aurora-serverless`, the default, or
