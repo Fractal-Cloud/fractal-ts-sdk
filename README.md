@@ -954,8 +954,8 @@ The blueprint references the **Component** in the left column; a Live System sel
 | Component | AWS | Azure | GCP | Aruba | RedHat | Self-hosted |
 |---|---|---|---|---|---|---|
 | `ObjectStorage` | `AwsS3` | `AzureBlob` | `GcsBucket` | — | `OpenshiftPersistentVolume` | `MinIO` |
-| `RelationalDbms` | — | `AzurePostgresDbms` | `GcpPostgresDbms` | `ArubaMySqlDbms` | — | — |
-| `RelationalDatabase` | — | `AzurePostgresDatabase` | `GcpPostgresDatabase` | — | — | — |
+| `RelationalDbms` | `AwsRdsPostgresDbms` · `AwsRdsMySqlDbms` | `AzurePostgresDbms` | `GcpPostgresDbms` | `ArubaMySqlDbms` | — | — |
+| `RelationalDatabase` | `AwsRdsPostgresDatabase` · `AwsRdsMySqlDatabase` | `AzurePostgresDatabase` | `GcpPostgresDatabase` | — | — | — |
 
 > `RelationalDatabase` components added under a DBMS via an operation are emitted by the **DBMS's own offer** in its vendor family — selecting `AzurePostgresDbms` makes its databases `AzurePostgresDatabase`. They are not independently offer-selected.
 

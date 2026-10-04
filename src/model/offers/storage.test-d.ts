@@ -9,7 +9,12 @@
  * in this repo's tests are unused directives that no check reports. `.test-d.ts` does not match that
  * exclusion, so these assertions are checked by the command that already gates the suite.
  */
-import {GcpMySqlDbms} from './storage';
+import {
+  AwsRdsMySqlDatabase,
+  AwsRdsMySqlDbms,
+  AwsRdsPostgresDbms,
+  GcpMySqlDbms,
+} from './storage';
 
 /**
  * `network` is OPTIONAL on this offer's config, matching the PostgreSQL one.
@@ -46,3 +51,19 @@ GcpMySqlDbms({network: 'acme-vpc', instanceTier: 'db-perf-optimized-N-4'});
 // accepts anything at all, which is the failure mode relaxing a required key invites.
 // @ts-expect-error `tier` is not a key of this config — the agent reads `instanceTier`.
 GcpMySqlDbms({tier: 'db-perf-optimized-N-4'});
+
+// ── Amazon RDS for MySQL: the PostgreSQL offer's vocabulary, key for key ──────
+AwsRdsMySqlDbms({});
+AwsRdsMySqlDbms({mode: 'aurora-serverless', version: '8.4', port: 3306});
+AwsRdsMySqlDatabase({});
+AwsRdsMySqlDatabase({databaseName: 'strapi'});
+// @ts-expect-error MySQL has no schema below a database.
+AwsRdsMySqlDatabase({schema: 'public'});
+// @ts-expect-error `engineVersion` is not a key of this config — the agent reads `version`.
+AwsRdsMySqlDbms({engineVersion: '8.4'});
+
+// `cloudwatchLogExports` is optional on both RDS DBMS offers, and a list of log types.
+AwsRdsPostgresDbms({cloudwatchLogExports: ['postgresql', 'upgrade']});
+AwsRdsMySqlDbms({cloudwatchLogExports: ['error', 'slowquery']});
+// @ts-expect-error a single log type is still a list.
+AwsRdsMySqlDbms({cloudwatchLogExports: 'error'});
