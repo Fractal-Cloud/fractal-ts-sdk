@@ -1,14 +1,13 @@
 /**
  * aws_cloudfront_s3_origin.test.ts — executable spec for `AwsCloudFront` serving a
- * static site from an S3 bucket:
+ * static site from an S3 bucket, mirroring the cloud agent (v8.22.0):
  *   - the bucket is the origin when the distribution LINKS to an `AwsS3` component
- *     with the object-storage link `{access: 'read'}` (the ObjectStorageLink
- *     contract, read-only): the agent grants the distribution alone through an
- *     origin access control, and the bucket stays private;
+ *     with the object-storage link; it takes `access` only, `read` or `read-write`
+ *     (the distribution is granted read alone, through an origin access control);
  *   - a bucket link is one of the distribution's origins, exclusive with a linked
- *     gateway, `originDomain` and `redirectTo`;
- *   - `defaultRootObject` and `spaFallback` apply to a bucket origin only, and are
- *     sent only when set.
+ *     gateway, `originDomain` and `redirectTo`, and in the distribution's region;
+ *   - `defaultRootObject`, `spaFallback` and `errorDocument` apply to a bucket
+ *     origin only and are sent only when set; `spaFallback` excludes `errorDocument`.
  */
 import {describe, it, expect} from 'vitest';
 import {createFractal} from './core';
