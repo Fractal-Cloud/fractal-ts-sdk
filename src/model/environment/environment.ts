@@ -50,7 +50,6 @@ import {
 import {dnsZoneAgentIds, validateDnsZoneAgents} from './dns_zone_agents';
 import {validateDnsZoneBulkDelete} from './dns_zone_bulk_delete';
 import {validateDnsZoneRecordManagement} from './dns_zone_record_management';
-import {canonicalRecordManagement} from '../components/dns_record_management';
 
 const envRef = (id: EnvironmentId): OwnerRef => ({
   ownerType: id.type,
@@ -502,9 +501,6 @@ const buildParameters = (
       const agents = dnsZoneAgentIds(z);
       const zone: Record<string, unknown> =
         agents === undefined ? {...z} : {...z, agents};
-      if (z.recordManagement !== undefined) {
-        zone.recordManagement = canonicalRecordManagement(z.recordManagement);
-      }
       return zone;
     });
   }

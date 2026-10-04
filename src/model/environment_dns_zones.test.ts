@@ -79,7 +79,7 @@ const awsActive = {
     zoneId: 'Z0123456789',
     nameServers: ['ns-1.awsdns-01.org', 'ns-2.awsdns-02.co.uk'],
     dsRecords: [DS],
-    managedRecords: ['www A'],
+    managedRecords: ['www.example.com. A'],
   },
   updatedAt: '2026-10-01T12:00:00+00:00',
 };

@@ -134,6 +134,62 @@ The caas-k8s agent removed the key and its output. Its type is now `never`, and 
 value that still reaches the gateway (plain JavaScript, a cast) is refused while
 building the Live System. Exempt workloads with `forwardAuthExemptComponentIds`.
 
+## 2.9.7
+
+### Fixed — **2.9.6 regression: DNS zones failed on the cloud agents in service**
+
+2.9.7 removes the `'strict'` value 2.9.6 introduced, from the type and from the
+wire. 2.9.6 sent `recordManagement: 'strict'`; the deployed cloud agents (up to
+8.21) accept only `'authoritative'` and mark a zone carrying any other value Fatal,
+so DNS zones deployed with 2.9.6 failed (their record sets were not changed).
+
+`DnsRecordManagement` is now `'authoritative' | 'lax'`:
+
+- `'authoritative'` (the default, also when omitted): every record set the zone does
+  not declare is deleted, apex NS and SOA aside.
+- `'lax'`: record sets Fractal Cloud did not define are left alone (an ACME DNS-01
+  `_acme-challenge` TXT survives); a record set removed from the declaration is
+  deleted only if it is in the last-applied set (`managedRecords`). Requires cloud
+  agents newer than 8.21; older ones fail a `lax` zone without changing it.
+
+The value is sent exactly as chosen on every path (`withDnsZones` on management and
+operational environments, `DnsZoneComponent.withRecordManagement`, an Interface
+operation or a raw guardrail reaching `AwsRoute53HostedZone`). When it is omitted,
+nothing is sent, as before 2.9.6. A wire-format test pins these values.
+
+**Code that used `'strict'` must switch to `'authoritative'`**: `'strict'` is now a
+type error, and is refused at runtime (as are `'additive'` and any other value) with
+a message naming `'authoritative'` and `'lax'`.
+
+A zone stored as `'strict'` by 2.9.6 keeps failing until it is redeclared with
+2.9.7; `environments.plan` shows that redeclaration as a `parameters.dnsZones`
+update.
+
+**Before upgrading the cloud agents, check zones that omit `recordManagement`.**
+Agents up to 8.21 hold an unset zone that holds record sets nobody declared and
+Fractal Cloud did not write (an adopted zone, records made by hand, ACME
+`_acme-challenge` TXT records from cert-manager or certbot): nothing in it changes.
+The next agents release reads an unset `recordManagement` as `'authoritative'` and
+deletes those record sets on the zone's next pass. The safe sequence:
+
+1. With 2.9.7, declare `recordManagement: 'lax'` (or list those records in
+   `records`) on every such zone, and deploy it.
+2. Then upgrade the cloud agents.
+
+Between steps 1 and 2, agents up to 8.21 fail those `lax` zones without changing
+them, until they are upgraded. This replaces the upgrade sequence given for 2.9.6.
+
+Also in this release:
+
+- `DnsZoneOutputs.managedRecords` (`"<fqdn with trailing dot> <TYPE>"`) is typed.
+- The README describes `lax` precisely: a record set removed from the declaration
+  is deleted only if it is in the last-applied set (`managedRecords`) from the
+  previous pass.
+
+## 2.9.6
+
+> Superseded by 2.9.7: `'strict'` is removed, and the upgrade advice below is replaced by the 2.9.7 entry.
+
 ### Added — **DNS zones: `recordManagement: 'strict' | 'lax'`**
 
 `DnsZoneGuardrails.recordManagement` (environment `withDnsZones` entries and

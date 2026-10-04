@@ -11,10 +11,7 @@
  */
 import {allowBulkDeleteRefusal} from './dns_bulk_delete';
 import {ComponentNode, NodeState, newNode, guardrail} from '../core';
-import {
-  canonicalRecordManagement,
-  recordManagementRefusal,
-} from './dns_record_management';
+import {recordManagementRefusal} from './dns_record_management';
 import type {DnsRecordManagement} from './dns_record_management_mode';
 
 /** Record types a DNS zone may declare (SOA always belongs to the provider). */
@@ -72,18 +69,19 @@ export type DnsZoneGuardrails = {
    * manages; the agent remembers what it applied in control-plane state (the
    * zone's `managedRecords`).
    *
-   * - `strict` (the default, also when omitted): the declaration is the whole
-   *   zone. Every record set it does not declare is deleted (apex NS and SOA
+   * - `authoritative` (the default, also when omitted): the declaration is the
+   *   whole zone. Every record set it does not declare is deleted (apex NS and SOA
    *   aside), whoever created it.
    * - `lax`: record sets Fractal Cloud did not define are left alone (an ACME
    *   DNS-01 `_acme-challenge` TXT written by cert-manager or certbot survives).
    *   The declared record sets are still kept: changed or removed outside
    *   Fractal Cloud, they are put back, and a declared name and type that
    *   already exists with other values is set to the declared ones. A record
-   *   set removed from the declaration is deleted only if Fractal Cloud applied
-   *   it before.
-   * - `authoritative`: deprecated alias of `strict`, sent as `strict`.
+   *   set removed from the declaration is deleted only if it is in the
+   *   last-applied set (`managedRecords`) the previous pass recorded; if that
+   *   state is lost, the record set is left in place.
    *
+   * The value is sent exactly as chosen; when omitted, nothing is sent.
    * `'additive'` (per-record ownership) is no longer supported: this SDK
    * refuses it, as do the control plane and the agents.
    */
@@ -122,6 +120,13 @@ export type DnsZoneOutputs = {
     digestType: number;
     digest: string;
   }[];
+  /**
+   * The last-applied set: the record sets the previous pass applied, as
+   * `"<fqdn with trailing dot> <TYPE>"` (`"www.example.com. A"`). Kept in
+   * control-plane state, never in the zone's DNS data; under `lax` a record set
+   * removed from the declaration is deleted only if it is listed here.
+   */
+  managedRecords?: string[];
 };
 
 // ── NetworkAndCompute.DnsZone ────────────────────────────────────────────────
@@ -135,6 +140,7 @@ export type DnsZoneComponentNode<Id extends string = string> = ComponentNode<
   withDnssec: (
     v: 'required' | 'optional' | 'disabled',
   ) => DnsZoneComponentNode<Id>;
+  /** `'authoritative'` (the default when never called) or `'lax'`. */
   withRecordManagement: (v: DnsRecordManagement) => DnsZoneComponentNode<Id>;
   withAllowedRecordTypes: (v: DnsRecordType[]) => DnsZoneComponentNode<Id>;
   withTtlBounds: (v: {
@@ -159,9 +165,7 @@ const dnsZoneNode = <Id extends string>(
     if (refusal !== undefined) {
       throw new Error(`withRecordManagement: ${refusal}`);
     }
-    return dnsZoneNode<Id>(
-      guardrail(s, 'recordManagement', canonicalRecordManagement(v)),
-    );
+    return dnsZoneNode<Id>(guardrail(s, 'recordManagement', v));
   },
   withAllowedRecordTypes: v =>
     dnsZoneNode<Id>(guardrail(s, 'allowedRecordTypes', v)),
