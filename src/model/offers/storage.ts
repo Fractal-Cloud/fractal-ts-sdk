@@ -11,7 +11,8 @@ import type {
   LiveSystemComponent,
   Provider,
 } from '../core';
-import type {AwsRdsStorageType} from './aws_rds_storage_type';
+import type {AwsRdsDbmsConfig} from './aws_rds_dbms_config';
+import {validateAwsRdsDbms} from './aws_rds_dbms_validation';
 
 /**
  * A DBMS offer emits itself PLUS one Database live component per child the
@@ -44,13 +45,8 @@ const dbmsInstantiate =
     })),
   ];
 
-const AWS_RDS_STORAGE_TYPES: readonly AwsRdsStorageType[] = [
-  'gp2',
-  'gp3',
-  'io1',
-  'io2',
-  'standard',
-];
+/** The longest master user name MySQL accepts. */
+const MYSQL_MAX_LOGIN_LENGTH = 16;
 
 // ── Storage.ObjectStorage offers ─────────────────────────────────────────────
 export const AwsS3 = defineOffer<
@@ -223,8 +219,9 @@ export const GcpMySqlDbms = defineOffer<
  * (`provisioned-instance`). Both expose the same connection facts downstream, so
  * moving between them does not change what a linked workload reads.
  *
- * Encryption at rest, private-only networking, IAM database authentication and
- * log export are applied by the agent and are deliberately not configurable.
+ * Encryption at rest, private-only networking and IAM database authentication
+ * are applied by the agent and are deliberately not configurable. Exporting the
+ * database logs to CloudWatch is opt-in (`cloudwatchLogExports`), never a default.
  *
  * Availability defaults (instance class, readers, Multi-AZ, backup retention,
  * ACU range) come from the environment's `networkTier`. Only what is set here
@@ -237,53 +234,45 @@ export const GcpMySqlDbms = defineOffer<
  */
 export const AwsRdsPostgresDbms = defineOffer<
   'Storage.RelationalDbms',
-  {
-    region?: string;
-    mode?: 'aurora-serverless' | 'provisioned-instance';
-    version?: string;
-    instanceClass?: string;
-    administratorLogin?: string;
-    /** Provisioned mode only. */
-    allocatedStorageGb?: number;
-    /** Provisioned mode only — the ceiling storage autoscaling grows to. */
-    maxAllocatedStorageGb?: number;
-    /** Aurora Serverless v2 only. */
-    minAcu?: number;
-    /** Aurora Serverless v2 only. */
-    maxAcu?: number;
-    /**
-     * Aurora mode only. Defaults from the environment's `networkTier`: 1 for
-     * `prod` (so losing the writer's AZ needs no operator), 0 for `nonprod`.
-     */
-    readerCount?: number;
-    /** Provisioned mode only. Defaults from `networkTier`: true for `prod`, false for `nonprod`. */
-    multiAz?: boolean;
-    backupRetentionDays?: number;
-    deletionProtection?: boolean;
-    /** Provisioned mode only; the agent defaults to gp3. */
-    storageType?: AwsRdsStorageType;
-    port?: number;
-  }
+  AwsRdsDbmsConfig
 >({
   satisfies: 'Storage.RelationalDbms',
   offerType: 'Storage.PaaS.AwsRdsPostgres',
-  validate: (self, _all, config) => {
-    if (
-      config.storageType !== undefined &&
-      !AWS_RDS_STORAGE_TYPES.includes(config.storageType)
-    ) {
-      throw new Error(
-        `AwsRdsPostgresDbms '${self.id}': storageType '${config.storageType}' is not ` +
-          `one of ${AWS_RDS_STORAGE_TYPES.join(', ')}.`,
-      );
-    }
-  },
+  validate: (self, _all, config) =>
+    validateAwsRdsDbms('AwsRdsPostgresDbms', self, config),
   provider: 'AWS',
   deliveryModel: 'PaaS',
   instantiate: dbmsInstantiate(
     'Storage.PaaS.AwsRdsPostgres',
     'AWS',
     'Storage.PaaS.AwsRdsPostgresDatabase',
+  ),
+});
+/**
+ * Amazon RDS for MySQL, the MySQL twin of `AwsRdsPostgresDbms`: the same keys,
+ * the same two modes (`aurora-serverless`, the default, or
+ * `provisioned-instance`), the same fixed security posture and the same
+ * connection facts downstream, so a linked workload reads the same
+ * `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USERNAME` / `DB_PASSWORD_REF`.
+ *
+ * Only the engine's defaults differ, and the agent owns them: `version` 8.4 and
+ * `port` 3306. The master user name is at most 16 characters (MySQL's limit).
+ * Its databases are emitted as `AwsRdsMySqlDatabase`.
+ */
+export const AwsRdsMySqlDbms = defineOffer<
+  'Storage.RelationalDbms',
+  AwsRdsDbmsConfig
+>({
+  satisfies: 'Storage.RelationalDbms',
+  offerType: 'Storage.PaaS.AwsRdsMySql',
+  validate: (self, _all, config) =>
+    validateAwsRdsDbms('AwsRdsMySqlDbms', self, config, MYSQL_MAX_LOGIN_LENGTH),
+  provider: 'AWS',
+  deliveryModel: 'PaaS',
+  instantiate: dbmsInstantiate(
+    'Storage.PaaS.AwsRdsMySql',
+    'AWS',
+    'Storage.PaaS.AwsRdsMySqlDatabase',
   ),
 });
 export const ArubaMySqlDbms = defineOffer<
@@ -336,6 +325,28 @@ export const AwsRdsPostgresDatabase = defineOffer<
 >({
   satisfies: 'Storage.RelationalDatabase',
   offerType: 'Storage.PaaS.AwsRdsPostgresDatabase',
+  provider: 'AWS',
+  deliveryModel: 'PaaS',
+});
+
+/**
+ * A database on an `AwsRdsMySqlDbms`, created with `utf8mb4` /
+ * `utf8mb4_0900_ai_ci` (the MySQL 8.4 default). MySQL has no schema below a
+ * database, so unlike `AwsRdsPostgresDatabase` there is no `schema`.
+ */
+export const AwsRdsMySqlDatabase = defineOffer<
+  'Storage.RelationalDatabase',
+  {
+    /**
+     * Defaults to the component id mapped onto a legal MySQL identifier. On a
+     * DBMS referenced from another Live System the default is scoped by this
+     * Live System, so set it when a fixed name is needed.
+     */
+    databaseName?: string;
+  }
+>({
+  satisfies: 'Storage.RelationalDatabase',
+  offerType: 'Storage.PaaS.AwsRdsMySqlDatabase',
   provider: 'AWS',
   deliveryModel: 'PaaS',
 });
