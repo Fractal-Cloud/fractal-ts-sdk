@@ -979,6 +979,28 @@ The blueprint references the **Component** in the left column; a Live System sel
 
 > `RelationalDatabase` components added under a DBMS via an operation are emitted by the **DBMS's own offer** in its vendor family — selecting `AzurePostgresDbms` makes its databases `AzurePostgresDatabase`. They are not independently offer-selected.
 
+#### Amazon RDS: requiring TLS (`requireSecureTransport`)
+
+`AwsRdsPostgresDbms` and `AwsRdsMySqlDbms` accept `requireSecureTransport?: boolean`.
+It has **no default**, and the SDK sends it only when you set it:
+
+| Value | What the agent does |
+|---|---|
+| unset | A **new** database gets the agent's parameter group that requires TLS (`rds.force_ssl=1` / `require_secure_transport=1`); an **existing** one is left as it is. |
+| `true` | Also attaches that group to an existing database on its engine's default group. RDS applies it at the next reboot, which the agent does not force. |
+| `false` | Never sets the group up. A group attached earlier is not detached. |
+
+```ts
+AwsRdsPostgresDbms({requireSecureTransport: true})
+```
+
+Turning it on for an existing database breaks every client that connects without
+TLS once the database reboots. A database on an operator's own parameter group keeps
+it; set the TLS parameter there. Anything other than a boolean is refused while the
+Live System is built.
+
+> Requires fractal-cloud-agents v8.22.1 deployed.
+
 ### Messaging
 
 | Component | Azure | GCP | Self-hosted |

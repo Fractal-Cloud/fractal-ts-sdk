@@ -6,7 +6,11 @@
  *   - its databases are emitted as `Storage.PaaS.AwsRdsMySqlDatabase`, whether
  *     selected as a blueprint component or added as children;
  *   - `cloudwatchLogExports` is sent only when set: unset leaves the database's
- *     exports untouched, `[]` turns them off.
+ *     exports untouched, `[]` turns them off;
+ *   - `requireSecureTransport` has no default and is sent only when set: unset gives
+ *     a new database the agent's TLS-requiring parameter group and leaves an
+ *     existing one as it is, `true` also attaches it to an existing database,
+ *     `false` never sets it up.
  */
 import {describe, it, expect} from 'vitest';
 import {createFractal} from './core';
@@ -114,6 +118,7 @@ describe('AwsRdsMySqlDbms and AwsRdsMySqlDatabase', () => {
       storageType: 'gp3',
       port: 3306,
       cloudwatchLogExports: ['error'],
+      requireSecureTransport: true,
     } satisfies MySqlConfig & PostgresConfig;
 
     expect(dbmsWith(config).parameters).toEqual(config);
@@ -220,5 +225,53 @@ describe('cloudwatchLogExports on both RDS DBMS offers (opt-in)', () => {
     const exports = types as any;
     expect(() => dbmsWith({cloudwatchLogExports: exports})).toThrow(reason);
     expect(() => postgresWith({cloudwatchLogExports: exports})).toThrow(reason);
+  });
+});
+
+describe('requireSecureTransport on both RDS DBMS offers (no default)', () => {
+  const postgresWith = (config: PostgresConfig) =>
+    createFractal({
+      id: 'pg',
+      version: {major: 1, minor: 0, patch: 0},
+      boundedContextId,
+      blueprint: bp => ({dbms: bp.add(RelationalDbms({id: 'pg'}))}),
+    })
+      .toLiveSystem({
+        name: 'pg',
+        environment,
+        select: {pg: AwsRdsPostgresDbms(config)},
+      })
+      .components.find(c => c.id === 'pg')!;
+
+  it.each([
+    ['PostgreSQL', () => postgresWith({}).parameters],
+    ['MySQL', () => dbmsWith({}).parameters],
+  ])('%s: unset sends no key at all (never true, never false)', (_engine, parameters) => {
+    expect(Object.keys(parameters())).not.toContain('requireSecureTransport');
+  });
+
+  it.each([true, false])('sends %s as given, on both engines', value => {
+    expect(postgresWith({requireSecureTransport: value}).parameters).toEqual({
+      requireSecureTransport: value,
+    });
+    expect(dbmsWith({requireSecureTransport: value}).parameters).toEqual({
+      requireSecureTransport: value,
+    });
+  });
+
+  it.each([
+    ['the string "true"', 'true'],
+    ['the string "false"', 'false'],
+    ['a number', 1],
+    ['null', null],
+  ])('refuses %s', (_why, value) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const requireSecureTransport = value as any;
+    expect(() => dbmsWith({requireSecureTransport})).toThrow(
+      /AwsRdsMySqlDbms 'app-dbms': requireSecureTransport must be true or false/,
+    );
+    expect(() => postgresWith({requireSecureTransport})).toThrow(
+      /AwsRdsPostgresDbms 'pg': requireSecureTransport must be true or false/,
+    );
   });
 });

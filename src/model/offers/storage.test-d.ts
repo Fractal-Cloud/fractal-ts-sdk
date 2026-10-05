@@ -67,3 +67,9 @@ AwsRdsPostgresDbms({cloudwatchLogExports: ['postgresql', 'upgrade']});
 AwsRdsMySqlDbms({cloudwatchLogExports: ['error', 'slowquery']});
 // @ts-expect-error a single log type is still a list.
 AwsRdsMySqlDbms({cloudwatchLogExports: 'error'});
+
+// `requireSecureTransport` is optional on both RDS DBMS offers, and a boolean.
+AwsRdsPostgresDbms({requireSecureTransport: true});
+AwsRdsMySqlDbms({requireSecureTransport: false});
+// @ts-expect-error a string is not a boolean, even 'true'.
+AwsRdsPostgresDbms({requireSecureTransport: 'true'});
