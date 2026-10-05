@@ -11,6 +11,50 @@ of truth for what is on npm.
 
 ## Unreleased
 
+### Requirements — deploy these agents before upgrading to this release
+
+The control plane prunes every parameter key that the offer's agent does not declare,
+before any agent sees it. On an older agent the keys below are therefore dropped
+silently: the Live System deploys, and the feature is simply not there. Upgrade the
+agents first, then this SDK.
+
+| Feature | Needs |
+|---|---|
+| `allowBulkDelete` on DNS zones | fractal-cloud-agents **v8.22.0** |
+| `AwsCloudFront` `errorDocument`, and the bucket link that takes `access` only (`read` / `read-write`) | fractal-cloud-agents **v8.22.0** |
+| `requireSecureTransport` on `AwsRdsPostgresDbms` / `AwsRdsMySqlDbms` | fractal-cloud-agents **v8.22.1** |
+| `CertManager` | aria-agent-caas-k8s **v1.3.0** |
+| `SqsExporter` | aria-agent-caas-k8s **v1.3.0** |
+| `TraefikGateway` TLS (`tlsClusterIssuer`, `tlsSecretName`, `tlsHosts`, `plainHttp`), `forwardAuthExemptComponentIds`, `loadBalancerSourceRanges`, `values` | aria-agent-caas-k8s **v1.3.0** |
+| `KubePrometheusStack` keys and its Grafana route | aria-agent-caas-k8s **v1.3.0** |
+| `GrafanaLoki`, `GrafanaTempo`, `GrafanaAlloy` keys | aria-agent-caas-k8s **v1.3.0** |
+
+**Security-relevant on caas-k8s v1.2.3:** `forwardAuthExemptComponentIds` is pruned
+there, and so are the TLS keys. v1.2.3 also has no handler for `TraefikGateway`,
+`KubePrometheusStack` or the Grafana offers (they were added after it), so nothing
+reconciles such a gateway and none of what it declares, TLS or which workloads skip
+ForwardAuth, is in force. Do not rely on any of the caas-k8s keys above until v1.3.0
+is the agent running in the environment.
+
+### Refused now, accepted by 2.9.x
+
+Every check this release adds that rejects a Live System 2.9.x built, in one place.
+"Agent refusal" says whether an agent already refused the same input, so whether a
+Live System that relied on it ever deployed in working order.
+
+| Now refused while building the Live System | Agent refusal |
+|---|---|
+| `scrapeInterval` / `samplingRate` on any Monitoring or Tracing offer (BREAKING, below) | none: no agent reads them; the platform pruned them |
+| `TraefikGateway({forwardAuthExcludedPrefixes})` (BREAKING, below) | none: no released agent reads it |
+| `GrafanaLoki` / `GrafanaTempo` without exactly one `read-write` `AwsS3` link; `GrafanaAlloy` without a `GrafanaLoki` dependency or `lokiPushUrl` | yes: caas-k8s v1.3.0 fails the component |
+| An empty list (`[]`) for any `TraefikGateway` list key, e.g. `forwardAuthRequestHeaders` | none: the agent reads it as unset and applies its default; refused because the default is not what `[]` says |
+| A malformed percent-escape in `forwardAuthAddress` | yes: caas-k8s v1.3.0 parses it as the SDK now does |
+| `KubePrometheusStack` linked to a `TraefikGateway` with a route the agent cannot read | yes: caas-k8s v1.3.0 refuses the route |
+| `AwsCloudFront` VPC origin over `https` to a same-Live-System `TraefikGateway` without TLS | none: the agent deploys it, and CloudFront fails every request (no listener on 443) |
+| `AwsCloudFront` bucket link carrying a key besides `access` (such as `accessMode`) | yes: agents v8.22.0 refuse the link |
+| `AwsCloudFront` and its `AwsS3` bucket declaring different `region`s | yes: agents v8.22.0 refuse the bucket origin |
+| `AwsCloudFront` `defaultRootObject` that is not an object key | yes: agents v8.22.0 refuse it |
+
 ### Added — `requireSecureTransport` on the Amazon RDS DBMS offers
 
 **Requires fractal-cloud-agents v8.22.1 deployed.**
@@ -103,7 +147,7 @@ afterwards. Omitted, nothing is sent. A non-boolean value is refused before
 deploying. **Requires** cloud agents v8.22.0 or later, which are the only ones
 that accept the key.
 
-### Changed — refused earlier: Loki, Tempo and Alloy without what the agent needs
+### Changed (BREAKING at build time) — Loki, Tempo and Alloy without what the agent needs
 
 `GrafanaLoki` and `GrafanaTempo` now require exactly one link to an `AwsS3` bucket
 with `{access: 'read-write'}`, and `GrafanaAlloy` a dependency on a `GrafanaLoki`
@@ -111,7 +155,11 @@ component unless `lokiPushUrl` is set. The agent already failed such components
 after deploying; a Live System that relied on that is now refused while being
 built.
 
-### Changed (agent behavior) — ForwardAuth exempts workloads, not paths
+This matches an existing agent refusal: caas-k8s v1.3.0, the first release that
+reconciles these offers, fails exactly these components. No such component ever
+deployed in working order, so only the moment of the failure moves.
+
+### Changed (BREAKING, agent behavior) — ForwardAuth exempts workloads, not paths
 
 With caas-k8s agents of this contract, a gateway with `forwardAuthAddress` no longer
 exempts routes by path. The old default of the removed `forwardAuthExcludedPrefixes`,
@@ -124,6 +172,12 @@ listed by its qualified id `<liveSystemId>/<componentId>`. An empty list is refu
 for every `TraefikGateway` list key: it would travel blank, and the agent reads blank
 as unset and applies its default (so `[]` would still exempt `ocelot`).
 
+**Why a minor.** The change is in the agent, and no released agent had the old
+behavior: caas-k8s v1.2.3 does not reconcile `TraefikGateway`, and v1.3.0 is the first
+release that does, with workload exemptions. Nothing deployed through a released agent
+changes. Staying on 2.9.x would not keep path exemptions either: what decides is the
+agent, not the SDK.
+
 ### Changed (BREAKING) — `scrapeInterval` and `samplingRate` are refused
 
 `Monitoring.withScrapeInterval` and `Tracing.withSamplingRate` are deprecated. No
@@ -132,6 +186,12 @@ platform pruned them before any agent saw them. Every Monitoring offer
 (`Prometheus`, `KubePrometheusStack`, `SqsExporter`) and Tracing offer (`Jaeger`,
 `GrafanaTempo`) now refuses a Live System whose component carries either key,
 whether set as a guardrail or through an operation. Remove the call.
+
+**Why a minor.** Nothing that deploys changes: the keys never reached an agent, so a
+Live System carrying them behaved exactly as one without them. The methods still
+compile (deprecated), and the only code affected is code that asked for something the
+platform has never done. A major would suggest that 2.x kept those settings working;
+it never did.
 
 ### Changed — URL checks read URLs as the agent does
 
@@ -145,27 +205,16 @@ The caas-k8s agent removed the key and its output. Its type is now `never`, and 
 value that still reaches the gateway (plain JavaScript, a cast) is refused while
 building the Live System. Exempt workloads with `forwardAuthExemptComponentIds`.
 
-### Added — **Amazon RDS for MySQL: `AwsRdsMySqlDbms`, `AwsRdsMySqlDatabase`**
+**Why a minor.** No released agent ever read the key (caas-k8s v1.2.3 has no
+`TraefikGateway`, and v1.3.0 removed it), so removing it changes no deployment. A
+caller who sets it gets a compile error instead of a key the platform would drop; the
+refusal exists so that this happens before deploying, not after.
 
-`Storage.PaaS.AwsRdsMySql` and `Storage.PaaS.AwsRdsMySqlDatabase`, the MySQL twins of
-the PostgreSQL offers. They take exactly the same keys (`AwsRdsDbmsConfig`), have the
-same two modes, and the database link is the same RelationalDatabase link (`access`), so
-a linked workload gets the same `DB_*` environment. The agent's defaults follow the
-engine: version 8.4, port 3306. The SDK sends no default. `administratorLogin` is
-refused above 16 characters on MySQL and 63 on PostgreSQL (each engine's limit, which
-the agent already enforced). `AwsRdsMySqlDatabase` takes
-`databaseName` only: MySQL has no schema below a database.
+### Changed — **`AwsCloudFront` static site: `errorDocument`, `read-write`, stricter link**
 
-### Added — **`cloudwatchLogExports` on both RDS DBMS offers (opt-in)**
-
-`AwsRdsPostgresDbms` and `AwsRdsMySqlDbms` take an optional `cloudwatchLogExports:
-string[]`. Unset, nothing is sent and the database's exports are left as they are
-(none on a new one). `[]` is sent, and turns exports off. The SDK refuses a value that
-is not a list of non-blank strings, or that names a type twice (compared trimmed, in
-lower case, as the agent does); the agent refuses a type the engine and mode do not
-offer.
-
-### Added — **`AwsCloudFront`: a static site from an S3 bucket**
+The bucket origin shipped in 2.9.7 (see there). This release adds `errorDocument`,
+accepts a `read-write` link, serves directory indexes, and refuses what the agents
+v8.22.0 refuse; the entry below describes the offer as it now is.
 
 LINK the distribution to an `AwsS3` bucket with the object-storage link
 `{access: 'read'} satisfies ObjectStorageLink` (at most one; the bucket may be a
@@ -196,12 +245,58 @@ Validation, mirroring the agent:
   without aliases or a linked origin, or on a gateway or `originDomain` origin.
   `spaFallback: false` sets nothing and is accepted anywhere.
 
+**Requires** cloud agents v8.22.0 or later (see Requirements above).
+
+## 2.9.7
+
+### Also shipped in 2.9.7 — listed as "Unreleased" in its packaged CHANGELOG
+
+2.9.7 was published from a commit that already held the three entries below, under
+"Unreleased" in the CHANGELOG of that commit and of the npm package. They are part of
+2.9.7, and are recorded here as of that release. 2.9.7 was published on 2026-10-04,
+before cloud agents v8.22.0 (2026-10-05), which these features need.
+
+#### Added — **Amazon RDS for MySQL: `AwsRdsMySqlDbms`, `AwsRdsMySqlDatabase`**
+
+`Storage.PaaS.AwsRdsMySql` and `Storage.PaaS.AwsRdsMySqlDatabase`, the MySQL twins of
+the PostgreSQL offers. They take exactly the same keys (`AwsRdsDbmsConfig`), have the
+same two modes, and the database link is the same RelationalDatabase link (`access`), so
+a linked workload gets the same `DB_*` environment. The agent's defaults follow the
+engine: version 8.4, port 3306. The SDK sends no default. `administratorLogin` is
+refused above 16 characters on MySQL and 63 on PostgreSQL (each engine's limit, which
+the agent already enforced). `AwsRdsMySqlDatabase` takes
+`databaseName` only: MySQL has no schema below a database.
+
+#### Added — **`cloudwatchLogExports` on both RDS DBMS offers (opt-in)**
+
+`AwsRdsPostgresDbms` and `AwsRdsMySqlDbms` take an optional `cloudwatchLogExports:
+string[]`. Unset, nothing is sent and the database's exports are left as they are
+(none on a new one). `[]` is sent, and turns exports off. The SDK refuses a value that
+is not a list of non-blank strings, or that names a type twice (compared trimmed, in
+lower case, as the agent does); the agent refuses a type the engine and mode do not
+offer.
+
+#### Added — **`AwsCloudFront`: a static site from an S3 bucket**
+
+LINK the distribution to an `AwsS3` bucket with the object-storage link
+`{access: 'read'} satisfies ObjectStorageLink` (at most one; the bucket may be a
+reference). The agent serves the bucket through an origin access control and grants
+this distribution alone in the bucket policy. Two optional keys, sent only when set,
+apply to a bucket origin only:
+- `defaultRootObject`: the object for `/`; the agent applies `index.html` when unset.
+- `spaFallback`: answer missing paths with the root object and 200.
+
+Validation:
+- `aliases` with a bucket link and no `originDomain` is accepted.
+- A bucket link combined with `originDomain`, a linked gateway or `redirectTo` is
+  refused.
+- A link granting anything but `read` is refused, as are two bucket links.
+- The site keys are refused without a bucket origin.
+
 **Requires** cloud agents v8.22.0 or later. An older agent does not know the MySQL
 offers, `cloudwatchLogExports` on PostgreSQL, the bucket origin or the site keys. Its
 control plane prunes undeclared keys, so on such an agent the bucket link alone would
 not serve the site. Release this SDK (a minor) only after those agents are deployed.
-
-## 2.9.7
 
 ### Fixed — **2.9.6 regression: DNS zones failed on the cloud agents in service**
 

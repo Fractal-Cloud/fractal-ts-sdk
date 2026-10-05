@@ -73,3 +73,5 @@ AwsRdsPostgresDbms({requireSecureTransport: true});
 AwsRdsMySqlDbms({requireSecureTransport: false});
 // @ts-expect-error a string is not a boolean, even 'true'.
 AwsRdsPostgresDbms({requireSecureTransport: 'true'});
+// @ts-expect-error a string is not a boolean, on MySQL either.
+AwsRdsMySqlDbms({requireSecureTransport: 'false'});
