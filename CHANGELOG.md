@@ -47,6 +47,8 @@ Live System that relied on it ever deployed in working order.
 | `scrapeInterval` / `samplingRate` on any Monitoring or Tracing offer (BREAKING, below) | none: no agent reads them; the platform pruned them |
 | `TraefikGateway({forwardAuthExcludedPrefixes})` (BREAKING, below) | none: no released agent reads it |
 | `GrafanaLoki` / `GrafanaTempo` without exactly one `read-write` `AwsS3` link; `GrafanaAlloy` without a `GrafanaLoki` dependency or `lokiPushUrl` | yes: caas-k8s v1.3.0 fails the component |
+| A `namespace` that is not a Kubernetes name (RFC 1123 label) on `TraefikGateway`, `KubePrometheusStack`, `GrafanaLoki`, `GrafanaTempo` or `GrafanaAlloy` | none in the agent: the Kubernetes API fails the install |
+| `withRetentionDays` below 1 or not a whole number on `KubePrometheusStack`, `GrafanaLoki` or `GrafanaTempo` | yes: caas-k8s v1.3.0 refuses a retention that is not a positive integer |
 | An empty list (`[]`) for any `TraefikGateway` list key, e.g. `forwardAuthRequestHeaders` | none: the agent reads it as unset and applies its default; refused because the default is not what `[]` says |
 | A malformed percent-escape in `forwardAuthAddress` | yes: caas-k8s v1.3.0 parses it as the SDK now does |
 | `KubePrometheusStack` linked to a `TraefikGateway` with a route the agent cannot read | yes: caas-k8s v1.3.0 refuses the route |
@@ -93,7 +95,7 @@ defaults are the agent's and the SDK sends only what you set.
   default `[host]`) and `plainHttp` (default `true` without TLS, `false` with TLS);
   ForwardAuth exemption by workload with `forwardAuthExemptComponentIds` (string[],
   default `ocelot`; `<liveSystemId>/<componentId>` for another Live System); and the
-  existing agent keys the SDK did not expose, `loadBalancerSourceRanges` (string[]
+  keys of the caas-k8s v1.3.0 gateway the SDK did not expose, `loadBalancerSourceRanges` (string[]
   of CIDRs) and `values`. Refused as the agent refuses them: `tlsHosts` or
   `plainHttp: false` without TLS, `tlsCertificateArn` together with Traefik TLS,
   TLS without `tlsHosts` or `host`, a malformed certificate host, a `host` the
