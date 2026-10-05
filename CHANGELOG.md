@@ -11,6 +11,17 @@ of truth for what is on npm.
 
 ## Unreleased
 
+### Added — `requireSecureTransport` on the Amazon RDS DBMS offers
+
+**Requires fractal-cloud-agents v8.22.1 deployed.**
+
+- `AwsRdsPostgresDbms` and `AwsRdsMySqlDbms` take `requireSecureTransport?: boolean`
+  (key `requireSecureTransport`). No default, and it is sent only when set. Unset, a
+  new database gets the agent's parameter group that requires TLS and an existing
+  one is left as it is; `true` also attaches the group to an existing database on
+  its engine's default group (applied at the next reboot); `false` never sets it
+  up. A value that is not a boolean is refused while building the Live System.
+
 ### Added — the caas-k8s platform offers: cert-manager, the SQS exporter, Traefik TLS
 
 All keys are the ones the caas-k8s agent declares in each offer's catalog `Config`;

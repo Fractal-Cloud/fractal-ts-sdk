@@ -12,8 +12,8 @@ const AWS_RDS_STORAGE_TYPES: readonly AwsRdsStorageType[] = [
 
 /**
  * The checks both RDS DBMS offers share, refusing what the agent would refuse later: an unknown
- * storage type, a malformed log-export list, and (where the engine caps it) a master user name
- * that is too long.
+ * storage type, a malformed log-export list, a `requireSecureTransport` that is not a boolean, and
+ * (where the engine caps it) a master user name that is too long.
  */
 export const validateAwsRdsDbms = (
   offer: string,
@@ -38,6 +38,17 @@ export const validateAwsRdsDbms = (
     throw new Error(
       `${offer} '${self.id}': administratorLogin '${config.administratorLogin}' is ` +
         `longer than ${maxAdministratorLoginLength} characters, the engine's limit.`,
+    );
+  }
+  // Only a boolean: the agent reads anything but 'true' as false, so a 1 or a 'yes' would silently opt out.
+  const requireSecureTransport: unknown = config.requireSecureTransport;
+  if (
+    requireSecureTransport !== undefined &&
+    typeof requireSecureTransport !== 'boolean'
+  ) {
+    throw new Error(
+      `${offer} '${self.id}': requireSecureTransport must be true or false, ` +
+        `not ${JSON.stringify(requireSecureTransport)}.`,
     );
   }
   const exports: unknown = config.cloudwatchLogExports;
