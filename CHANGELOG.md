@@ -94,7 +94,8 @@ defaults are the agent's and the SDK sends only what you set.
   `tlsSecretName` (default `traefik-tls` with an issuer), `tlsHosts` (string[],
   default `[host]`) and `plainHttp` (default `true` without TLS, `false` with TLS);
   ForwardAuth exemption by workload with `forwardAuthExemptComponentIds` (string[],
-  default `ocelot`; `<liveSystemId>/<componentId>` for another Live System); and the
+  no default: name the auth workload, e.g. `<authLiveSystemId>/ocelot`;
+  `<liveSystemId>/<componentId>` for another Live System); and the
   keys of the caas-k8s v1.3.0 gateway the SDK did not expose, `loadBalancerSourceRanges` (string[]
   of CIDRs) and `values`. Refused as the agent refuses them: `tlsHosts` or
   `plainHttp: false` without TLS, `tlsCertificateArn` together with Traefik TLS,

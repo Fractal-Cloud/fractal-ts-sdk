@@ -789,7 +789,7 @@ export const TraefikGateway = defineOffer<
     }
     ensureNamespace(self.id, config.namespace);
     // An empty list travels as a blank string, which the agent reads as unset:
-    // it would apply its default (e.g. still exempt `ocelot`) rather than none.
+    // it would apply its default rather than what the empty list says.
     for (const key of TRAEFIK_GATEWAY_LISTS) {
       if (config[key]?.length === 0) {
         refuse(

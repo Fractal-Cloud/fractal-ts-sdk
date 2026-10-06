@@ -79,7 +79,7 @@ export type TraefikGatewayConfig = {
    */
   forwardAuthExcludedPrefixes?: never;
   /**
-   * Workloads whose own routes skip ForwardAuth; default `ocelot`. A bare
+   * Workloads whose own routes skip ForwardAuth; none by default. A bare
    * component id is a workload of the gateway's own Live System, otherwise
    * `<liveSystemId>/<componentId>`. Another workload routed under the same path
    * is still authenticated.
