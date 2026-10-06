@@ -1106,7 +1106,7 @@ comma-separated. Defaults are the agent's; the SDK sends only what you set.
 | `forwardAuthResponseHeaders` | string[] | `x-jwt` |
 | `forwardAuthForwardBody` | boolean | `true` |
 | `forwardAuthMaxBodySize` | number | `1048576` |
-| `forwardAuthExemptComponentIds` | string[] | `ocelot`: workloads whose own routes skip ForwardAuth, a bare component id of the gateway's Live System or `<liveSystemId>/<componentId>` |
+| `forwardAuthExemptComponentIds` | string[] | none: workloads whose own routes skip ForwardAuth, a bare component id of the gateway's Live System or `<liveSystemId>/<componentId>` |
 | `forwardAuthExcludedPrefixes` | — | **removed** from the agent; setting it is refused (a type error, and refused at runtime) |
 | `values` | object | none (chart values deep-merged over the agent's) |
 
@@ -1127,8 +1127,7 @@ TraefikGateway({
 ```
 
 An empty list is refused for every list key: it would travel blank, which the agent
-reads as unset and replaces with its default (`forwardAuthExemptComponentIds: []`
-would still exempt `ocelot`). Path prefixes no longer exempt a workload route: the
+reads as unset and replaces with its default. Path prefixes no longer exempt a workload route: the
 old default `/grafana/`, `/prometheus/`, `/alertmanager/` exemptions are gone, so
 those routes are authenticated unless their workload is listed.
 
