@@ -58,9 +58,14 @@ Live System that relied on it ever deployed in working order.
 | `AwsCloudFront` and its `AwsS3` bucket declaring different `region`s | yes: agents v8.22.0 refuse the bucket origin |
 | `AwsCloudFront` `defaultRootObject` that is not an object key | yes: agents v8.22.0 refuse it |
 
+### Added — `EmailSender` and the `AwsSesIdentity` offer
+
+- `EmailSender` component (`Messaging.EmailSender`) and its AWS offer `AwsSesIdentity`
+  (`Messaging.PaaS.AwsSesIdentity`): `domain` required, `mailFromSubdomain` optional.
+  **Requires the fractal-cloud-agents release with agents #829 deployed.**
+
 ### Added — `requireSecureTransport` on the Amazon RDS DBMS offers
 
-- `EmailSender` component (`Messaging.EmailSender`) and its AWS offer `AwsSesIdentity` (`Messaging.PaaS.AwsSesIdentity`): `domain` required, `mailFromSubdomain` optional.
 **Requires fractal-cloud-agents v8.22.1 deployed.**
 
 - `AwsRdsPostgresDbms` and `AwsRdsMySqlDbms` take `requireSecureTransport?: boolean`
