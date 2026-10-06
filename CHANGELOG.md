@@ -23,6 +23,7 @@ agents first, then this SDK.
 | `allowBulkDelete` on DNS zones | fractal-cloud-agents **v8.22.0** |
 | `AwsCloudFront` `errorDocument`, and the bucket link that takes `access` only (`read` / `read-write`) | fractal-cloud-agents **v8.22.0** |
 | `requireSecureTransport` on `AwsRdsPostgresDbms` / `AwsRdsMySqlDbms` | fractal-cloud-agents **v8.22.1** |
+| `EmailSender` / `AwsSesIdentity` | fractal-cloud-agents release with agents #829 |
 | `CertManager` | aria-agent-caas-k8s **v1.3.0** |
 | `SqsExporter` | aria-agent-caas-k8s **v1.3.0** |
 | `TraefikGateway` TLS (`tlsClusterIssuer`, `tlsSecretName`, `tlsHosts`, `plainHttp`), `forwardAuthExemptComponentIds`, `loadBalancerSourceRanges`, `values` | aria-agent-caas-k8s **v1.3.0** |
@@ -59,6 +60,7 @@ Live System that relied on it ever deployed in working order.
 
 ### Added — `requireSecureTransport` on the Amazon RDS DBMS offers
 
+- `EmailSender` component (`Messaging.EmailSender`) and its AWS offer `AwsSesIdentity` (`Messaging.PaaS.AwsSesIdentity`): `domain` required, `mailFromSubdomain` optional.
 **Requires fractal-cloud-agents v8.22.1 deployed.**
 
 - `AwsRdsPostgresDbms` and `AwsRdsMySqlDbms` take `requireSecureTransport?: boolean`

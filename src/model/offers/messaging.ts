@@ -284,6 +284,62 @@ export const AwsSnsTopic = defineOffer<
   },
 });
 
+// ── AWS: SES identity (satisfies 'Messaging.EmailSender') ────────────────────
+/** A domain name as the AWS agent accepts it (lower case, at least two labels). */
+const SES_DOMAIN =
+  /^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$/;
+/** One DNS label. */
+const DNS_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+
+/**
+ * An Amazon SES v2 domain identity with Easy DKIM (2048-bit), optionally with a
+ * custom MAIL FROM domain `<mailFromSubdomain>.<domain>`.
+ *
+ * The agent writes no DNS: it publishes the records to create and stays
+ * `Instantiating` until SES has verified them.
+ *
+ * Output fields: `identityArn`, `dkimRecords` (three CNAMEs), `verificationStatus`,
+ * and with a MAIL FROM subdomain `mailFromRecords` (MX and SPF) and
+ * `mailFromStatus`.
+ */
+export const AwsSesIdentity = defineOffer<
+  'Messaging.EmailSender',
+  {
+    /** The domain mail is sent from, e.g. `example.com`. */
+    domain: string;
+    /** One DNS label; MAIL FROM becomes `<label>.<domain>`. Unset = SES's own. */
+    mailFromSubdomain?: string;
+  }
+>({
+  satisfies: 'Messaging.EmailSender',
+  offerType: 'Messaging.PaaS.AwsSesIdentity',
+  provider: 'AWS',
+  deliveryModel: 'PaaS',
+  validate: (self, _all, config) => {
+    const domain = config.domain.toLowerCase();
+    if (!SES_DOMAIN.test(domain)) {
+      throw new Error(
+        `AwsSesIdentity '${self.id}': domain '${config.domain}' is not a domain name.`,
+      );
+    }
+    const sub = config.mailFromSubdomain;
+    if (sub === undefined) {
+      return;
+    }
+    if (!DNS_LABEL.test(sub.toLowerCase())) {
+      throw new Error(
+        `AwsSesIdentity '${self.id}': mailFromSubdomain '${sub}' must be one DNS label ` +
+          "(letters, digits, '-').",
+      );
+    }
+    if (sub.length + 1 + domain.length > 253) {
+      throw new Error(
+        `AwsSesIdentity '${self.id}': '${sub}.${domain}' is longer than a domain name may be.`,
+      );
+    }
+  },
+});
+
 /** The SQS knob a neutral `MessagingEntity` guardrail maps onto, and how. */
 const NEUTRAL_QUEUE_KNOBS = [
   {
