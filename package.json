@@ -41,7 +41,7 @@
     "build": "tsdown",
     "build:docs": "typedoc --entryPointStrategy Expand --exclude \"**/*+(.test|.e2e).ts\" src",
     "dev": "tsdown --watch",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.guides.json && node scripts/check-unused-test-imports.mjs",
+    "typecheck": "node node_modules/typescript7/bin/tsc --noEmit && node node_modules/typescript7/bin/tsc -p tsconfig.guides.json && node scripts/check-unused-test-imports.mjs",
     "test": "npm run typecheck && vitest run --coverage",
     "test:watch": "vitest",
     "lint": "gts lint",
@@ -55,7 +55,8 @@
     "gts": "^7.0.0",
     "tsdown": "^0.23.0",
     "typedoc": "^0.28.20",
-    "typescript": "^6.0.3",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript7": "npm:typescript@^7.0.2",
     "vitest": "^5.0.3"
   },
   "dependencies": {
