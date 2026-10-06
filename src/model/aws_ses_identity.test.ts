@@ -84,12 +84,31 @@ describe('AwsSesIdentity', () => {
   it.each([
     ['bounce.mail', 'two labels'],
     ['-bounce', 'a leading hyphen'],
-    ['', 'empty'],
   ])('refuses the MAIL FROM subdomain %j (%s)', mailFromSubdomain => {
     expect(() =>
       build(AwsSesIdentity({domain: 'example.com', mailFromSubdomain})),
     ).toThrow(/AwsSesIdentity 'mail': mailFromSubdomain/);
   });
+
+  // The agent normalizes (trim, lower case, no trailing dot) and reads a blank
+  // value as unset, so the SDK accepts what the agent accepts.
+  it('accepts a blank MAIL FROM subdomain as unset, as the agent does', () => {
+    expect(() =>
+      build(AwsSesIdentity({domain: 'example.com', mailFromSubdomain: ''})),
+    ).not.toThrow();
+    expect(() =>
+      build(AwsSesIdentity({domain: 'example.com', mailFromSubdomain: '  '})),
+    ).not.toThrow();
+  });
+
+  it.each([' Example.COM ', 'example.com.', 'MAIL.example.com'])(
+    'accepts the domain %j, which the agent normalizes',
+    domain => {
+      expect(() =>
+        build(AwsSesIdentity({domain, mailFromSubdomain: ' Bounce '})),
+      ).not.toThrow();
+    },
+  );
 
   it('refuses a MAIL FROM domain longer than a domain name may be', () => {
     const domain = `${'a'.repeat(60)}.${'b'.repeat(60)}.${'c'.repeat(60)}.${'d'.repeat(60)}.com`;

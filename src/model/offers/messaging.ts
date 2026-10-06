@@ -292,6 +292,18 @@ const SES_DOMAIN =
 const DNS_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
 /**
+ * A DNS name as the AWS agent reads it: trimmed, lower case, without a trailing
+ * dot; blank is unset (undefined).
+ */
+const normalizedDnsName = (value: string | undefined): string | undefined => {
+  if (value === undefined || value.trim() === '') {
+    return undefined;
+  }
+  const trimmed = value.trim().toLowerCase();
+  return trimmed.endsWith('.') ? trimmed.slice(0, -1) : trimmed;
+};
+
+/**
  * An Amazon SES v2 domain identity with Easy DKIM (2048-bit), optionally with a
  * custom MAIL FROM domain `<mailFromSubdomain>.<domain>`.
  *
@@ -307,7 +319,7 @@ export const AwsSesIdentity = defineOffer<
   {
     /** The domain mail is sent from, e.g. `example.com`. */
     domain: string;
-    /** One DNS label; MAIL FROM becomes `<label>.<domain>`. Unset = SES's own. */
+    /** One DNS label; MAIL FROM becomes `<label>.<domain>`. Unset or blank = SES's own. */
     mailFromSubdomain?: string;
   }
 >({
@@ -316,19 +328,19 @@ export const AwsSesIdentity = defineOffer<
   provider: 'AWS',
   deliveryModel: 'PaaS',
   validate: (self, _all, config) => {
-    const domain = config.domain.toLowerCase();
-    if (!SES_DOMAIN.test(domain)) {
+    const domain = normalizedDnsName(config.domain);
+    if (domain === undefined || !SES_DOMAIN.test(domain)) {
       throw new Error(
         `AwsSesIdentity '${self.id}': domain '${config.domain}' is not a domain name.`,
       );
     }
-    const sub = config.mailFromSubdomain;
+    const sub = normalizedDnsName(config.mailFromSubdomain);
     if (sub === undefined) {
       return;
     }
-    if (!DNS_LABEL.test(sub.toLowerCase())) {
+    if (!DNS_LABEL.test(sub)) {
       throw new Error(
-        `AwsSesIdentity '${self.id}': mailFromSubdomain '${sub}' must be one DNS label ` +
+        `AwsSesIdentity '${self.id}': mailFromSubdomain '${config.mailFromSubdomain}' must be one DNS label ` +
           "(letters, digits, '-').",
       );
     }

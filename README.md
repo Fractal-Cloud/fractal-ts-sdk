@@ -1007,14 +1007,15 @@ Live System is built.
 |---|---|---|---|
 | `Broker` | `AzureServiceBus` | `GcpPubSub` | `Kafka` |
 | `MessagingEntity` | `AzureServiceBusTopic` | `GcpPubSubTopic` | `KafkaTopic` |
-| `EmailSender` | — | — | — |
 
-AWS: `EmailSender` → `AwsSesIdentity`.
+`EmailSender` (AWS only): `AwsSesIdentity`.
 
 #### `AwsSesIdentity` (`Messaging.PaaS.AwsSesIdentity`, AWS agent)
 
 An SES v2 domain identity with Easy DKIM. `domain` is required; `mailFromSubdomain`
-(one DNS label) sets a custom MAIL FROM `<label>.<domain>`.
+(one DNS label) sets a custom MAIL FROM `<label>.<domain>`, and unset or blank keeps
+SES's own. Values are read as the agent reads them: trimmed, lower case, without a
+trailing dot.
 
 ```ts
 const mail = bp.add(EmailSender({id: 'mail'}));
