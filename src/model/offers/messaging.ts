@@ -304,15 +304,75 @@ const normalizedDnsName = (value: string | undefined): string | undefined => {
 };
 
 /**
+ * The production access request as the AWS agent sends it: with
+ * `productionAccess`, `websiteUrl` (http(s)) and `useCaseDescription` are
+ * required; `mailType` and `contactLanguage` are read case-insensitively.
+ * Without it the agent reads none of them, so none is checked.
+ */
+const validateSesProductionAccess = (
+  id: string,
+  config: {
+    productionAccess?: boolean;
+    mailType?: string;
+    websiteUrl?: string;
+    useCaseDescription?: string;
+    contactLanguage?: string;
+  },
+): void => {
+  if (config.productionAccess !== true) {
+    return;
+  }
+  for (const key of ['websiteUrl', 'useCaseDescription'] as const) {
+    const value = config[key];
+    if (value === undefined || value.trim() === '') {
+      throw new Error(
+        `AwsSesIdentity '${id}': productionAccess needs ${key}; without it the agent sends no request.`,
+      );
+    }
+  }
+  if (!/^https?:\/\/\S+$/.test(config.websiteUrl!.trim())) {
+    throw new Error(
+      `AwsSesIdentity '${id}': websiteUrl '${config.websiteUrl}' is not an http(s) URL.`,
+    );
+  }
+  const mailType = config.mailType?.trim().toUpperCase();
+  if (
+    mailType !== undefined &&
+    mailType !== '' &&
+    !['TRANSACTIONAL', 'MARKETING'].includes(mailType)
+  ) {
+    throw new Error(
+      `AwsSesIdentity '${id}': mailType '${config.mailType}' is not TRANSACTIONAL or MARKETING.`,
+    );
+  }
+  const language = config.contactLanguage?.trim().toUpperCase();
+  if (
+    language !== undefined &&
+    language !== '' &&
+    !['EN', 'JA'].includes(language)
+  ) {
+    throw new Error(
+      `AwsSesIdentity '${id}': contactLanguage '${config.contactLanguage}' is not EN or JA.`,
+    );
+  }
+};
+
+/**
  * An Amazon SES v2 domain identity with Easy DKIM (2048-bit), optionally with a
  * custom MAIL FROM domain `<mailFromSubdomain>.<domain>`.
  *
  * The agent writes no DNS: it publishes the records to create and stays
  * `Instantiating` until SES has verified them.
  *
+ * `productionAccess: true` has the agent ask AWS, once, to move the account out
+ * of the SES sandbox, with `websiteUrl` and `useCaseDescription` (both required
+ * then), `mailType` and `contactLanguage`. Production access is account-wide and
+ * per region, and cannot be reverted: `false` again only warns.
+ *
  * Output fields: `identityArn`, `dkimRecords` (three CNAMEs), `verificationStatus`,
- * and with a MAIL FROM subdomain `mailFromRecords` (MX and SPF) and
- * `mailFromStatus`.
+ * with a MAIL FROM subdomain `mailFromRecords` (MX and SPF) and `mailFromStatus`,
+ * and once production access was asked for `productionAccessStatus` (`Sandbox`,
+ * `Pending`, `Granted`, `Denied`, `Failed`).
  */
 export const AwsSesIdentity = defineOffer<
   'Messaging.EmailSender',
@@ -321,6 +381,19 @@ export const AwsSesIdentity = defineOffer<
     domain: string;
     /** One DNS label; MAIL FROM becomes `<label>.<domain>`. Unset or blank = SES's own. */
     mailFromSubdomain?: string;
+    /**
+     * `true`: request SES production access once. Account-wide and per region;
+     * cannot be reverted. Unset or `false` = the sandbox.
+     */
+    productionAccess?: boolean;
+    /** For the production access request. The agent's default: `TRANSACTIONAL`. */
+    mailType?: 'TRANSACTIONAL' | 'MARKETING';
+    /** Required with `productionAccess`: the sender's http(s) website. */
+    websiteUrl?: string;
+    /** Required with `productionAccess`: what is sent, to whom, and how bounces and complaints are handled. */
+    useCaseDescription?: string;
+    /** The language AWS answers the request in. The agent's default: `EN`. */
+    contactLanguage?: 'EN' | 'JA';
   }
 >({
   satisfies: 'Messaging.EmailSender',
@@ -334,6 +407,7 @@ export const AwsSesIdentity = defineOffer<
         `AwsSesIdentity '${self.id}': domain '${config.domain}' is not a domain name.`,
       );
     }
+    validateSesProductionAccess(self.id, config);
     const sub = normalizedDnsName(config.mailFromSubdomain);
     if (sub === undefined) {
       return;
