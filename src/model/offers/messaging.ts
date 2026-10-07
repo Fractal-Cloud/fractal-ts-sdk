@@ -284,6 +284,74 @@ export const AwsSnsTopic = defineOffer<
   },
 });
 
+// ── AWS: SES identity (satisfies 'Messaging.EmailSender') ────────────────────
+/** A domain name as the AWS agent accepts it (lower case, at least two labels). */
+const SES_DOMAIN =
+  /^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$/;
+/** One DNS label. */
+const DNS_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+
+/**
+ * A DNS name as the AWS agent reads it: trimmed, lower case, without a trailing
+ * dot; blank is unset (undefined).
+ */
+const normalizedDnsName = (value: string | undefined): string | undefined => {
+  if (value === undefined || value.trim() === '') {
+    return undefined;
+  }
+  const trimmed = value.trim().toLowerCase();
+  return trimmed.endsWith('.') ? trimmed.slice(0, -1) : trimmed;
+};
+
+/**
+ * An Amazon SES v2 domain identity with Easy DKIM (2048-bit), optionally with a
+ * custom MAIL FROM domain `<mailFromSubdomain>.<domain>`.
+ *
+ * The agent writes no DNS: it publishes the records to create and stays
+ * `Instantiating` until SES has verified them.
+ *
+ * Output fields: `identityArn`, `dkimRecords` (three CNAMEs), `verificationStatus`,
+ * and with a MAIL FROM subdomain `mailFromRecords` (MX and SPF) and
+ * `mailFromStatus`.
+ */
+export const AwsSesIdentity = defineOffer<
+  'Messaging.EmailSender',
+  {
+    /** The domain mail is sent from, e.g. `example.com`. */
+    domain: string;
+    /** One DNS label; MAIL FROM becomes `<label>.<domain>`. Unset or blank = SES's own. */
+    mailFromSubdomain?: string;
+  }
+>({
+  satisfies: 'Messaging.EmailSender',
+  offerType: 'Messaging.PaaS.AwsSesIdentity',
+  provider: 'AWS',
+  deliveryModel: 'PaaS',
+  validate: (self, _all, config) => {
+    const domain = normalizedDnsName(config.domain);
+    if (domain === undefined || !SES_DOMAIN.test(domain)) {
+      throw new Error(
+        `AwsSesIdentity '${self.id}': domain '${config.domain}' is not a domain name.`,
+      );
+    }
+    const sub = normalizedDnsName(config.mailFromSubdomain);
+    if (sub === undefined) {
+      return;
+    }
+    if (!DNS_LABEL.test(sub)) {
+      throw new Error(
+        `AwsSesIdentity '${self.id}': mailFromSubdomain '${config.mailFromSubdomain}' must be one DNS label ` +
+          "(letters, digits, '-').",
+      );
+    }
+    if (sub.length + 1 + domain.length > 253) {
+      throw new Error(
+        `AwsSesIdentity '${self.id}': '${sub}.${domain}' is longer than a domain name may be.`,
+      );
+    }
+  },
+});
+
 /** The SQS knob a neutral `MessagingEntity` guardrail maps onto, and how. */
 const NEUTRAL_QUEUE_KNOBS = [
   {

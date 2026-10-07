@@ -1008,6 +1008,25 @@ Live System is built.
 | `Broker` | `AzureServiceBus` | `GcpPubSub` | `Kafka` |
 | `MessagingEntity` | `AzureServiceBusTopic` | `GcpPubSubTopic` | `KafkaTopic` |
 
+`EmailSender` (AWS only): `AwsSesIdentity`.
+
+#### `AwsSesIdentity` (`Messaging.PaaS.AwsSesIdentity`, AWS agent)
+
+An SES v2 domain identity with Easy DKIM. `domain` is required; `mailFromSubdomain`
+(one DNS label) sets a custom MAIL FROM `<label>.<domain>`, and unset or blank keeps
+SES's own. Values are read as the agent reads them: trimmed, lower case, without a
+trailing dot.
+
+```ts
+const mail = bp.add(EmailSender({id: 'mail'}));
+// ...
+select: {mail: AwsSesIdentity({domain: 'example.com', mailFromSubdomain: 'bounce'})}
+```
+
+The agent writes no DNS. It publishes `dkimRecords` (three CNAMEs) and, with a MAIL
+FROM subdomain, `mailFromRecords` (MX and SPF), and stays `Instantiating` until SES
+has verified them. Needs fractal-cloud-agents with agents #829.
+
 #### Service Bus namespace SKU (`skuTier`)
 
 `AzureServiceBus` accepts `skuTier?: 'Basic' | 'Standard' | 'Premium'` and **defaults

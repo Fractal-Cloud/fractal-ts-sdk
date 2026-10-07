@@ -72,3 +72,19 @@ export const MessagingEntity = <const Id extends string>(cfg: {
   messagingEntityNode<Id>(
     newNode(cfg.id, 'Messaging.MessagingEntity', cfg.displayName),
   );
+
+// ── EmailSender ──────────────────────────────────────────────────────────────
+/**
+ * Sends transactional email from a verified domain. Abstract: the domain and
+ * its DNS records are the offer's (e.g. `AwsSesIdentity`).
+ */
+export type EmailSenderNode<Id extends string = string> = ComponentNode<
+  Id,
+  'Messaging.EmailSender'
+>;
+export const EmailSender = <const Id extends string>(cfg: {
+  id: Id;
+  displayName?: string;
+}): EmailSenderNode<Id> => ({
+  state: newNode(cfg.id, 'Messaging.EmailSender', cfg.displayName),
+});

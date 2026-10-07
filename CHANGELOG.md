@@ -23,6 +23,7 @@ agents first, then this SDK.
 | `allowBulkDelete` on DNS zones | fractal-cloud-agents **v8.22.0** |
 | `AwsCloudFront` `errorDocument`, and the bucket link that takes `access` only (`read` / `read-write`) | fractal-cloud-agents **v8.22.0** |
 | `requireSecureTransport` on `AwsRdsPostgresDbms` / `AwsRdsMySqlDbms` | fractal-cloud-agents **v8.22.1** |
+| `EmailSender` / `AwsSesIdentity` | fractal-cloud-agents release with agents #829 |
 | `CertManager` | aria-agent-caas-k8s **v1.3.0** |
 | `SqsExporter` | aria-agent-caas-k8s **v1.3.0** |
 | `TraefikGateway` TLS (`tlsClusterIssuer`, `tlsSecretName`, `tlsHosts`, `plainHttp`), `forwardAuthExemptComponentIds`, `loadBalancerSourceRanges`, `values` | aria-agent-caas-k8s **v1.3.0** |
@@ -56,6 +57,12 @@ Live System that relied on it ever deployed in working order.
 | `AwsCloudFront` bucket link carrying a key besides `access` (such as `accessMode`) | yes: agents v8.22.0 refuse the link |
 | `AwsCloudFront` and its `AwsS3` bucket declaring different `region`s | yes: agents v8.22.0 refuse the bucket origin |
 | `AwsCloudFront` `defaultRootObject` that is not an object key | yes: agents v8.22.0 refuse it |
+
+### Added — `EmailSender` and the `AwsSesIdentity` offer
+
+- `EmailSender` component (`Messaging.EmailSender`) and its AWS offer `AwsSesIdentity`
+  (`Messaging.PaaS.AwsSesIdentity`): `domain` required, `mailFromSubdomain` optional.
+  **Requires the fractal-cloud-agents release with agents #829 deployed.**
 
 ### Added — `requireSecureTransport` on the Amazon RDS DBMS offers
 
