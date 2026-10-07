@@ -24,6 +24,7 @@ agents first, then this SDK.
 | `AwsCloudFront` `errorDocument`, and the bucket link that takes `access` only (`read` / `read-write`) | fractal-cloud-agents **v8.22.0** |
 | `requireSecureTransport` on `AwsRdsPostgresDbms` / `AwsRdsMySqlDbms` | fractal-cloud-agents **v8.22.1** |
 | `EmailSender` / `AwsSesIdentity` | fractal-cloud-agents release with agents #829 |
+| `AwsSesIdentity` `productionAccess`, `mailType`, `websiteUrl`, `useCaseDescription`, `contactLanguage` | fractal-cloud-agents release with agents #831; agent role from fractal-environments #511 |
 | `CertManager` | aria-agent-caas-k8s **v1.3.0** |
 | `SqsExporter` | aria-agent-caas-k8s **v1.3.0** |
 | `TraefikGateway` TLS (`tlsClusterIssuer`, `tlsSecretName`, `tlsHosts`, `plainHttp`), `forwardAuthExemptComponentIds`, `loadBalancerSourceRanges`, `values` | aria-agent-caas-k8s **v1.3.0** |
@@ -75,6 +76,18 @@ Pod Identity role.
   identity (no wildcards).
 - `replicas: 0` scales the workload to zero on v1.4.0 (older agents ran one). With
   autoscaling and no `minReplicas` it is refused: an HPA cannot scale to zero.
+
+### Added — SES production access on `AwsSesIdentity`
+
+- `productionAccess?: boolean`, `mailType?: 'TRANSACTIONAL' | 'MARKETING'`,
+  `websiteUrl?`, `useCaseDescription?`, `contactLanguage?: 'EN' | 'JA'`. Sent only
+  when set. `true` has the agent request SES production access once.
+- With `productionAccess: true`, `websiteUrl` (http(s)) and `useCaseDescription` are
+  required, and an unknown `mailType` / `contactLanguage` is refused, while building
+  the Live System: the agent would send no request.
+- Production access is account-wide and per region, and cannot be reverted.
+  **Requires the fractal-cloud-agents release with agents #831 deployed**, and the
+  agent role from fractal-environments #511.
 
 ### Added — `EmailSender` and the `AwsSesIdentity` offer
 

@@ -1027,6 +1027,33 @@ The agent writes no DNS. It publishes `dkimRecords` (three CNAMEs) and, with a M
 FROM subdomain, `mailFromRecords` (MX and SPF), and stays `Instantiating` until SES
 has verified them. Needs fractal-cloud-agents with agents #829.
 
+**Production access.** SES starts every account in the sandbox (verified recipients
+only, low quota). `productionAccess: true` has the agent request production access
+once, with `websiteUrl` (http(s)) and `useCaseDescription`, both required then, plus
+`mailType` (`TRANSACTIONAL` default, or `MARKETING`) and `contactLanguage` (`EN`
+default, or `JA`). AWS reviews it in a Support case; the agent publishes
+`productionAccessStatus` (`Sandbox`, `Pending`, `Granted`, `Denied`, `Failed`) and
+does not send the request again (a denial is answered in its case).
+
+```ts
+AwsSesIdentity({
+  domain: 'example.com',
+  productionAccess: true,
+  websiteUrl: 'https://example.com',
+  useCaseDescription: 'Order receipts and password resets to our customers; bounces and complaints suppressed.',
+})
+```
+
+> [!WARNING]
+> Production access is **account-wide and per region**: it applies to every SES
+> identity of the AWS account in that region, not only this one. It cannot be
+> reverted: setting `productionAccess` back to `false` changes nothing, the agent
+> only warns.
+
+Needs fractal-cloud-agents with agents #831, and the agent role's
+`ses:GetAccount` / `ses:PutAccountDetails` (fractal-environments #511, applied by an
+environment update).
+
 #### Service Bus namespace SKU (`skuTier`)
 
 `AzureServiceBus` accepts `skuTier?: 'Basic' | 'Standard' | 'Premium'` and **defaults
