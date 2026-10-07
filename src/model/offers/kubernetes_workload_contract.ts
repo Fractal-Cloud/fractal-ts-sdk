@@ -22,7 +22,8 @@
  *   symbol: K8sWorkloadHandler.CatalogEntry().Config
  *   file:   internal/reconciler/handlers/k8s_workload.go
  *   read:   2026-09-10, extended 2026-10-03 with the Phase 5 workload contract
- *           (rollout, drain, disruption, autoscaling, probes, spread, secretEnv)
+ *           (rollout, drain, disruption, autoscaling, probes, spread, secretEnv),
+ *           and 2026-10-07 with ssmParameters / sesIdentityArns (caas-k8s #53)
  *
  * Transcribing a contract is strictly worse than importing one. The real fix is
  * for the catalogue to publish these contracts in a form the SDK can consume at
@@ -81,6 +82,9 @@ export const KUBERNETES_WORKLOAD_CONTRACT_PARAMS = [
   'topologySpread',
   'nodeSelector',
   'secretEnv',
+  // AWS grants on the workload's Pod Identity role (caas-k8s v1.4.0).
+  'ssmParameters',
+  'sesIdentityArns',
 ] as const;
 
 /**
@@ -245,6 +249,75 @@ const refuse = (componentId: string, what: string): never => {
 
 const PROBES = ['readinessProbe', 'livenessProbe', 'startupProbe'] as const;
 
+// The agent's own patterns (caas-k8s internal/identity/resource_names.go).
+const SSM_SERVICE = /^[A-Za-z0-9_.-]+$/;
+const KMS_KEY_ARN = /^arn:aws[a-z-]*:kms:[a-z0-9-]+:[0-9]{12}:key\/[0-9a-f-]+$/;
+const SES_IDENTITY_ARN =
+  /^arn:aws[a-z-]*:ses:[a-z0-9-]+:[0-9]{12}:identity\/[^*?/]+$/;
+
+const isPlainObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** Refuse the AWS grant parameters the agent would refuse. */
+const ensureGrantsDeployable = (
+  params: Record<string, unknown>,
+  componentId: string,
+): void => {
+  const ssm = params['ssmParameters'];
+  if (ssm !== undefined) {
+    if (!isPlainObject(ssm)) {
+      refuse(
+        componentId,
+        'ssmParameters must be {service, access, kmsKeyArn?}',
+      );
+    }
+    const {service, access, kmsKeyArn} = ssm as Record<string, unknown>;
+    if (
+      typeof service !== 'string' ||
+      !SSM_SERVICE.test(service) ||
+      service === '.' ||
+      service === '..'
+    ) {
+      refuse(
+        componentId,
+        `ssmParameters.service '${String(service)}' is not one path segment of /fractal/<service>`,
+      );
+    }
+    if (access !== 'read' && access !== 'read-write') {
+      refuse(
+        componentId,
+        `ssmParameters.access '${String(access)}': expected read or read-write`,
+      );
+    }
+    if (
+      kmsKeyArn !== undefined &&
+      (typeof kmsKeyArn !== 'string' || !KMS_KEY_ARN.test(kmsKeyArn))
+    ) {
+      refuse(
+        componentId,
+        `ssmParameters.kmsKeyArn '${String(kmsKeyArn)}' is not one KMS key ARN (arn:aws:kms:<region>:<account>:key/<id>)`,
+      );
+    }
+  }
+  const ses = params['sesIdentityArns'];
+  if (ses !== undefined) {
+    if (!Array.isArray(ses)) {
+      refuse(
+        componentId,
+        'sesIdentityArns must be a list of SES identity ARNs',
+      );
+    }
+    for (const arn of ses as unknown[]) {
+      if (typeof arn !== 'string' || !SES_IDENTITY_ARN.test(arn)) {
+        refuse(
+          componentId,
+          `sesIdentityArns entry '${String(arn)}' is not one SES identity ARN (arn:aws:ses:<region>:<account>:identity/<domain or address>)`,
+        );
+      }
+    }
+  }
+};
+
 /**
  * A rolling-update pace as Kubernetes reads it: a whole count, or a whole
  * percentage up to 100%. Returns its size (0 for `0` and `0%`), or undefined
@@ -313,6 +386,16 @@ const ensureDeployable = (
   }
   if (params['autoscaling'] !== undefined) {
     const a = asRecord(params['autoscaling']);
+    // replicas 0 scales to zero; an HPA's floor (minReplicas, defaulting to
+    // replicas) cannot be 0, so the agent refuses the pair.
+    if (params['replicas'] === 0 && a.minReplicas === undefined) {
+      refuse(
+        componentId,
+        'replicas 0 scales the workload to zero, which autoscaling cannot do ' +
+          '(its minReplicas is at least 1): remove autoscaling, or set replicas ' +
+          'or autoscaling minReplicas',
+      );
+    }
     if (!isWhole(a.maxReplicas, 1)) {
       refuse(componentId, 'autoscaling needs a maxReplicas of at least 1');
     }
@@ -419,8 +502,8 @@ const ensureDeployable = (
  *
  * Everything else (autoscaling, podDisruptionBudget, maxSurge, maxUnavailable,
  * terminationGracePeriodSeconds, preStopSleepSeconds, the probes,
- * topologySpread, nodeSelector, env, secretEnv) already carries its canonical
- * name.
+ * topologySpread, nodeSelector, env, secretEnv, ssmParameters,
+ * sesIdentityArns) already carries its canonical name.
  */
 export const toKubernetesWorkloadParameters = (
   input: Record<string, unknown>,
@@ -492,5 +575,6 @@ export const toKubernetesWorkloadParameters = (
   }
   moveSecretRefsToSecretEnv(params, componentId);
   ensureDeployable(params, componentId);
+  ensureGrantsDeployable(params, componentId);
   return params;
 };

@@ -28,6 +28,7 @@ agents first, then this SDK.
 | `SqsExporter` | aria-agent-caas-k8s **v1.3.0** |
 | `TraefikGateway` TLS (`tlsClusterIssuer`, `tlsSecretName`, `tlsHosts`, `plainHttp`), `forwardAuthExemptComponentIds`, `loadBalancerSourceRanges`, `values` | aria-agent-caas-k8s **v1.3.0** |
 | `KubePrometheusStack` keys and its Grafana route | aria-agent-caas-k8s **v1.3.0** |
+| `K8sWorkload` `ssmParameters`, `sesIdentityArns`; `replicas: 0` (older agents run 1) | aria-agent-caas-k8s **v1.4.0** |
 | `GrafanaLoki`, `GrafanaTempo`, `GrafanaAlloy` keys | aria-agent-caas-k8s **v1.3.0** |
 
 **Security-relevant on caas-k8s v1.2.3:** `forwardAuthExemptComponentIds` is pruned
@@ -57,6 +58,23 @@ Live System that relied on it ever deployed in working order.
 | `AwsCloudFront` bucket link carrying a key besides `access` (such as `accessMode`) | yes: agents v8.22.0 refuse the link |
 | `AwsCloudFront` and its `AwsS3` bucket declaring different `region`s | yes: agents v8.22.0 refuse the bucket origin |
 | `AwsCloudFront` `defaultRootObject` that is not an object key | yes: agents v8.22.0 refuse it |
+| `replicas: 0` on a Kubernetes workload with autoscaling and no `minReplicas` | yes: caas-k8s v1.4.0 refuses it; older agents read 0 as 1 and deployed it |
+
+### Added — `K8sWorkload` grants: `ssmParameters`, `sesIdentityArns`
+
+**Requires aria-agent-caas-k8s v1.4.0 deployed.** EKS only: grants on the workload's
+Pod Identity role.
+
+- `ssmParameters: {service, access: 'read' | 'read-write', kmsKeyArn?}` (type
+  `WorkloadSsmParameters`): Parameter Store under `/fractal/<service>`; `kmsKeyArn`
+  is the customer-managed key of its SecureStrings (omit for `aws/ssm`).
+- `sesIdentityArns: string[]`: send email as exactly these SES identities.
+- Refused while building the Live System, as the agent refuses them: a `service`
+  that is not one path segment, an `access` besides `read` / `read-write`, a
+  `kmsKeyArn` that is not a key ARN (aliases included), an SES ARN that is not one
+  identity (no wildcards).
+- `replicas: 0` scales the workload to zero on v1.4.0 (older agents ran one). With
+  autoscaling and no `minReplicas` it is refused: an HPA cannot scale to zero.
 
 ### Added — `EmailSender` and the `AwsSesIdentity` offer
 
