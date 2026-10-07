@@ -27,6 +27,7 @@ const boundedContextId = {name: 'workloads'};
 const emit = (
   author: (w: WorkloadNode<'web'>) => WorkloadNode<'web'>,
   set: Record<string, unknown> = {},
+  offer: Parameters<typeof K8sWorkload>[0] = {},
 ): LiveSystemComponent =>
   createFractal({
     id: 'k8s-params',
@@ -43,7 +44,7 @@ const emit = (
     .toLiveSystem({
       name: 'ls',
       environment,
-      select: {web: K8sWorkload({namespace: 'fractal'})},
+      select: {web: K8sWorkload({namespace: 'fractal', ...offer})},
     })
     .components.find(c => c.id === 'web')!;
 
@@ -279,5 +280,69 @@ describe('Workload parameters on a Kubernetes workload', () => {
       containerPort: 8080,
       resourceRequests: {cpu: '200m'},
     });
+  });
+  it('emits replicas 0: the agent scales the workload to zero', () => {
+    const web = emit(w => w.withReplicas(0));
+    expect(web.parameters.replicas).toBe(0);
+  });
+
+  it('accepts replicas 0 with an autoscaling minReplicas of its own', () => {
+    const web = emit(w =>
+      w.withReplicas(0).withAutoscaling({minReplicas: 1, maxReplicas: 3}),
+    );
+    expect(web.parameters).toMatchObject({
+      replicas: 0,
+      autoscaling: {minReplicas: 1, maxReplicas: 3},
+    });
+  });
+
+  it.each([
+    ['withAutoscaling', (w: WorkloadNode<'web'>) => w.withAutoscaling({maxReplicas: 5})],
+    ['withMaxReplicas', (w: WorkloadNode<'web'>) => w.withMaxReplicas(5)],
+  ])(
+    'refuses replicas 0 with autoscaling from %s and no minReplicas: an HPA cannot scale to zero',
+    (_name, author) => {
+      expect(() => emit(w => author(w.withReplicas(0)))).toThrow(
+        /replicas 0.*autoscaling/,
+      );
+    },
+  );
+
+  const sesIdentity = 'arn:aws:ses:eu-central-1:111122223333:identity/fractal.cloud';
+  const kmsKey =
+    'arn:aws:kms:eu-central-1:111122223333:key/0123abcd-4567-89ef-0123-456789abcdef';
+
+  it('emits ssmParameters and sesIdentityArns from the offer under the names the agent reads', () => {
+    const web = emit(w => w, {}, {
+      ssmParameters: {service: 'accounts', access: 'read-write', kmsKeyArn: kmsKey},
+      sesIdentityArns: [sesIdentity],
+    });
+    expect(web.parameters).toMatchObject({
+      ssmParameters: {service: 'accounts', access: 'read-write', kmsKeyArn: kmsKey},
+      sesIdentityArns: [sesIdentity],
+    });
+    const declared = new Set<string>(KUBERNETES_WORKLOAD_CONTRACT_PARAMS);
+    expect(Object.keys(web.parameters).filter(k => !declared.has(k))).toEqual(
+      [],
+    );
+  });
+
+  it('accepts ssmParameters without a kmsKeyArn (the AWS-managed aws/ssm key)', () => {
+    const web = emit(w => w, {ssmParameters: {service: 'accounts', access: 'read'}});
+    expect(web.parameters.ssmParameters).toEqual({service: 'accounts', access: 'read'});
+  });
+
+  it.each([
+    ['an ssmParameters service that is not one path segment', {ssmParameters: {service: 'a/b', access: 'read'}}, /ssmParameters.service/],
+    ['an ssmParameters service of ..', {ssmParameters: {service: '..', access: 'read'}}, /ssmParameters.service/],
+    ['an ssmParameters without a service', {ssmParameters: {access: 'read'}}, /ssmParameters.service/],
+    ['an ssmParameters access besides read and read-write', {ssmParameters: {service: 'accounts', access: 'write'}}, /ssmParameters.access/],
+    ['an ssmParameters kmsKeyArn that is an alias', {ssmParameters: {service: 'accounts', access: 'read', kmsKeyArn: 'arn:aws:kms:eu-central-1:111122223333:alias/aws/ssm'}}, /ssmParameters.kmsKeyArn/],
+    ['an ssmParameters that is not an object', {ssmParameters: 'accounts'}, /ssmParameters/],
+    ['a sesIdentityArns that is not a list', {sesIdentityArns: sesIdentity}, /sesIdentityArns/],
+    ['a wildcard SES identity', {sesIdentityArns: ['arn:aws:ses:eu-central-1:111122223333:identity/*']}, /sesIdentityArns/],
+    ['a SES ARN that is not an identity', {sesIdentityArns: ['arn:aws:ses:eu-central-1:111122223333:configuration-set/x']}, /sesIdentityArns/],
+  ])('refuses %s', (_why, set, reason) => {
+    expect(() => emit(w => w, set)).toThrow(reason);
   });
 });

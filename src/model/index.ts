@@ -86,5 +86,6 @@ export type {SqsExporterConfig} from './offers/sqs_exporter_config';
 export * from './offers/security';
 export type {CertManagerConfig} from './offers/cert_manager_config';
 export * from './offers/custom_workloads';
+export type {WorkloadSsmParameters} from './offers/workload_ssm_parameters';
 export * from './offers/unmanaged';
 export * from './offers/dns';

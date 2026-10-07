@@ -13,6 +13,7 @@ import {
   KUBERNETES_WORKLOAD_OFFER_TYPE,
 } from './offer_type_ids';
 import {toKubernetesWorkloadParameters} from './kubernetes_workload_contract';
+import type {WorkloadSsmParameters} from './workload_ssm_parameters';
 
 // ── Workload offers ──────────────────────────────────────────────────────────
 export const EcsService = defineOffer<
@@ -99,10 +100,19 @@ export const OpenshiftWorkload = defineOffer<
  *
  * A `Workload` added as a CHILD of a ContainerPlatform never reaches this
  * `instantiate` — see `toKubernetesWorkloadParameters`, which both paths share.
+ *
+ * `ssmParameters` and `sesIdentityArns` are AWS grants on the workload's Pod
+ * Identity role, so they apply only on EKS (caas-k8s v1.4.0): Parameter Store
+ * access under `/fractal/<service>`, and sending email as the listed SES
+ * identities (e.g. an `AwsSesIdentity`'s ARN).
  */
 export const K8sWorkload = defineOffer<
   'CustomWorkloads.Workload',
-  {namespace?: string}
+  {
+    namespace?: string;
+    ssmParameters?: WorkloadSsmParameters;
+    sesIdentityArns?: string[];
+  }
 >({
   satisfies: 'CustomWorkloads.Workload',
   // Exported symbol name is public API and stays `K8sWorkload`; only the wire
