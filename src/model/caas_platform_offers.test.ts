@@ -11,7 +11,6 @@
  */
 import {describe, it, expect} from 'vitest';
 import {
-  addDependency,
   createFractal,
   type ComponentNode,
   type LiveSystemComponent,
@@ -21,7 +20,12 @@ import {Workload} from './components/custom_workloads';
 import {gatewayRouteSettings} from './components/gateway_route_settings';
 import {CertificateManager} from './components/certificate_manager';
 import {MessagingEntity} from './components/messaging';
-import {Logging, Monitoring, Tracing} from './components/observability';
+import {
+  Logging,
+  LogShipper,
+  Monitoring,
+  Tracing,
+} from './components/observability';
 import {ObjectStorage} from './components/storage';
 import {AwsCloudFront, TraefikGateway} from './offers/api_management';
 import {AwsSqsQueue} from './offers/messaging';
@@ -47,13 +51,6 @@ const PLATFORM = {
   ownerId: '00000000-0000-0000-0000-0000000000aa',
   name: 'platform',
 };
-
-const dependingOn = <Id extends string, C extends string>(
-  node: ComponentNode<Id, C>,
-  ...others: readonly ComponentNode[]
-): ComponentNode<Id, C> => ({
-  state: others.reduce((s, o) => addDependency(s, o.state.id), node.state),
-});
 
 const only = (
   components: readonly LiveSystemComponent[],
@@ -627,8 +624,8 @@ describe('caas-k8s observability parameters and links', () => {
         const tempo = bp.add(Tracing({id: 'tempo'}));
         const alloy = bp.add(
           opts.alloyDependsOnLoki === false
-            ? Logging({id: 'alloy'})
-            : dependingOn(Logging({id: 'alloy'}), loki),
+            ? LogShipper({id: 'alloy'})
+            : LogShipper({id: 'alloy'}).dependsOn(loki),
         );
         for (const id of links.loki ?? []) {
           bp.link(loki, buckets[id], {access: opts.access ?? 'read-write'});

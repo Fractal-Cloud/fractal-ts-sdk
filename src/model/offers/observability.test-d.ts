@@ -9,6 +9,7 @@ import {
   KubePrometheusStack,
   SqsExporter,
 } from './observability';
+import type {Offer} from '../core';
 
 // ── SqsExporter: every key is optional; the lists are lists ──────────────────
 SqsExporter({});
@@ -81,3 +82,11 @@ GrafanaAlloy({
   // @ts-expect-error `pushUrl` is Loki's output; Alloy's key is `lokiPushUrl`.
   pushUrl: 'http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push',
 });
+
+// ── GrafanaAlloy satisfies LogShipper, not Logging ────────────────────────────
+export const alloyIsALogShipper: Offer<'Observability.LogShipper'> =
+  GrafanaAlloy({});
+// @ts-expect-error Alloy ships logs; it is not a Logging backend.
+export const alloyIsNotLogging: Offer<'Observability.Logging'> = GrafanaAlloy(
+  {},
+);

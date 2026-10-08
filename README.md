@@ -1209,7 +1209,26 @@ refuses a Live System that sets them instead of letting the platform drop them.
 |---|---|
 | `Monitoring` | `Prometheus` · `KubePrometheusStack` · `SqsExporter` |
 | `Tracing` | `Jaeger` · `GrafanaTempo` |
-| `Logging` | `ObservabilityElastic` · `GrafanaLoki` · `GrafanaAlloy` |
+| `Logging` | `ObservabilityElastic` · `GrafanaLoki` |
+| `LogShipper` | `GrafanaAlloy` |
+
+`LogShipper` (`Observability.LogShipper`) collects the logs of the container platform
+it runs on and forwards them to a logging backend. It stores nothing, so it has no
+retention. Its one blueprint dependency is the `ContainerPlatform`
+(`LogShipper({id: 'shipper'}).dependsOn(platform)`).
+
+Point `GrafanaAlloy` at Loki with `lokiPushUrl`:
+`GrafanaAlloy({lokiPushUrl: 'http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push'})`.
+That is the `pushUrl` output of a `GrafanaLoki` component in the `monitoring` namespace
+(`http://loki.<namespace>.svc.cluster.local:3100/loki/api/v1/push`). Alloy only checks
+the URL's syntax, so a wrong one loses logs silently. A hard-coded `lokiPushUrl` does
+not follow the Loki if it moves and gives no start-up ordering; the dependency path
+below does.
+Alternatively, the shipper may also `dependsOn(logs)`, the `Logging` component that
+`GrafanaLoki` fills, and Alloy then uses that Loki's `pushUrl`. That is an extra
+Live-System-level dependency which the web editor cannot express: the catalogue
+models `LogShipper` with the container platform as its only dependency, so the
+component renders outside its platform group in the web canvas.
 
 #### The caas-k8s Grafana stack
 
@@ -1222,7 +1241,7 @@ component's neutral `withRetentionDays` (sent as `retentionDays`), not an offer 
 | `KubePrometheusStack` (`Observability.CaaS.KubePrometheusStack`) | `namespace`, `storageClassName` (see below), `prometheusStorageGi` (`50`), `lokiUrl` / `tempoUrl` (the Loki / Tempo service in the namespace; `none` = no datasource), `alertRules`, `alertmanagerConfig`, `values`; `retentionDays` `15` | optional route link to a `TraefikGateway` for Grafana (below) |
 | `GrafanaLoki` (`Observability.CaaS.GrafanaLoki`) | `namespace`, `storageClassName` (see below), `values`; `retentionDays` `14` | exactly one link to an `AwsS3` bucket with `{access: 'read-write'}` |
 | `GrafanaTempo` (`Observability.CaaS.GrafanaTempo`) | as Loki; `retentionDays` `7` | as Loki |
-| `GrafanaAlloy` (`Observability.CaaS.GrafanaAlloy`) | `namespace`, `lokiPushUrl` (none = the `pushUrl` of the Loki it depends on), `values` | a dependency on a `GrafanaLoki` component, unless `lokiPushUrl` is set |
+| `GrafanaAlloy` (`Observability.CaaS.GrafanaAlloy`), on `LogShipper` | `namespace`, `lokiPushUrl` (none = the `pushUrl` of the Loki it depends on), `values` | a dependency on a `GrafanaLoki` component, unless `lokiPushUrl` is set |
 
 Without `storageClassName`, `KubePrometheusStack`, `GrafanaLoki` and `GrafanaTempo`
 on EKS use `fractal-gp3`, which the agent creates when absent (encrypted gp3, EKS
@@ -1402,7 +1421,7 @@ src/model/
     big_data.ts              # DistributedDataProcessing, ComputeCluster, DataProcessingJob,
                              #   MlExperiment, Datalake
     api_management.ts        # ApiGateway
-    observability.ts         # Monitoring, Tracing, Logging
+    observability.ts         # Monitoring, Tracing, Logging, LogShipper
     security.ts              # ServiceMesh, IdentityProvider
     unmanaged.ts             # Unmanaged (external / SaaS)
   offers/          # Concrete Offers (Level 3) declaring what Component they satisfy

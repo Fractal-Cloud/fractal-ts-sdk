@@ -5,8 +5,13 @@
  *   - the caas-k8s observability offers (kube-prometheus-stack, Loki, Tempo, Alloy).
  */
 import {describe, it, expect} from 'vitest';
-import {addDependency, createFractal} from './core';
-import {Logging, Monitoring, Tracing} from './components/observability';
+import {createFractal} from './core';
+import {
+  Logging,
+  LogShipper,
+  Monitoring,
+  Tracing,
+} from './components/observability';
 import {ObjectStorage, RelationalDbms} from './components/storage';
 import {
   GrafanaAlloy,
@@ -94,7 +99,6 @@ describe('caas-k8s observability offers', () => {
         const chunks = bp.add(ObjectStorage({id: 'chunks'}));
         const metrics = bp.add(Monitoring({id: 'metrics'}));
         const logs = bp.add(Logging({id: 'logs'}));
-        const shipper = Logging({id: 'shipper'});
         const traces = bp.add(Tracing({id: 'traces'}));
         bp.link(logs, chunks, {access: 'read-write'});
         bp.link(traces, chunks, {access: 'read-write'});
@@ -103,10 +107,7 @@ describe('caas-k8s observability offers', () => {
           metrics,
           logs,
           // Alloy ships to the Loki it depends on.
-          shipper: bp.add({
-            ...shipper,
-            state: addDependency(shipper.state, 'logs'),
-          }),
+          shipper: bp.add(LogShipper({id: 'shipper'}).dependsOn(logs)),
           traces,
         };
       },

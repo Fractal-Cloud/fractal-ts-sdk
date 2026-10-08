@@ -5,11 +5,19 @@
  *   - Observability.Monitoring
  *   - Observability.Tracing
  *   - Observability.Logging
+ *   - Observability.LogShipper
  *
  * Each agnostic parameter is a typed `.withXxx()` guardrail setter (locks the
  * key at design time). Built exclusively on the LOCKED engine in ../core.
  */
-import {ComponentNode, NodeState, newNode, guardrail} from '../core';
+import {
+  AnyNode,
+  ComponentNode,
+  NodeState,
+  addDependency,
+  guardrail,
+  newNode,
+} from '../core';
 
 // ── Observability.Monitoring ─────────────────────────────────────────────────
 export type MonitoringNode<Id extends string = string> = ComponentNode<
@@ -80,3 +88,33 @@ export const Logging = <const Id extends string>(cfg: {
   displayName?: string;
 }): LoggingNode<Id> =>
   loggingNode<Id>(newNode(cfg.id, 'Observability.Logging', cfg.displayName));
+
+// ── Observability.LogShipper ─────────────────────────────────────────────────
+/**
+ * A log shipper: collects the logs of the container platform it runs on and
+ * forwards them to a logging backend. It stores nothing, so it is not a
+ * `Logging` component and has no retention.
+ *
+ * Its one blueprint dependency is the `ContainerPlatform` it runs on
+ * (`dependsOn(platform)`). Where it ships to is configured on the selected
+ * offer.
+ */
+export type LogShipperNode<Id extends string = string> = ComponentNode<
+  Id,
+  'Observability.LogShipper'
+> & {
+  dependsOn: (other: AnyNode) => LogShipperNode<Id>;
+};
+const logShipperNode = <Id extends string>(
+  s: NodeState,
+): LogShipperNode<Id> => ({
+  state: s,
+  dependsOn: other => logShipperNode<Id>(addDependency(s, other.state.id)),
+});
+export const LogShipper = <const Id extends string>(cfg: {
+  id: Id;
+  displayName?: string;
+}): LogShipperNode<Id> =>
+  logShipperNode<Id>(
+    newNode(cfg.id, 'Observability.LogShipper', cfg.displayName),
+  );

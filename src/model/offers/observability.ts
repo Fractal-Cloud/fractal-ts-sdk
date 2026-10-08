@@ -288,15 +288,16 @@ export const GrafanaLoki = defineOffer<
 /**
  * Grafana Alloy as a DaemonSet (chart 1.13.0, Alloy v1.20.0), shipping the
  * cluster's pod logs to Loki: to `lokiPushUrl`, or else to the `GrafanaLoki`
- * component it depends on.
+ * component it depends on. It satisfies `LogShipper`, not `Logging`: it is a
+ * shipper, and stores no logs.
  *
  * Output fields: `namespace`, `releaseName`, `chartVersion`, `lokiPushUrl`.
  */
 export const GrafanaAlloy = defineOffer<
-  'Observability.Logging',
+  'Observability.LogShipper',
   GrafanaAlloyConfig
 >({
-  satisfies: 'Observability.Logging',
+  satisfies: 'Observability.LogShipper',
   offerType: 'Observability.CaaS.GrafanaAlloy',
   deliveryModel: 'CaaS',
   validate: (self, all, config) => {
