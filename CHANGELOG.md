@@ -11,12 +11,14 @@ of truth for what is on npm.
 
 ## Unreleased
 
+## 2.11.0
+
 ### Changed (BREAKING for TypeScript callers) — `GrafanaAlloy` satisfies the new `LogShipper`
 
 **BREAKING:** selecting `GrafanaAlloy` for a `Logging` component is now a type error,
-and is refused while building the Live System (`does not satisfy`). The release that
-ships this should therefore be a major version. The published version comes from the
-release tag.
+and is refused while building the Live System (`does not satisfy`). It ships in a minor
+release: `GrafanaAlloy` first appeared in 2.10.0, one day earlier, and the only callers it
+can break are ones written against that release.
 
 Grafana Alloy is a log shipper, not a logging backend. Listed under `Logging` next to
 Elastic and Loki, it was picked as one, and then failed without a Loki to ship to. The
@@ -56,6 +58,27 @@ read it. A Live System already deployed with Alloy on a `Logging` component keep
 reconciling (agents match the offer type), but its blueprint must be updated before
 it is rebuilt with this SDK.
 
+### Added — SES production access on `AwsSesIdentity`
+
+- `productionAccess?: boolean`, `mailType?: 'TRANSACTIONAL' | 'MARKETING'`,
+  `websiteUrl?`, `useCaseDescription?`, `contactLanguage?: 'EN' | 'JA'`. Sent only
+  when set. `true` has the agent request SES production access once.
+- With `productionAccess: true`, `websiteUrl` (http(s)) and `useCaseDescription` are
+  required, and an unknown `mailType` / `contactLanguage` is refused, while building
+  the Live System: the agent would send no request.
+- Production access is account-wide and per region, and cannot be reverted.
+  **Requires the fractal-cloud-agents release with agents #831 deployed**, and the
+  agent role from fractal-environments #511.
+
+### Requirements — deploy these agents before upgrading to this release
+
+| Feature | Needs |
+|---|---|
+| `AwsSesIdentity` `productionAccess`, `mailType`, `websiteUrl`, `useCaseDescription`, `contactLanguage` | fractal-cloud-agents release with agents #831; agent role from fractal-environments #511 |
+| `LogShipper` | nothing new: the agent offer (`Observability.CaaS.GrafanaAlloy`, aria-agent-caas-k8s **v1.3.0**) is unchanged; the web catalogue lists it under Log Shipper from fractal-webbff #718 |
+
+## 2.10.0
+
 ### Requirements — deploy these agents before upgrading to this release
 
 The control plane prunes every parameter key that the offer's agent does not declare,
@@ -69,7 +92,6 @@ agents first, then this SDK.
 | `AwsCloudFront` `errorDocument`, and the bucket link that takes `access` only (`read` / `read-write`) | fractal-cloud-agents **v8.22.0** |
 | `requireSecureTransport` on `AwsRdsPostgresDbms` / `AwsRdsMySqlDbms` | fractal-cloud-agents **v8.22.1** |
 | `EmailSender` / `AwsSesIdentity` | fractal-cloud-agents release with agents #829 |
-| `AwsSesIdentity` `productionAccess`, `mailType`, `websiteUrl`, `useCaseDescription`, `contactLanguage` | fractal-cloud-agents release with agents #831; agent role from fractal-environments #511 |
 | `CertManager` | aria-agent-caas-k8s **v1.3.0** |
 | `SqsExporter` | aria-agent-caas-k8s **v1.3.0** |
 | `TraefikGateway` TLS (`tlsClusterIssuer`, `tlsSecretName`, `tlsHosts`, `plainHttp`), `forwardAuthExemptComponentIds`, `loadBalancerSourceRanges`, `values` | aria-agent-caas-k8s **v1.3.0** |
@@ -121,18 +143,6 @@ Pod Identity role.
   identity (no wildcards).
 - `replicas: 0` scales the workload to zero on v1.4.0 (older agents ran one). With
   autoscaling and no `minReplicas` it is refused: an HPA cannot scale to zero.
-
-### Added — SES production access on `AwsSesIdentity`
-
-- `productionAccess?: boolean`, `mailType?: 'TRANSACTIONAL' | 'MARKETING'`,
-  `websiteUrl?`, `useCaseDescription?`, `contactLanguage?: 'EN' | 'JA'`. Sent only
-  when set. `true` has the agent request SES production access once.
-- With `productionAccess: true`, `websiteUrl` (http(s)) and `useCaseDescription` are
-  required, and an unknown `mailType` / `contactLanguage` is refused, while building
-  the Live System: the agent would send no request.
-- Production access is account-wide and per region, and cannot be reverted.
-  **Requires the fractal-cloud-agents release with agents #831 deployed**, and the
-  agent role from fractal-environments #511.
 
 ### Added — `EmailSender` and the `AwsSesIdentity` offer
 
