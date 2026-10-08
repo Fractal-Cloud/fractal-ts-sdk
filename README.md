@@ -1213,11 +1213,17 @@ refuses a Live System that sets them instead of letting the platform drop them.
 | `LogShipper` | `GrafanaAlloy` |
 
 `LogShipper` (`Observability.LogShipper`) collects the logs of the container platform
-it runs on and forwards them to a logging backend; it stores nothing, so it has no
-retention. Its blueprint dependency is the `ContainerPlatform`
-(`LogShipper({id: 'shipper'}).dependsOn(platform)`). `GrafanaAlloy` ships to its
-`lokiPushUrl`, or to the `GrafanaLoki` of a `Logging` component it also depends on
-(`.dependsOn(logs)`).
+it runs on and forwards them to a logging backend. It stores nothing, so it has no
+retention. Its one blueprint dependency is the `ContainerPlatform`
+(`LogShipper({id: 'shipper'}).dependsOn(platform)`).
+
+Point `GrafanaAlloy` at Loki with `lokiPushUrl`:
+`GrafanaAlloy({lokiPushUrl: 'http://loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push'})`.
+Alternatively, the shipper may also `dependsOn(logs)`, the `Logging` component that
+`GrafanaLoki` fills, and Alloy then uses that Loki's `pushUrl`. That is an extra
+Live-System-level dependency which the web editor cannot express: the catalogue
+models `LogShipper` with the container platform as its only dependency, so the
+component renders outside its platform group in the web canvas.
 
 #### The caas-k8s Grafana stack
 

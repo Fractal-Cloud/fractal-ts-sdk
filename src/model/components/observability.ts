@@ -96,9 +96,8 @@ export const Logging = <const Id extends string>(cfg: {
  * `Logging` component and has no retention.
  *
  * Its one blueprint dependency is the `ContainerPlatform` it runs on
- * (`dependsOn(platform)`). The backend it ships to is the offer's concern:
- * `GrafanaAlloy` takes a `lokiPushUrl`, or a dependency on the `Logging`
- * component its `GrafanaLoki` satisfies (`dependsOn(logs)`).
+ * (`dependsOn(platform)`). Where it ships to is configured on the selected
+ * offer.
  */
 export type LogShipperNode<Id extends string = string> = ComponentNode<
   Id,
