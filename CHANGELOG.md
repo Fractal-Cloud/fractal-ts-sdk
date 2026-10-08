@@ -16,9 +16,10 @@ of truth for what is on npm.
 ### Changed (BREAKING for TypeScript callers) — `GrafanaAlloy` satisfies the new `LogShipper`
 
 **BREAKING:** selecting `GrafanaAlloy` for a `Logging` component is now a type error,
-and is refused while building the Live System (`does not satisfy`). It ships in a minor
-release: `GrafanaAlloy` first appeared in 2.10.0, one day earlier, and the only callers it
-can break are ones written against that release.
+and is refused while building the Live System (`does not satisfy`). It shipped in a minor
+release regardless: `GrafanaAlloy` has existed since 2.9.5 (2026-10-03), and callers
+written against 2.9.5 to 2.10.0 that select it for a `Logging` component break on
+upgrading. Migrate as below.
 
 Grafana Alloy is a log shipper, not a logging backend. Listed under `Logging` next to
 Elastic and Loki, it was picked as one, and then failed without a Loki to ship to. The
@@ -67,14 +68,14 @@ it is rebuilt with this SDK.
   required, and an unknown `mailType` / `contactLanguage` is refused, while building
   the Live System: the agent would send no request.
 - Production access is account-wide and per region, and cannot be reverted.
-  **Requires the fractal-cloud-agents release with agents #831 deployed**, and the
+  **Requires the first fractal-cloud-agents release after v8.23.0 (agents #831, not yet released)**, and the
   agent role from fractal-environments #511.
 
 ### Requirements — deploy these agents before upgrading to this release
 
 | Feature | Needs |
 |---|---|
-| `AwsSesIdentity` `productionAccess`, `mailType`, `websiteUrl`, `useCaseDescription`, `contactLanguage` | fractal-cloud-agents release with agents #831; agent role from fractal-environments #511 |
+| `AwsSesIdentity` `productionAccess`, `mailType`, `websiteUrl`, `useCaseDescription`, `contactLanguage` | the first fractal-cloud-agents release after **v8.23.0** (agents #831, not yet released); agent role from fractal-environments #511 |
 | `LogShipper` | nothing new: the agent offer (`Observability.CaaS.GrafanaAlloy`, aria-agent-caas-k8s **v1.3.0**) is unchanged; the web catalogue lists it under Log Shipper from fractal-webbff #718 |
 
 ## 2.10.0
@@ -91,7 +92,7 @@ agents first, then this SDK.
 | `allowBulkDelete` on DNS zones | fractal-cloud-agents **v8.22.0** |
 | `AwsCloudFront` `errorDocument`, and the bucket link that takes `access` only (`read` / `read-write`) | fractal-cloud-agents **v8.22.0** |
 | `requireSecureTransport` on `AwsRdsPostgresDbms` / `AwsRdsMySqlDbms` | fractal-cloud-agents **v8.22.1** |
-| `EmailSender` / `AwsSesIdentity` | fractal-cloud-agents release with agents #829 |
+| `EmailSender` / `AwsSesIdentity` | fractal-cloud-agents **v8.23.0** |
 | `CertManager` | aria-agent-caas-k8s **v1.3.0** |
 | `SqsExporter` | aria-agent-caas-k8s **v1.3.0** |
 | `TraefikGateway` TLS (`tlsClusterIssuer`, `tlsSecretName`, `tlsHosts`, `plainHttp`), `forwardAuthExemptComponentIds`, `loadBalancerSourceRanges`, `values` | aria-agent-caas-k8s **v1.3.0** |
