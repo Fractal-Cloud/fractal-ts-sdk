@@ -61,6 +61,37 @@ Live System that relied on it ever deployed in working order.
 | `AwsCloudFront` `defaultRootObject` that is not an object key | yes: agents v8.22.0 refuse it |
 | `replicas: 0` on a Kubernetes workload with autoscaling and no `minReplicas` | yes: caas-k8s v1.4.0 refuses it; older agents read 0 as 1 and deployed it |
 
+### Changed (BREAKING for TypeScript callers) — `GrafanaAlloy` satisfies the new `LogShipper`
+
+Grafana Alloy is a log shipper, not a logging backend. Listed under `Logging` next to
+Elastic and Loki, it was picked as one, and then failed without a Loki to ship to. The
+catalogue now has a component for it (fractal-webbff #718), and the SDK follows:
+
+- New component **`LogShipper`** (`Observability.LogShipper`), with
+  `dependsOn(other)`. Its one blueprint dependency is the `ContainerPlatform` it runs
+  on. No guardrails: a shipper stores nothing, so it has no retention.
+- **`GrafanaAlloy`** now satisfies `Observability.LogShipper` instead of
+  `Observability.Logging`. Its offer type (`Observability.CaaS.GrafanaAlloy`), keys and
+  the `GrafanaLoki`-dependency-or-`lokiPushUrl` check are unchanged, and so is what
+  reaches the agent.
+
+Selecting `GrafanaAlloy` for a `Logging` component is now a type error and is
+refused while building the Live System (`does not satisfy`). Migration: declare the
+shipper as a `LogShipper` instead of a `Logging` component, and keep its dependency
+on the Loki component when it ships there:
+
+```ts
+// before
+const shipper = bp.add(Logging({id: 'shipper'})); // + a dependency on 'logs'
+// after
+const shipper = bp.add(LogShipper({id: 'shipper'}).dependsOn(platform).dependsOn(logs));
+```
+
+Drop any `withRetentionDays` from the shipper: `LogShipper` has none, and Alloy never
+read it. A Live System already deployed with Alloy on a `Logging` component keeps
+reconciling (agents match the offer type), but its blueprint must be updated before
+it is rebuilt with this SDK.
+
 ### Added — `K8sWorkload` grants: `ssmParameters`, `sesIdentityArns`
 
 **Requires aria-agent-caas-k8s v1.4.0 deployed.** EKS only: grants on the workload's
