@@ -38,8 +38,12 @@ platform, and point Alloy at Loki with `lokiPushUrl`:
 const shipper = bp.add(Logging({id: 'shipper'})); // plus a dependency on the Loki component
 // after
 const shipper = bp.add(LogShipper({id: 'shipper'}).dependsOn(platform));
-// select: {shipper: GrafanaAlloy({lokiPushUrl: 'http://<loki>/loki/api/v1/push'})}
+// select: {shipper: GrafanaAlloy({lokiPushUrl: 'http://loki.<namespace>.svc.cluster.local:3100/loki/api/v1/push'})}
 ```
+
+The URL is the `pushUrl` output of the `GrafanaLoki` component. A hard-coded
+`lokiPushUrl` does not follow the Loki if it moves and gives no start-up ordering; the
+dependency path below does.
 
 Alternatively, keep the shipper's dependency on the Loki component
 (`.dependsOn(platform).dependsOn(logs)`, no `lokiPushUrl`). That is an extra

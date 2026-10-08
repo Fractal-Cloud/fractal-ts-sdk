@@ -1218,7 +1218,12 @@ retention. Its one blueprint dependency is the `ContainerPlatform`
 (`LogShipper({id: 'shipper'}).dependsOn(platform)`).
 
 Point `GrafanaAlloy` at Loki with `lokiPushUrl`:
-`GrafanaAlloy({lokiPushUrl: 'http://loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push'})`.
+`GrafanaAlloy({lokiPushUrl: 'http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push'})`.
+That is the `pushUrl` output of a `GrafanaLoki` component in the `monitoring` namespace
+(`http://loki.<namespace>.svc.cluster.local:3100/loki/api/v1/push`). Alloy only checks
+the URL's syntax, so a wrong one loses logs silently. A hard-coded `lokiPushUrl` does
+not follow the Loki if it moves and gives no start-up ordering; the dependency path
+below does.
 Alternatively, the shipper may also `dependsOn(logs)`, the `Logging` component that
 `GrafanaLoki` fills, and Alloy then uses that Loki's `pushUrl`. That is an extra
 Live-System-level dependency which the web editor cannot express: the catalogue
