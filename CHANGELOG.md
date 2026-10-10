@@ -11,6 +11,28 @@ of truth for what is on npm.
 
 ## Unreleased
 
+No change to the published code: the SDK built from this release behaves exactly as
+2.11.0. What changed is this file, as packaged with the release.
+
+### Changed — the 2.10.0 and 2.11.0 notes, corrected
+
+- **2.10.0 and 2.11.0 are separate sections.** The packaged 2.11.0 CHANGELOG still
+  listed everything since 2.9.7 under "Unreleased". Its own changes (SES production
+  access on `AwsSesIdentity`, `LogShipper`) now sit under 2.11.0 with their own
+  requirements table, the rest under 2.10.0. SES production access moved out of
+  2.10.0 and its requirements row with it.
+- **The `GrafanaAlloy` → `LogShipper` break says how it shipped.** The note no longer
+  asks for a major version: the break shipped in the 2.11.0 minor. `GrafanaAlloy`
+  exists since 2.9.5 (2026-10-03), so callers on 2.9.5 to 2.10.0 that select it for a
+  `Logging` component break on upgrading; migrate as the 2.11.0 section describes.
+- **Agent releases are named.** `EmailSender` needs fractal-cloud-agents v8.23.0
+  (agents #829); SES production access needs the first fractal-cloud-agents release
+  after v8.23.0 (agents #831).
+
+### Changed — dependencies
+
+- `@types/node` 26.6.5 (development only).
+
 ## 2.11.0
 
 ### Changed (BREAKING for TypeScript callers) — `GrafanaAlloy` satisfies the new `LogShipper`
