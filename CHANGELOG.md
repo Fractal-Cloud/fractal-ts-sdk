@@ -51,7 +51,7 @@ of truth for what is on npm.
 
 ### Changed — dependencies
 
-- `@types/node` 26.6.5 (development only).
+- `@types/node` 26.6.5, `tsdown` 0.23.1 (development only).
 
 ## 2.11.0
 
