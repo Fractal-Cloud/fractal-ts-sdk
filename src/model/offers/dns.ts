@@ -5,6 +5,8 @@
  * DNS zones are normally declared on the environment (`withDnsZones`);
  * selecting these offers directly in a Live System is advanced and unsupported.
  */
+import {NetworkAndCompute_PaaS_AwsRoute53HostedZone} from './generated/network_and_compute';
+import type {ContractConfig} from './contract/contract_config';
 import {defineOffer} from '../core';
 import {allowBulkDeleteRefusal} from '../components/dns_bulk_delete';
 import {recordManagementRefusal} from '../components/dns_record_management';
@@ -17,10 +19,21 @@ import {recordManagementRefusal} from '../components/dns_record_management';
  */
 export const AwsRoute53HostedZone = defineOffer<
   'NetworkAndCompute.DnsZone',
-  {adoptExisting?: boolean; comment?: string}
+  ContractConfig<
+    typeof NetworkAndCompute_PaaS_AwsRoute53HostedZone,
+    | 'allowBulkDelete'
+    | 'allowSubdomainDelegation'
+    | 'allowedRecordTypes'
+    | 'caaIssuers'
+    | 'dnssec'
+    | 'domainName'
+    | 'recordManagement'
+    | 'records'
+    | 'visibility'
+  >
 >({
   satisfies: 'NetworkAndCompute.DnsZone',
-  offerType: 'NetworkAndCompute.PaaS.AwsRoute53HostedZone',
+  contract: NetworkAndCompute_PaaS_AwsRoute53HostedZone,
   provider: 'AWS',
   deliveryModel: 'PaaS',
   // Catches what the guardrail's type does not reach: an operation's

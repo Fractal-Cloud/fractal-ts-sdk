@@ -67,6 +67,16 @@ export * from './components/unmanaged';
 export * from './components/dns';
 export * from './components/dns_record_management_mode';
 
+// Offer parameter contracts: every offer config below is derived from the
+// contract its agent publishes (docs/offer-contracts.md).
+export type {OfferContract} from './offers/contract/offer_contract';
+export type {ContractParameter} from './offers/contract/contract_parameter';
+export type {ContractDeclaration} from './offers/contract/contract_declaration';
+export type {ContractValueType} from './offers/contract/contract_value_type';
+export type {ContractValue} from './offers/contract/contract_value';
+export type {ContractParameters} from './offers/contract/contract_parameters';
+export type {ContractConfig} from './offers/contract/contract_config';
+
 // Offer catalogue (concrete — vendor or vendor-neutral)
 export * from './offers/network_and_compute';
 export type {EksAutoModeNodePool} from './offers/eks_auto_mode_node_pool';

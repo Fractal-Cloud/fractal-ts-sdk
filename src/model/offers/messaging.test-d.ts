@@ -13,8 +13,10 @@ AwsSesIdentity({});
 AwsSesIdentity({mailFromSubdomain: 'bounce'});
 // @ts-expect-error `domain` is a string.
 AwsSesIdentity({domain: 42});
-// @ts-expect-error no other key is accepted.
+// `region` is a key of the agent's contract, like on every AWS offer.
 AwsSesIdentity({domain: 'example.com', region: 'eu-central-1'});
+// @ts-expect-error no key outside the contract is accepted.
+AwsSesIdentity({domain: 'example.com', sendingRegion: 'eu-central-1'});
 // Production access: a boolean and the details of its request, all optional.
 AwsSesIdentity({
   domain: 'example.com',

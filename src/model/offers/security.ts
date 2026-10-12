@@ -5,6 +5,13 @@
  * satisfies. Vendor knobs live in each offer's config only. Vendor-neutral
  * self-hosted offers (e.g. Ocelot / Keycloak on any cluster) omit `provider`.
  */
+import {
+  Security_CaaS_CertManager,
+  Security_CaaS_Ocelot,
+  Security_PaaS_AwsCognito,
+  Security_PaaS_AzureEntraExternalId,
+} from './generated/security';
+import type {ContractConfig} from './contract/contract_config';
 import {defineOffer} from '../core';
 import {
   ensureNamespace,
@@ -16,21 +23,28 @@ import type {CertManagerConfig} from './cert_manager_config';
 
 // ── Security.ServiceMesh offers ──────────────────────────────────────────────
 // Vendor-neutral self-hosted — runs on any cluster, so no `provider`.
-export const Ocelot = defineOffer<'Security.ServiceMesh', {namespace?: string}>(
-  {
-    satisfies: 'Security.ServiceMesh',
-    offerType: 'Security.CaaS.Ocelot',
-    deliveryModel: 'CaaS',
-  },
-);
+export const Ocelot = defineOffer<
+  'Security.ServiceMesh',
+  ContractConfig<typeof Security_CaaS_Ocelot>
+>({
+  satisfies: 'Security.ServiceMesh',
+  contract: Security_CaaS_Ocelot,
+  deliveryModel: 'CaaS',
+});
 
 // ── Security.IdentityProvider offers ─────────────────────────────────────────
 export const Cognito = defineOffer<
   'Security.IdentityProvider',
-  {region?: string}
+  ContractConfig<
+    typeof Security_PaaS_AwsCognito,
+    | 'mfaConfiguration'
+    | 'passwordPolicy'
+    | 'sessionDuration'
+    | 'userDirectoryName'
+  >
 >({
   satisfies: 'Security.IdentityProvider',
-  offerType: 'Security.PaaS.AwsCognito',
+  contract: Security_PaaS_AwsCognito,
   provider: 'AWS',
   deliveryModel: 'PaaS',
 });
@@ -48,10 +62,16 @@ export const Keycloak = defineOffer<
 // guardrails come from the IdentityProvider Component, app clients from links.
 export const EntraExternalId = defineOffer<
   'Security.IdentityProvider',
-  {tenantName: string; resourceGroup: string; region?: string}
+  ContractConfig<
+    typeof Security_PaaS_AzureEntraExternalId,
+    | 'mfaConfiguration'
+    | 'passwordPolicy'
+    | 'sessionDuration'
+    | 'userDirectoryName'
+  >
 >({
   satisfies: 'Security.IdentityProvider',
-  offerType: 'Security.PaaS.AzureEntraExternalId',
+  contract: Security_PaaS_AzureEntraExternalId,
   provider: 'Azure',
   deliveryModel: 'PaaS',
 });
@@ -90,7 +110,7 @@ export const CertManager = defineOffer<
   CertManagerConfig
 >({
   satisfies: 'Security.CertificateManager',
-  offerType: 'Security.CaaS.CertManager',
+  contract: Security_CaaS_CertManager,
   deliveryModel: 'CaaS',
   // The agent trims each value before reading it, so the checks do too.
   validate: (self, _all, config) => {

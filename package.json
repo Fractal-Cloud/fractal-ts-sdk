@@ -39,13 +39,16 @@
   },
   "scripts": {
     "build": "tsdown",
-    "build:docs": "typedoc --entryPointStrategy Expand --exclude \"**/*+(.test|.e2e).ts\" src",
+    "build:docs": "typedoc --entryPointStrategy Expand --exclude \"**/*+(.test|.e2e).ts\" --out docs/api src",
     "dev": "tsdown --watch",
     "typecheck": "node node_modules/typescript7/bin/tsc --noEmit && node node_modules/typescript7/bin/tsc -p tsconfig.guides.json && node scripts/check-unused-test-imports.mjs",
     "test": "npm run typecheck && vitest run --coverage",
     "test:watch": "vitest",
     "lint": "gts lint",
     "lint:fix": "gts fix",
+    "contracts:generate": "node scripts/generate-offer-contracts.mjs",
+    "contracts:refresh": "node scripts/refresh-offer-contracts.mjs",
+    "contracts:check": "node scripts/refresh-offer-contracts.mjs --latest --check",
     "posttest": "npm run lint"
   },
   "devDependencies": {
@@ -53,6 +56,7 @@
     "@types/superagent": "^8.1.11",
     "@vitest/coverage-v8": "^5.0.3",
     "gts": "^7.0.0",
+    "prettier": "^3.9.10",
     "tsdown": "^0.23.1",
     "typedoc": "^0.28.20",
     "typescript": "npm:@typescript/typescript6@^6.0.2",

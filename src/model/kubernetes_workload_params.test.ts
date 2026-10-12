@@ -18,7 +18,7 @@ import type {WorkloadNode} from './components/custom_workloads';
 import {ContainerPlatform} from './components/network_and_compute';
 import {K8sWorkload} from './offers/custom_workloads';
 import {Eks} from './offers/network_and_compute';
-import {KUBERNETES_WORKLOAD_CONTRACT_PARAMS} from './offers/kubernetes_workload_contract';
+import {CustomWorkloads_CaaS_KubernetesWorkload} from './offers/generated/custom_workloads';
 import {secretRef} from './secret';
 
 const environment = {};
@@ -96,9 +96,11 @@ describe('Workload parameters on a Kubernetes workload', () => {
     });
   });
 
-  it('emits nothing the transcribed caas-k8s contract does not declare', () => {
+  it('emits nothing the published caas-k8s contract does not declare', () => {
     const web = emit(everySetter);
-    const declared = new Set<string>(KUBERNETES_WORKLOAD_CONTRACT_PARAMS);
+    const declared = new Set<string>(
+      Object.keys(CustomWorkloads_CaaS_KubernetesWorkload.params),
+    );
     expect(Object.keys(web.parameters).filter(k => !declared.has(k))).toEqual(
       [],
     );
@@ -321,7 +323,9 @@ describe('Workload parameters on a Kubernetes workload', () => {
       ssmParameters: {service: 'accounts', access: 'read-write', kmsKeyArn: kmsKey},
       sesIdentityArns: [sesIdentity],
     });
-    const declared = new Set<string>(KUBERNETES_WORKLOAD_CONTRACT_PARAMS);
+    const declared = new Set<string>(
+      Object.keys(CustomWorkloads_CaaS_KubernetesWorkload.params),
+    );
     expect(Object.keys(web.parameters).filter(k => !declared.has(k))).toEqual(
       [],
     );

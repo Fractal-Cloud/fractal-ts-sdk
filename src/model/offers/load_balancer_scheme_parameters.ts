@@ -17,13 +17,17 @@ const isScheme = (value: unknown): value is LoadBalancerScheme =>
   SCHEMES.includes(value as LoadBalancerScheme);
 
 /**
- * Replaces a neutral `scheme` with `lbScheme` spelled by `vendorValue`. An unset
+ * Replaces a neutral `scheme` with the agent's key (`lbScheme`, named through
+ * the offer's contract) spelled by `vendorValue`. An unset
  * scheme emits nothing, so the agent's own default applies. A value outside the
  * neutral vocabulary is refused rather than forwarded, since an agent would
  * either reject it or quietly read it as its default.
  */
 export const toLbScheme =
-  (vendorValue: (scheme: LoadBalancerScheme) => string): VendorParameters =>
+  (
+    vendorKey: string,
+    vendorValue: (scheme: LoadBalancerScheme) => string,
+  ): VendorParameters =>
   (componentId, parameters) => {
     if (parameters.scheme === undefined) {
       return parameters;
@@ -35,5 +39,5 @@ export const toLbScheme =
           "'internal' or 'internet-facing'.",
       );
     }
-    return {...rest, lbScheme: vendorValue(scheme)};
+    return {...rest, [vendorKey]: vendorValue(scheme)};
   };

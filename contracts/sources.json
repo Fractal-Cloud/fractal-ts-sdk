@@ -1,0 +1,87 @@
+{
+  "$comment": "The agent parameter contracts the SDK's offers are generated from. Written by scripts/refresh-offer-contracts.mjs; see docs/offer-contracts.md.",
+  "agents": [
+    {
+      "agentId": "fractal-cloud-agent-aws",
+      "repository": "Fractal-Cloud/fractal-cloud-agents",
+      "tag": "v8.25.1",
+      "fetch": {
+        "kind": "gradle-build",
+        "task": ":fractal.cloudagent.aws.container:generateParamContract",
+        "output": "fractal.cloudagent.aws.container/build/param-contract/param-contract.json"
+      },
+      "snapshotSha256": "febe49c065b226d83d4bd22bc414bb223ea037ac4749f89439ed16c616a878f5"
+    },
+    {
+      "agentId": "fractal-cloud-agent-azure",
+      "repository": "Fractal-Cloud/fractal-cloud-agents",
+      "tag": "v8.25.1",
+      "fetch": {
+        "kind": "gradle-build",
+        "task": ":fractal.cloudagent.azure.container:generateParamContract",
+        "output": "fractal.cloudagent.azure.container/build/param-contract/param-contract.json"
+      },
+      "snapshotSha256": "f22e9cfa7c4e349a7202b72c1a79affc2fa03602d213bee89a22a6b2a822851f"
+    },
+    {
+      "agentId": "fractal-cloud-agent-gcp",
+      "repository": "Fractal-Cloud/fractal-cloud-agents",
+      "tag": "v8.25.1",
+      "fetch": {
+        "kind": "gradle-build",
+        "task": ":fractal.cloudagent.gcp.container:generateParamContract",
+        "output": "fractal.cloudagent.gcp.container/build/param-contract/param-contract.json"
+      },
+      "snapshotSha256": "329b9a3ee2c0b7b2ff262baa0373560fa8f739aec47a3a1f52ad0b55be7aa047"
+    },
+    {
+      "agentId": "fractal-cloud-agent-oci",
+      "repository": "Fractal-Cloud/fractal-cloud-agents",
+      "tag": "v8.25.1",
+      "fetch": {
+        "kind": "gradle-build",
+        "task": ":fractal.cloudagent.oci.container:generateParamContract",
+        "output": "fractal.cloudagent.oci.container/build/param-contract/param-contract.json"
+      },
+      "snapshotSha256": "52f64cb7647322be6cd7a87eb88c0997a9810cd2143d82615de795730c7d9bbf"
+    },
+    {
+      "agentId": "aria-agent-caas-k8s",
+      "repository": "Fractal-Cloud/aria-agent-caas-k8s",
+      "tag": "v1.4.0",
+      "fetch": {
+        "kind": "release-asset",
+        "asset": "param-contract.json"
+      },
+      "snapshotSha256": "35be7f8f4525ff536dd8594c5a86cbedda61f08ff847c782b88b5d7b5108c169"
+    },
+    {
+      "agentId": "aria-agent-aruba",
+      "repository": "Fractal-Cloud/aria-agent-aruba",
+      "tag": "v0.0.20",
+      "fetch": {
+        "kind": "release-asset",
+        "asset": "param-contract.json"
+      },
+      "snapshotSha256": "ab18d07e10fcbfe338395f184c8450642aeacfd4fb7aef90c306bf64ba267fd3"
+    }
+  ],
+  "unpublished": [
+    {
+      "repository": "Fractal-Cloud/aria-agent-hetzner",
+      "reason": "No GitHub release has ever been cut, so its release workflow's param-contract.json asset does not exist."
+    },
+    {
+      "repository": "Fractal-Cloud/aria-agent-openshift",
+      "reason": "Releases attach no param-contract.json (no export-contract step)."
+    },
+    {
+      "repository": "Fractal-Cloud/aria-agent-vmware",
+      "reason": "Releases attach no param-contract.json (no export-contract step)."
+    },
+    {
+      "repository": "Fractal-Cloud/aria-agent-terraform",
+      "reason": "Releases attach no param-contract.json (no export-contract step)."
+    }
+  ]
+}

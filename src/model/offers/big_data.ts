@@ -10,33 +10,78 @@
  * the environment region (unchanged behavior). Vendor-neutral CaaS offers run
  * on a cluster and take their region from it, so they do NOT expose `region`.
  */
+import {
+  BigData_CaaS_SparkCluster,
+  BigData_CaaS_SparkJob,
+  BigData_CaaS_SparkMlExperiment,
+  BigData_PaaS_AwsDatabricks,
+  BigData_PaaS_AwsDatabricksCluster,
+  BigData_PaaS_AwsDatabricksJob,
+  BigData_PaaS_AwsDatabricksMlflow,
+  BigData_PaaS_AwsS3Datalake,
+  BigData_PaaS_AzureDatabricks,
+  BigData_PaaS_AzureDatabricksCluster,
+  BigData_PaaS_AzureDatabricksJob,
+  BigData_PaaS_AzureDatabricksMlflow,
+  BigData_PaaS_AzureDatalake,
+  BigData_PaaS_GcpDatabricks,
+  BigData_PaaS_GcpDatabricksCluster,
+  BigData_PaaS_GcpDatabricksJob,
+  BigData_PaaS_GcpDatabricksMlflow,
+  BigData_PaaS_GcpDatalake,
+} from './generated/big_data';
+import type {ContractConfig} from './contract/contract_config';
 import {defineOffer} from '../core';
 
 // ── ComputeCluster offers ────────────────────────────────────────────────────
 export const AwsDatabricksCluster = defineOffer<
   'BigData.ComputeCluster',
-  {region?: string}
+  ContractConfig<
+    typeof BigData_PaaS_AwsDatabricksCluster,
+    | 'autoTerminationMinutes'
+    | 'clusterName'
+    | 'dataSecurityMode'
+    | 'maxWorkers'
+    | 'minWorkers'
+    | 'sparkVersion'
+  >
 >({
   satisfies: 'BigData.ComputeCluster',
-  offerType: 'BigData.PaaS.AwsDatabricksCluster',
+  contract: BigData_PaaS_AwsDatabricksCluster,
   provider: 'AWS',
   deliveryModel: 'PaaS',
 });
 export const AzureDatabricksCluster = defineOffer<
   'BigData.ComputeCluster',
-  {region?: string}
+  ContractConfig<
+    typeof BigData_PaaS_AzureDatabricksCluster,
+    | 'autoTerminationMinutes'
+    | 'clusterName'
+    | 'dataSecurityMode'
+    | 'maxWorkers'
+    | 'minWorkers'
+    | 'sparkVersion'
+  >
 >({
   satisfies: 'BigData.ComputeCluster',
-  offerType: 'BigData.PaaS.AzureDatabricksCluster',
+  contract: BigData_PaaS_AzureDatabricksCluster,
   provider: 'Azure',
   deliveryModel: 'PaaS',
 });
 export const GcpDatabricksCluster = defineOffer<
   'BigData.ComputeCluster',
-  {region?: string}
+  ContractConfig<
+    typeof BigData_PaaS_GcpDatabricksCluster,
+    | 'autoTerminationMinutes'
+    | 'clusterName'
+    | 'dataSecurityMode'
+    | 'maxWorkers'
+    | 'minWorkers'
+    | 'sparkVersion'
+  >
 >({
   satisfies: 'BigData.ComputeCluster',
-  offerType: 'BigData.PaaS.GcpDatabricksCluster',
+  contract: BigData_PaaS_GcpDatabricksCluster,
   provider: 'GCP',
   deliveryModel: 'PaaS',
 });
@@ -44,76 +89,85 @@ export const GcpDatabricksCluster = defineOffer<
 // catalogue offer id the caas-k8s handler registry is keyed on.
 export const CaaSSparkCluster = defineOffer<
   'BigData.ComputeCluster',
-  Record<string, never>
+  ContractConfig<typeof BigData_CaaS_SparkCluster, 'sparkVersion'>
 >({
   satisfies: 'BigData.ComputeCluster',
-  offerType: 'BigData.CaaS.SparkCluster',
+  contract: BigData_CaaS_SparkCluster,
   deliveryModel: 'CaaS',
 });
 
 // ── DataProcessingJob offers ─────────────────────────────────────────────────
 export const AwsDatabricksJob = defineOffer<
   'BigData.DataProcessingJob',
-  {region?: string}
+  ContractConfig<
+    typeof BigData_PaaS_AwsDatabricksJob,
+    'cronSchedule' | 'jobName' | 'maxRetries' | 'taskType'
+  >
 >({
   satisfies: 'BigData.DataProcessingJob',
-  offerType: 'BigData.PaaS.AwsDatabricksJob',
+  contract: BigData_PaaS_AwsDatabricksJob,
   provider: 'AWS',
   deliveryModel: 'PaaS',
 });
 export const AzureDatabricksJob = defineOffer<
   'BigData.DataProcessingJob',
-  {region?: string}
+  ContractConfig<
+    typeof BigData_PaaS_AzureDatabricksJob,
+    'cronSchedule' | 'jobName' | 'maxRetries' | 'taskType'
+  >
 >({
   satisfies: 'BigData.DataProcessingJob',
-  offerType: 'BigData.PaaS.AzureDatabricksJob',
+  contract: BigData_PaaS_AzureDatabricksJob,
   provider: 'Azure',
   deliveryModel: 'PaaS',
 });
 export const GcpDatabricksJob = defineOffer<
   'BigData.DataProcessingJob',
-  {region?: string}
+  ContractConfig<
+    typeof BigData_PaaS_GcpDatabricksJob,
+    'cronSchedule' | 'jobName' | 'maxRetries' | 'taskType'
+  >
 >({
   satisfies: 'BigData.DataProcessingJob',
-  offerType: 'BigData.PaaS.GcpDatabricksJob',
+  contract: BigData_PaaS_GcpDatabricksJob,
   provider: 'GCP',
   deliveryModel: 'PaaS',
 });
 // Symbol vs wire value: see CaaSSparkCluster above.
 export const CaaSSparkJob = defineOffer<
   'BigData.DataProcessingJob',
-  Record<string, never>
+  ContractConfig<typeof BigData_CaaS_SparkJob, 'maxRetries'>
 >({
   satisfies: 'BigData.DataProcessingJob',
-  offerType: 'BigData.CaaS.SparkJob',
+  contract: BigData_CaaS_SparkJob,
   deliveryModel: 'CaaS',
 });
 
 // ── MlExperiment offers ──────────────────────────────────────────────────────
 export const AwsDatabricksMlflow = defineOffer<
   'BigData.MlExperiment',
-  {region?: string}
+  ContractConfig<typeof BigData_PaaS_AwsDatabricksMlflow, 'experimentName'>
 >({
   satisfies: 'BigData.MlExperiment',
-  offerType: 'BigData.PaaS.AwsDatabricksMlflow',
+  contract: BigData_PaaS_AwsDatabricksMlflow,
   provider: 'AWS',
   deliveryModel: 'PaaS',
 });
 export const AzureDatabricksMlflow = defineOffer<
   'BigData.MlExperiment',
-  {region?: string}
+  ContractConfig<typeof BigData_PaaS_AzureDatabricksMlflow, 'experimentName'>
 >({
   satisfies: 'BigData.MlExperiment',
-  offerType: 'BigData.PaaS.AzureDatabricksMlflow',
+  contract: BigData_PaaS_AzureDatabricksMlflow,
   provider: 'Azure',
   deliveryModel: 'PaaS',
 });
 export const GcpDatabricksMlflow = defineOffer<
   'BigData.MlExperiment',
-  {region?: string}
+  ContractConfig<typeof BigData_PaaS_GcpDatabricksMlflow, 'experimentName'>
 >({
   satisfies: 'BigData.MlExperiment',
-  offerType: 'BigData.PaaS.GcpDatabricksMlflow',
+  contract: BigData_PaaS_GcpDatabricksMlflow,
   provider: 'GCP',
   deliveryModel: 'PaaS',
 });
@@ -121,38 +175,46 @@ export const GcpDatabricksMlflow = defineOffer<
 // (displayName 'MLflow Experiment'); `BigData.CaaS.MLflow` is its service type.
 export const CaaSMlflow = defineOffer<
   'BigData.MlExperiment',
-  Record<string, never>
+  ContractConfig<typeof BigData_CaaS_SparkMlExperiment>
 >({
   satisfies: 'BigData.MlExperiment',
-  offerType: 'BigData.CaaS.SparkMlExperiment',
+  contract: BigData_CaaS_SparkMlExperiment,
   deliveryModel: 'CaaS',
 });
 
 // ── Datalake offers ──────────────────────────────────────────────────────────
 export const AwsS3Datalake = defineOffer<
   'BigData.Datalake',
-  {region?: string; bucket: string}
+  ContractConfig<
+    typeof BigData_PaaS_AwsS3Datalake,
+    'versioningEnabled',
+    {bucket: string}
+  >
 >({
   satisfies: 'BigData.Datalake',
-  offerType: 'BigData.PaaS.AwsS3Datalake',
+  contract: BigData_PaaS_AwsS3Datalake,
   provider: 'AWS',
   deliveryModel: 'PaaS',
 });
 export const AzureDatalake = defineOffer<
   'BigData.Datalake',
-  {region?: string; resourceGroup: string}
+  ContractConfig<typeof BigData_PaaS_AzureDatalake>
 >({
   satisfies: 'BigData.Datalake',
-  offerType: 'BigData.PaaS.AzureDatalake',
+  contract: BigData_PaaS_AzureDatalake,
   provider: 'Azure',
   deliveryModel: 'PaaS',
 });
 export const GcpDatalake = defineOffer<
   'BigData.Datalake',
-  {region?: string; bucketName: string}
+  ContractConfig<
+    typeof BigData_PaaS_GcpDatalake,
+    'versioningEnabled',
+    {bucketName: string}
+  >
 >({
   satisfies: 'BigData.Datalake',
-  offerType: 'BigData.PaaS.GcpDatalake',
+  contract: BigData_PaaS_GcpDatalake,
   provider: 'GCP',
   deliveryModel: 'PaaS',
 });
@@ -169,33 +231,42 @@ export const GcpDatalake = defineOffer<
  */
 export const AwsDatabricks = defineOffer<
   'BigData.DistributedDataProcessing',
-  {
-    region?: string;
-    pricingTier: string;
-    credentialsId: string;
-    storageConfigurationId: string;
-  }
+  ContractConfig<
+    typeof BigData_PaaS_AwsDatabricks,
+    never,
+    {
+      pricingTier: string;
+    }
+  >
 >({
   satisfies: 'BigData.DistributedDataProcessing',
-  offerType: 'BigData.PaaS.AwsDatabricks',
+  contract: BigData_PaaS_AwsDatabricks,
   provider: 'AWS',
   deliveryModel: 'PaaS',
 });
 export const AzureDatabricks = defineOffer<
   'BigData.DistributedDataProcessing',
-  {region?: string; pricingTier: string}
+  ContractConfig<
+    typeof BigData_PaaS_AzureDatabricks,
+    never,
+    {pricingTier: string}
+  >
 >({
   satisfies: 'BigData.DistributedDataProcessing',
-  offerType: 'BigData.PaaS.AzureDatabricks',
+  contract: BigData_PaaS_AzureDatabricks,
   provider: 'Azure',
   deliveryModel: 'PaaS',
 });
 export const GcpDatabricks = defineOffer<
   'BigData.DistributedDataProcessing',
-  {region?: string; pricingTier: string}
+  ContractConfig<
+    typeof BigData_PaaS_GcpDatabricks,
+    never,
+    {pricingTier: string}
+  >
 >({
   satisfies: 'BigData.DistributedDataProcessing',
-  offerType: 'BigData.PaaS.GcpDatabricks',
+  contract: BigData_PaaS_GcpDatabricks,
   provider: 'GCP',
   deliveryModel: 'PaaS',
 });

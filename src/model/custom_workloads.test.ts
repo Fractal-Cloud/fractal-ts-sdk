@@ -17,11 +17,8 @@ import {Workload, Function} from './components/custom_workloads';
 import {EcsService, K8sWorkload, AwsLambda} from './offers/custom_workloads';
 import {ContainerPlatform} from './components/network_and_compute';
 import {Aks, Eks, Gke} from './offers/network_and_compute';
-import {
-  KUBERNETES_WORKLOAD_CONTRACT_PARAMS,
-  KUBERNETES_WORKLOAD_UNDECLARED_PARAMS,
-  withContractImageName,
-} from './offers/kubernetes_workload_contract';
+import {withContractImageName} from './offers/kubernetes_workload_contract';
+import {CustomWorkloads_CaaS_KubernetesWorkload} from './offers/generated/custom_workloads';
 
 const environment = {};
 const boundedContextId = {id: 'custom-workloads-templates'};
@@ -204,10 +201,9 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
         })
         .components.find(c => c.id === 'web')!;
 
-      const declared = new Set<string>([
-        ...KUBERNETES_WORKLOAD_CONTRACT_PARAMS,
-        ...KUBERNETES_WORKLOAD_UNDECLARED_PARAMS,
-      ]);
+      const declared = new Set<string>(
+        Object.keys(CustomWorkloads_CaaS_KubernetesWorkload.params),
+      );
       const undeclared = Object.keys(web.parameters)
         .filter(k => !declared.has(k))
         .sort();
@@ -278,10 +274,9 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
 
     it('emits no parameter the contract does not declare', () => {
       const child = childOf(Aks({}));
-      const declared = new Set<string>([
-        ...KUBERNETES_WORKLOAD_CONTRACT_PARAMS,
-        ...KUBERNETES_WORKLOAD_UNDECLARED_PARAMS,
-      ]);
+      const declared = new Set<string>(
+        Object.keys(CustomWorkloads_CaaS_KubernetesWorkload.params),
+      );
       expect(
         Object.keys(child.parameters).filter(k => !declared.has(k)),
       ).toEqual([]);

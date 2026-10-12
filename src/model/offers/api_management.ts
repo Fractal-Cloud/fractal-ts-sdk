@@ -5,6 +5,16 @@
  * type, its vendor (provider) and delivery model, and carries vendor knobs in
  * its config type. Vendor-neutral self-hosted offers (CaaS) OMIT `provider`.
  */
+import {Storage_PaaS_AwsS3} from './generated/storage';
+import {
+  APIManagement_CaaS_Ambassador,
+  APIManagement_CaaS_Traefik,
+  APIManagement_CaaS_TraefikGateway,
+  APIManagement_PaaS_AwsCloudFront,
+  APIManagement_PaaS_AzureApiManagement,
+  APIManagement_PaaS_GcpApiGateway,
+} from './generated/api_management';
+import type {ContractConfig} from './contract/contract_config';
 import {defineOffer, type LiveSystemComponent} from '../core';
 import {
   ensureNamespace,
@@ -78,8 +88,8 @@ const redirectRefusal = (target: string): string | undefined => {
 };
 
 /** The gateway offer types a CloudFront distribution may link to as its VPC origin. */
-const TRAEFIK_OFFER_TYPE = 'APIManagement.CaaS.Traefik';
-const VPC_ORIGIN_GATEWAY_TYPES = [
+const TRAEFIK_OFFER_TYPE = APIManagement_CaaS_Traefik.offerType;
+const VPC_ORIGIN_GATEWAY_TYPES: readonly string[] = [
   TRAEFIK_GATEWAY_OFFER_TYPE,
   TRAEFIK_OFFER_TYPE,
 ];
@@ -91,7 +101,9 @@ const WAF_RATE_LIMIT_MIN = 10;
 const WAF_RATE_LIMIT_MAX = 2_000_000_000;
 
 /** The bucket offer types a CloudFront distribution may link to as its origin. */
-const S3_ORIGIN_BUCKET_TYPES = ['Storage.PaaS.AwsS3'];
+const S3_ORIGIN_BUCKET_TYPES: readonly string[] = [
+  Storage_PaaS_AwsS3.offerType,
+];
 /**
  * An object key a bucket site may name (`defaultRootObject`, `errorDocument`), as the agent reads
  * one: letters, digits and `._/-`, not starting with `.` or `/`, at most 255 characters, no `..`.
@@ -237,94 +249,97 @@ const targetHost = (target: string): string =>
 
 export const AwsCloudFront = defineOffer<
   'APIManagement.ApiGateway',
-  {
-    region?: string;
-    /**
-     * An `https://` URL. Every request the distribution receives, over HTTP or
-     * HTTPS, is answered with `301 Moved Permanently` to this URL followed by the
-     * request's own path and query string. Served at the edge by a CloudFront
-     * Function: no origin, no bucket.
-     */
-    redirectTo?: string;
-    /**
-     * Host names the distribution answers for (with `redirectTo` or an origin).
-     * The agent requests an ACM certificate for them in us-east-1, validated by
-     * DNS, and attaches them once it is issued. It writes no DNS record: it
-     * publishes the validation records (`certificateValidationRecords`) and the
-     * distribution's `dnsName` / `hostedZoneId` as output fields, for the owner of
-     * each name's DNS zone to declare.
-     */
-    aliases?: string[];
-    /**
-     * A custom origin: the host name CloudFront forwards to. For a VPC origin to
-     * the platform gateway, LINK this component to the `TraefikGateway` (or
-     * `Traefik`) component instead (`bp.link(cdn, gateway)`, no settings, at most
-     * one): the agent reads the internal NLB from the gateway's
-     * `loadBalancerHostname` output. A link, not a dependency, so the gateway can
-     * sit in the same Live System without a cycle, or be a reference.
-     *
-     * For a static site, LINK this component to an `AwsS3` bucket instead, with
-     * the object-storage link `{access: 'read'} satisfies ObjectStorageLink`
-     * (at most one; the bucket may be a reference): the agent serves the bucket
-     * through an origin access control and grants this distribution alone in
-     * the bucket policy, so the bucket stays private. See `defaultRootObject`
-     * and `spaFallback`. A distribution has exactly one origin: a linked
-     * bucket, a linked gateway or `originDomain`.
-     */
-    originDomain?: string;
-    /**
-     * Protocol CloudFront uses to the origin; the agent defaults to `https` for
-     * both a VPC origin and `originDomain`. For the VPC origin the internal NLB
-     * passes TCP 443 through to the gateway, which terminates TLS with a publicly
-     * trusted certificate covering every alias (an NLB TLS listener is refused).
-     * `http` is an explicit opt-in to plain HTTP on the private VPC-origin hop.
-     */
-    originProtocol?: 'https' | 'http';
-    /** CloudFront origin response timeout; the agent defaults to 60 (1-180). */
-    originReadTimeoutSeconds?: number;
-    /**
-     * CloudFront origin keep-alive; the agent defaults to 60 (1-180). Keep it
-     * below the gateway's idle timeout (TraefikGateway `entryPointIdleTimeoutSeconds`)
-     * so CloudFront never reuses a connection the gateway already closed.
-     */
-    originKeepaliveTimeoutSeconds?: number;
-    /** Attach a WAF web ACL (us-east-1); the agent defaults to true. */
-    wafEnabled?: boolean;
-    /** Requests per 5 minutes per client IP before the WAF rate-based rule blocks; default 2000. */
-    wafRateLimitPer5Min?: number;
-    /**
-     * Host name of a regional, DNS-validated ACM certificate the agent requests
-     * in the component's region, e.g. for a public origin's load balancer; it
-     * publishes `originCertificateArn` and `originCertificateValidationRecords`.
-     * It cannot sit on an NLB used as a VPC origin, which allows no TLS listener.
-     */
-    originDomainName?: string;
-    /**
-     * A bucket origin only: the object served for a request to the root (`/`)
-     * and to every `<path>/`, e.g. `index.html`. An object key, without a
-     * leading `/`. Unset, the agent applies `index.html` to a bucket origin.
-     */
-    defaultRootObject?: string;
-    /**
-     * A bucket origin only: serve a single-page app, answering every path the
-     * bucket does not hold with the root object and status 200, for the
-     * browser router to resolve. Unset is false: a missing object stays 404.
-     * Excludes `errorDocument`.
-     */
-    spaFallback?: boolean;
-    /**
-     * A bucket origin only: the object served, with status 404, for a key the
-     * bucket does not hold (e.g. `404.html`). An object key without a leading
-     * `/`. Unset, a missing key is a plain 404. Excludes `spaFallback`.
-     *
-     * A bucket origin also serves `<path>/` as `<path>/<defaultRootObject>`
-     * and compresses, with no key.
-     */
-    errorDocument?: string;
-  }
+  ContractConfig<
+    typeof APIManagement_PaaS_AwsCloudFront,
+    never,
+    {
+      /**
+       * An `https://` URL. Every request the distribution receives, over HTTP or
+       * HTTPS, is answered with `301 Moved Permanently` to this URL followed by the
+       * request's own path and query string. Served at the edge by a CloudFront
+       * Function: no origin, no bucket.
+       */
+      redirectTo?: string;
+      /**
+       * Host names the distribution answers for (with `redirectTo` or an origin).
+       * The agent requests an ACM certificate for them in us-east-1, validated by
+       * DNS, and attaches them once it is issued. It writes no DNS record: it
+       * publishes the validation records (`certificateValidationRecords`) and the
+       * distribution's `dnsName` / `hostedZoneId` as output fields, for the owner of
+       * each name's DNS zone to declare.
+       */
+      aliases?: string[];
+      /**
+       * A custom origin: the host name CloudFront forwards to. For a VPC origin to
+       * the platform gateway, LINK this component to the `TraefikGateway` (or
+       * `Traefik`) component instead (`bp.link(cdn, gateway)`, no settings, at most
+       * one): the agent reads the internal NLB from the gateway's
+       * `loadBalancerHostname` output. A link, not a dependency, so the gateway can
+       * sit in the same Live System without a cycle, or be a reference.
+       *
+       * For a static site, LINK this component to an `AwsS3` bucket instead, with
+       * the object-storage link `{access: 'read'} satisfies ObjectStorageLink`
+       * (at most one; the bucket may be a reference): the agent serves the bucket
+       * through an origin access control and grants this distribution alone in
+       * the bucket policy, so the bucket stays private. See `defaultRootObject`
+       * and `spaFallback`. A distribution has exactly one origin: a linked
+       * bucket, a linked gateway or `originDomain`.
+       */
+      originDomain?: string;
+      /**
+       * Protocol CloudFront uses to the origin; the agent defaults to `https` for
+       * both a VPC origin and `originDomain`. For the VPC origin the internal NLB
+       * passes TCP 443 through to the gateway, which terminates TLS with a publicly
+       * trusted certificate covering every alias (an NLB TLS listener is refused).
+       * `http` is an explicit opt-in to plain HTTP on the private VPC-origin hop.
+       */
+      originProtocol?: 'https' | 'http';
+      /** CloudFront origin response timeout; the agent defaults to 60 (1-180). */
+      originReadTimeoutSeconds?: number;
+      /**
+       * CloudFront origin keep-alive; the agent defaults to 60 (1-180). Keep it
+       * below the gateway's idle timeout (TraefikGateway `entryPointIdleTimeoutSeconds`)
+       * so CloudFront never reuses a connection the gateway already closed.
+       */
+      originKeepaliveTimeoutSeconds?: number;
+      /** Attach a WAF web ACL (us-east-1); the agent defaults to true. */
+      wafEnabled?: boolean;
+      /** Requests per 5 minutes per client IP before the WAF rate-based rule blocks; default 2000. */
+      wafRateLimitPer5Min?: number;
+      /**
+       * Host name of a regional, DNS-validated ACM certificate the agent requests
+       * in the component's region, e.g. for a public origin's load balancer; it
+       * publishes `originCertificateArn` and `originCertificateValidationRecords`.
+       * It cannot sit on an NLB used as a VPC origin, which allows no TLS listener.
+       */
+      originDomainName?: string;
+      /**
+       * A bucket origin only: the object served for a request to the root (`/`)
+       * and to every `<path>/`, e.g. `index.html`. An object key, without a
+       * leading `/`. Unset, the agent applies `index.html` to a bucket origin.
+       */
+      defaultRootObject?: string;
+      /**
+       * A bucket origin only: serve a single-page app, answering every path the
+       * bucket does not hold with the root object and status 200, for the
+       * browser router to resolve. Unset is false: a missing object stays 404.
+       * Excludes `errorDocument`.
+       */
+      spaFallback?: boolean;
+      /**
+       * A bucket origin only: the object served, with status 404, for a key the
+       * bucket does not hold (e.g. `404.html`). An object key without a leading
+       * `/`. Unset, a missing key is a plain 404. Excludes `spaFallback`.
+       *
+       * A bucket origin also serves `<path>/` as `<path>/<defaultRootObject>`
+       * and compresses, with no key.
+       */
+      errorDocument?: string;
+    }
+  >
 >({
   satisfies: 'APIManagement.ApiGateway',
-  offerType: 'APIManagement.PaaS.AwsCloudFront',
+  contract: APIManagement_PaaS_AwsCloudFront,
   provider: 'AWS',
   deliveryModel: 'PaaS',
   validate: (self, all, config) => {
@@ -508,29 +523,29 @@ export const AwsCloudFront = defineOffer<
 });
 export const AzureApiManagement = defineOffer<
   'APIManagement.ApiGateway',
-  {region?: string; publisherEmail: string; sku: string}
+  ContractConfig<typeof APIManagement_PaaS_AzureApiManagement>
 >({
   satisfies: 'APIManagement.ApiGateway',
-  offerType: 'APIManagement.PaaS.AzureApiManagement',
+  contract: APIManagement_PaaS_AzureApiManagement,
   provider: 'Azure',
   deliveryModel: 'PaaS',
 });
 export const GcpApiGateway = defineOffer<
   'APIManagement.ApiGateway',
-  {region?: string}
+  ContractConfig<typeof APIManagement_PaaS_GcpApiGateway>
 >({
   satisfies: 'APIManagement.ApiGateway',
-  offerType: 'APIManagement.PaaS.GcpApiGateway',
+  contract: APIManagement_PaaS_GcpApiGateway,
   provider: 'GCP',
   deliveryModel: 'PaaS',
 });
 // Vendor-neutral CaaS offers — no provider; identified by deliveryModel + offerType.
 export const Ambassador = defineOffer<
   'APIManagement.ApiGateway',
-  {namespace?: string}
+  ContractConfig<typeof APIManagement_CaaS_Ambassador>
 >({
   satisfies: 'APIManagement.ApiGateway',
-  offerType: 'APIManagement.CaaS.Ambassador',
+  contract: APIManagement_CaaS_Ambassador,
   deliveryModel: 'CaaS',
 });
 /** The list knobs of `TraefikGateway`, sent comma-separated as the agent reads them. */
@@ -720,10 +735,10 @@ const ensureValidTraefikTls = (
 /** Traefik as the Java cloud agents reconcile it. For the platform gateway on EKS use `TraefikGateway`. */
 export const Traefik = defineOffer<
   'APIManagement.ApiGateway',
-  {namespace?: string}
+  ContractConfig<typeof APIManagement_CaaS_Traefik>
 >({
   satisfies: 'APIManagement.ApiGateway',
-  offerType: TRAEFIK_OFFER_TYPE,
+  contract: APIManagement_CaaS_Traefik,
   deliveryModel: 'CaaS',
 });
 /**
@@ -756,7 +771,7 @@ export const TraefikGateway = defineOffer<
   TraefikGatewayConfig
 >({
   satisfies: 'APIManagement.ApiGateway',
-  offerType: TRAEFIK_GATEWAY_OFFER_TYPE,
+  contract: APIManagement_CaaS_TraefikGateway,
   deliveryModel: 'CaaS',
   // Lists travel comma-separated, as the agent's defaults are written.
   instantiate: (ctx, config) => {
@@ -780,7 +795,12 @@ export const TraefikGateway = defineOffer<
     ];
   },
   validate: (self, all, config) => {
-    if (config.forwardAuthExcludedPrefixes !== undefined) {
+    // Not a contract key, so not in the config type; still refused at runtime
+    // for JavaScript callers.
+    if (
+      (config as Record<string, unknown>).forwardAuthExcludedPrefixes !==
+      undefined
+    ) {
       refuse(
         self.id,
         'forwardAuthExcludedPrefixes was removed: the agent no longer reads it and a path ' +

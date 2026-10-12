@@ -5,6 +5,23 @@
  * Component each satisfies. Vendor knobs live in each offer's config only.
  * Vendor-neutral self-hosted offers (e.g. MinIO on any cluster) omit `provider`.
  */
+import {
+  Storage_CaaS_MinioTenant,
+  Storage_PaaS_ArubaMySqlDbms,
+  Storage_PaaS_AwsRdsMySql,
+  Storage_PaaS_AwsRdsMySqlDatabase,
+  Storage_PaaS_AwsRdsPostgres,
+  Storage_PaaS_AwsRdsPostgresDatabase,
+  Storage_PaaS_AwsS3,
+  Storage_PaaS_AzureBlob,
+  Storage_PaaS_AzurePostgresDatabase,
+  Storage_PaaS_AzurePostgresDbms,
+  Storage_PaaS_GcpGcsBucket,
+  Storage_PaaS_GcpMySqlDbms,
+  Storage_PaaS_GcpPostgresDatabase,
+  Storage_PaaS_GcpPostgresDbms,
+} from './generated/storage';
+import type {ContractConfig} from './contract/contract_config';
 import {defineOffer} from '../core';
 import type {
   InstantiationContext,
@@ -53,17 +70,20 @@ const POSTGRES_MAX_LOGIN_LENGTH = 63;
 // ── Storage.ObjectStorage offers ─────────────────────────────────────────────
 export const AwsS3 = defineOffer<
   'Storage.ObjectStorage',
-  {
-    region?: string;
-    /**
-     * Expire every object this many days after it was written (and abort
-     * incomplete multipart uploads after a day). Absent: objects never expire.
-     */
-    lifecycleExpirationDays?: number;
-  }
+  ContractConfig<
+    typeof Storage_PaaS_AwsS3,
+    'versioningEnabled',
+    {
+      /**
+       * Expire every object this many days after it was written (and abort
+       * incomplete multipart uploads after a day). Absent: objects never expire.
+       */
+      lifecycleExpirationDays?: number;
+    }
+  >
 >({
   satisfies: 'Storage.ObjectStorage',
-  offerType: 'Storage.PaaS.AwsS3',
+  contract: Storage_PaaS_AwsS3,
   provider: 'AWS',
   deliveryModel: 'PaaS',
   validate: (self, _all, config) => {
@@ -95,19 +115,22 @@ export const AwsS3 = defineOffer<
  */
 export const AzureBlob = defineOffer<
   'Storage.ObjectStorage',
-  {region?: string; sku?: string; accessTier?: string}
+  ContractConfig<typeof Storage_PaaS_AzureBlob, 'encryption' | 'publicAccess'>
 >({
   satisfies: 'Storage.ObjectStorage',
-  offerType: 'Storage.PaaS.AzureBlob',
+  contract: Storage_PaaS_AzureBlob,
   provider: 'Azure',
   deliveryModel: 'PaaS',
 });
 export const GcsBucket = defineOffer<
   'Storage.ObjectStorage',
-  {region?: string}
+  ContractConfig<
+    typeof Storage_PaaS_GcpGcsBucket,
+    'storageClass' | 'versioningEnabled'
+  >
 >({
   satisfies: 'Storage.ObjectStorage',
-  offerType: 'Storage.PaaS.GcpGcsBucket',
+  contract: Storage_PaaS_GcpGcsBucket,
   provider: 'GCP',
   deliveryModel: 'PaaS',
 });
@@ -117,40 +140,43 @@ export const GcsBucket = defineOffer<
 // type* the offer fills, not an offer id, so no handler is keyed on it.
 export const MinIO = defineOffer<
   'Storage.ObjectStorage',
-  {storageClass?: string}
+  ContractConfig<typeof Storage_CaaS_MinioTenant>
 >({
   satisfies: 'Storage.ObjectStorage',
-  offerType: 'Storage.CaaS.MinioTenant',
+  contract: Storage_CaaS_MinioTenant,
   deliveryModel: 'CaaS',
 });
 
 // ── Storage.RelationalDbms offers ────────────────────────────────────────────
 export const AzurePostgresDbms = defineOffer<
   'Storage.RelationalDbms',
-  {region?: string; resourceGroup: string}
+  ContractConfig<
+    typeof Storage_PaaS_AzurePostgresDbms,
+    'backupRetentionDays' | 'storageGb'
+  >
 >({
   satisfies: 'Storage.RelationalDbms',
-  offerType: 'Storage.PaaS.AzurePostgresDbms',
+  contract: Storage_PaaS_AzurePostgresDbms,
   provider: 'Azure',
   deliveryModel: 'PaaS',
   instantiate: dbmsInstantiate(
-    'Storage.PaaS.AzurePostgresDbms',
+    Storage_PaaS_AzurePostgresDbms.offerType,
     'Azure',
-    'Storage.PaaS.AzurePostgresDatabase',
+    Storage_PaaS_AzurePostgresDatabase.offerType,
   ),
 });
 export const GcpPostgresDbms = defineOffer<
   'Storage.RelationalDbms',
-  {region?: string; tier: string}
+  ContractConfig<typeof Storage_PaaS_GcpPostgresDbms>
 >({
   satisfies: 'Storage.RelationalDbms',
-  offerType: 'Storage.PaaS.GcpPostgresDbms',
+  contract: Storage_PaaS_GcpPostgresDbms,
   provider: 'GCP',
   deliveryModel: 'PaaS',
   instantiate: dbmsInstantiate(
-    'Storage.PaaS.GcpPostgresDbms',
+    Storage_PaaS_GcpPostgresDbms.offerType,
     'GCP',
-    'Storage.PaaS.GcpPostgresDatabase',
+    Storage_PaaS_GcpPostgresDatabase.offerType,
   ),
 });
 /**
@@ -201,16 +227,10 @@ export const GcpPostgresDbms = defineOffer<
  */
 export const GcpMySqlDbms = defineOffer<
   'Storage.RelationalDbms',
-  {
-    network?: string;
-    region?: string;
-    instanceTier?: string;
-    instanceEdition?: string;
-    instanceDataDiskSizeGb?: number;
-  }
+  ContractConfig<typeof Storage_PaaS_GcpMySqlDbms>
 >({
   satisfies: 'Storage.RelationalDbms',
-  offerType: 'Storage.PaaS.GcpMySqlDbms',
+  contract: Storage_PaaS_GcpMySqlDbms,
   provider: 'GCP',
   deliveryModel: 'PaaS',
 });
@@ -239,7 +259,7 @@ export const AwsRdsPostgresDbms = defineOffer<
   AwsRdsDbmsConfig
 >({
   satisfies: 'Storage.RelationalDbms',
-  offerType: 'Storage.PaaS.AwsRdsPostgres',
+  contract: Storage_PaaS_AwsRdsPostgres,
   validate: (self, _all, config) =>
     validateAwsRdsDbms(
       'AwsRdsPostgresDbms',
@@ -250,9 +270,9 @@ export const AwsRdsPostgresDbms = defineOffer<
   provider: 'AWS',
   deliveryModel: 'PaaS',
   instantiate: dbmsInstantiate(
-    'Storage.PaaS.AwsRdsPostgres',
+    Storage_PaaS_AwsRdsPostgres.offerType,
     'AWS',
-    'Storage.PaaS.AwsRdsPostgresDatabase',
+    Storage_PaaS_AwsRdsPostgresDatabase.offerType,
   ),
 });
 
@@ -267,32 +287,42 @@ export const AwsRdsPostgresDbms = defineOffer<
  * `port` 3306. The master user name is at most 16 characters (MySQL's limit).
  * Its databases are emitted as `AwsRdsMySqlDatabase`.
  */
+// One config for both engines holds only while the two RDS contracts declare
+// the same keys; these two lines stop compiling the moment they diverge.
+Storage_PaaS_AwsRdsMySql.params satisfies Record<
+  keyof typeof Storage_PaaS_AwsRdsPostgres.params,
+  unknown
+>;
+Storage_PaaS_AwsRdsPostgres.params satisfies Record<
+  keyof typeof Storage_PaaS_AwsRdsMySql.params,
+  unknown
+>;
 export const AwsRdsMySqlDbms = defineOffer<
   'Storage.RelationalDbms',
   AwsRdsDbmsConfig
 >({
   satisfies: 'Storage.RelationalDbms',
-  offerType: 'Storage.PaaS.AwsRdsMySql',
+  contract: Storage_PaaS_AwsRdsMySql,
   validate: (self, _all, config) =>
     validateAwsRdsDbms('AwsRdsMySqlDbms', self, config, MYSQL_MAX_LOGIN_LENGTH),
   provider: 'AWS',
   deliveryModel: 'PaaS',
   instantiate: dbmsInstantiate(
-    'Storage.PaaS.AwsRdsMySql',
+    Storage_PaaS_AwsRdsMySql.offerType,
     'AWS',
-    'Storage.PaaS.AwsRdsMySqlDatabase',
+    Storage_PaaS_AwsRdsMySqlDatabase.offerType,
   ),
 });
 export const ArubaMySqlDbms = defineOffer<
   'Storage.RelationalDbms',
-  {region?: string}
+  ContractConfig<typeof Storage_PaaS_ArubaMySqlDbms>
 >({
   satisfies: 'Storage.RelationalDbms',
-  offerType: 'Storage.PaaS.ArubaMySqlDbms',
+  contract: Storage_PaaS_ArubaMySqlDbms,
   provider: 'Aruba',
   deliveryModel: 'PaaS',
   instantiate: dbmsInstantiate(
-    'Storage.PaaS.ArubaMySqlDbms',
+    Storage_PaaS_ArubaMySqlDbms.offerType,
     'Aruba',
     'Storage.PaaS.ArubaMySqlDatabase',
   ),
@@ -301,38 +331,47 @@ export const ArubaMySqlDbms = defineOffer<
 // ── Storage.RelationalDatabase offers ────────────────────────────────────────
 export const AzurePostgresDatabase = defineOffer<
   'Storage.RelationalDatabase',
-  {}
+  ContractConfig<
+    typeof Storage_PaaS_AzurePostgresDatabase,
+    'charset' | 'collation'
+  >
 >({
   satisfies: 'Storage.RelationalDatabase',
-  offerType: 'Storage.PaaS.AzurePostgresDatabase',
+  contract: Storage_PaaS_AzurePostgresDatabase,
   provider: 'Azure',
   deliveryModel: 'PaaS',
 });
 export const GcpPostgresDatabase = defineOffer<
   'Storage.RelationalDatabase',
-  {}
+  ContractConfig<
+    typeof Storage_PaaS_GcpPostgresDatabase,
+    'charset' | 'collation'
+  >
 >({
   satisfies: 'Storage.RelationalDatabase',
-  offerType: 'Storage.PaaS.GcpPostgresDatabase',
+  contract: Storage_PaaS_GcpPostgresDatabase,
   provider: 'GCP',
   deliveryModel: 'PaaS',
 });
 
 export const AwsRdsPostgresDatabase = defineOffer<
   'Storage.RelationalDatabase',
-  {
-    /**
-     * Defaults to the component id mapped onto a legal PostgreSQL identifier.
-     * On a DBMS referenced from another Live System the default is scoped by
-     * this Live System (`<liveSystem>_<componentId>_<digest>`), so set it when a
-     * fixed name is needed (e.g. restoring an existing database).
-     */
-    databaseName?: string;
-    schema?: string;
-  }
+  ContractConfig<
+    typeof Storage_PaaS_AwsRdsPostgresDatabase,
+    never,
+    {
+      /**
+       * Defaults to the component id mapped onto a legal PostgreSQL identifier.
+       * On a DBMS referenced from another Live System the default is scoped by
+       * this Live System (`<liveSystem>_<componentId>_<digest>`), so set it when a
+       * fixed name is needed (e.g. restoring an existing database).
+       */
+      databaseName?: string;
+    }
+  >
 >({
   satisfies: 'Storage.RelationalDatabase',
-  offerType: 'Storage.PaaS.AwsRdsPostgresDatabase',
+  contract: Storage_PaaS_AwsRdsPostgresDatabase,
   provider: 'AWS',
   deliveryModel: 'PaaS',
 });
@@ -344,17 +383,21 @@ export const AwsRdsPostgresDatabase = defineOffer<
  */
 export const AwsRdsMySqlDatabase = defineOffer<
   'Storage.RelationalDatabase',
-  {
-    /**
-     * Defaults to the component id mapped onto a legal MySQL identifier. On a
-     * DBMS referenced from another Live System the default is scoped by this
-     * Live System, so set it when a fixed name is needed.
-     */
-    databaseName?: string;
-  }
+  ContractConfig<
+    typeof Storage_PaaS_AwsRdsMySqlDatabase,
+    never,
+    {
+      /**
+       * Defaults to the component id mapped onto a legal MySQL identifier. On a
+       * DBMS referenced from another Live System the default is scoped by this
+       * Live System, so set it when a fixed name is needed.
+       */
+      databaseName?: string;
+    }
+  >
 >({
   satisfies: 'Storage.RelationalDatabase',
-  offerType: 'Storage.PaaS.AwsRdsMySqlDatabase',
+  contract: Storage_PaaS_AwsRdsMySqlDatabase,
   provider: 'AWS',
   deliveryModel: 'PaaS',
 });

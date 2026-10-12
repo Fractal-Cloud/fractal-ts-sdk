@@ -6,6 +6,19 @@
  * vendor-neutral self-hosted CaaS offers (Prometheus/Jaeger/Elastic on any
  * cluster), so they omit `provider`.
  */
+import {Messaging_PaaS_AwsSqsQueue} from './generated/messaging';
+import {Storage_PaaS_AwsS3, Storage_PaaS_S3} from './generated/storage';
+import {
+  Observability_CaaS_Elastic,
+  Observability_CaaS_GrafanaAlloy,
+  Observability_CaaS_GrafanaLoki,
+  Observability_CaaS_GrafanaTempo,
+  Observability_CaaS_Jaeger,
+  Observability_CaaS_KubePrometheusStack,
+  Observability_CaaS_Prometheus,
+  Observability_CaaS_SqsExporter,
+} from './generated/observability';
+import type {ContractConfig} from './contract/contract_config';
 import {defineOffer, type LiveSystemComponent} from '../core';
 import {
   ensureNamespace,
@@ -25,10 +38,10 @@ import type {SqsExporterConfig} from './sqs_exporter_config';
 // ── Observability.Monitoring offers ──────────────────────────────────────────
 export const Prometheus = defineOffer<
   'Observability.Monitoring',
-  {namespace?: string}
+  ContractConfig<typeof Observability_CaaS_Prometheus>
 >({
   satisfies: 'Observability.Monitoring',
-  offerType: 'Observability.CaaS.Prometheus',
+  contract: Observability_CaaS_Prometheus,
   deliveryModel: 'CaaS',
   validate: self => ensureNoUnhonoredKeys(self),
 });
@@ -36,10 +49,10 @@ export const Prometheus = defineOffer<
 // ── Observability.Tracing offers ─────────────────────────────────────────────
 export const Jaeger = defineOffer<
   'Observability.Tracing',
-  {namespace?: string}
+  ContractConfig<typeof Observability_CaaS_Jaeger>
 >({
   satisfies: 'Observability.Tracing',
-  offerType: 'Observability.CaaS.Jaeger',
+  contract: Observability_CaaS_Jaeger,
   deliveryModel: 'CaaS',
   validate: self => ensureNoUnhonoredKeys(self),
 });
@@ -47,10 +60,14 @@ export const Jaeger = defineOffer<
 // ── Observability.Logging offers ─────────────────────────────────────────────
 export const ObservabilityElastic = defineOffer<
   'Observability.Logging',
-  {namespace?: string; elasticVersion?: string}
+  ContractConfig<
+    typeof Observability_CaaS_Elastic,
+    never,
+    {elasticVersion?: string}
+  >
 >({
   satisfies: 'Observability.Logging',
-  offerType: 'Observability.CaaS.Elastic',
+  contract: Observability_CaaS_Elastic,
   deliveryModel: 'CaaS',
 });
 
@@ -59,10 +76,13 @@ export const ObservabilityElastic = defineOffer<
 // (`Observability.CaaS.Prometheus`, `.Loki`, `.Alloy`, `.Tempo`). No CloudWatch
 // anywhere: Grafana has no CloudWatch datasource.
 
-const GRAFANA_LOKI_OFFER_TYPE = 'Observability.CaaS.GrafanaLoki';
+const GRAFANA_LOKI_OFFER_TYPE = Observability_CaaS_GrafanaLoki.offerType;
 /** The bucket offers Loki and Tempo keep their data in (the agent also reads the legacy id). */
-const S3_BUCKET_TYPES = ['Storage.PaaS.AwsS3', 'Storage.PaaS.S3'];
-const SQS_QUEUE_TYPE = 'Messaging.PaaS.AwsSqsQueue';
+const S3_BUCKET_TYPES: readonly string[] = [
+  Storage_PaaS_AwsS3.offerType,
+  Storage_PaaS_S3.offerType,
+];
+const SQS_QUEUE_TYPE = Messaging_PaaS_AwsSqsQueue.offerType;
 /** A queue URL the exporter can poll and derive the queue ARN from, as the agent reads it. */
 const SQS_QUEUE_URL =
   /^[Hh][Tt][Tt][Pp][Ss]:\/\/sqs\.[a-z0-9-]+\.amazonaws\.com\/[0-9]{12}\/[A-Za-z0-9_-]{1,80}(\.fifo)?(#\S*)?$/;
@@ -243,7 +263,7 @@ export const KubePrometheusStack = defineOffer<
   KubePrometheusStackConfig
 >({
   satisfies: 'Observability.Monitoring',
-  offerType: 'Observability.CaaS.KubePrometheusStack',
+  contract: Observability_CaaS_KubePrometheusStack,
   deliveryModel: 'CaaS',
   validate: (self, all, config) => {
     ensureNoUnhonoredKeys(self);
@@ -280,7 +300,7 @@ export const GrafanaLoki = defineOffer<
   GrafanaObjectStorageBackendConfig
 >({
   satisfies: 'Observability.Logging',
-  offerType: GRAFANA_LOKI_OFFER_TYPE,
+  contract: Observability_CaaS_GrafanaLoki,
   deliveryModel: 'CaaS',
   validate: ensureBackend,
 });
@@ -298,7 +318,7 @@ export const GrafanaAlloy = defineOffer<
   GrafanaAlloyConfig
 >({
   satisfies: 'Observability.LogShipper',
-  offerType: 'Observability.CaaS.GrafanaAlloy',
+  contract: Observability_CaaS_GrafanaAlloy,
   deliveryModel: 'CaaS',
   validate: (self, all, config) => {
     ensureNamespace(self.id, config.namespace);
@@ -335,10 +355,10 @@ export const GrafanaAlloy = defineOffer<
  */
 export const GrafanaTempo = defineOffer<
   'Observability.Tracing',
-  GrafanaObjectStorageBackendConfig
+  ContractConfig<typeof Observability_CaaS_GrafanaTempo, 'retentionDays'>
 >({
   satisfies: 'Observability.Tracing',
-  offerType: 'Observability.CaaS.GrafanaTempo',
+  contract: Observability_CaaS_GrafanaTempo,
   deliveryModel: 'CaaS',
   validate: ensureBackend,
 });
@@ -366,7 +386,7 @@ export const SqsExporter = defineOffer<
   SqsExporterConfig
 >({
   satisfies: 'Observability.Monitoring',
-  offerType: 'Observability.CaaS.SqsExporter',
+  contract: Observability_CaaS_SqsExporter,
   deliveryModel: 'CaaS',
   instantiate: (ctx, config) => {
     const {queueUrls, imagePullSecrets, ...rest} = config;
@@ -381,7 +401,7 @@ export const SqsExporter = defineOffer<
       {
         id: ctx.id,
         displayName: ctx.displayName,
-        type: 'Observability.CaaS.SqsExporter',
+        type: Observability_CaaS_SqsExporter.offerType,
         deliveryModel: 'CaaS',
         parameters: params,
         dependencies: ctx.dependencies,

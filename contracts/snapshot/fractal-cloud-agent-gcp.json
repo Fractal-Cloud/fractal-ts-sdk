@@ -1,0 +1,3944 @@
+{
+  "agentId": "fractal-cloud-agent-gcp",
+  "agentVersion": "v8.25.1",
+  "offers": [
+    {
+      "aliasOfOfferType": null,
+      "offerType": "AI.SaaS.Unmanaged",
+      "params": [
+        {
+          "key": "secret",
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "secretName",
+          "type": "string"
+        },
+        {
+          "key": "secretValue",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "APIManagement.CaaS.Traefik",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "key": "entryPoints",
+          "required": true,
+          "type": "array"
+        },
+        {
+          "key": "forwardAuthSecretId",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "hostname",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "loadbalancerIp",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "oidcClientId",
+          "type": "string"
+        },
+        {
+          "key": "oidcClientSecretId",
+          "type": "string"
+        },
+        {
+          "key": "oidcIssuerUrl",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": {},
+          "key": "securityHeadersSettings",
+          "type": "object"
+        },
+        {
+          "default": [],
+          "key": "tlsCertificates",
+          "type": "array"
+        },
+        {
+          "default": {},
+          "key": "tlsSettings",
+          "type": "object"
+        },
+        {
+          "default": {},
+          "key": "tracing",
+          "type": "object"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "APIManagement.PaaS.ApiGateway",
+      "params": [
+        {
+          "key": "apiConfig",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "derived when absent: the LiveSystem's region, else the environment's Agent region when API Gateway is offered there, else europe-west1"
+          },
+          "key": "location",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "derived when absent: the LiveSystem's region, else the environment's Agent region when API Gateway is offered there, else europe-west1"
+          },
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP"
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "APIManagement.PaaS.GcpApiGateway",
+      "params": [
+        {
+          "key": "apiConfig",
+          "prefill": "apiVersion: openapi/v3.0.0",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "derived when absent: the LiveSystem's region, else the environment's Agent region when API Gateway is offered there, else europe-west1"
+          },
+          "key": "location",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "derived when absent: the LiveSystem's region, else the environment's Agent region when API Gateway is offered there, else europe-west1"
+          },
+          "key": "region",
+          "prefill": "europe-west1",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "serviceTypes": [
+        "APIManagement.PaaS.APIGateway"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "APIManagement.SaaS.Unmanaged",
+      "params": [
+        {
+          "key": "secret",
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "secretName",
+          "type": "string"
+        },
+        {
+          "key": "secretValue",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.CaaS.MinioTenant",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": "2",
+          "key": "cpuLimit",
+          "type": "string"
+        },
+        {
+          "default": "500m",
+          "key": "cpuRequest",
+          "type": "string"
+        },
+        {
+          "default": "4Gi",
+          "key": "memoryLimit",
+          "type": "string"
+        },
+        {
+          "default": "1Gi",
+          "key": "memoryRequest",
+          "type": "string"
+        },
+        {
+          "default": "RELEASE.2025-03-12T18-04-18Z",
+          "key": "minioVersion",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": true,
+          "key": "requestAutoCert",
+          "type": "boolean"
+        },
+        {
+          "default": 4,
+          "key": "servers",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "storageClass",
+          "type": "string"
+        },
+        {
+          "default": "100Gi",
+          "key": "volumeSize",
+          "type": "string"
+        },
+        {
+          "default": 4,
+          "key": "volumesPerServer",
+          "type": "integer"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.CaaS.SparkCluster",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": "1",
+          "key": "driverCores",
+          "type": "string"
+        },
+        {
+          "default": "1g",
+          "key": "driverMemory",
+          "type": "string"
+        },
+        {
+          "default": "2",
+          "key": "executorCores",
+          "type": "string"
+        },
+        {
+          "default": 2,
+          "key": "executorInstances",
+          "type": "integer"
+        },
+        {
+          "default": "2g",
+          "key": "executorMemory",
+          "type": "string"
+        },
+        {
+          "default": "apache/spark:3.5.3",
+          "key": "image",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "key": "sparkOperatorName",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "3.5.3",
+          "key": "sparkVersion",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.CaaS.SparkJob",
+      "params": [
+        {
+          "default": [],
+          "key": "arguments",
+          "type": "array"
+        },
+        {
+          "default": "Forbid",
+          "key": "concurrencyPolicy",
+          "type": "string"
+        },
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": "1",
+          "key": "driverCores",
+          "type": "string"
+        },
+        {
+          "default": "1g",
+          "key": "driverMemory",
+          "type": "string"
+        },
+        {
+          "default": "2",
+          "key": "executorCores",
+          "type": "string"
+        },
+        {
+          "default": 2,
+          "key": "executorInstances",
+          "type": "integer"
+        },
+        {
+          "default": "2g",
+          "key": "executorMemory",
+          "type": "string"
+        },
+        {
+          "default": "apache/spark:3.5.3",
+          "key": "image",
+          "type": "string"
+        },
+        {
+          "key": "mainApplicationFile",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "mainClass",
+          "type": "string"
+        },
+        {
+          "default": 3,
+          "key": "maxRetries",
+          "type": "integer"
+        },
+        {
+          "default": "cluster",
+          "key": "mode",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "Never",
+          "key": "restartPolicy",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "schedule",
+          "type": "string"
+        },
+        {
+          "default": {},
+          "key": "sparkConf",
+          "type": "object"
+        },
+        {
+          "key": "sparkOperatorName",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "3.5.3",
+          "key": "sparkVersion",
+          "type": "string"
+        },
+        {
+          "default": "Java",
+          "key": "type",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.CaaS.SparkMlExperiment",
+      "params": [
+        {
+          "default": "/mlflow/artifacts",
+          "key": "artifactRoot",
+          "type": "string"
+        },
+        {
+          "default": "sqlite:///mlflow/mlflow.db",
+          "key": "backendStoreUri",
+          "type": "string"
+        },
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": "1",
+          "key": "cpuLimit",
+          "type": "string"
+        },
+        {
+          "default": "250m",
+          "key": "cpuRequest",
+          "type": "string"
+        },
+        {
+          "default": "1Gi",
+          "key": "memoryLimit",
+          "type": "string"
+        },
+        {
+          "default": "512Mi",
+          "key": "memoryRequest",
+          "type": "string"
+        },
+        {
+          "default": "2.21.3",
+          "key": "mlflowVersion",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": 2,
+          "key": "replicas",
+          "type": "integer"
+        },
+        {
+          "default": 5000,
+          "key": "servicePort",
+          "type": "integer"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.CaaS.SparkOperator",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": true,
+          "key": "enableMetrics",
+          "type": "boolean"
+        },
+        {
+          "default": true,
+          "key": "enableWebhook",
+          "type": "boolean"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "default": "2.5.0",
+          "key": "operatorVersion",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "3.5.3",
+          "key": "sparkVersion",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.CaaS.SparkUnityCatalog",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": "1",
+          "key": "cpuLimit",
+          "type": "string"
+        },
+        {
+          "default": "250m",
+          "key": "cpuRequest",
+          "type": "string"
+        },
+        {
+          "default": "1Gi",
+          "key": "memoryLimit",
+          "type": "string"
+        },
+        {
+          "default": "512Mi",
+          "key": "memoryRequest",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": 2,
+          "key": "replicas",
+          "type": "integer"
+        },
+        {
+          "default": "0.3.0",
+          "key": "unityCatalogVersion",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": "BigData.PaaS.GcpDatalake",
+      "offerType": "BigData.PaaS.CloudStorage",
+      "params": [
+        {
+          "default": "",
+          "key": "bucketName",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "STANDARD",
+          "key": "storageClass",
+          "type": "string"
+        },
+        {
+          "default": true,
+          "key": "uniformBucketLevelAccess",
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "key": "versioningEnabled",
+          "type": "boolean"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "storage.googleapis.com/Bucket"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.PaaS.Databricks",
+      "params": [
+        {
+          "default": "",
+          "key": "accountId",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "networkId",
+          "type": "string"
+        },
+        {
+          "default": "premium",
+          "key": "pricingTier",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP"
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.PaaS.DatabricksCluster",
+      "params": [
+        {
+          "default": 60,
+          "key": "autoTerminationMinutes",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "clusterName",
+          "type": "string"
+        },
+        {
+          "default": "SINGLE_USER",
+          "key": "dataSecurityMode",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "mavenLibraries",
+          "type": "array"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "maxWorkers",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "minWorkers",
+          "type": "integer"
+        },
+        {
+          "key": "nodeTypeId",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "numWorkers",
+          "type": "integer"
+        },
+        {
+          "default": [],
+          "key": "pypiLibraries",
+          "type": "array"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "singleNode",
+          "type": "boolean"
+        },
+        {
+          "key": "singleUserName",
+          "type": "string"
+        },
+        {
+          "default": {},
+          "key": "sparkConf",
+          "type": "object"
+        },
+        {
+          "key": "sparkVersion",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "provider": "GCP"
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.PaaS.DatabricksJob",
+      "parameterRules": [
+        {
+          "cases": [
+            {
+              "id": "wheelExplicit",
+              "then": {
+                "required": [
+                  "artifactUri",
+                  "entryPoint"
+                ]
+              },
+              "when": {
+                "equals": "python_wheel",
+                "key": "artifactType"
+              }
+            },
+            {
+              "id": "wheelImplicit",
+              "then": {
+                "required": [
+                  "entryPoint"
+                ]
+              },
+              "when": {
+                "allOf": [
+                  {
+                    "key": "artifactType",
+                    "present": false
+                  },
+                  {
+                    "key": "artifactUri",
+                    "present": true
+                  }
+                ]
+              }
+            },
+            {
+              "id": "declaredTaskType",
+              "then": {
+                "restrict": [
+                  {
+                    "in": [
+                      "NOTEBOOK",
+                      "PYTHON",
+                      "SPARK_JAR"
+                    ],
+                    "key": "taskType"
+                  }
+                ],
+                "rules": [
+                  {
+                    "id": "notebookArtifact",
+                    "key": "notebookPath",
+                    "kind": "requiredIf",
+                    "when": {
+                      "equals": "NOTEBOOK",
+                      "key": "taskType"
+                    }
+                  },
+                  {
+                    "id": "pythonArtifact",
+                    "key": "pythonFile",
+                    "kind": "requiredIf",
+                    "message": "A PYTHON job needs the Python file it runs.",
+                    "when": {
+                      "equals": "PYTHON",
+                      "key": "taskType"
+                    }
+                  },
+                  {
+                    "id": "jarArtifact",
+                    "key": "mainClassName",
+                    "kind": "requiredIf",
+                    "when": {
+                      "equals": "SPARK_JAR",
+                      "key": "taskType"
+                    }
+                  }
+                ]
+              },
+              "when": {
+                "key": "taskType",
+                "present": true
+              }
+            }
+          ],
+          "id": "jobShape",
+          "kind": "branches",
+          "otherwise": {
+            "rules": [
+              {
+                "fix": "Set taskType (NOTEBOOK, PYTHON or SPARK_JAR) together with the artifact it runs, or set artifactUri and entryPoint for a Python wheel job.",
+                "id": "taskTypeOrSingleArtifact",
+                "keys": [
+                  "notebookPath",
+                  "pythonFile",
+                  "mainClassName"
+                ],
+                "kind": "exactlyOneOf",
+                "message": "The job does not say what to run."
+              }
+            ]
+          }
+        }
+      ],
+      "params": [
+        {
+          "default": "",
+          "key": "artifactType",
+          "type": "string",
+          "values": [
+            "python_wheel",
+            "notebook"
+          ],
+          "valuesLevel": "warn"
+        },
+        {
+          "default": "",
+          "key": "artifactUri",
+          "placeholderIsAbsent": true,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "cronSchedule",
+          "type": "string"
+        },
+        {
+          "description": "the function the wheel exposes",
+          "example": "main",
+          "key": "entryPoint",
+          "placeholderIsAbsent": true,
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "entryPointArgs",
+          "type": "array"
+        },
+        {
+          "deprecated": {
+            "level": "warn",
+            "note": "the job runs on the cluster it depends on, or on a cluster started for each run when it depends on none"
+          },
+          "key": "existingCluster",
+          "type": "boolean"
+        },
+        {
+          "default": "",
+          "description": "the URI of the JAR that holds the main class (SPARK_JAR)",
+          "key": "jarUri",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id"
+          },
+          "key": "jobName",
+          "type": "string"
+        },
+        {
+          "description": "the fully qualified main class of the JAR",
+          "example": "com.example.etl.Main",
+          "key": "mainClassName",
+          "placeholderIsAbsent": true,
+          "type": "string"
+        },
+        {
+          "constraints": {
+            "level": "warn",
+            "minimum": 0
+          },
+          "default": 0,
+          "key": "maxRetries",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "maxWorkers",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "minWorkers",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "discovered from the workspace when undeclared: the newest-generation, smallest general-purpose node type with at least 4 cores"
+          },
+          "key": "nodeTypeId",
+          "type": "string"
+        },
+        {
+          "description": "the workspace path of the notebook the job runs",
+          "example": "/Shared/etl",
+          "key": "notebookPath",
+          "placeholderIsAbsent": true,
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "numWorkers",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id"
+          },
+          "key": "packageName",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "parameters",
+          "type": "array"
+        },
+        {
+          "description": "the path of the Python file the job runs",
+          "example": "/Workspace/jobs/etl.py",
+          "key": "pythonFile",
+          "placeholderIsAbsent": true,
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "singleNode",
+          "type": "boolean"
+        },
+        {
+          "default": "14.3.x-scala2.12",
+          "key": "sparkVersion",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "derived when exactly one of notebookPath, pythonFile, mainClassName is declared"
+          },
+          "description": "which artifact Databricks executes",
+          "key": "taskType",
+          "type": "string",
+          "values": [
+            "NOTEBOOK",
+            "PYTHON",
+            "SPARK_JAR"
+          ],
+          "valuesCaseInsensitive": true,
+          "valuesLevel": "warn"
+        }
+      ],
+      "provider": "GCP"
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.PaaS.DatabricksMlflowExperiment",
+      "params": [
+        {
+          "default": "",
+          "key": "artifactLocation",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "experimentName",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP"
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.PaaS.GcpDatabricks",
+      "params": [
+        {
+          "default": "",
+          "key": "accountId",
+          "prefill": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "networkId",
+          "prefill": "projects/my-project/global/networks/my-vpc",
+          "type": "string"
+        },
+        {
+          "default": "premium",
+          "key": "pricingTier",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "serviceTypes": [
+        "BigData.PaaS.Databricks"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.PaaS.GcpDatabricksCluster",
+      "params": [
+        {
+          "default": 60,
+          "key": "autoTerminationMinutes",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "clusterName",
+          "prefill": "analytics-cluster",
+          "type": "string"
+        },
+        {
+          "default": "SINGLE_USER",
+          "key": "dataSecurityMode",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "mavenLibraries",
+          "prefill": [
+            "com.example:my-lib:1.0.0"
+          ],
+          "type": "array"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "maxWorkers",
+          "prefill": 8,
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "minWorkers",
+          "prefill": 1,
+          "type": "integer"
+        },
+        {
+          "key": "nodeTypeId",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "numWorkers",
+          "type": "integer"
+        },
+        {
+          "default": [],
+          "key": "pypiLibraries",
+          "prefill": [
+            "pandas==1.5.0",
+            "numpy"
+          ],
+          "type": "array"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "singleNode",
+          "type": "boolean"
+        },
+        {
+          "key": "singleUserName",
+          "type": "string"
+        },
+        {
+          "default": {},
+          "key": "sparkConf",
+          "prefill": {
+            "spark.executor.memory": "4g"
+          },
+          "type": "object"
+        },
+        {
+          "key": "sparkVersion",
+          "prefill": "15.3.x-scala2.12",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "serviceTypes": [
+        "BigData.PaaS.DatabricksCluster"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.PaaS.GcpDatabricksJob",
+      "parameterRules": [
+        {
+          "cases": [
+            {
+              "id": "wheelExplicit",
+              "then": {
+                "required": [
+                  "artifactUri",
+                  "entryPoint"
+                ]
+              },
+              "when": {
+                "equals": "python_wheel",
+                "key": "artifactType"
+              }
+            },
+            {
+              "id": "wheelImplicit",
+              "then": {
+                "required": [
+                  "entryPoint"
+                ]
+              },
+              "when": {
+                "allOf": [
+                  {
+                    "key": "artifactType",
+                    "present": false
+                  },
+                  {
+                    "key": "artifactUri",
+                    "present": true
+                  }
+                ]
+              }
+            },
+            {
+              "id": "declaredTaskType",
+              "then": {
+                "restrict": [
+                  {
+                    "in": [
+                      "NOTEBOOK",
+                      "PYTHON",
+                      "SPARK_JAR"
+                    ],
+                    "key": "taskType"
+                  }
+                ],
+                "rules": [
+                  {
+                    "id": "notebookArtifact",
+                    "key": "notebookPath",
+                    "kind": "requiredIf",
+                    "when": {
+                      "equals": "NOTEBOOK",
+                      "key": "taskType"
+                    }
+                  },
+                  {
+                    "id": "pythonArtifact",
+                    "key": "pythonFile",
+                    "kind": "requiredIf",
+                    "message": "A PYTHON job needs the Python file it runs.",
+                    "when": {
+                      "equals": "PYTHON",
+                      "key": "taskType"
+                    }
+                  },
+                  {
+                    "id": "jarArtifact",
+                    "key": "mainClassName",
+                    "kind": "requiredIf",
+                    "when": {
+                      "equals": "SPARK_JAR",
+                      "key": "taskType"
+                    }
+                  }
+                ]
+              },
+              "when": {
+                "key": "taskType",
+                "present": true
+              }
+            }
+          ],
+          "id": "jobShape",
+          "kind": "branches",
+          "otherwise": {
+            "rules": [
+              {
+                "fix": "Set taskType (NOTEBOOK, PYTHON or SPARK_JAR) together with the artifact it runs, or set artifactUri and entryPoint for a Python wheel job.",
+                "id": "taskTypeOrSingleArtifact",
+                "keys": [
+                  "notebookPath",
+                  "pythonFile",
+                  "mainClassName"
+                ],
+                "kind": "exactlyOneOf",
+                "message": "The job does not say what to run."
+              }
+            ]
+          }
+        }
+      ],
+      "params": [
+        {
+          "default": "",
+          "key": "artifactType",
+          "prefill": "JARFILE",
+          "type": "string",
+          "values": [
+            "python_wheel",
+            "notebook"
+          ],
+          "valuesLevel": "warn"
+        },
+        {
+          "default": "",
+          "key": "artifactUri",
+          "placeholderIsAbsent": true,
+          "prefill": "s3://bucket/artifact.jar",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "cronSchedule",
+          "prefill": "0 2 * * *",
+          "type": "string"
+        },
+        {
+          "description": "the function the wheel exposes",
+          "example": "main",
+          "key": "entryPoint",
+          "placeholderIsAbsent": true,
+          "prefill": "main",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "entryPointArgs",
+          "prefill": [
+            "arg1",
+            "arg2"
+          ],
+          "type": "array"
+        },
+        {
+          "deprecated": {
+            "level": "warn",
+            "note": "the job runs on the cluster it depends on, or on a cluster started for each run when it depends on none"
+          },
+          "key": "existingCluster",
+          "type": "boolean"
+        },
+        {
+          "default": "",
+          "description": "the URI of the JAR that holds the main class (SPARK_JAR)",
+          "key": "jarUri",
+          "prefill": "s3://bucket/app.jar",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id"
+          },
+          "key": "jobName",
+          "prefill": "daily-etl",
+          "type": "string"
+        },
+        {
+          "description": "the fully qualified main class of the JAR",
+          "example": "com.example.etl.Main",
+          "key": "mainClassName",
+          "placeholderIsAbsent": true,
+          "prefill": "com.example.Main",
+          "type": "string"
+        },
+        {
+          "constraints": {
+            "level": "warn",
+            "minimum": 0
+          },
+          "default": 0,
+          "key": "maxRetries",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "maxWorkers",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "minWorkers",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "discovered from the workspace when undeclared: the newest-generation, smallest general-purpose node type with at least 4 cores"
+          },
+          "key": "nodeTypeId",
+          "type": "string"
+        },
+        {
+          "description": "the workspace path of the notebook the job runs",
+          "example": "/Shared/etl",
+          "key": "notebookPath",
+          "placeholderIsAbsent": true,
+          "prefill": "/Users/user@example.com/ETL",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "numWorkers",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id"
+          },
+          "key": "packageName",
+          "prefill": "my.package",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "parameters",
+          "prefill": [
+            "--date",
+            "2025-01-01"
+          ],
+          "type": "array"
+        },
+        {
+          "description": "the path of the Python file the job runs",
+          "example": "/Workspace/jobs/etl.py",
+          "key": "pythonFile",
+          "placeholderIsAbsent": true,
+          "prefill": "s3://bucket/job.py",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "singleNode",
+          "type": "boolean"
+        },
+        {
+          "default": "14.3.x-scala2.12",
+          "key": "sparkVersion",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "derived when exactly one of notebookPath, pythonFile, mainClassName is declared"
+          },
+          "description": "which artifact Databricks executes",
+          "key": "taskType",
+          "prefill": "notebook",
+          "type": "string",
+          "values": [
+            "NOTEBOOK",
+            "PYTHON",
+            "SPARK_JAR"
+          ],
+          "valuesCaseInsensitive": true,
+          "valuesLevel": "warn"
+        }
+      ],
+      "provider": "GCP",
+      "serviceTypes": [
+        "BigData.PaaS.DatabricksJob"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.PaaS.GcpDatabricksMlflow",
+      "params": [
+        {
+          "default": "",
+          "key": "artifactLocation",
+          "prefill": "s3://bucket/mlflow-artifacts",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "experimentName",
+          "prefill": "model-training",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "serviceTypes": [
+        "BigData.PaaS.DatabricksMlflowExperiment"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.PaaS.GcpDatalake",
+      "params": [
+        {
+          "default": "",
+          "key": "bucketName",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "region",
+          "prefill": "EU",
+          "type": "string"
+        },
+        {
+          "default": "STANDARD",
+          "key": "storageClass",
+          "type": "string"
+        },
+        {
+          "default": true,
+          "key": "uniformBucketLevelAccess",
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "key": "versioningEnabled",
+          "type": "boolean"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "storage.googleapis.com/Bucket"
+        }
+      ],
+      "serviceTypes": [
+        "BigData.PaaS.CloudStorage"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.SaaS.Unmanaged",
+      "params": [
+        {
+          "key": "secret",
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "secretName",
+          "type": "string"
+        },
+        {
+          "key": "secretValue",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "CustomWorkloads.FaaS.GcpFunction",
+      "params": [
+        {
+          "key": "entryPoint",
+          "prefill": "MyFunction.myHandler",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "europe-west1",
+          "key": "location",
+          "type": "string"
+        },
+        {
+          "default": "europe-west1",
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "java21",
+          "key": "runtime",
+          "type": "string"
+        },
+        {
+          "key": "sourceArtifact",
+          "prefill": "gs://bucket/function.jar",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "sourceBucket",
+          "prefill": "gs://bucket",
+          "type": "string"
+        },
+        {
+          "key": "sourceObject",
+          "prefill": "function.jar",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "cloudfunctions.googleapis.com/Function"
+        }
+      ],
+      "serviceTypes": [
+        "NetworkAndCompute.FaaS.Workload"
+      ]
+    },
+    {
+      "aliasOfOfferType": "CustomWorkloads.FaaS.GcpFunction",
+      "offerType": "CustomWorkloads.FaaS.GoogleFunction",
+      "params": [
+        {
+          "key": "entryPoint",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "europe-west1",
+          "key": "location",
+          "type": "string"
+        },
+        {
+          "default": "europe-west1",
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "java21",
+          "key": "runtime",
+          "type": "string"
+        },
+        {
+          "key": "sourceArtifact",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "sourceBucket",
+          "type": "string"
+        },
+        {
+          "key": "sourceObject",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "cloudfunctions.googleapis.com/Function"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "CustomWorkloads.PaaS.GcpCloudRun",
+      "params": [
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "CustomWorkloads.SaaS.Unmanaged",
+      "params": [
+        {
+          "key": "secret",
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "secretName",
+          "type": "string"
+        },
+        {
+          "key": "secretValue",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Messaging.CaaS.Kafka",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": "8",
+          "key": "cpuLimit",
+          "type": "string"
+        },
+        {
+          "default": "4",
+          "key": "cpuRequest",
+          "type": "string"
+        },
+        {
+          "default": "4.2.0",
+          "key": "kafkaVersion",
+          "type": "string"
+        },
+        {
+          "default": "32Gi",
+          "key": "memoryLimit",
+          "type": "string"
+        },
+        {
+          "default": "16Gi",
+          "key": "memoryRequest",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": 5,
+          "key": "replicas",
+          "type": "integer"
+        },
+        {
+          "default": "1Ti",
+          "key": "storageSize",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Messaging.CaaS.KafkaTopic",
+      "params": [
+        {
+          "key": "clusterName",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "default": 50,
+          "key": "partitions",
+          "type": "integer"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": 2,
+          "key": "replicas",
+          "type": "integer"
+        },
+        {
+          "default": 172800000,
+          "key": "retentionMs",
+          "type": "integer"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Messaging.CaaS.KafkaUser",
+      "params": [
+        {
+          "default": [],
+          "key": "acls",
+          "type": "array"
+        },
+        {
+          "key": "clusterName",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Messaging.PaaS.GcpPubSub",
+      "params": [
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [],
+      "serviceTypes": [
+        "Messaging.PaaS.MessageBroker",
+        "Messaging.PaaS.StreamProcessing"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Messaging.PaaS.GcpPubSubTopic",
+      "params": [
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "pubsub.googleapis.com/Topic"
+        }
+      ],
+      "serviceTypes": [
+        "Messaging.PaaS.MessageBrokerEntity",
+        "Messaging.PaaS.StreamProcessingEntity"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Messaging.PaaS.PubSub",
+      "params": [
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": "Messaging.PaaS.GcpPubSubTopic",
+      "offerType": "Messaging.PaaS.PubSubTopic",
+      "params": [
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "pubsub.googleapis.com/Topic"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Messaging.PaaS.Subscription",
+      "params": [
+        {
+          "default": 10,
+          "key": "ackDeadlineSeconds",
+          "type": "integer"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "key": "topicName",
+          "prefill": "my-topic",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "pubsub.googleapis.com/Subscription"
+        }
+      ],
+      "serviceTypes": [
+        "Messaging.PaaS.MessageBrokerEntity",
+        "Messaging.PaaS.StreamProcessingEntity"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Messaging.SaaS.Unmanaged",
+      "params": [
+        {
+          "key": "secret",
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "secretName",
+          "type": "string"
+        },
+        {
+          "key": "secretValue",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": "NetworkAndCompute.PaaS.CloudRun",
+      "offerType": "NetworkAndCompute.CaaS.CloudRunService",
+      "params": [
+        {
+          "default": 80,
+          "key": "concurrency",
+          "type": "integer"
+        },
+        {
+          "default": "1",
+          "key": "cpu",
+          "type": "string"
+        },
+        {
+          "key": "image",
+          "prefill": "us-docker.pkg.dev/cloudrun/container/hello",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "all",
+          "key": "ingress",
+          "type": "string"
+        },
+        {
+          "default": 100,
+          "key": "maxInstances",
+          "type": "integer"
+        },
+        {
+          "default": "512Mi",
+          "key": "memory",
+          "type": "string"
+        },
+        {
+          "default": 0,
+          "key": "minInstances",
+          "type": "integer"
+        },
+        {
+          "default": 8080,
+          "key": "port",
+          "type": "integer"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "serviceAccountEmail",
+          "prefill": "cloud-run-sa@my-project.iam.gserviceaccount.com",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "run.googleapis.com/Service"
+        }
+      ],
+      "serviceTypes": [
+        "NetworkAndCompute.CaaS.CloudRunWorkload",
+        "NetworkAndCompute.PaaS.Workload"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.GcpComputeInstance",
+      "params": [
+        {
+          "default": false,
+          "key": "associatePublicIp",
+          "type": "boolean"
+        },
+        {
+          "key": "identity",
+          "type": "object"
+        },
+        {
+          "default": "projects/debian-cloud/global/images/family/debian-12",
+          "key": "imageLink",
+          "type": "string"
+        },
+        {
+          "default": "e2-medium",
+          "key": "machineType",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "publicSSHKey",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "userData",
+          "type": "string"
+        },
+        {
+          "key": "zone",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "compute.googleapis.com/Instance"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.GcpFirewall",
+      "params": [
+        {
+          "key": "description",
+          "prefill": "Allow SSH and RDP through Identity-Aware Proxy",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "ingressRules",
+          "prefill": [
+            {
+              "fromPort": 22,
+              "protocol": "tcp",
+              "sourceCidr": "35.235.240.0/20",
+              "toPort": 22
+            },
+            {
+              "fromPort": 3389,
+              "protocol": "tcp",
+              "sourceCidr": "35.235.240.0/20",
+              "toPort": 3389
+            }
+          ],
+          "type": "array"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "key": "targetTags",
+          "type": "array"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "compute.googleapis.com/Firewall"
+        }
+      ],
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.SecurityGroup"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.GcpGlb",
+      "params": [
+        {
+          "default": "INTERNAL",
+          "key": "lbScheme",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.LoadBalancer"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.GcpLoadBalancer",
+      "params": [
+        {
+          "default": "INTERNAL",
+          "key": "lbScheme",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP"
+    },
+    {
+      "aliasOfOfferType": "NetworkAndCompute.IaaS.GcpFirewall",
+      "offerType": "NetworkAndCompute.IaaS.GcpSecurityGroup",
+      "params": [
+        {
+          "key": "description",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "ingressRules",
+          "type": "array"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "key": "targetTags",
+          "type": "array"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "compute.googleapis.com/Firewall"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.GcpSubnet",
+      "params": [
+        {
+          "default": "",
+          "key": "cidrBlock",
+          "prefill": "10.0.1.0/24",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "networkName",
+          "prefill": "my-vpc",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "compute.googleapis.com/Subnetwork"
+        }
+      ],
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.Subnet"
+      ]
+    },
+    {
+      "aliasOfOfferType": "NetworkAndCompute.IaaS.GcpComputeInstance",
+      "offerType": "NetworkAndCompute.IaaS.GcpVirtualMachine",
+      "params": [
+        {
+          "default": false,
+          "key": "associatePublicIp",
+          "type": "boolean"
+        },
+        {
+          "key": "identity",
+          "type": "object"
+        },
+        {
+          "default": "projects/debian-cloud/global/images/family/debian-12",
+          "key": "imageLink",
+          "type": "string"
+        },
+        {
+          "default": "e2-medium",
+          "key": "machineType",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "publicSSHKey",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "userData",
+          "type": "string"
+        },
+        {
+          "key": "zone",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "compute.googleapis.com/Instance"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": "NetworkAndCompute.IaaS.GcpComputeInstance",
+      "offerType": "NetworkAndCompute.IaaS.GcpVm",
+      "params": [
+        {
+          "default": false,
+          "key": "associatePublicIp",
+          "type": "boolean"
+        },
+        {
+          "key": "identity",
+          "prefill": {
+            "scopes": [],
+            "serviceAccount": ""
+          },
+          "type": "object"
+        },
+        {
+          "default": "projects/debian-cloud/global/images/family/debian-12",
+          "key": "imageLink",
+          "type": "string"
+        },
+        {
+          "default": "e2-medium",
+          "key": "machineType",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "publicSSHKey",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "userData",
+          "prefill": "#!/bin/bash\necho \"Hello\"",
+          "type": "string"
+        },
+        {
+          "key": "zone",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "compute.googleapis.com/Instance"
+        }
+      ],
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.VirtualMachine"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.GcpVpc",
+      "params": [
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "CUSTOM",
+          "key": "subnetMode",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "compute.googleapis.com/Network"
+        }
+      ],
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.VirtualNetwork"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.GlobalLoadBalancer",
+      "params": [
+        {
+          "default": "INTERNAL",
+          "key": "lbScheme",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP"
+    },
+    {
+      "aliasOfOfferType": "NetworkAndCompute.IaaS.GcpFirewall",
+      "offerType": "NetworkAndCompute.IaaS.SecurityGroup",
+      "params": [
+        {
+          "key": "description",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "ingressRules",
+          "type": "array"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "key": "targetTags",
+          "type": "array"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "compute.googleapis.com/Firewall"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": "NetworkAndCompute.IaaS.GcpComputeInstance",
+      "offerType": "NetworkAndCompute.IaaS.VirtualMachine",
+      "params": [
+        {
+          "default": false,
+          "key": "associatePublicIp",
+          "type": "boolean"
+        },
+        {
+          "key": "identity",
+          "type": "object"
+        },
+        {
+          "default": "projects/debian-cloud/global/images/family/debian-12",
+          "key": "imageLink",
+          "type": "string"
+        },
+        {
+          "default": "e2-medium",
+          "key": "machineType",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "publicSSHKey",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "userData",
+          "type": "string"
+        },
+        {
+          "key": "zone",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "compute.googleapis.com/Instance"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.PaaS.CloudRun",
+      "params": [
+        {
+          "default": 80,
+          "key": "concurrency",
+          "type": "integer"
+        },
+        {
+          "default": "1",
+          "key": "cpu",
+          "type": "string"
+        },
+        {
+          "key": "image",
+          "prefill": "us-docker.pkg.dev/cloudrun/container/hello",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "all",
+          "key": "ingress",
+          "type": "string"
+        },
+        {
+          "default": 100,
+          "key": "maxInstances",
+          "type": "integer"
+        },
+        {
+          "default": "512Mi",
+          "key": "memory",
+          "type": "string"
+        },
+        {
+          "default": 0,
+          "key": "minInstances",
+          "type": "integer"
+        },
+        {
+          "default": 8080,
+          "key": "port",
+          "type": "integer"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "serviceAccountEmail",
+          "prefill": "cloud-run-sa@my-project.iam.gserviceaccount.com",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "run.googleapis.com/Service"
+        }
+      ],
+      "serviceTypes": [
+        "NetworkAndCompute.PaaS.ContainerPlatform"
+      ]
+    },
+    {
+      "aliasOfOfferType": "NetworkAndCompute.PaaS.GcpGke",
+      "offerType": "NetworkAndCompute.PaaS.GKE",
+      "params": [
+        {
+          "default": "",
+          "key": "kubernetesVersion",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "masterIpv4CidrBlock",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "networkName",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "networkPolicyProvider",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "nodePools",
+          "type": "array"
+        },
+        {
+          "default": 20,
+          "key": "podCidrPrefixLength",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "podIpRange",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "podsRangeName",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "priorityClasses",
+          "type": "array"
+        },
+        {
+          "default": false,
+          "key": "privateClusterDisabled",
+          "type": "boolean"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "roles",
+          "type": "array"
+        },
+        {
+          "default": 20,
+          "key": "serviceCidrPrefixLength",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "serviceIpRange",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "servicesRangeName",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "subnetworkIpRange",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "subnetworkName",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "windowsAdminUsername",
+          "type": "string"
+        },
+        {
+          "default": true,
+          "key": "workloadIdentityEnabled",
+          "type": "boolean"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "container.googleapis.com/Cluster"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.PaaS.GcpDnsZone",
+      "params": [
+        {
+          "default": false,
+          "key": "adoptExisting",
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "key": "allowBulkDelete",
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "key": "allowSubdomainDelegation",
+          "type": "boolean"
+        },
+        {
+          "default": [
+            "A",
+            "AAAA",
+            "CAA",
+            "CNAME",
+            "MX",
+            "NS",
+            "PTR",
+            "SRV",
+            "TXT"
+          ],
+          "key": "allowedRecordTypes",
+          "type": "array"
+        },
+        {
+          "default": [],
+          "key": "caaIssuers",
+          "type": "array"
+        },
+        {
+          "default": "Managed by Fractal Cloud",
+          "key": "description",
+          "type": "string"
+        },
+        {
+          "default": "disabled",
+          "key": "dnssec",
+          "type": "string"
+        },
+        {
+          "key": "dnssecEnabled",
+          "type": "boolean"
+        },
+        {
+          "key": "domainName",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "fullyManaged",
+          "type": "boolean"
+        },
+        {
+          "default": 604800,
+          "key": "maxTtl",
+          "type": "integer"
+        },
+        {
+          "default": 0,
+          "key": "minTtl",
+          "type": "integer"
+        },
+        {
+          "default": "authoritative",
+          "key": "recordManagement",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "records",
+          "type": "array"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "public",
+          "key": "visibility",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "serviceTypes": [
+        "NetworkAndCompute.PaaS.DnsZone"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.PaaS.GcpGke",
+      "params": [
+        {
+          "default": "",
+          "key": "kubernetesVersion",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "masterIpv4CidrBlock",
+          "prefill": "172.16.0.0/28",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "networkName",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "networkPolicyProvider",
+          "prefill": "CALICO",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "nodePools",
+          "type": "array"
+        },
+        {
+          "default": 20,
+          "key": "podCidrPrefixLength",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "podIpRange",
+          "prefill": "172.21.0.0/16",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "podsRangeName",
+          "prefill": "pods-range",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "priorityClasses",
+          "type": "array"
+        },
+        {
+          "default": false,
+          "key": "privateClusterDisabled",
+          "type": "boolean"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "roles",
+          "type": "array"
+        },
+        {
+          "default": 20,
+          "key": "serviceCidrPrefixLength",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "serviceIpRange",
+          "prefill": "172.20.0.0/16",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "servicesRangeName",
+          "prefill": "services-range",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "subnetworkIpRange",
+          "prefill": "10.0.0.0/20",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "subnetworkName",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "windowsAdminUsername",
+          "prefill": "Administrator",
+          "type": "string"
+        },
+        {
+          "default": true,
+          "key": "workloadIdentityEnabled",
+          "type": "boolean"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "container.googleapis.com/Cluster"
+        }
+      ],
+      "serviceTypes": [
+        "NetworkAndCompute.PaaS.Kubernetes"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.PaaS.GcpGlb",
+      "params": [
+        {
+          "default": "INTERNAL",
+          "key": "lbScheme",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP"
+    },
+    {
+      "aliasOfOfferType": "NetworkAndCompute.IaaS.GcpComputeInstance",
+      "offerType": "NetworkAndCompute.PaaS.GcpVm",
+      "params": [
+        {
+          "default": false,
+          "key": "associatePublicIp",
+          "type": "boolean"
+        },
+        {
+          "key": "identity",
+          "type": "object"
+        },
+        {
+          "default": "projects/debian-cloud/global/images/family/debian-12",
+          "key": "imageLink",
+          "type": "string"
+        },
+        {
+          "default": "e2-medium",
+          "key": "machineType",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "publicSSHKey",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "userData",
+          "type": "string"
+        },
+        {
+          "key": "zone",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "compute.googleapis.com/Instance"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": "NetworkAndCompute.PaaS.GcpGke",
+      "offerType": "NetworkAndCompute.PaaS.Kubernetes",
+      "params": [
+        {
+          "default": "",
+          "key": "kubernetesVersion",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "masterIpv4CidrBlock",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "networkName",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "networkPolicyProvider",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "nodePools",
+          "type": "array"
+        },
+        {
+          "default": 20,
+          "key": "podCidrPrefixLength",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "podIpRange",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "podsRangeName",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "priorityClasses",
+          "type": "array"
+        },
+        {
+          "default": false,
+          "key": "privateClusterDisabled",
+          "type": "boolean"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "roles",
+          "type": "array"
+        },
+        {
+          "default": 20,
+          "key": "serviceCidrPrefixLength",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "serviceIpRange",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "servicesRangeName",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "subnetworkIpRange",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "subnetworkName",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "windowsAdminUsername",
+          "type": "string"
+        },
+        {
+          "default": true,
+          "key": "workloadIdentityEnabled",
+          "type": "boolean"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "container.googleapis.com/Cluster"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.SaaS.Unmanaged",
+      "params": [
+        {
+          "key": "secret",
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "secretName",
+          "type": "string"
+        },
+        {
+          "key": "secretValue",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Observability.CaaS.Elastic",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": 8,
+          "key": "cpu",
+          "type": "integer"
+        },
+        {
+          "key": "elasticInstances",
+          "required": true,
+          "type": "integer"
+        },
+        {
+          "key": "elasticVersion",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "isApmRequired",
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "key": "isKibanaPubliclyExposed",
+          "type": "boolean"
+        },
+        {
+          "default": true,
+          "key": "isKibanaRequired",
+          "type": "boolean"
+        },
+        {
+          "default": 8,
+          "key": "memory",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": {},
+          "key": "secrets",
+          "type": "object"
+        },
+        {
+          "key": "storage",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "storageClassName",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Observability.CaaS.Jaeger",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "storageClassName",
+          "type": "string"
+        },
+        {
+          "default": {},
+          "key": "storageSettings",
+          "type": "object"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Observability.CaaS.Prometheus",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "grafanaConfigSecretId",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Observability.SaaS.Elastic",
+      "params": [
+        {
+          "key": "kibanaUri",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "operatorVersion",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "version",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Observability.SaaS.Jaeger",
+      "params": [
+        {
+          "key": "frontendUri",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "version",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Observability.SaaS.Prometheus",
+      "params": [
+        {
+          "key": "apiGatewayUrl",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "grafanaConfigSecretId",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Security.CaaS.Ocelot",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": 900,
+          "key": "cookieMaxAgeSec",
+          "type": "integer"
+        },
+        {
+          "default": [],
+          "key": "corsOrigins",
+          "type": "array"
+        },
+        {
+          "key": "host",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "default": "/*",
+          "key": "pathPrefix",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "roles",
+          "type": "array"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Security.SaaS.Unmanaged",
+      "params": [
+        {
+          "key": "secret",
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "secretName",
+          "type": "string"
+        },
+        {
+          "key": "secretValue",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.CaaS.CnpgCluster",
+      "params": [
+        {
+          "default": false,
+          "key": "age",
+          "type": "boolean"
+        },
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": "1",
+          "key": "cpuLimit",
+          "type": "string"
+        },
+        {
+          "default": "500m",
+          "key": "cpuRequest",
+          "type": "string"
+        },
+        {
+          "default": "app",
+          "key": "database",
+          "type": "string"
+        },
+        {
+          "default": "app",
+          "key": "databaseOwner",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "enableSuperuserAccess",
+          "type": "boolean"
+        },
+        {
+          "default": 3,
+          "key": "instances",
+          "type": "integer"
+        },
+        {
+          "default": "1Gi",
+          "key": "memoryLimit",
+          "type": "string"
+        },
+        {
+          "default": "512Mi",
+          "key": "memoryRequest",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "default": "17.2",
+          "key": "postgresqlVersion",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "storageClass",
+          "type": "string"
+        },
+        {
+          "default": "10Gi",
+          "key": "storageSize",
+          "type": "string"
+        },
+        {
+          "key": "version",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.CaaS.CnpgDatabase",
+      "params": [
+        {
+          "key": "cnpgClusterName",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": "app",
+          "key": "databaseName",
+          "type": "string"
+        },
+        {
+          "default": "app",
+          "key": "databaseOwner",
+          "type": "string"
+        },
+        {
+          "default": "UTF8",
+          "key": "encoding",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "localeCType",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "localeCollate",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.CaaS.Elastic",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": 8,
+          "key": "cpu",
+          "type": "integer"
+        },
+        {
+          "key": "elasticInstances",
+          "required": true,
+          "type": "integer"
+        },
+        {
+          "key": "elasticVersion",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "isApmRequired",
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "key": "isKibanaPubliclyExposed",
+          "type": "boolean"
+        },
+        {
+          "default": true,
+          "key": "isKibanaRequired",
+          "type": "boolean"
+        },
+        {
+          "default": 8,
+          "key": "memory",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": {},
+          "key": "secrets",
+          "type": "object"
+        },
+        {
+          "key": "storage",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "storageClassName",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.CaaS.MinioTenant",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": "2",
+          "key": "cpuLimit",
+          "type": "string"
+        },
+        {
+          "default": "500m",
+          "key": "cpuRequest",
+          "type": "string"
+        },
+        {
+          "default": "4Gi",
+          "key": "memoryLimit",
+          "type": "string"
+        },
+        {
+          "default": "1Gi",
+          "key": "memoryRequest",
+          "type": "string"
+        },
+        {
+          "default": "RELEASE.2025-03-12T18-04-18Z",
+          "key": "minioVersion",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": true,
+          "key": "requestAutoCert",
+          "type": "boolean"
+        },
+        {
+          "default": 4,
+          "key": "servers",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "storageClass",
+          "type": "string"
+        },
+        {
+          "default": "100Gi",
+          "key": "volumeSize",
+          "type": "string"
+        },
+        {
+          "default": 4,
+          "key": "volumesPerServer",
+          "type": "integer"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.PaaS.BigTable",
+      "params": [
+        {
+          "key": "clusterId",
+          "prefill": "my-cluster-c1",
+          "type": "string"
+        },
+        {
+          "default": 1,
+          "key": "nodes",
+          "type": "integer"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "europe-west1-b",
+          "key": "zone",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "serviceTypes": [
+        "Storage.PaaS.VendorSpecificColumnOrientedDbms"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.PaaS.BigTableTable",
+      "params": [
+        {
+          "default": [
+            "cf1"
+          ],
+          "key": "columnFamilies",
+          "type": "array"
+        },
+        {
+          "key": "instanceId",
+          "prefill": "my-instance",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "serviceTypes": [
+        "Storage.PaaS.VendorSpecificColumnOrientedEntity"
+      ]
+    },
+    {
+      "aliasOfOfferType": "Storage.PaaS.GcpGcsBucket",
+      "offerType": "Storage.PaaS.CloudStorage",
+      "params": [
+        {
+          "default": "",
+          "key": "bucketName",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "STANDARD",
+          "key": "storageClass",
+          "type": "string"
+        },
+        {
+          "default": true,
+          "key": "uniformBucketLevelAccess",
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "key": "versioningEnabled",
+          "type": "boolean"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "storage.googleapis.com/Bucket"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.PaaS.Collection",
+      "params": [
+        {
+          "default": "(default)",
+          "key": "database",
+          "type": "string"
+        },
+        {
+          "key": "path",
+          "prefill": "/users",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "serviceTypes": [
+        "Storage.PaaS.VendorSpecificDocumentDatabase"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.PaaS.DataflowJob",
+      "params": [
+        {
+          "default": "",
+          "key": "jobId",
+          "prefill": "my-dataflow-job",
+          "type": "string"
+        },
+        {
+          "default": "europe-west1",
+          "key": "location",
+          "type": "string"
+        },
+        {
+          "default": "europe-west1",
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "serviceTypes": [
+        "Messaging.PaaS.StreamProcessing"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.PaaS.Firestore",
+      "params": [
+        {
+          "default": "europe-west1",
+          "key": "location",
+          "type": "string"
+        },
+        {
+          "default": "europe-west1",
+          "key": "region",
+          "prefill": "eur3",
+          "type": "string"
+        },
+        {
+          "default": "FIRESTORE_NATIVE",
+          "key": "type",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "serviceTypes": [
+        "Storage.PaaS.VendorSpecificDocumentDbms"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.PaaS.GcpGcsBucket",
+      "params": [
+        {
+          "default": "",
+          "key": "bucketName",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "region",
+          "prefill": "EU",
+          "type": "string"
+        },
+        {
+          "default": "STANDARD",
+          "key": "storageClass",
+          "type": "string"
+        },
+        {
+          "default": true,
+          "key": "uniformBucketLevelAccess",
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "key": "versioningEnabled",
+          "type": "boolean"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "type": "storage.googleapis.com/Bucket"
+        }
+      ],
+      "serviceTypes": [
+        "Storage.PaaS.FilesAndBlobs"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.PaaS.GcpMySqlDbms",
+      "params": [
+        {
+          "default": 100,
+          "key": "instanceDataDiskSizeGb",
+          "type": "integer"
+        },
+        {
+          "default": "ENTERPRISE_PLUS",
+          "key": "instanceEdition",
+          "type": "string"
+        },
+        {
+          "default": "db-perf-optimized-N-4",
+          "key": "instanceTier",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "ipv4Enabled",
+          "type": "boolean"
+        },
+        {
+          "derived": {
+            "note": "defaults to the environment's spoke network when absent"
+          },
+          "key": "network",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the environment's region when absent"
+          },
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "ENCRYPTED_ONLY",
+          "key": "sslMode",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "discriminator": {
+            "mode": "Equals",
+            "name": "engine",
+            "value": "mysql"
+          },
+          "type": "sqladmin.googleapis.com/Instance"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.PaaS.GcpPostgresDatabase",
+      "params": [
+        {
+          "default": "UTF8",
+          "key": "charset",
+          "type": "string"
+        },
+        {
+          "default": "en_US.UTF8",
+          "key": "collation",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "createPostgresCredentials",
+          "type": "boolean"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [],
+      "serviceTypes": [
+        "Storage.PaaS.PostgreSqlDatabase"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.PaaS.GcpPostgresDbms",
+      "params": [
+        {
+          "default": false,
+          "key": "ipv4Enabled",
+          "type": "boolean"
+        },
+        {
+          "derived": {
+            "note": "defaults to the environment's spoke network when absent"
+          },
+          "key": "network",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the environment's region when absent"
+          },
+          "key": "region",
+          "prefill": "europe-west1",
+          "type": "string"
+        },
+        {
+          "default": "ENCRYPTED_ONLY",
+          "key": "sslMode",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "discriminator": {
+            "mode": "Equals",
+            "name": "engine",
+            "value": "postgres"
+          },
+          "type": "sqladmin.googleapis.com/Instance"
+        }
+      ],
+      "serviceTypes": [
+        "Storage.PaaS.PostgreSql"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.PaaS.PostgreSqlDatabase",
+      "params": [
+        {
+          "default": "UTF8",
+          "key": "charset",
+          "type": "string"
+        },
+        {
+          "default": "en_US.UTF8",
+          "key": "collation",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "createPostgresCredentials",
+          "type": "boolean"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": "Storage.PaaS.GcpPostgresDbms",
+      "offerType": "Storage.PaaS.PostgreSqlDbms",
+      "params": [
+        {
+          "default": false,
+          "key": "ipv4Enabled",
+          "type": "boolean"
+        },
+        {
+          "derived": {
+            "note": "defaults to the environment's spoke network when absent"
+          },
+          "key": "network",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the environment's region when absent"
+          },
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "ENCRYPTED_ONLY",
+          "key": "sslMode",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [
+        {
+          "discriminator": {
+            "mode": "Equals",
+            "name": "engine",
+            "value": "postgres"
+          },
+          "type": "sqladmin.googleapis.com/Instance"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.SaaS.Unmanaged",
+      "params": [
+        {
+          "key": "secret",
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "secretName",
+          "type": "string"
+        },
+        {
+          "key": "secretValue",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    }
+  ],
+  "schemaVersion": "2.0"
+}

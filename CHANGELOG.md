@@ -11,6 +11,47 @@ of truth for what is on npm.
 
 ## Unreleased
 
+### Changed — offer configs are generated from the agents' published contracts
+
+Every offer whose agent publishes a parameter contract is now defined from it: its
+offer type, its config keys, their types and which are required come from the
+contract (fractal-cloud-agents v8.25.1, aria-agent-caas-k8s v1.4.0, aria-agent-aruba
+v0.0.20), and every vendor key an offer writes from a neutral parameter (`lbScheme`,
+OCI `keyName`, the caas-k8s workload keys) is named through it, so a key an agent
+renames or drops is a compile error instead of a value nobody reads. See
+[`docs/offer-contracts.md`](docs/offer-contracts.md). Offers whose agent publishes no
+contract (Hetzner, OpenShift, vSphere, `Keycloak`) are unchanged.
+
+New public types: `OfferContract`, `ContractConfig`, `ContractParameters`,
+`ContractParameter`, `ContractValue`, `ContractValueType`, `ContractDeclaration`. An
+`Offer` carries its `contract`, and an offer constructor exposes `offerType`,
+`satisfies` and `contract`.
+
+**Breaking — config keys no agent read are removed.** A value set under them never
+took effect:
+
+- `AzureNsg`, `AzureServiceBus`, `AzurePostgresDbms`, `AzureDatalake`: `resourceGroup`.
+- `AzureApiManagement`: `sku`; the agent reads `skuName`. `publisherEmail` is now
+  optional, as the agent declares it.
+- `EcsService`: `launchType`.
+- `OciVcn`, `OciSubnet`, `OciSecurityList`, `OciInstance`: `region` (the OCI agent
+  reads no per-component region). `OciSecurityList`: `compartmentId`. `OciSubnet`:
+  `availabilityDomain` is now the agent's own key, `availabilityZone`.
+- `GcpPostgresDbms`: `tier`. `ArubaMySqlDbms`: `region`.
+- `TraefikGateway`: `forwardAuthExcludedPrefixes` (already refused at runtime).
+
+**Breaking — keys the agents require are required.** Each of these failed at
+reconcile when missing: `nodeTypeId` on `AwsDatabricksCluster`,
+`AzureDatabricksCluster` and `GcpDatabricksCluster`; `sparkOperatorName` on
+`CaaSSparkCluster` and `CaaSSparkJob`, and `mainApplicationFile` on `CaaSSparkJob`;
+`apiConfig` on `GcpApiGateway`; `clusterName` on `KafkaTopic`; `elasticInstances` and
+`storage` on `ObservabilityElastic`; `host` on `Ocelot`; `entryPoints` on `Traefik`.
+
+**Added — every other contract key is an optional config key**, e.g. `AwsLb.lbType`,
+the storage-account settings of `AzureBlob`, `AwsVpc.enableDnsHostnames`. Keys a
+neutral setter fills (`lbScheme`, `cidrBlock`, `ingressRules`, ...) are not offered
+as config, so a config value cannot bypass a locked guardrail.
+
 ### Fixed — IaaS parameters now reach the agents under the keys they read
 
 - **`LoadBalancer.withScheme(...)` takes effect.** It was emitted as `scheme`, a key
@@ -29,8 +70,9 @@ of truth for what is on npm.
   ("scheme cannot be changed"). Drop `withScheme('internal')` to keep the running one,
   or let the agent recreate it by replacing the component. Azure and GCP read the
   scheme only when creating, so their existing load balancers are untouched.
-- **`OciSubnet` `availabilityDomain` takes effect.** The OCI agent reads it as
-  `availabilityZone`; the offer now emits that key.
+- **`OciSubnet`'s availability domain takes effect.** The OCI agent reads it as
+  `availabilityZone`, which is now the config key (`availabilityDomain` is removed,
+  see above).
 - **`VirtualMachine.withPublicSSHKey(...)` reaches OCI.** `OciInstance` now emits it as
   `keyName`, which the OCI agent writes to the instance's `ssh_authorized_keys`.
 - **`HetznerServer` is reconciled.** It was emitted as

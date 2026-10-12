@@ -7,6 +7,16 @@
  * OMIT `provider` — they run on any cluster and are identified by deliveryModel
  * + offerType. Vendor knobs live in each offer's config type.
  */
+import {
+  CustomWorkloads_CaaS_KubernetesWorkload,
+  CustomWorkloads_FaaS_AwsLambda,
+  CustomWorkloads_FaaS_AzureFunction,
+  CustomWorkloads_FaaS_GcpFunction,
+  CustomWorkloads_PaaS_AwsEcsService,
+  CustomWorkloads_PaaS_AzureContainerApp,
+  CustomWorkloads_PaaS_GcpCloudRun,
+} from './generated/custom_workloads';
+import type {ContractConfig} from './contract/contract_config';
 import {defineOffer} from '../core';
 import {
   AZURE_CONTAINER_APPS_ENVIRONMENT_OFFER_TYPE,
@@ -18,19 +28,19 @@ import type {WorkloadSsmParameters} from './workload_ssm_parameters';
 // ── Workload offers ──────────────────────────────────────────────────────────
 export const EcsService = defineOffer<
   'CustomWorkloads.Workload',
-  {region?: string; launchType: string}
+  ContractConfig<typeof CustomWorkloads_PaaS_AwsEcsService>
 >({
   satisfies: 'CustomWorkloads.Workload',
-  offerType: 'CustomWorkloads.PaaS.AwsEcsService',
+  contract: CustomWorkloads_PaaS_AwsEcsService,
   provider: 'AWS',
   deliveryModel: 'PaaS',
 });
 export const CloudRun = defineOffer<
   'CustomWorkloads.Workload',
-  {region?: string}
+  ContractConfig<typeof CustomWorkloads_PaaS_GcpCloudRun>
 >({
   satisfies: 'CustomWorkloads.Workload',
-  offerType: 'CustomWorkloads.PaaS.GcpCloudRun',
+  contract: CustomWorkloads_PaaS_GcpCloudRun,
   provider: 'GCP',
   deliveryModel: 'PaaS',
 });
@@ -49,10 +59,14 @@ export const CloudRun = defineOffer<
  */
 export const AzureContainerApp = defineOffer<
   'CustomWorkloads.Workload',
-  {region?: string; resourceGroup: string}
+  ContractConfig<
+    typeof CustomWorkloads_PaaS_AzureContainerApp,
+    'image' | 'maxReplicas' | 'port',
+    {resourceGroup: string}
+  >
 >({
   satisfies: 'CustomWorkloads.Workload',
-  offerType: 'CustomWorkloads.PaaS.AzureContainerApp',
+  contract: CustomWorkloads_PaaS_AzureContainerApp,
   provider: 'Azure',
   deliveryModel: 'PaaS',
   validate: (self, all) => {
@@ -108,16 +122,35 @@ export const OpenshiftWorkload = defineOffer<
  */
 export const K8sWorkload = defineOffer<
   'CustomWorkloads.Workload',
-  {
-    namespace?: string;
-    ssmParameters?: WorkloadSsmParameters;
-    sesIdentityArns?: string[];
-  }
+  ContractConfig<
+    typeof CustomWorkloads_CaaS_KubernetesWorkload,
+    | 'autoscaling'
+    | 'cpuRequest'
+    | 'env'
+    | 'healthCheck'
+    | 'livenessProbe'
+    | 'maxReplicas'
+    | 'maxSurge'
+    | 'memoryRequest'
+    | 'nodeSelector'
+    | 'podDisruptionBudget'
+    | 'preStopSleepSeconds'
+    | 'readinessProbe'
+    | 'replicas'
+    | 'secretEnv'
+    | 'startupProbe'
+    | 'terminationGracePeriodSeconds'
+    | 'topologySpread',
+    {
+      ssmParameters?: WorkloadSsmParameters;
+      sesIdentityArns?: string[];
+    }
+  >
 >({
   satisfies: 'CustomWorkloads.Workload',
   // Exported symbol name is public API and stays `K8sWorkload`; only the wire
   // value is pinned to the id the catalogue and the caas-k8s agent agree on.
-  offerType: KUBERNETES_WORKLOAD_OFFER_TYPE,
+  contract: CustomWorkloads_CaaS_KubernetesWorkload,
   deliveryModel: 'CaaS',
   instantiate: (ctx, cfg) => [
     {
@@ -142,28 +175,35 @@ export const K8sWorkload = defineOffer<
 // ── Function offers ──────────────────────────────────────────────────────────
 export const AwsLambda = defineOffer<
   'CustomWorkloads.Function',
-  {region?: string; roleArn: string; handler: string}
+  ContractConfig<
+    typeof CustomWorkloads_FaaS_AwsLambda,
+    'environment' | 'runtime' | 'sourceArtifact',
+    {roleArn: string; handler: string}
+  >
 >({
   satisfies: 'CustomWorkloads.Function',
-  offerType: 'CustomWorkloads.FaaS.AwsLambda',
+  contract: CustomWorkloads_FaaS_AwsLambda,
   provider: 'AWS',
   deliveryModel: 'FaaS',
 });
 export const AzureFunction = defineOffer<
   'CustomWorkloads.Function',
-  {region?: string}
+  ContractConfig<typeof CustomWorkloads_FaaS_AzureFunction, 'sourceArtifact'>
 >({
   satisfies: 'CustomWorkloads.Function',
-  offerType: 'CustomWorkloads.FaaS.AzureFunction',
+  contract: CustomWorkloads_FaaS_AzureFunction,
   provider: 'Azure',
   deliveryModel: 'FaaS',
 });
 export const GcpFunction = defineOffer<
   'CustomWorkloads.Function',
-  {region?: string; entryPoint: string}
+  ContractConfig<
+    typeof CustomWorkloads_FaaS_GcpFunction,
+    'runtime' | 'sourceArtifact'
+  >
 >({
   satisfies: 'CustomWorkloads.Function',
-  offerType: 'CustomWorkloads.FaaS.GcpFunction',
+  contract: CustomWorkloads_FaaS_GcpFunction,
   provider: 'GCP',
   deliveryModel: 'FaaS',
 });

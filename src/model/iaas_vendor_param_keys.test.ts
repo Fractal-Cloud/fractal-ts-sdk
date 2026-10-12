@@ -168,7 +168,7 @@ describe('OCI offers emit the keys the OCI agent reads', () => {
           environment,
           select: {
             'app-subnet': OciSubnet(
-              subnetAd === undefined ? {} : {availabilityDomain: subnetAd},
+              subnetAd === undefined ? {} : {availabilityZone: subnetAd},
             ),
             'app-vm': OciInstance({shape: 'VM.Standard.E4.Flex'}),
           },
@@ -176,13 +176,13 @@ describe('OCI offers emit the keys the OCI agent reads', () => {
         .components.map(c => [c.id, c.parameters]),
     );
 
-  it('OciSubnet availabilityDomain is emitted as availabilityZone (OciSubnetConfig)', () => {
+  it('OciSubnet takes the availability domain under the contract key availabilityZone', () => {
     const subnet = ociComponents('Uocm:EU-FRANKFURT-1-AD-1')['app-subnet'];
     expect(subnet.availabilityZone).toBe('Uocm:EU-FRANKFURT-1-AD-1');
     expect(subnet).not.toHaveProperty('availabilityDomain');
   });
 
-  it('OciSubnet without an availabilityDomain emits no availabilityZone', () => {
+  it('OciSubnet without an availabilityZone emits none', () => {
     expect(ociComponents()['app-subnet']).not.toHaveProperty(
       'availabilityZone',
     );

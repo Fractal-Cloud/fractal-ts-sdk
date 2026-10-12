@@ -1,0 +1,64 @@
+/**
+ * Type-level assertions that the parameter-key drifts the SDK used to ship
+ * cannot be written any more, checked by `npm run typecheck` (see
+ * storage.test-d.ts for why these are not in a `.test.ts`). Every offer config
+ * and every vendor key a translation writes comes from the agents' published
+ * contracts (docs/offer-contracts.md).
+ */
+import {contractKey} from './contract_key';
+import type {ContractConfig} from './contract_config';
+import {NetworkAndCompute_IaaS_AwsLb} from '../generated/network_and_compute';
+import {
+  AwsLb,
+  AzureNsg,
+  OciInstance,
+  OciSubnet,
+  OciVcn,
+} from '../network_and_compute';
+import {AzureApiManagement} from '../api_management';
+import {CertManager} from '../security';
+import {EcsService} from '../custom_workloads';
+
+// A translation names the agent's key through the contract: `lbScheme` is one…
+contractKey(NetworkAndCompute_IaaS_AwsLb, 'lbScheme');
+// @ts-expect-error …and the neutral `scheme` the SDK once shipped is not.
+contractKey(NetworkAndCompute_IaaS_AwsLb, 'scheme');
+
+// OCI reads the availability domain as `availabilityZone`, and no `region`.
+OciSubnet({availabilityZone: 'Uocm:EU-FRANKFURT-1-AD-1'});
+// @ts-expect-error `availabilityDomain` is not a key of the OCI subnet contract.
+OciSubnet({availabilityDomain: 'Uocm:EU-FRANKFURT-1-AD-1'});
+// @ts-expect-error the OCI agent reads no per-component `region`.
+OciVcn({region: 'eu-frankfurt-1'});
+// The public key is the neutral `withPublicSSHKey`, sent as the contract's `keyName`.
+OciInstance({shape: 'VM.Standard.E4.Flex'});
+
+// A key a neutral guardrail fills is not offered twice: `withScheme` owns it.
+// @ts-expect-error `lbScheme` comes from `LoadBalancer.withScheme`.
+AwsLb({lbScheme: 'internal'});
+
+// Keys the SDK offered that the agents never read.
+// @ts-expect-error the Azure NSG contract has no `resourceGroup`.
+AzureNsg({resourceGroup: 'rg'});
+// @ts-expect-error the API Management contract names its SKU `skuName`.
+AzureApiManagement({sku: 'Developer'});
+AzureApiManagement({skuName: 'Developer'});
+// @ts-expect-error the ECS service contract has no `launchType`.
+EcsService({launchType: 'FARGATE'});
+
+// A key the contract requires is required.
+CertManager({
+  hostedZoneId: 'Z123',
+  role: 'arn:aws:iam::123456789012:role/dns',
+  email: 'ops@example.com',
+});
+// @ts-expect-error `role` is required by the caas-k8s contract.
+CertManager({hostedZoneId: 'Z123', email: 'ops@example.com'});
+
+/** An override may only re-type a key the contract declares. */
+export type LbConfigWithScheme = ContractConfig<
+  typeof NetworkAndCompute_IaaS_AwsLb,
+  never,
+  // @ts-expect-error `scheme` is not a key of the AWS load balancer contract.
+  {scheme?: string}
+>;

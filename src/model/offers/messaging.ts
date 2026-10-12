@@ -5,6 +5,18 @@
  * Components in components/messaging.ts. Vendor knobs live in each offer's Cfg.
  * Vendor-neutral self-hosted offers (Kafka on any cluster) OMIT `provider`.
  */
+import {
+  Messaging_CaaS_Kafka,
+  Messaging_CaaS_KafkaTopic,
+  Messaging_PaaS_AwsSesIdentity,
+  Messaging_PaaS_AwsSnsTopic,
+  Messaging_PaaS_AwsSqsQueue,
+  Messaging_PaaS_AzureServiceBus,
+  Messaging_PaaS_AzureServiceBusTopic,
+  Messaging_PaaS_GcpPubSub,
+  Messaging_PaaS_GcpPubSubTopic,
+} from './generated/messaging';
+import type {ContractConfig} from './contract/contract_config';
 import {defineOffer} from '../core';
 import type {InstantiationContext} from '../core';
 
@@ -46,7 +58,8 @@ const exactSkuTier = (value: unknown): AzureServiceBusSkuTier | undefined =>
   typeof value === 'string' ? SKU_TIERS.find(t => t === value) : undefined;
 
 /** Offer type of the only Azure `Messaging.MessagingEntity` in this catalogue. */
-const AZURE_SERVICE_BUS_TOPIC_TYPE = 'Messaging.PaaS.AzureServiceBusTopic';
+const AZURE_SERVICE_BUS_TOPIC_TYPE =
+  Messaging_PaaS_AzureServiceBusTopic.offerType;
 
 /**
  * Refuse a Basic namespace that a topic in the same Live System depends on. ARM
@@ -122,15 +135,17 @@ const resolveSkuTier = (
 };
 export const AzureServiceBus = defineOffer<
   'Messaging.Broker',
-  {
-    region?: string;
-    resourceGroup: string;
-    /** Namespace SKU; defaults to Standard. See {@link AzureServiceBusSkuTier}. */
-    skuTier?: AzureServiceBusSkuTier;
-  }
+  ContractConfig<
+    typeof Messaging_PaaS_AzureServiceBus,
+    'encryption',
+    {
+      /** Namespace SKU; defaults to Standard. See {@link AzureServiceBusSkuTier}. */
+      skuTier?: AzureServiceBusSkuTier;
+    }
+  >
 >({
   satisfies: 'Messaging.Broker',
-  offerType: 'Messaging.PaaS.AzureServiceBus',
+  contract: Messaging_PaaS_AzureServiceBus,
   provider: 'Azure',
   deliveryModel: 'PaaS',
   validate: refuseBasicNamespaceWithTopics,
@@ -170,7 +185,7 @@ export const AzureServiceBus = defineOffer<
     {
       id: ctx.id,
       displayName: ctx.displayName,
-      type: 'Messaging.PaaS.AzureServiceBus',
+      type: Messaging_PaaS_AzureServiceBus.offerType,
       provider: 'Azure',
       deliveryModel: 'PaaS',
       // `skuTier` last so the resolved SKU always beats a spread-in value, and an
@@ -185,51 +200,57 @@ export const AzureServiceBus = defineOffer<
     },
   ],
 });
-export const GcpPubSub = defineOffer<'Messaging.Broker', {region?: string}>({
+export const GcpPubSub = defineOffer<
+  'Messaging.Broker',
+  ContractConfig<typeof Messaging_PaaS_GcpPubSub>
+>({
   satisfies: 'Messaging.Broker',
-  offerType: 'Messaging.PaaS.GcpPubSub',
+  contract: Messaging_PaaS_GcpPubSub,
   provider: 'GCP',
   deliveryModel: 'PaaS',
 });
 /** Vendor-neutral self-hosted Kafka — no `provider`. */
-export const Kafka = defineOffer<'Messaging.Broker', {namespace?: string}>({
+export const Kafka = defineOffer<
+  'Messaging.Broker',
+  ContractConfig<typeof Messaging_CaaS_Kafka>
+>({
   satisfies: 'Messaging.Broker',
-  offerType: 'Messaging.CaaS.Kafka',
+  contract: Messaging_CaaS_Kafka,
   deliveryModel: 'CaaS',
 });
 
 // ── MessagingEntity offers (satisfy 'Messaging.MessagingEntity') ──────────────
 export const AzureServiceBusTopic = defineOffer<
   'Messaging.MessagingEntity',
-  Record<string, never>
+  ContractConfig<typeof Messaging_PaaS_AzureServiceBusTopic>
 >({
   satisfies: 'Messaging.MessagingEntity',
-  offerType: 'Messaging.PaaS.AzureServiceBusTopic',
+  contract: Messaging_PaaS_AzureServiceBusTopic,
   provider: 'Azure',
   deliveryModel: 'PaaS',
 });
 export const GcpPubSubTopic = defineOffer<
   'Messaging.MessagingEntity',
-  Record<string, never>
+  ContractConfig<typeof Messaging_PaaS_GcpPubSubTopic>
 >({
   satisfies: 'Messaging.MessagingEntity',
-  offerType: 'Messaging.PaaS.GcpPubSubTopic',
+  contract: Messaging_PaaS_GcpPubSubTopic,
   provider: 'GCP',
   deliveryModel: 'PaaS',
 });
 /** Vendor-neutral self-hosted Kafka topic — no `provider`. */
 export const KafkaTopic = defineOffer<
   'Messaging.MessagingEntity',
-  Record<string, never>
+  ContractConfig<typeof Messaging_CaaS_KafkaTopic>
 >({
   satisfies: 'Messaging.MessagingEntity',
-  offerType: 'Messaging.CaaS.KafkaTopic',
+  contract: Messaging_CaaS_KafkaTopic,
   deliveryModel: 'CaaS',
 });
 
 // ── AWS: SNS topic + SQS queue (satisfy 'Messaging.MessagingEntity') ─────────
-const AWS_SNS_TOPIC_TYPE = 'Messaging.PaaS.AwsSnsTopic';
-const AWS_SQS_QUEUE_TYPE = 'Messaging.PaaS.AwsSqsQueue';
+const AWS_SNS_TOPIC_TYPE = Messaging_PaaS_AwsSnsTopic.offerType;
+const AWS_SQS_QUEUE_TYPE = Messaging_PaaS_AwsSqsQueue.offerType;
 
 /** SNS topic names: 1–256 letters, digits, hyphens and underscores (standard topics). */
 const SNS_TOPIC_NAME = /^[A-Za-z0-9_-]{1,256}$/;
@@ -245,21 +266,25 @@ const SQS_QUEUE_NAME = /^[A-Za-z0-9_-]{1,76}$/;
  */
 export const AwsSnsTopic = defineOffer<
   'Messaging.MessagingEntity',
-  {
-    /** Defaults to the component id. */
-    topicName?: string;
-    /** Server-side encryption key; defaults to the AWS-managed `alias/aws/sns`. */
-    kmsMasterKeyId?: string;
-    /**
-     * Largest message in bytes, 1024 to 1048576; the agent defaults to 262144.
-     * Above 262144 SNS accepts only SQS, Firehose and Lambda subscribers (at
-     * most 100). The queue's limit is 1 MiB, so the topic's is the end-to-end one.
-     */
-    maximumMessageSize?: number;
-  }
+  ContractConfig<
+    typeof Messaging_PaaS_AwsSnsTopic,
+    never,
+    {
+      /** Defaults to the component id. */
+      topicName?: string;
+      /** Server-side encryption key; defaults to the AWS-managed `alias/aws/sns`. */
+      kmsMasterKeyId?: string;
+      /**
+       * Largest message in bytes, 1024 to 1048576; the agent defaults to 262144.
+       * Above 262144 SNS accepts only SQS, Firehose and Lambda subscribers (at
+       * most 100). The queue's limit is 1 MiB, so the topic's is the end-to-end one.
+       */
+      maximumMessageSize?: number;
+    }
+  >
 >({
   satisfies: 'Messaging.MessagingEntity',
-  offerType: AWS_SNS_TOPIC_TYPE,
+  contract: Messaging_PaaS_AwsSnsTopic,
   provider: 'AWS',
   deliveryModel: 'PaaS',
   validate: (self, _all, config) => {
@@ -376,28 +401,32 @@ const validateSesProductionAccess = (
  */
 export const AwsSesIdentity = defineOffer<
   'Messaging.EmailSender',
-  {
-    /** The domain mail is sent from, e.g. `example.com`. */
-    domain: string;
-    /** One DNS label; MAIL FROM becomes `<label>.<domain>`. Unset or blank = SES's own. */
-    mailFromSubdomain?: string;
-    /**
-     * `true`: request SES production access once. Account-wide and per region;
-     * cannot be reverted. Unset or `false` = the sandbox.
-     */
-    productionAccess?: boolean;
-    /** For the production access request. The agent's default: `TRANSACTIONAL`. */
-    mailType?: 'TRANSACTIONAL' | 'MARKETING';
-    /** Required with `productionAccess`: the sender's http(s) website. */
-    websiteUrl?: string;
-    /** Required with `productionAccess`: what is sent, to whom, and how bounces and complaints are handled. */
-    useCaseDescription?: string;
-    /** The language AWS answers the request in. The agent's default: `EN`. */
-    contactLanguage?: 'EN' | 'JA';
-  }
+  ContractConfig<
+    typeof Messaging_PaaS_AwsSesIdentity,
+    never,
+    {
+      /** The domain mail is sent from, e.g. `example.com`. */
+      domain: string;
+      /** One DNS label; MAIL FROM becomes `<label>.<domain>`. Unset or blank = SES's own. */
+      mailFromSubdomain?: string;
+      /**
+       * `true`: request SES production access once. Account-wide and per region;
+       * cannot be reverted. Unset or `false` = the sandbox.
+       */
+      productionAccess?: boolean;
+      /** For the production access request. The agent's default: `TRANSACTIONAL`. */
+      mailType?: 'TRANSACTIONAL' | 'MARKETING';
+      /** Required with `productionAccess`: the sender's http(s) website. */
+      websiteUrl?: string;
+      /** Required with `productionAccess`: what is sent, to whom, and how bounces and complaints are handled. */
+      useCaseDescription?: string;
+      /** The language AWS answers the request in. The agent's default: `EN`. */
+      contactLanguage?: 'EN' | 'JA';
+    }
+  >
 >({
   satisfies: 'Messaging.EmailSender',
-  offerType: 'Messaging.PaaS.AwsSesIdentity',
+  contract: Messaging_PaaS_AwsSesIdentity,
   provider: 'AWS',
   deliveryModel: 'PaaS',
   validate: (self, _all, config) => {
@@ -473,27 +502,21 @@ const queueParameters = (
   return params;
 };
 
-type SqsQueueConfig = {
-  /** Defaults to the component id. The dead-letter queue is `<queueName>-dlq`. */
-  queueName?: string;
-  /** Default 60. */
-  visibilityTimeoutSeconds?: number;
-  /** Default 345600 (4 days). */
-  messageRetentionSeconds?: number;
-  /** Receives before a message moves to the dead-letter queue; default 5. */
-  maxReceiveCount?: number;
-  /** Default 1209600 (14 days). */
-  dlqRetentionSeconds?: number;
-  /** Deliver the published message as is, without the SNS envelope; default true. */
-  rawMessageDelivery?: boolean;
-  /**
-   * Deliver only messages whose `eventName` attribute is one of these. Empty or
-   * absent: every message of the topic.
-   */
-  filterEventNames?: readonly string[];
-  /** A raw SNS filter policy, in place of `filterEventNames`. */
-  filterPolicy?: Record<string, unknown> | string;
-};
+type SqsQueueConfig = ContractConfig<
+  typeof Messaging_PaaS_AwsSqsQueue,
+  never,
+  {
+    /** Defaults to the component id. The dead-letter queue is `<queueName>-dlq`. */
+    queueName?: string;
+    /**
+     * Deliver only messages whose `eventName` attribute is one of these. Empty or
+     * absent: every message of the topic.
+     */
+    filterEventNames?: readonly string[];
+    /** A raw SNS filter policy, in place of `filterEventNames`. */
+    filterPolicy?: Record<string, unknown> | string;
+  }
+>;
 
 const INTEGER_BOUNDS: ReadonlyArray<[keyof SqsQueueConfig, number, number]> = [
   ['visibilityTimeoutSeconds', 0, 43200],
@@ -519,7 +542,7 @@ export const AwsSqsQueue = defineOffer<
   SqsQueueConfig
 >({
   satisfies: 'Messaging.MessagingEntity',
-  offerType: AWS_SQS_QUEUE_TYPE,
+  contract: Messaging_PaaS_AwsSqsQueue,
   provider: 'AWS',
   deliveryModel: 'PaaS',
   instantiate: (ctx, config) => {

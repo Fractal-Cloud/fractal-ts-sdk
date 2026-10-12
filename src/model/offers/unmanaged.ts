@@ -9,6 +9,8 @@
  * domains (Storage.SaaS.Unmanaged, ...) are added here the same way, all
  * satisfying the single `Unmanaged` component.
  */
+import {AI_SaaS_Unmanaged} from './generated/ai';
+import type {ContractConfig} from './contract/contract_config';
 import {defineOffer} from '../core';
 import type {SecretRef} from '../secret';
 
@@ -18,11 +20,16 @@ import type {SecretRef} from '../secret';
  * raw value never travels in the blueprint. Define the secret once on the
  * environment with `withSecret({shortName, value})`.
  */
-type UnmanagedConfig = {secret: SecretRef};
+type UnmanagedConfig = ContractConfig<
+  typeof AI_SaaS_Unmanaged,
+  // Raw secret material is never carried in a blueprint.
+  'secretName' | 'secretValue',
+  {secret: SecretRef}
+>;
 
 // ── AI.SaaS.Unmanaged — external AI / LLM service (e.g. OpenAI) ───────────────
 export const UnmanagedAi = defineOffer<'Unmanaged', UnmanagedConfig>({
   satisfies: 'Unmanaged',
-  offerType: 'AI.SaaS.Unmanaged',
+  contract: AI_SaaS_Unmanaged,
   deliveryModel: 'SaaS',
 });

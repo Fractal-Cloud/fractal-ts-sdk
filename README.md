@@ -951,6 +951,8 @@ as a step-summary section.
 
 The blueprint references the **Component** in the left column; a Live System selects any **Offer** beneath it. Offers with no provider are vendor-neutral self-hosted (run on any cluster).
 
+An offer's config keys, their types and which are required are generated from the parameter contract its agent publishes, so they are exactly the keys the agent reads; see [`docs/offer-contracts.md`](docs/offer-contracts.md). The Hetzner, VMware and OpenShift offers, whose agents publish no contract yet, are hand-written.
+
 ### NetworkAndCompute
 
 | Component | AWS | Azure | GCP | OCI | Hetzner | VMware | RedHat (OpenShift) |
@@ -1070,7 +1072,7 @@ to `Standard`** as of 2.4.5. Read this before upgrading across that version.
 > first deploy after upgrading therefore destroys it unless you pin the tier:
 >
 > ```ts
-> AzureServiceBus({resourceGroup: 'acme', skuTier: 'Basic'})
+> AzureServiceBus({skuTier: 'Basic'})
 > ```
 
 Why the default is `Standard`: a Basic namespace cannot host a topic at all (ARM
