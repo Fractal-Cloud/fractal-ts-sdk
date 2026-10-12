@@ -197,39 +197,39 @@ export const GcpSubnet = defineOffer<
 // ── SecurityGroup ────────────────────────────────────────────────────────────
 export const AwsSecurityGroup = defineOffer<
   'NetworkAndCompute.SecurityGroup',
-  ContractConfig<typeof NetworkAndCompute_IaaS_AwsSecurityGroup, 'ingressRules'>
+  ContractConfig<
+    typeof NetworkAndCompute_IaaS_AwsSecurityGroup,
+    'ingressRules' | 'egressRules'
+  >
 >({
   satisfies: 'NetworkAndCompute.SecurityGroup',
   contract: NetworkAndCompute_IaaS_AwsSecurityGroup,
   provider: 'AWS',
   deliveryModel: 'IaaS',
-  neutral: {
-    egressRules: unsupported('the agent reconciles ingress rules only'),
-  },
 });
 export const AzureNsg = defineOffer<
   'NetworkAndCompute.SecurityGroup',
-  ContractConfig<typeof NetworkAndCompute_IaaS_AzureNsg, 'ingressRules'>
+  ContractConfig<
+    typeof NetworkAndCompute_IaaS_AzureNsg,
+    'ingressRules' | 'egressRules'
+  >
 >({
   satisfies: 'NetworkAndCompute.SecurityGroup',
   contract: NetworkAndCompute_IaaS_AzureNsg,
   provider: 'Azure',
   deliveryModel: 'IaaS',
-  neutral: {
-    egressRules: unsupported('the agent reconciles ingress rules only'),
-  },
 });
 export const GcpFirewall = defineOffer<
   'NetworkAndCompute.SecurityGroup',
-  ContractConfig<typeof NetworkAndCompute_IaaS_GcpFirewall, 'ingressRules'>
+  ContractConfig<
+    typeof NetworkAndCompute_IaaS_GcpFirewall,
+    'ingressRules' | 'egressRules'
+  >
 >({
   satisfies: 'NetworkAndCompute.SecurityGroup',
   contract: NetworkAndCompute_IaaS_GcpFirewall,
   provider: 'GCP',
   deliveryModel: 'IaaS',
-  neutral: {
-    egressRules: unsupported('the agent reconciles ingress rules only'),
-  },
 });
 
 // ── VirtualMachine ───────────────────────────────────────────────────────────
@@ -262,7 +262,8 @@ export const Ec2Instance = defineOffer<
   'NetworkAndCompute.VirtualMachine',
   ContractConfig<
     typeof NetworkAndCompute_IaaS_AwsEc2Instance,
-    never,
+    // Filled by the neutral withPublicSSHKey.
+    'publicSSHKey',
     {
       identity?: VmIdentity;
       /**
@@ -287,9 +288,6 @@ export const Ec2Instance = defineOffer<
   deliveryModel: 'IaaS',
   neutral: {
     osType: unsupported('the operating system follows amiId'),
-    publicSSHKey: unsupported(
-      'the agent takes an EC2 key pair name (keyName), not public key material',
-    ),
     size: toContractKey(
       NetworkAndCompute_IaaS_AwsEc2Instance,
       'instanceType',
@@ -390,69 +388,6 @@ export const OpenshiftVm = defineOffer<
   deliveryModel: 'CaaS',
 });
 
-// ── ContainerPlatform ────────────────────────────────────────────────────────
-const EKS_LOG_TYPES: readonly EksControlPlaneLogType[] = [
-  'api',
-  'audit',
-  'authenticator',
-  'controllerManager',
-  'scheduler',
-];
-const EKS_ARCHITECTURES = ['arm64', 'amd64'];
-const EKS_BUILT_IN_POOLS = ['system', 'general-purpose'];
-const DNS_1123_LABEL = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
-const EKS_CAPACITY_TYPES = ['on-demand', 'spot'];
-
-const refuseEks = (id: string, why: string): never => {
-  throw new Error(`Eks '${id}': ${why}.`);
-};
-
-const ensureValidNodePools = (
-  id: string,
-  pools: readonly EksAutoModeNodePool[],
-): void => {
-  const names = new Set<string>();
-  for (const pool of pools) {
-    if (pool.name.trim() === '') {
-      refuseEks(id, 'a node pool needs a name');
-    }
-    if (!DNS_1123_LABEL.test(pool.name)) {
-      refuseEks(
-        id,
-        `node pool name '${pool.name}' is not a DNS-1123 label (a-z, 0-9 and '-', at most 63)`,
-      );
-    }
-    if (EKS_BUILT_IN_POOLS.includes(pool.name)) {
-      refuseEks(
-        id,
-        `node pool name '${pool.name}' is reserved for an EKS Auto Mode built-in pool`,
-      );
-    }
-    if (names.has(pool.name)) {
-      refuseEks(id, `node pool name '${pool.name}' twice`);
-    }
-    names.add(pool.name);
-    const badArch = (pool.architectures ?? []).find(
-      a => !EKS_ARCHITECTURES.includes(a),
-    );
-    if (badArch !== undefined) {
-      refuseEks(
-        id,
-        `node pool '${pool.name}' architectures holds '${badArch}' (arm64 or amd64)`,
-      );
-    }
-    const badCapacity = (pool.capacityTypes ?? []).find(
-      c => !EKS_CAPACITY_TYPES.includes(c),
-    );
-    if (badCapacity !== undefined) {
-      refuseEks(
-        id,
-        `node pool '${pool.name}' capacityTypes holds '${badCapacity}' (on-demand or spot)`,
-      );
-    }
-  }
-};
-
 type EksConfig = ContractConfig<
   typeof NetworkAndCompute_PaaS_AwsEks,
   // Filled from the neutral withKubernetesVersion / withNetworkPolicyProvider.
@@ -505,18 +440,6 @@ export const Eks = defineOffer<
       NetworkAndCompute_PaaS_AwsEks.offerType,
       'AWS',
     )(ctx, config);
-  },
-  validate: (self, _all, config) => {
-    ensureValidNodePools(self.id, config.nodePools ?? []);
-    const badLog = (config.controlPlaneLogTypes ?? []).find(
-      t => !EKS_LOG_TYPES.includes(t),
-    );
-    if (badLog !== undefined) {
-      refuseEks(
-        self.id,
-        `controlPlaneLogTypes holds '${badLog}' (one of ${EKS_LOG_TYPES.join(', ')})`,
-      );
-    }
   },
 });
 export const Aks = defineOffer<
@@ -606,9 +529,8 @@ export const EcsCluster = defineOffer<
  * a failed deployment. `region` is a real parameter every Azure offer declares,
  * but this component never consults it, so setting it would deploy nothing.
  *
- * `resourceGroup` is deliberately ABSENT. The agent's contract declares a flat
- * `resourceGroup` (its config reads it), but the component never uses it: it
- * resolves the group from the `azureResourceGroup` map
+ * There is no `resourceGroup`: the agent resolves the group from the
+ * `azureResourceGroup` map
  * parameter (a map with a `name` key), falling back to the LiveSystem's group.
  * Offering the flat string here would provision into the LiveSystem's group while
  * the author read their own value back. The other two knobs are genuinely
@@ -625,8 +547,7 @@ export const AzureContainerAppsEnvironment = defineOffer<
   'NetworkAndCompute.ContainerPlatform',
   ContractConfig<
     typeof NetworkAndCompute_PaaS_AzureContainerAppsEnvironment,
-    // Declared by the contract, but the component never uses it (below).
-    'resourceGroup',
+    never,
     // Declared optional with default "", but the agent cannot work without it.
     {location: string}
   >
@@ -667,6 +588,30 @@ export type AzureContainerAppsEnvironmentConfig = RequiresLocation<
   Parameters<typeof AzureContainerAppsEnvironment>[0]
 >;
 
+/**
+ * A load balancer is placed only in the subnets it declares: the agents refuse
+ * one without a Subnet dependency of their own cloud, and there is no fallback
+ * placement. Checked here, against the selected offers, because the blueprint
+ * cannot know which subnet offer its Subnet will get.
+ */
+const requireSubnetOf =
+  (subnetType: string) =>
+  (
+    self: {id: string; dependencies: readonly string[]},
+    all: readonly {id: string; type: string}[],
+  ): void => {
+    const subnets = self.dependencies.filter(
+      d => all.find(c => c.id === d)?.type === subnetType,
+    );
+    if (subnets.length === 0) {
+      throw new Error(
+        `LoadBalancer '${self.id}' has no ${subnetType} dependency: a load balancer is ` +
+          'placed only in the subnets it declares. Declare them with ' +
+          `LoadBalancer({subnets: [...]}) and select ${subnetType} for each.`,
+      );
+    }
+  };
+
 // ── LoadBalancer ─────────────────────────────────────────────────────────────
 // The neutral `withScheme` guardrail is emitted as `lbScheme`, the key every
 // LoadBalancer agent reads, spelled the way that agent expects.
@@ -678,6 +623,7 @@ export const AwsLb = defineOffer<
   contract: NetworkAndCompute_IaaS_AwsLb,
   provider: 'AWS',
   deliveryModel: 'IaaS',
+  validate: requireSubnetOf(NetworkAndCompute_IaaS_AwsSubnet.offerType),
   instantiate: instantiateWithVendorParameters(
     NetworkAndCompute_IaaS_AwsLb.offerType,
     'AWS',
@@ -697,6 +643,7 @@ export const AzureLb = defineOffer<
   provider: 'Azure',
   deliveryModel: 'IaaS',
   // The Azure agent provisions a public frontend only for `internet-facing`.
+  validate: requireSubnetOf(NetworkAndCompute_IaaS_AzureSubnet.offerType),
   instantiate: instantiateWithVendorParameters(
     NetworkAndCompute_IaaS_AzureLb.offerType,
     'Azure',
@@ -716,6 +663,7 @@ export const GcpGlb = defineOffer<
   provider: 'GCP',
   deliveryModel: 'IaaS',
   // Passed straight to the forwarding rule's `loadBalancingScheme`.
+  validate: requireSubnetOf(NetworkAndCompute_IaaS_GcpSubnet.offerType),
   instantiate: instantiateWithVendorParameters(
     NetworkAndCompute_IaaS_GcpGlb.offerType,
     'GCP',
@@ -751,15 +699,15 @@ export const OciSubnet = defineOffer<
 });
 export const OciSecurityList = defineOffer<
   'NetworkAndCompute.SecurityGroup',
-  ContractConfig<typeof NetworkAndCompute_IaaS_OciSecurityList, 'ingressRules'>
+  ContractConfig<
+    typeof NetworkAndCompute_IaaS_OciSecurityList,
+    'ingressRules' | 'egressRules'
+  >
 >({
   satisfies: 'NetworkAndCompute.SecurityGroup',
   contract: NetworkAndCompute_IaaS_OciSecurityList,
   provider: 'OCI',
   deliveryModel: 'IaaS',
-  neutral: {
-    egressRules: unsupported('the agent reconciles ingress rules only'),
-  },
 });
 export const OciInstance = defineOffer<
   'NetworkAndCompute.VirtualMachine',

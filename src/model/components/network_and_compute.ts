@@ -189,10 +189,26 @@ const loadBalancerNode = <Id extends string>(
   withScheme: v => loadBalancerNode<Id>(guardrail(s, 'scheme', v)),
   dependsOn: other => loadBalancerNode<Id>(addDependency(s, other.state.id)),
 });
+/**
+ * A load balancer is placed only in the subnets it declares, so it takes at
+ * least one: `LoadBalancer({id: 'edge-lb', subnets: [publicSubnet]})`. The
+ * agents refuse a load balancer without a Subnet dependency, and there is no
+ * fallback placement.
+ */
 export const LoadBalancer = <const Id extends string>(cfg: {
   id: Id;
   displayName?: string;
-}): LoadBalancerNode<Id> =>
-  loadBalancerNode<Id>(
-    newNode(cfg.id, 'NetworkAndCompute.LoadBalancer', cfg.displayName),
+  subnets: readonly [SubnetNode, ...SubnetNode[]];
+}): LoadBalancerNode<Id> => {
+  if ((cfg.subnets?.length ?? 0) === 0) {
+    throw new Error(
+      `LoadBalancer '${cfg.id}' needs at least one subnet: it is placed only in the subnets it declares.`,
+    );
+  }
+  return loadBalancerNode<Id>(
+    cfg.subnets.reduce(
+      (state, subnet) => addDependency(state, subnet.state.id),
+      newNode(cfg.id, 'NetworkAndCompute.LoadBalancer', cfg.displayName),
+    ),
   );
+};

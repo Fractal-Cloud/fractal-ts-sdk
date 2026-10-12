@@ -173,6 +173,12 @@ await cloud.blueprints.create(authorFractal());
 await cloud.liveSystems.deploy(liveSystem, {mode: 'wait'});
 ```
 
+Before submitting, `deploy` asks the control plane to validate every component's parameters
+against the contract of its offer: a blocking issue throws a `LiveSystemValidationError` carrying
+the issues (and in `wait` mode logs `ERROR Live System validation failed  system=… errors=…`),
+warnings are logged and the deploy continues. `cloud.liveSystems.validate(liveSystem)` returns the
+same result without deploying.
+
 ## The client
 
 `createFractalCloudClient({clientId, clientSecret, baseUrl?})` holds your credentials once — no operation takes them as an argument. Operations are grouped by the entity they act on:

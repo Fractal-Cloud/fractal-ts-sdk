@@ -11,11 +11,7 @@ import {describe, it, expect} from 'vitest';
 import {createFractal} from './core';
 import {ApiGateway} from './components/api_management';
 import {ContainerPlatform} from './components/network_and_compute';
-import {
-  AwsCloudFront,
-  Traefik,
-  TraefikGateway,
-} from './offers/api_management';
+import {AwsCloudFront, Traefik, TraefikGateway} from './offers/api_management';
 import {Eks} from './offers/network_and_compute';
 
 const environment = {};
@@ -99,54 +95,6 @@ describe('Eks — Auto Mode node pools', () => {
         select: {eks: Eks({nodePools: [{name: 'graviton'}]})},
       }),
     ).toThrow(/'nodePools' on 'eks' is a locked guardrail/);
-  });
-
-  it.each([
-    [
-      'an unknown log type',
-      {controlPlaneLogTypes: ['everything']},
-      /controlPlaneLogTypes/,
-    ],
-    [
-      'an unknown architecture',
-      {nodePools: [{name: 'p', architectures: ['sparc']}]},
-      /architectures/,
-    ],
-    [
-      'an unknown capacity type',
-      {nodePools: [{name: 'p', capacityTypes: ['reserved']}]},
-      /capacityTypes/,
-    ],
-    ['a blank pool name', {nodePools: [{name: ' '}]}, /name/],
-    [
-      'a pool name that is not a DNS-1123 label',
-      {nodePools: [{name: 'Graviton_Pool'}]},
-      /'Graviton_Pool' is not a DNS-1123 label/,
-    ],
-    [
-      'the reserved built-in pool name system',
-      {nodePools: [{name: 'system'}]},
-      /'system' is reserved/,
-    ],
-    [
-      'the reserved built-in pool name general-purpose',
-      {nodePools: [{name: 'general-purpose'}]},
-      /'general-purpose' is reserved/,
-    ],
-    [
-      'a duplicate pool name',
-      {nodePools: [{name: 'a'}, {name: 'a'}]},
-      /'a' twice/,
-    ],
-  ])('refuses %s', (_why, config, reason) => {
-    expect(() =>
-      cluster().toLiveSystem({
-        name: 'platform',
-        environment,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        select: {eks: Eks(config as any)},
-      }),
-    ).toThrow(reason);
   });
 });
 
@@ -260,18 +208,6 @@ describe('AwsCloudFront — edge in front of the platform gateway', () => {
 
   it.each([
     [
-      'aliases with neither an origin nor a redirect',
-      {aliases: ['a.example.com']},
-      false,
-      /aliases need an origin/,
-    ],
-    [
-      'a redirect together with a custom origin',
-      {redirectTo: 'https://x.example.com', originDomain: 'o.example.com'},
-      false,
-      /redirectTo or an origin, not both/,
-    ],
-    [
       'a redirect together with a VPC origin',
       {redirectTo: 'https://x.example.com'},
       true,
@@ -283,49 +219,16 @@ describe('AwsCloudFront — edge in front of the platform gateway', () => {
       true,
       /originDomain or a linked gateway, not both/,
     ],
-    [
-      'an origin domain that is not a host name',
-      {originDomain: 'not a host'},
-      false,
-      /originDomain/,
-    ],
-    [
-      'an unknown origin protocol',
-      {originDomain: 'o.example.com', originProtocol: 'ftp'},
-      false,
-      /originProtocol/,
-    ],
-    [
-      'a rate limit below the WAF minimum',
-      {originDomain: 'o.example.com', wafRateLimitPer5Min: 5},
-      false,
-      /wafRateLimitPer5Min/,
-    ],
-    [
-      'an origin read timeout above 180 s',
-      {originDomain: 'o.example.com', originReadTimeoutSeconds: 181},
-      false,
-      /originReadTimeoutSeconds/,
-    ],
-    [
-      'a zero origin keep-alive timeout',
-      {originDomain: 'o.example.com', originKeepaliveTimeoutSeconds: 0},
-      false,
-      /originKeepaliveTimeoutSeconds/,
-    ],
-    [
-      'an origin certificate name that is not a host name',
-      {originDomain: 'o.example.com', originDomainName: '*'},
-      false,
-      /originDomainName/,
-    ],
   ])('refuses %s', (_why, config, link, reason) => {
     expect(() =>
       edge(link).toLiveSystem({
         name: 'platform',
         environment,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        select: {traefik: TraefikGateway({}), cdn: AwsCloudFront(config as any)},
+        select: {
+          traefik: TraefikGateway({}),
+          cdn: AwsCloudFront(config as any),
+        },
       }),
     ).toThrow(reason);
   });

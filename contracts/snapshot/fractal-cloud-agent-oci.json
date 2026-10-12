@@ -1,6 +1,6 @@
 {
   "agentId": "fractal-cloud-agent-oci",
-  "agentVersion": "v8.25.1",
+  "agentVersion": "v8.25.2",
   "offers": [
     {
       "aliasOfOfferType": null,
@@ -8,6 +8,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -17,6 +18,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -99,6 +101,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -108,6 +111,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -508,6 +512,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -517,6 +522,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -529,6 +535,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -538,6 +545,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -672,6 +680,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -681,6 +690,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -764,7 +774,8 @@
       "offerType": "NetworkAndCompute.IaaS.OciLoadBalancer",
       "params": [
         {
-          "default": false,
+          "default": true,
+          "description": "Whether the load balancer is private (no public IP). Defaults to private for a new load balancer. Fixed at creation: an existing load balancer keeps its exposure, and declaring the opposite is refused.",
           "key": "isPrivate",
           "type": "boolean"
         },
@@ -781,8 +792,18 @@
       "offerType": "NetworkAndCompute.IaaS.OciNetworkSecurityGroup",
       "params": [
         {
+          "description": "OCID of the compartment the security group is created in (ocid1.compartment...).",
+          "key": "compartmentId",
+          "type": "string"
+        },
+        {
           "key": "description",
           "type": "string"
+        },
+        {
+          "description": "Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On OCI the rules are the network security group's egress rules; it has no egress until some is declared.",
+          "key": "egressRules",
+          "type": "array"
         },
         {
           "key": "ingressRules",
@@ -796,8 +817,18 @@
       "offerType": "NetworkAndCompute.IaaS.OciSecurityList",
       "params": [
         {
+          "description": "OCID of the compartment the security group is created in (ocid1.compartment...).",
+          "key": "compartmentId",
+          "type": "string"
+        },
+        {
           "key": "description",
           "type": "string"
+        },
+        {
+          "description": "Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On OCI the rules are the network security group's egress rules; it has no egress until some is declared.",
+          "key": "egressRules",
+          "type": "array"
         },
         {
           "key": "ingressRules",
@@ -839,13 +870,29 @@
       "aliasOfOfferType": null,
       "offerType": "NetworkAndCompute.PaaS.Kubernetes",
       "params": [],
-      "provider": "OCI"
+      "provider": "OCI",
+      "runtimeChecks": [
+        {
+          "fix": "Add the OciVcn and its OciSubnet components to the blueprint and make the cluster depend on them.",
+          "id": "oke-network-dependencies-required",
+          "message": "An OKE cluster runs in the VCN and subnets the blueprint declares: it needs a dependency on one NetworkAndCompute.IaaS.OciVcn and on at least one NetworkAndCompute.IaaS.OciSubnet of that VCN. No network is created for it and no default range is applied.",
+          "reason": "NOT_EXPRESSIBLE"
+        }
+      ]
     },
     {
       "aliasOfOfferType": null,
       "offerType": "NetworkAndCompute.PaaS.OKE",
       "params": [],
-      "provider": "OCI"
+      "provider": "OCI",
+      "runtimeChecks": [
+        {
+          "fix": "Add the OciVcn and its OciSubnet components to the blueprint and make the cluster depend on them.",
+          "id": "oke-network-dependencies-required",
+          "message": "An OKE cluster runs in the VCN and subnets the blueprint declares: it needs a dependency on one NetworkAndCompute.IaaS.OciVcn and on at least one NetworkAndCompute.IaaS.OciSubnet of that VCN. No network is created for it and no default range is applied.",
+          "reason": "NOT_EXPRESSIBLE"
+        }
+      ]
     },
     {
       "aliasOfOfferType": null,
@@ -899,6 +946,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -908,6 +956,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -1145,6 +1194,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -1154,6 +1204,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -1436,6 +1487,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -1445,6 +1497,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],

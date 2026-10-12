@@ -12,7 +12,7 @@ export const NetworkAndCompute_CaaS_CloudRunService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.PaaS.CloudRun',
@@ -22,6 +22,8 @@ export const NetworkAndCompute_CaaS_CloudRunService = {
   params: {
     concurrency: {type: 'integer', required: false, default: 80},
     cpu: {type: 'string', required: false, default: '1'},
+    /** Environment variables of the container: name to a string, number or boolean, or to an environment-secret reference {"$envSecret": "<shortName>"}, which is passed as the cloud's secret reference and never as the raw value. Changing it rolls out a new revision. */
+    environment: {type: 'object', required: false},
     image: {type: 'string', required: true},
     ingress: {type: 'string', required: false, default: 'all'},
     maxInstances: {type: 'integer', required: false, default: 100},
@@ -29,6 +31,7 @@ export const NetworkAndCompute_CaaS_CloudRunService = {
     minInstances: {type: 'integer', required: false, default: 0},
     port: {type: 'integer', required: false, default: 8080},
     region: {type: 'string', required: false},
+    /** Service account the revision runs as. Granted secretAccessor on the secrets 'environment' references. When unset and secrets are referenced, an agent-owned account is created and used. */
     serviceAccountEmail: {type: 'string', required: false, default: ''},
   },
 } as const satisfies OfferContract;
@@ -39,7 +42,7 @@ export const NetworkAndCompute_CaaS_ECSService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -59,7 +62,7 @@ export const NetworkAndCompute_CaaS_ECSTaskDefinition = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -70,6 +73,9 @@ export const NetworkAndCompute_CaaS_ECSTaskDefinition = {
     containerName: {type: 'string', required: false, default: ''},
     containerPort: {type: 'integer', required: false, default: 8080},
     cpu: {type: 'string', required: false, default: '256'},
+    /** Environment variables of the container: name to a string, number or boolean, or to an environment-secret reference {"$envSecret": "<shortName>"}, which is passed as the cloud's secret reference and never as the raw value. Changing it rolls out a new revision. */
+    environment: {type: 'object', required: false},
+    /** Task execution role. Granted read on the secrets 'environment' references. When unset and secrets are referenced, an agent-owned role is created and used. */
     executionRoleArn: {type: 'string', required: false, default: ''},
     memory: {type: 'string', required: false, default: '512'},
     networkMode: {type: 'string', required: false, default: 'awsvpc'},
@@ -224,23 +230,23 @@ export const NetworkAndCompute_IaaS_AwsEc2Instance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
-    amiId: {
-      type: 'string',
-      required: false,
-      default: 'latest Amazon Linux 2023 (resolved dynamically when unset)',
-    },
+    /** AMI id (ami-...). Leave empty to use the latest Amazon Linux 2023 AMI, resolved at create time. */
+    amiId: {type: 'string', required: false, default: ''},
     associatePublicIp: {type: 'boolean', required: false, default: false},
     iamInstanceProfile: {type: 'string', required: false, default: ''},
     identity: {type: 'object', required: false},
     instanceType: {type: 'string', required: false, default: ''},
+    /** Name of an existing EC2 key pair to launch with. Wins over publicSSHKey. */
     keyName: {type: 'string', required: false, default: ''},
+    /** OpenSSH public key (e.g. ssh-ed25519 AAAA...) to authorize on the instance. Imported as a key pair of this component, used at launch and deleted on teardown. Ignored when keyName is set. When neither is set, a new instance gets a generated ed25519 key pair whose private key is stored as an environment secret, named in the sshPrivateKeySecretName output. Changing it does not change a running instance's key. */
+    publicSSHKey: {type: 'string', required: false},
     region: {type: 'string', required: false},
     userData: {type: 'string', required: false, default: ''},
   },
@@ -252,14 +258,19 @@ export const NetworkAndCompute_IaaS_AwsLb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
-    lbScheme: {type: 'string', required: false, default: ''},
+    /** ELBv2 scheme. Unset: internet-facing on declared Subnet dependencies, internal without them. Fixed once the load balancer exists. */
+    lbScheme: {
+      type: 'string',
+      required: false,
+      values: ['internet-facing', 'internal'],
+    },
     lbType: {type: 'string', required: false, default: 'application'},
     region: {type: 'string', required: false},
   },
@@ -271,7 +282,7 @@ export const NetworkAndCompute_IaaS_AwsLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.IaaS.AwsLb',
@@ -279,7 +290,12 @@ export const NetworkAndCompute_IaaS_AwsLoadBalancer = {
     },
   ],
   params: {
-    lbScheme: {type: 'string', required: false, default: ''},
+    /** ELBv2 scheme. Unset: internet-facing on declared Subnet dependencies, internal without them. Fixed once the load balancer exists. */
+    lbScheme: {
+      type: 'string',
+      required: false,
+      values: ['internet-facing', 'internal'],
+    },
     lbType: {type: 'string', required: false, default: 'application'},
     region: {type: 'string', required: false},
   },
@@ -291,7 +307,7 @@ export const NetworkAndCompute_IaaS_AwsSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -299,6 +315,8 @@ export const NetworkAndCompute_IaaS_AwsSecurityGroup = {
   ],
   params: {
     description: {type: 'string', required: false, default: ''},
+    /** Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On AWS declaring egress replaces the default allow-all egress rule of the group. */
+    egressRules: {type: 'array', required: false},
     ingressRules: {type: 'array', required: false, default: []},
     region: {type: 'string', required: false},
   },
@@ -310,7 +328,7 @@ export const NetworkAndCompute_IaaS_AwsSubnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -329,14 +347,15 @@ export const NetworkAndCompute_IaaS_AwsVpc = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
-    cidrBlock: {type: 'string', required: false, default: '10.1.0.0/20'},
+    /** IPv4 address block of the VPC, e.g. 10.20.0.0/16. */
+    cidrBlock: {type: 'string', required: true},
     enableDnsHostnames: {type: 'boolean', required: false, default: true},
     enableDnsSupport: {type: 'boolean', required: false, default: true},
     instanceTenancy: {type: 'string', required: false, default: ''},
@@ -350,15 +369,28 @@ export const NetworkAndCompute_IaaS_AzureLb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
-    lbScheme: {type: 'string', required: false, default: 'internal'},
-    lbType: {type: 'string', required: false, default: 'Standard'},
+    lbScheme: {
+      type: 'string',
+      required: false,
+      default: 'internal',
+      values: ['internal', 'internet-facing'],
+      valuesLevel: 'warn',
+    },
+    /** Load balancer SKU. Only Standard is accepted; Azure retired Basic. */
+    lbType: {
+      type: 'string',
+      required: false,
+      default: 'Standard',
+      values: ['Standard'],
+      valuesCaseInsensitive: true,
+    },
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -369,7 +401,7 @@ export const NetworkAndCompute_IaaS_AzureLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureLb',
@@ -377,8 +409,21 @@ export const NetworkAndCompute_IaaS_AzureLoadBalancer = {
     },
   ],
   params: {
-    lbScheme: {type: 'string', required: false, default: 'internal'},
-    lbType: {type: 'string', required: false, default: 'Standard'},
+    lbScheme: {
+      type: 'string',
+      required: false,
+      default: 'internal',
+      values: ['internal', 'internet-facing'],
+      valuesLevel: 'warn',
+    },
+    /** Load balancer SKU. Only Standard is accepted; Azure retired Basic. */
+    lbType: {
+      type: 'string',
+      required: false,
+      default: 'Standard',
+      values: ['Standard'],
+      valuesCaseInsensitive: true,
+    },
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -389,7 +434,7 @@ export const NetworkAndCompute_IaaS_AzureNetworkSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureNsg',
@@ -398,8 +443,12 @@ export const NetworkAndCompute_IaaS_AzureNetworkSecurityGroup = {
   ],
   params: {
     description: {type: 'string', required: false, default: ''},
+    /** Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On Azure each rule is an outbound allow; the NSG's built-in AllowInternetOutBound still applies below them. A rule whose destination is a component is skipped: Azure cannot match an NSG without an Application Security Group. */
+    egressRules: {type: 'array', required: false},
     ingressRules: {type: 'array', required: false, default: []},
     region: {type: 'string', required: false},
+    /** Resource group a new NSG is created in; created (and tagged as Fractal-managed) when it does not exist. Unset places the NSG in the Live System's resource group. An NSG that already exists is never moved: changing this value later has no effect on it. */
+    resourceGroup: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
 
@@ -409,7 +458,7 @@ export const NetworkAndCompute_IaaS_AzureNsg = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -417,8 +466,12 @@ export const NetworkAndCompute_IaaS_AzureNsg = {
   ],
   params: {
     description: {type: 'string', required: false, default: ''},
+    /** Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On Azure each rule is an outbound allow; the NSG's built-in AllowInternetOutBound still applies below them. A rule whose destination is a component is skipped: Azure cannot match an NSG without an Application Security Group. */
+    egressRules: {type: 'array', required: false},
     ingressRules: {type: 'array', required: false, default: []},
     region: {type: 'string', required: false},
+    /** Resource group a new NSG is created in; created (and tagged as Fractal-managed) when it does not exist. Unset places the NSG in the Live System's resource group. An NSG that already exists is never moved: changing this value later has no effect on it. */
+    resourceGroup: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
 
@@ -428,7 +481,7 @@ export const NetworkAndCompute_IaaS_AzureSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureNsg',
@@ -437,8 +490,12 @@ export const NetworkAndCompute_IaaS_AzureSecurityGroup = {
   ],
   params: {
     description: {type: 'string', required: false, default: ''},
+    /** Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On Azure each rule is an outbound allow; the NSG's built-in AllowInternetOutBound still applies below them. A rule whose destination is a component is skipped: Azure cannot match an NSG without an Application Security Group. */
+    egressRules: {type: 'array', required: false},
     ingressRules: {type: 'array', required: false, default: []},
     region: {type: 'string', required: false},
+    /** Resource group a new NSG is created in; created (and tagged as Fractal-managed) when it does not exist. Unset places the NSG in the Live System's resource group. An NSG that already exists is never moved: changing this value later has no effect on it. */
+    resourceGroup: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
 
@@ -448,7 +505,7 @@ export const NetworkAndCompute_IaaS_AzureSubnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -467,7 +524,7 @@ export const NetworkAndCompute_IaaS_AzureVirtualMachine = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureVm',
@@ -482,10 +539,20 @@ export const NetworkAndCompute_IaaS_AzureVirtualMachine = {
       required: false,
       default: 'Canonical:ubuntu-24_04-lts:server:latest',
     },
-    publicSSHKey: {type: 'string', required: false, default: ''},
+    publicSSHKey: {
+      type: 'string',
+      required: false,
+      default: '',
+      aliases: [{deprecated: true, key: 'keyName'}],
+    },
     region: {type: 'string', required: false},
     userData: {type: 'string', required: false, default: ''},
-    vmSize: {type: 'string', required: false, default: 'Standard_B1s'},
+    vmSize: {
+      type: 'string',
+      required: false,
+      default: 'Standard_B1s',
+      aliases: [{deprecated: true, key: 'instanceType'}],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -495,7 +562,7 @@ export const NetworkAndCompute_IaaS_AzureVirtualNetwork = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureVnet',
@@ -503,7 +570,8 @@ export const NetworkAndCompute_IaaS_AzureVirtualNetwork = {
     },
   ],
   params: {
-    cidrBlock: {type: 'string', required: false, default: '10.1.0.0/20'},
+    /** IPv4 address space of the VNet, e.g. 10.20.0.0/16. */
+    cidrBlock: {type: 'string', required: true},
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -514,7 +582,7 @@ export const NetworkAndCompute_IaaS_AzureVm = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -528,10 +596,20 @@ export const NetworkAndCompute_IaaS_AzureVm = {
       required: false,
       default: 'Canonical:ubuntu-24_04-lts:server:latest',
     },
-    publicSSHKey: {type: 'string', required: false, default: ''},
+    publicSSHKey: {
+      type: 'string',
+      required: false,
+      default: '',
+      aliases: [{deprecated: true, key: 'keyName'}],
+    },
     region: {type: 'string', required: false},
     userData: {type: 'string', required: false, default: ''},
-    vmSize: {type: 'string', required: false, default: 'Standard_B1s'},
+    vmSize: {
+      type: 'string',
+      required: false,
+      default: 'Standard_B1s',
+      aliases: [{deprecated: true, key: 'instanceType'}],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -541,14 +619,15 @@ export const NetworkAndCompute_IaaS_AzureVnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
-    cidrBlock: {type: 'string', required: false, default: '10.1.0.0/20'},
+    /** IPv4 address space of the VNet, e.g. 10.20.0.0/16. */
+    cidrBlock: {type: 'string', required: true},
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -559,7 +638,7 @@ export const NetworkAndCompute_IaaS_EC2 = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.IaaS.AwsEc2Instance',
@@ -567,16 +646,16 @@ export const NetworkAndCompute_IaaS_EC2 = {
     },
   ],
   params: {
-    amiId: {
-      type: 'string',
-      required: false,
-      default: 'latest Amazon Linux 2023 (resolved dynamically when unset)',
-    },
+    /** AMI id (ami-...). Leave empty to use the latest Amazon Linux 2023 AMI, resolved at create time. */
+    amiId: {type: 'string', required: false, default: ''},
     associatePublicIp: {type: 'boolean', required: false, default: false},
     iamInstanceProfile: {type: 'string', required: false, default: ''},
     identity: {type: 'object', required: false},
     instanceType: {type: 'string', required: false, default: ''},
+    /** Name of an existing EC2 key pair to launch with. Wins over publicSSHKey. */
     keyName: {type: 'string', required: false, default: ''},
+    /** OpenSSH public key (e.g. ssh-ed25519 AAAA...) to authorize on the instance. Imported as a key pair of this component, used at launch and deleted on teardown. Ignored when keyName is set. When neither is set, a new instance gets a generated ed25519 key pair whose private key is stored as an environment secret, named in the sshPrivateKeySecretName output. Changing it does not change a running instance's key. */
+    publicSSHKey: {type: 'string', required: false},
     region: {type: 'string', required: false},
     userData: {type: 'string', required: false, default: ''},
   },
@@ -588,7 +667,7 @@ export const NetworkAndCompute_IaaS_GcpComputeInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -603,7 +682,12 @@ export const NetworkAndCompute_IaaS_GcpComputeInstance = {
       default: 'projects/debian-cloud/global/images/family/debian-12',
     },
     machineType: {type: 'string', required: false, default: 'e2-medium'},
-    publicSSHKey: {type: 'string', required: false, default: ''},
+    publicSSHKey: {
+      type: 'string',
+      required: false,
+      default: '',
+      aliases: [{deprecated: true, key: 'keyData'}],
+    },
     region: {type: 'string', required: false},
     userData: {type: 'string', required: false, default: ''},
     zone: {type: 'string', required: false},
@@ -616,7 +700,7 @@ export const NetworkAndCompute_IaaS_GcpFirewall = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -624,6 +708,8 @@ export const NetworkAndCompute_IaaS_GcpFirewall = {
   ],
   params: {
     description: {type: 'string', required: false},
+    /** Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On GCP each rule becomes an EGRESS firewall of its own on the same target tags, named <component id>-egress-<hash>; GCP's implied allow-all egress still applies below them. A rule whose destination is a component is skipped: GCP egress cannot target a tag. */
+    egressRules: {type: 'array', required: false},
     ingressRules: {type: 'array', required: false, default: []},
     region: {type: 'string', required: false},
     targetTags: {type: 'array', required: false},
@@ -636,14 +722,20 @@ export const NetworkAndCompute_IaaS_GcpGlb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
-    lbScheme: {type: 'string', required: false, default: 'INTERNAL'},
+    lbScheme: {
+      type: 'string',
+      required: false,
+      default: 'INTERNAL',
+      values: ['INTERNAL', 'EXTERNAL'],
+      valuesLevel: 'warn',
+    },
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -654,14 +746,20 @@ export const NetworkAndCompute_IaaS_GcpLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
-    lbScheme: {type: 'string', required: false, default: 'INTERNAL'},
+    lbScheme: {
+      type: 'string',
+      required: false,
+      default: 'INTERNAL',
+      values: ['INTERNAL', 'EXTERNAL'],
+      valuesLevel: 'warn',
+    },
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -672,7 +770,7 @@ export const NetworkAndCompute_IaaS_GcpSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpFirewall',
@@ -681,6 +779,8 @@ export const NetworkAndCompute_IaaS_GcpSecurityGroup = {
   ],
   params: {
     description: {type: 'string', required: false},
+    /** Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On GCP each rule becomes an EGRESS firewall of its own on the same target tags, named <component id>-egress-<hash>; GCP's implied allow-all egress still applies below them. A rule whose destination is a component is skipped: GCP egress cannot target a tag. */
+    egressRules: {type: 'array', required: false},
     ingressRules: {type: 'array', required: false, default: []},
     region: {type: 'string', required: false},
     targetTags: {type: 'array', required: false},
@@ -693,14 +793,15 @@ export const NetworkAndCompute_IaaS_GcpSubnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
-    cidrBlock: {type: 'string', required: false, default: ''},
+    /** IPv4 range of the subnet, e.g. 10.20.1.0/24. */
+    cidrBlock: {type: 'string', required: true},
     networkName: {type: 'string', required: false, default: ''},
     region: {type: 'string', required: false},
   },
@@ -712,7 +813,7 @@ export const NetworkAndCompute_IaaS_GcpVirtualMachine = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpComputeInstance',
@@ -728,7 +829,12 @@ export const NetworkAndCompute_IaaS_GcpVirtualMachine = {
       default: 'projects/debian-cloud/global/images/family/debian-12',
     },
     machineType: {type: 'string', required: false, default: 'e2-medium'},
-    publicSSHKey: {type: 'string', required: false, default: ''},
+    publicSSHKey: {
+      type: 'string',
+      required: false,
+      default: '',
+      aliases: [{deprecated: true, key: 'keyData'}],
+    },
     region: {type: 'string', required: false},
     userData: {type: 'string', required: false, default: ''},
     zone: {type: 'string', required: false},
@@ -741,7 +847,7 @@ export const NetworkAndCompute_IaaS_GcpVm = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpComputeInstance',
@@ -757,7 +863,12 @@ export const NetworkAndCompute_IaaS_GcpVm = {
       default: 'projects/debian-cloud/global/images/family/debian-12',
     },
     machineType: {type: 'string', required: false, default: 'e2-medium'},
-    publicSSHKey: {type: 'string', required: false, default: ''},
+    publicSSHKey: {
+      type: 'string',
+      required: false,
+      default: '',
+      aliases: [{deprecated: true, key: 'keyData'}],
+    },
     region: {type: 'string', required: false},
     userData: {type: 'string', required: false, default: ''},
     zone: {type: 'string', required: false},
@@ -770,7 +881,7 @@ export const NetworkAndCompute_IaaS_GcpVpc = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -788,14 +899,20 @@ export const NetworkAndCompute_IaaS_GlobalLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
-    lbScheme: {type: 'string', required: false, default: 'INTERNAL'},
+    lbScheme: {
+      type: 'string',
+      required: false,
+      default: 'INTERNAL',
+      values: ['INTERNAL', 'EXTERNAL'],
+      valuesLevel: 'warn',
+    },
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -806,7 +923,7 @@ export const NetworkAndCompute_IaaS_OciComputeInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -828,7 +945,7 @@ export const NetworkAndCompute_IaaS_OciInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -850,14 +967,15 @@ export const NetworkAndCompute_IaaS_OciLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
-    isPrivate: {type: 'boolean', required: false, default: false},
+    /** Whether the load balancer is private (no public IP). Defaults to private for a new load balancer. Fixed at creation: an existing load balancer keeps its exposure, and declaring the opposite is refused. */
+    isPrivate: {type: 'boolean', required: false, default: true},
     lbType: {type: 'string', required: false, default: '100Mbps'},
   },
 } as const satisfies OfferContract;
@@ -868,14 +986,18 @@ export const NetworkAndCompute_IaaS_OciNetworkSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
+    /** OCID of the compartment the security group is created in (ocid1.compartment...). */
+    compartmentId: {type: 'string', required: false},
     description: {type: 'string', required: false},
+    /** Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On OCI the rules are the network security group's egress rules; it has no egress until some is declared. */
+    egressRules: {type: 'array', required: false},
     ingressRules: {type: 'array', required: false},
   },
 } as const satisfies OfferContract;
@@ -886,14 +1008,18 @@ export const NetworkAndCompute_IaaS_OciSecurityList = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
+    /** OCID of the compartment the security group is created in (ocid1.compartment...). */
+    compartmentId: {type: 'string', required: false},
     description: {type: 'string', required: false},
+    /** Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On OCI the rules are the network security group's egress rules; it has no egress until some is declared. */
+    egressRules: {type: 'array', required: false},
     ingressRules: {type: 'array', required: false},
   },
 } as const satisfies OfferContract;
@@ -904,7 +1030,7 @@ export const NetworkAndCompute_IaaS_OciSubnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -922,7 +1048,7 @@ export const NetworkAndCompute_IaaS_OciVcn = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -939,7 +1065,7 @@ export const NetworkAndCompute_IaaS_SecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureNsg',
@@ -947,7 +1073,7 @@ export const NetworkAndCompute_IaaS_SecurityGroup = {
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpFirewall',
@@ -956,8 +1082,16 @@ export const NetworkAndCompute_IaaS_SecurityGroup = {
   ],
   params: {
     description: {type: 'string', required: false},
+    /** Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On Azure each rule is an outbound allow; the NSG's built-in AllowInternetOutBound still applies below them. A rule whose destination is a component is skipped: Azure cannot match an NSG without an Application Security Group. */
+    egressRules: {type: 'array', required: false},
     ingressRules: {type: 'array', required: false, default: []},
     region: {type: 'string', required: false},
+    /** Resource group a new NSG is created in; created (and tagged as Fractal-managed) when it does not exist. Unset places the NSG in the Live System's resource group. An NSG that already exists is never moved: changing this value later has no effect on it. */
+    resourceGroup: {
+      type: 'string',
+      required: false,
+      agents: ['fractal-cloud-agent-azure'],
+    },
     targetTags: {
       type: 'array',
       required: false,
@@ -972,7 +1106,7 @@ export const NetworkAndCompute_IaaS_VirtualMachine = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpComputeInstance',
@@ -988,7 +1122,12 @@ export const NetworkAndCompute_IaaS_VirtualMachine = {
       default: 'projects/debian-cloud/global/images/family/debian-12',
     },
     machineType: {type: 'string', required: false, default: 'e2-medium'},
-    publicSSHKey: {type: 'string', required: false, default: ''},
+    publicSSHKey: {
+      type: 'string',
+      required: false,
+      default: '',
+      aliases: [{deprecated: true, key: 'keyData'}],
+    },
     region: {type: 'string', required: false},
     userData: {type: 'string', required: false, default: ''},
     zone: {type: 'string', required: false},
@@ -1001,7 +1140,7 @@ export const NetworkAndCompute_IaaS_VNet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureVnet',
@@ -1009,7 +1148,8 @@ export const NetworkAndCompute_IaaS_VNet = {
     },
   ],
   params: {
-    cidrBlock: {type: 'string', required: false, default: '10.1.0.0/20'},
+    /** IPv4 address space of the VNet, e.g. 10.20.0.0/16. */
+    cidrBlock: {type: 'string', required: true},
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1020,7 +1160,7 @@ export const NetworkAndCompute_PaaS_AKS = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.PaaS.AzureAks',
@@ -1063,7 +1203,7 @@ export const NetworkAndCompute_PaaS_AwsEc2Instance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.IaaS.AwsEc2Instance',
@@ -1071,16 +1211,16 @@ export const NetworkAndCompute_PaaS_AwsEc2Instance = {
     },
   ],
   params: {
-    amiId: {
-      type: 'string',
-      required: false,
-      default: 'latest Amazon Linux 2023 (resolved dynamically when unset)',
-    },
+    /** AMI id (ami-...). Leave empty to use the latest Amazon Linux 2023 AMI, resolved at create time. */
+    amiId: {type: 'string', required: false, default: ''},
     associatePublicIp: {type: 'boolean', required: false, default: false},
     iamInstanceProfile: {type: 'string', required: false, default: ''},
     identity: {type: 'object', required: false},
     instanceType: {type: 'string', required: false, default: ''},
+    /** Name of an existing EC2 key pair to launch with. Wins over publicSSHKey. */
     keyName: {type: 'string', required: false, default: ''},
+    /** OpenSSH public key (e.g. ssh-ed25519 AAAA...) to authorize on the instance. Imported as a key pair of this component, used at launch and deleted on teardown. Ignored when keyName is set. When neither is set, a new instance gets a generated ed25519 key pair whose private key is stored as an environment secret, named in the sshPrivateKeySecretName output. Changing it does not change a running instance's key. */
+    publicSSHKey: {type: 'string', required: false},
     region: {type: 'string', required: false},
     userData: {type: 'string', required: false, default: ''},
   },
@@ -1092,7 +1232,7 @@ export const NetworkAndCompute_PaaS_AwsEks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -1120,7 +1260,7 @@ export const NetworkAndCompute_PaaS_AwsLb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.IaaS.AwsLb',
@@ -1128,7 +1268,12 @@ export const NetworkAndCompute_PaaS_AwsLb = {
     },
   ],
   params: {
-    lbScheme: {type: 'string', required: false, default: ''},
+    /** ELBv2 scheme. Unset: internet-facing on declared Subnet dependencies, internal without them. Fixed once the load balancer exists. */
+    lbScheme: {
+      type: 'string',
+      required: false,
+      values: ['internet-facing', 'internal'],
+    },
     lbType: {type: 'string', required: false, default: 'application'},
     region: {type: 'string', required: false},
   },
@@ -1140,7 +1285,7 @@ export const NetworkAndCompute_PaaS_AwsRoute53HostedZone = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -1188,7 +1333,7 @@ export const NetworkAndCompute_PaaS_AzureAks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1213,7 +1358,7 @@ export const NetworkAndCompute_PaaS_AzureAppService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1230,18 +1375,26 @@ export const NetworkAndCompute_PaaS_AzureContainerAppsEnvironment = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
-    location: {type: 'string', required: false, default: ''},
-    logAnalyticsSharedKey: {type: 'string', required: false, default: ''},
+    location: {
+      type: 'string',
+      required: false,
+      derived: {note: "defaults to the component's region when absent"},
+    },
+    logAnalyticsSharedKey: {
+      type: 'string',
+      required: false,
+      default: '',
+      sensitive: true,
+    },
     logAnalyticsWorkspaceId: {type: 'string', required: false, default: ''},
     region: {type: 'string', required: false},
-    resourceGroup: {type: 'string', required: false, default: ''},
   },
 } as const satisfies OfferContract;
 
@@ -1251,7 +1404,7 @@ export const NetworkAndCompute_PaaS_AzureContainerInstanceService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1268,7 +1421,7 @@ export const NetworkAndCompute_PaaS_AzureDnsZone = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1328,7 +1481,7 @@ export const NetworkAndCompute_PaaS_CloudRun = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1337,6 +1490,8 @@ export const NetworkAndCompute_PaaS_CloudRun = {
   params: {
     concurrency: {type: 'integer', required: false, default: 80},
     cpu: {type: 'string', required: false, default: '1'},
+    /** Environment variables of the container: name to a string, number or boolean, or to an environment-secret reference {"$envSecret": "<shortName>"}, which is passed as the cloud's secret reference and never as the raw value. Changing it rolls out a new revision. */
+    environment: {type: 'object', required: false},
     image: {type: 'string', required: true},
     ingress: {type: 'string', required: false, default: 'all'},
     maxInstances: {type: 'integer', required: false, default: 100},
@@ -1344,6 +1499,7 @@ export const NetworkAndCompute_PaaS_CloudRun = {
     minInstances: {type: 'integer', required: false, default: 0},
     port: {type: 'integer', required: false, default: 8080},
     region: {type: 'string', required: false},
+    /** Service account the revision runs as. Granted secretAccessor on the secrets 'environment' references. When unset and secrets are referenced, an agent-owned account is created and used. */
     serviceAccountEmail: {type: 'string', required: false, default: ''},
   },
 } as const satisfies OfferContract;
@@ -1354,7 +1510,7 @@ export const NetworkAndCompute_PaaS_DnsZone = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1372,7 +1528,7 @@ export const NetworkAndCompute_PaaS_ECS = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -1389,7 +1545,7 @@ export const NetworkAndCompute_PaaS_EKS = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.PaaS.AwsEks',
@@ -1418,7 +1574,7 @@ export const NetworkAndCompute_PaaS_GcpDnsZone = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1466,7 +1622,7 @@ export const NetworkAndCompute_PaaS_GcpGke = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1474,21 +1630,25 @@ export const NetworkAndCompute_PaaS_GcpGke = {
   ],
   params: {
     kubernetesVersion: {type: 'string', required: false, default: ''},
-    masterIpv4CidrBlock: {type: 'string', required: false, default: ''},
+    /** Control-plane range of a private cluster, e.g. 172.16.0.0/28. Not set when omitted. */
+    masterIpv4CidrBlock: {type: 'string', required: false},
     networkName: {type: 'string', required: false, default: ''},
     networkPolicyProvider: {type: 'string', required: false, default: ''},
     nodePools: {type: 'array', required: false, default: []},
     podCidrPrefixLength: {type: 'integer', required: false, default: 20},
-    podIpRange: {type: 'string', required: false, default: ''},
+    /** Pod range of the cluster. Allocated by IPAM in spoke mode; required in atom mode. */
+    podIpRange: {type: 'string', required: false},
     podsRangeName: {type: 'string', required: false, default: ''},
     priorityClasses: {type: 'array', required: false, default: []},
     privateClusterDisabled: {type: 'boolean', required: false, default: false},
     region: {type: 'string', required: false},
     roles: {type: 'array', required: false, default: []},
     serviceCidrPrefixLength: {type: 'integer', required: false, default: 20},
-    serviceIpRange: {type: 'string', required: false, default: ''},
+    /** Service range of the cluster. Allocated by IPAM in spoke mode; required in atom mode. */
+    serviceIpRange: {type: 'string', required: false},
     servicesRangeName: {type: 'string', required: false, default: ''},
-    subnetworkIpRange: {type: 'string', required: false, default: ''},
+    /** Primary range of the cluster's subnet. Allocated by IPAM in spoke mode; required in atom mode. */
+    subnetworkIpRange: {type: 'string', required: false},
     subnetworkName: {type: 'string', required: false, default: ''},
     windowsAdminUsername: {type: 'string', required: false, default: ''},
     workloadIdentityEnabled: {type: 'boolean', required: false, default: true},
@@ -1501,14 +1661,20 @@ export const NetworkAndCompute_PaaS_GcpGlb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
-    lbScheme: {type: 'string', required: false, default: 'INTERNAL'},
+    lbScheme: {
+      type: 'string',
+      required: false,
+      default: 'INTERNAL',
+      values: ['INTERNAL', 'EXTERNAL'],
+      valuesLevel: 'warn',
+    },
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1519,7 +1685,7 @@ export const NetworkAndCompute_PaaS_GcpVm = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpComputeInstance',
@@ -1535,7 +1701,12 @@ export const NetworkAndCompute_PaaS_GcpVm = {
       default: 'projects/debian-cloud/global/images/family/debian-12',
     },
     machineType: {type: 'string', required: false, default: 'e2-medium'},
-    publicSSHKey: {type: 'string', required: false, default: ''},
+    publicSSHKey: {
+      type: 'string',
+      required: false,
+      default: '',
+      aliases: [{deprecated: true, key: 'keyData'}],
+    },
     region: {type: 'string', required: false},
     userData: {type: 'string', required: false, default: ''},
     zone: {type: 'string', required: false},
@@ -1548,7 +1719,7 @@ export const NetworkAndCompute_PaaS_GKE = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.PaaS.GcpGke',
@@ -1557,21 +1728,25 @@ export const NetworkAndCompute_PaaS_GKE = {
   ],
   params: {
     kubernetesVersion: {type: 'string', required: false, default: ''},
-    masterIpv4CidrBlock: {type: 'string', required: false, default: ''},
+    /** Control-plane range of a private cluster, e.g. 172.16.0.0/28. Not set when omitted. */
+    masterIpv4CidrBlock: {type: 'string', required: false},
     networkName: {type: 'string', required: false, default: ''},
     networkPolicyProvider: {type: 'string', required: false, default: ''},
     nodePools: {type: 'array', required: false, default: []},
     podCidrPrefixLength: {type: 'integer', required: false, default: 20},
-    podIpRange: {type: 'string', required: false, default: ''},
+    /** Pod range of the cluster. Allocated by IPAM in spoke mode; required in atom mode. */
+    podIpRange: {type: 'string', required: false},
     podsRangeName: {type: 'string', required: false, default: ''},
     priorityClasses: {type: 'array', required: false, default: []},
     privateClusterDisabled: {type: 'boolean', required: false, default: false},
     region: {type: 'string', required: false},
     roles: {type: 'array', required: false, default: []},
     serviceCidrPrefixLength: {type: 'integer', required: false, default: 20},
-    serviceIpRange: {type: 'string', required: false, default: ''},
+    /** Service range of the cluster. Allocated by IPAM in spoke mode; required in atom mode. */
+    serviceIpRange: {type: 'string', required: false},
     servicesRangeName: {type: 'string', required: false, default: ''},
-    subnetworkIpRange: {type: 'string', required: false, default: ''},
+    /** Primary range of the cluster's subnet. Allocated by IPAM in spoke mode; required in atom mode. */
+    subnetworkIpRange: {type: 'string', required: false},
     subnetworkName: {type: 'string', required: false, default: ''},
     windowsAdminUsername: {type: 'string', required: false, default: ''},
     workloadIdentityEnabled: {type: 'boolean', required: false, default: true},
@@ -1591,7 +1766,7 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
     },
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.PaaS.AwsEks',
@@ -1599,7 +1774,7 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.PaaS.AzureAks',
@@ -1607,7 +1782,7 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.PaaS.GcpGke',
@@ -1615,7 +1790,7 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1665,10 +1840,10 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
       default: 'Free',
       agents: ['fractal-cloud-agent-azure'],
     },
+    /** Control-plane range of a private cluster, e.g. 172.16.0.0/28. Not set when omitted. */
     masterIpv4CidrBlock: {
       type: 'string',
       required: false,
-      default: '',
       agents: ['fractal-cloud-agent-gcp'],
     },
     networkName: {
@@ -1715,10 +1890,10 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
       default: 20,
       agents: ['fractal-cloud-agent-aws', 'fractal-cloud-agent-gcp'],
     },
+    /** Pod range of the cluster. Allocated by IPAM in spoke mode; required in atom mode. */
     podIpRange: {
       type: 'string',
       required: false,
-      default: '',
       agents: [
         'fractal-cloud-agent-aws',
         'fractal-cloud-agent-azure',
@@ -1764,10 +1939,10 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
       default: 20,
       agents: ['fractal-cloud-agent-aws', 'fractal-cloud-agent-gcp'],
     },
+    /** Service range of the cluster. Allocated by IPAM in spoke mode; required in atom mode. */
     serviceIpRange: {
       type: 'string',
       required: false,
-      default: '',
       agents: [
         'fractal-cloud-agent-aws',
         'fractal-cloud-agent-azure',
@@ -1780,10 +1955,10 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
       default: '',
       agents: ['fractal-cloud-agent-gcp'],
     },
+    /** Primary range of the cluster's subnet. Allocated by IPAM in spoke mode; required in atom mode. */
     subnetworkIpRange: {
       type: 'string',
       required: false,
-      default: '',
       agents: ['fractal-cloud-agent-gcp'],
     },
     subnetworkName: {
@@ -1819,7 +1994,7 @@ export const NetworkAndCompute_PaaS_OciContainerInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1847,7 +2022,7 @@ export const NetworkAndCompute_PaaS_OKE = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1862,36 +2037,36 @@ export const NetworkAndCompute_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
-    secret: {type: 'object', required: false},
+    secret: {type: 'object', required: false, sensitive: true},
     secretName: {type: 'string', required: false, default: ''},
-    secretValue: {type: 'string', required: false},
+    secretValue: {type: 'string', required: false, sensitive: true},
   },
 } as const satisfies OfferContract;

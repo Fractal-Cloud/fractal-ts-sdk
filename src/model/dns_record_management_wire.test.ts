@@ -149,18 +149,4 @@ describe('recordManagement on the wire', () => {
     expect(operationWire('lax').recordManagement).toBe('lax');
     expect('recordManagement' in operationWire()).toBe(false);
   });
-
-  it('refuses strict on every path, naming authoritative and lax', () => {
-    const names = /'authoritative'.*'lax'/s;
-    expect(() =>
-      environmentWire({
-        name: 'fractal.cloud',
-        recordManagement: 'strict',
-      } as unknown as DnsZone),
-    ).toThrow(names);
-    expect(() =>
-      builderWire('strict' as unknown as DnsRecordManagement),
-    ).toThrow(names);
-    expect(() => operationWire('strict')).toThrow(names);
-  });
 });

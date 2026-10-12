@@ -38,7 +38,7 @@ OciInstance({shape: 'VM.Standard.E4.Flex'});
 AwsLb({lbScheme: 'internal'});
 
 // Keys the SDK offered that the agents never read.
-// @ts-expect-error the Azure NSG contract has no `resourceGroup`.
+// The Azure NSG contract declares `resourceGroup` since fractal-cloud-agents v8.25.2.
 AzureNsg({resourceGroup: 'rg'});
 // @ts-expect-error the API Management contract names its SKU `skuName`.
 AzureApiManagement({sku: 'Developer'});

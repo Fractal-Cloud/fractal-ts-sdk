@@ -108,7 +108,7 @@ export const CustomWorkloads_FaaS_AwsLambda = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -135,7 +135,7 @@ export const CustomWorkloads_FaaS_AzureFunction = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -163,7 +163,7 @@ export const CustomWorkloads_FaaS_GcpFunction = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -186,7 +186,7 @@ export const CustomWorkloads_FaaS_GoogleFunction = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'CustomWorkloads.FaaS.GcpFunction',
@@ -210,7 +210,7 @@ export const CustomWorkloads_PaaS_AwsEcsService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -227,7 +227,7 @@ export const CustomWorkloads_PaaS_AzureContainerApp = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -256,7 +256,7 @@ export const CustomWorkloads_PaaS_AzureContainerInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -282,7 +282,7 @@ export const CustomWorkloads_PaaS_GcpCloudRun = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -302,7 +302,7 @@ export const CustomWorkloads_PaaS_WebApp = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -360,36 +360,36 @@ export const CustomWorkloads_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
-    secret: {type: 'object', required: false},
+    secret: {type: 'object', required: false, sensitive: true},
     secretName: {type: 'string', required: false, default: ''},
-    secretValue: {type: 'string', required: false},
+    secretValue: {type: 'string', required: false, sensitive: true},
   },
 } as const satisfies OfferContract;

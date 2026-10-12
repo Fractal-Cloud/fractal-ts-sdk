@@ -297,15 +297,7 @@ export const KafkaTopic = defineOffer<
     partitionCount: toContractKey(Messaging_CaaS_KafkaTopic, 'partitions'),
   },
 });
-
-// ── AWS: SNS topic + SQS queue (satisfy 'Messaging.MessagingEntity') ─────────
-const AWS_SNS_TOPIC_TYPE = Messaging_PaaS_AwsSnsTopic.offerType;
 const AWS_SQS_QUEUE_TYPE = Messaging_PaaS_AwsSqsQueue.offerType;
-
-/** SNS topic names: 1–256 letters, digits, hyphens and underscores (standard topics). */
-const SNS_TOPIC_NAME = /^[A-Za-z0-9_-]{1,256}$/;
-/** SQS queue names: 1–80 of the same characters; the DLQ appends `-dlq`, so 76 here. */
-const SQS_QUEUE_NAME = /^[A-Za-z0-9_-]{1,76}$/;
 
 /**
  * A standard Amazon SNS topic: the events a Domain Service publishes. Other
@@ -345,100 +337,7 @@ export const AwsSnsTopic = defineOffer<
     ),
     partitionCount: unsupported('the agent has no partition setting'),
   },
-  validate: (self, _all, config) => {
-    const size = config.maximumMessageSize;
-    if (
-      size !== undefined &&
-      (!Number.isInteger(size) || size < 1024 || size > 1048576)
-    ) {
-      throw new Error(
-        `AwsSnsTopic '${self.id}': maximumMessageSize ${size} is not a whole number of bytes from 1024 to 1048576.`,
-      );
-    }
-    if (
-      config.topicName !== undefined &&
-      !SNS_TOPIC_NAME.test(config.topicName)
-    ) {
-      throw new Error(
-        `AwsSnsTopic '${self.id}': topicName '${config.topicName}' is not an SNS ` +
-          'topic name (1-256 letters, digits, hyphens and underscores).',
-      );
-    }
-  },
 });
-
-// ── AWS: SES identity (satisfies 'Messaging.EmailSender') ────────────────────
-/** A domain name as the AWS agent accepts it (lower case, at least two labels). */
-const SES_DOMAIN =
-  /^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$/;
-/** One DNS label. */
-const DNS_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
-
-/**
- * A DNS name as the AWS agent reads it: trimmed, lower case, without a trailing
- * dot; blank is unset (undefined).
- */
-const normalizedDnsName = (value: string | undefined): string | undefined => {
-  if (value === undefined || value.trim() === '') {
-    return undefined;
-  }
-  const trimmed = value.trim().toLowerCase();
-  return trimmed.endsWith('.') ? trimmed.slice(0, -1) : trimmed;
-};
-
-/**
- * The production access request as the AWS agent sends it: with
- * `productionAccess`, `websiteUrl` (http(s)) and `useCaseDescription` are
- * required; `mailType` and `contactLanguage` are read case-insensitively.
- * Without it the agent reads none of them, so none is checked.
- */
-const validateSesProductionAccess = (
-  id: string,
-  config: {
-    productionAccess?: boolean;
-    mailType?: string;
-    websiteUrl?: string;
-    useCaseDescription?: string;
-    contactLanguage?: string;
-  },
-): void => {
-  if (config.productionAccess !== true) {
-    return;
-  }
-  for (const key of ['websiteUrl', 'useCaseDescription'] as const) {
-    const value = config[key];
-    if (value === undefined || value.trim() === '') {
-      throw new Error(
-        `AwsSesIdentity '${id}': productionAccess needs ${key}; without it the agent sends no request.`,
-      );
-    }
-  }
-  if (!/^https?:\/\/\S+$/.test(config.websiteUrl!.trim())) {
-    throw new Error(
-      `AwsSesIdentity '${id}': websiteUrl '${config.websiteUrl}' is not an http(s) URL.`,
-    );
-  }
-  const mailType = config.mailType?.trim().toUpperCase();
-  if (
-    mailType !== undefined &&
-    mailType !== '' &&
-    !['TRANSACTIONAL', 'MARKETING'].includes(mailType)
-  ) {
-    throw new Error(
-      `AwsSesIdentity '${id}': mailType '${config.mailType}' is not TRANSACTIONAL or MARKETING.`,
-    );
-  }
-  const language = config.contactLanguage?.trim().toUpperCase();
-  if (
-    language !== undefined &&
-    language !== '' &&
-    !['EN', 'JA'].includes(language)
-  ) {
-    throw new Error(
-      `AwsSesIdentity '${id}': contactLanguage '${config.contactLanguage}' is not EN or JA.`,
-    );
-  }
-};
 
 /**
  * An Amazon SES v2 domain identity with Easy DKIM (2048-bit), optionally with a
@@ -487,30 +386,6 @@ export const AwsSesIdentity = defineOffer<
   contract: Messaging_PaaS_AwsSesIdentity,
   provider: 'AWS',
   deliveryModel: 'PaaS',
-  validate: (self, _all, config) => {
-    const domain = normalizedDnsName(config.domain);
-    if (domain === undefined || !SES_DOMAIN.test(domain)) {
-      throw new Error(
-        `AwsSesIdentity '${self.id}': domain '${config.domain}' is not a domain name.`,
-      );
-    }
-    validateSesProductionAccess(self.id, config);
-    const sub = normalizedDnsName(config.mailFromSubdomain);
-    if (sub === undefined) {
-      return;
-    }
-    if (!DNS_LABEL.test(sub)) {
-      throw new Error(
-        `AwsSesIdentity '${self.id}': mailFromSubdomain '${config.mailFromSubdomain}' must be one DNS label ` +
-          "(letters, digits, '-').",
-      );
-    }
-    if (sub.length + 1 + domain.length > 253) {
-      throw new Error(
-        `AwsSesIdentity '${self.id}': '${sub}.${domain}' is longer than a domain name may be.`,
-      );
-    }
-  },
 });
 
 /** The SQS knob a neutral `MessagingEntity` guardrail maps onto, and how. */
@@ -576,13 +451,6 @@ type SqsQueueConfig = ContractConfig<
   }
 >;
 
-const INTEGER_BOUNDS: ReadonlyArray<[keyof SqsQueueConfig, number, number]> = [
-  ['visibilityTimeoutSeconds', 0, 43200],
-  ['messageRetentionSeconds', 60, 1209600],
-  ['maxReceiveCount', 1, 1000],
-  ['dlqRetentionSeconds', 60, 1209600],
-];
-
 /**
  * A standard Amazon SQS queue with a dead-letter queue (`<queueName>-dlq`,
  * SSE-SQS on both). When it depends on an `AwsSnsTopic` — declared with
@@ -644,84 +512,5 @@ export const AwsSqsQueue = defineOffer<
         links: ctx.links,
       },
     ];
-  },
-  validate: (self, all, config) => {
-    if (
-      config.queueName !== undefined &&
-      !SQS_QUEUE_NAME.test(config.queueName)
-    ) {
-      throw new Error(
-        `AwsSqsQueue '${self.id}': queueName '${config.queueName}' is not an SQS ` +
-          "queue name (1-76 letters, digits, hyphens and underscores, leaving room for '-dlq').",
-      );
-    }
-    if (
-      self.parameters['dlqAlarm'] !== undefined &&
-      self.parameters['dlqAlarm'] !== false
-    ) {
-      throw new Error(
-        `AwsSqsQueue '${self.id}': dlqAlarm was removed, the agent creates no CloudWatch alarm. ` +
-          'Alert on the dead-letter queue depth in Prometheus / Grafana instead.',
-      );
-    }
-    if (self.parameters['deadLetterEnabled'] === false) {
-      throw new Error(
-        `AwsSqsQueue '${self.id}': deadLetterEnabled false cannot be honored, every ` +
-          'AwsSqsQueue has a dead-letter queue.',
-      );
-    }
-    // Checked on what is emitted, so values mapped from neutral guardrails count too.
-    for (const [key, min, max] of INTEGER_BOUNDS) {
-      const value = self.parameters[key];
-      if (
-        value !== undefined &&
-        (!Number.isInteger(value) ||
-          (value as number) < min ||
-          (value as number) > max)
-      ) {
-        throw new Error(
-          `AwsSqsQueue '${self.id}': ${key} ${String(value)} is not a whole number from ${min} to ${max}.`,
-        );
-      }
-    }
-    const messagingDependencies = all.filter(
-      c => self.dependencies.includes(c.id) && c.type.startsWith('Messaging.'),
-    );
-    const foreign = messagingDependencies.find(
-      c => c.type !== AWS_SNS_TOPIC_TYPE,
-    );
-    if (foreign) {
-      throw new Error(
-        `AwsSqsQueue '${self.id}' can subscribe only to an AwsSnsTopic, but '${foreign.id}' ` +
-          `is a ${foreign.type}.`,
-      );
-    }
-    if (messagingDependencies.length > 1) {
-      throw new Error(
-        `AwsSqsQueue '${self.id}' subscribes to at most one AwsSnsTopic, but depends on ` +
-          `[${messagingDependencies.map(c => c.id).join(', ')}]. Give each subscription its own queue.`,
-      );
-    }
-    const names = config.filterEventNames ?? [];
-    if (names.length > 0 && config.filterPolicy !== undefined) {
-      throw new Error(
-        `AwsSqsQueue '${self.id}': set either filterEventNames or filterPolicy, not both.`,
-      );
-    }
-    const badName = names.find(n => n.trim() === '' || n.includes(','));
-    if (badName !== undefined) {
-      throw new Error(
-        `AwsSqsQueue '${self.id}': filterEventNames holds '${badName}', which is blank or holds a comma.`,
-      );
-    }
-    if (
-      (names.length > 0 || config.filterPolicy !== undefined) &&
-      messagingDependencies.length === 0
-    ) {
-      throw new Error(
-        `AwsSqsQueue '${self.id}': a filter filters a subscription, but '${self.id}' subscribes ` +
-          'to no topic. Subscribe it with withTopic(topic).',
-      );
-    }
   },
 });

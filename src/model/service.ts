@@ -32,6 +32,8 @@ import {
 } from './http';
 import type {ApiConfig} from './http';
 import {FractalApiError, sanitizeApiError, send} from './api-error';
+import type {ParameterValidationResult} from './validation/parameter_validation_result';
+import {LiveSystemValidationError} from './validation/live_system_validation_error';
 
 const DEFAULT_POLL_INTERVAL_MS = 5_000;
 const DEFAULT_TIMEOUT_MS = 600_000;
@@ -40,6 +42,12 @@ const TERMINAL_FAILURE_STATUSES = ['FailedMutation', 'Error'];
 export type DeployOptions = {
   mode: 'wait' | 'fire-and-forget';
   quiet?: boolean;
+  /**
+   * Skip the control plane's parameter validation that runs before the Live
+   * System is submitted. The control plane still checks the create or update
+   * itself; this only drops the early, side-effect-free check.
+   */
+  skipValidation?: boolean;
   pollIntervalMs?: number;
   timeoutMs?: number;
 };
@@ -179,18 +187,125 @@ const withBlueprintHint = (
   );
 };
 
-const submit = async (ls: LiveSystem, cfg: ApiConfig): Promise<void> => {
-  const id = liveSystemId(ls);
-  const url = apiUrl(cfg, `/livesystems/${id}`);
+/** Does the Live System exist already (so a deploy updates it)? */
+const liveSystemExists = async (
+  ls: LiveSystem,
+  cfg: ApiConfig,
+): Promise<boolean> => {
   const existing = await send(cfg, () =>
     superagent
-      .get(url)
+      .get(apiUrl(cfg, `/livesystems/${liveSystemId(ls)}`))
       .ok(res => res.status === 200 || res.status === 404)
       .set(authHeaders(cfg)),
   );
+  return existing.status === 200;
+};
+
+const isValidationResult = (body: unknown): body is ParameterValidationResult =>
+  typeof body === 'object' &&
+  body !== null &&
+  typeof (body as {valid?: unknown}).valid === 'boolean' &&
+  Array.isArray((body as {components?: unknown}).components) &&
+  Array.isArray((body as {liveSystemIssues?: unknown}).liveSystemIssues) &&
+  typeof (body as {summary?: unknown}).summary === 'object';
+
+/**
+ * Asks the control plane what creating (or updating) the Live System would
+ * answer about its component parameters, without changing anything. Undefined
+ * when the control plane offers no validation (an older one answers 404).
+ */
+const requestValidation = async (
+  ls: LiveSystem,
+  cfg: ApiConfig,
+  exists: boolean,
+): Promise<ParameterValidationResult | undefined> => {
+  const url = exists
+    ? apiUrl(cfg, `/livesystems/${liveSystemId(ls)}/validate`)
+    : apiUrl(cfg, '/livesystems/validate');
+  const res = await send(cfg, () =>
+    superagent
+      .post(url)
+      .ok(r => r.status === 200 || r.status === 404 || r.status === 405)
+      .set(authHeaders(cfg))
+      .send(buildBody(ls)),
+  );
+  return res.status === 200 && isValidationResult(res.body)
+    ? res.body
+    : undefined;
+};
+
+/**
+ * The control plane's parameter validation of a Live System, before it is
+ * deployed: every component's parameters against the contract of its offer.
+ * Undefined when the control plane offers no validation.
+ */
+export async function validateLiveSystem(
+  ls: LiveSystem,
+  cfg: ApiConfig,
+): Promise<ParameterValidationResult | undefined> {
+  return requestValidation(ls, cfg, await liveSystemExists(ls, cfg));
+}
+
+/**
+ * Reports a validation result in wait mode (one summary line on failure, one
+ * line per warning) and refuses the deploy when any issue is blocking.
+ */
+const enforceValidation = (
+  ls: LiveSystem,
+  result: ParameterValidationResult | undefined,
+  quiet: boolean,
+): void => {
+  const system = liveSystemId(ls);
+  if (result === undefined) {
+    log(quiet, 'WARN', 'Live System validation unavailable, submitting', {
+      system,
+    });
+    return;
+  }
+  const warnings = [
+    ...result.liveSystemIssues.map(issue => ({
+      issue,
+      component: '',
+      field: '',
+    })),
+    ...result.components.flatMap(c =>
+      c.fields.flatMap(f =>
+        f.issues.map(issue => ({
+          issue,
+          component: c.componentId,
+          field: f.field,
+        })),
+      ),
+    ),
+  ].filter(w => !w.issue.blocking && w.issue.severity === 'warn');
+  for (const {issue, component, field} of warnings) {
+    log(quiet, 'WARN', `Live System validation warning: ${issue.message}`, {
+      system,
+      ...(component === '' ? {} : {component}),
+      ...(field === '' ? {} : {field}),
+      code: issue.code,
+    });
+  }
+  if (!result.valid) {
+    log(quiet, 'ERROR', 'Live System validation failed', {
+      system,
+      errors: result.summary.errors,
+      warnings: result.summary.warnings,
+    });
+    throw new LiveSystemValidationError(system, result);
+  }
+};
+
+const submit = async (
+  ls: LiveSystem,
+  cfg: ApiConfig,
+  exists: boolean,
+): Promise<void> => {
+  const id = liveSystemId(ls);
+  const url = apiUrl(cfg, `/livesystems/${id}`);
   const body = buildBody(ls);
   try {
-    if (existing.status === 200) {
+    if (exists) {
       await send(cfg, () =>
         superagent.put(url).set(authHeaders(cfg)).send(body),
       );
@@ -206,7 +321,11 @@ const submit = async (ls: LiveSystem, cfg: ApiConfig): Promise<void> => {
     // Sanitize here as well as inside `send`: a request builder that throws
     // SYNCHRONOUSLY (a bad URL, a mocked client) never reaches `send`'s try, so
     // this is the only place that would see the raw object.
-    throw withBlueprintHint(sanitizeApiError(err, cfg), ls);
+    const sanitized = sanitizeApiError(err, cfg);
+    if (sanitized.reasonCode === 'OfferParametersInvalid') {
+      throw new LiveSystemValidationError(id, undefined, sanitized.message);
+    }
+    throw withBlueprintHint(sanitized, ls);
   }
 };
 
@@ -301,17 +420,23 @@ export async function deployLiveSystem(
     apiConfig,
     opts.mode === 'fire-and-forget' || (opts.quiet ?? false),
   );
-  if (opts.mode === 'fire-and-forget') {
-    await submit(ls, cfg);
-    return undefined;
-  }
+  const silent = opts.mode === 'fire-and-forget' || (opts.quiet ?? false);
   const quiet = opts.quiet ?? false;
   const startMs = Date.now();
-  log(quiet, 'INFO', 'Deploying Live System', {
-    system: liveSystemId(ls),
-    fractal: fractalApiId(ls),
-  });
-  await submit(ls, cfg);
+  if (opts.mode === 'wait') {
+    log(quiet, 'INFO', 'Deploying Live System', {
+      system: liveSystemId(ls),
+      fractal: fractalApiId(ls),
+    });
+  }
+  const exists = await liveSystemExists(ls, cfg);
+  if (!(opts.skipValidation ?? false)) {
+    enforceValidation(ls, await requestValidation(ls, cfg, exists), silent);
+  }
+  await submit(ls, cfg, exists);
+  if (opts.mode === 'fire-and-forget') {
+    return undefined;
+  }
   await pollUntilActive(ls, cfg, opts, startMs);
   log(quiet, 'INFO', 'Live System Active', {
     system: liveSystemId(ls),

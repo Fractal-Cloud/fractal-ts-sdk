@@ -32,7 +32,6 @@ import type {
   Provider,
 } from '../core';
 import type {AwsRdsDbmsConfig} from './aws_rds_dbms_config';
-import {validateAwsRdsDbms} from './aws_rds_dbms_validation';
 
 /**
  * A DBMS offer emits itself PLUS one Database live component per child the
@@ -90,11 +89,6 @@ const dbmsInstantiate =
     })),
   ];
 
-/** The longest master user name MySQL accepts. */
-const MYSQL_MAX_LOGIN_LENGTH = 16;
-/** The longest master user name PostgreSQL accepts (NAMEDATALEN - 1). */
-const POSTGRES_MAX_LOGIN_LENGTH = 63;
-
 // ── Storage.ObjectStorage offers ─────────────────────────────────────────────
 export const AwsS3 = defineOffer<
   'Storage.ObjectStorage',
@@ -126,14 +120,6 @@ export const AwsS3 = defineOffer<
     retentionDays: toContractKey(Storage_PaaS_AwsS3, 'lifecycleExpirationDays'),
     storageClass: unsupported('the agent sets no storage class'),
     tags: unsupported('the agent applies no tags to it'),
-  },
-  validate: (self, _all, config) => {
-    const days = config.lifecycleExpirationDays;
-    if (days !== undefined && (!Number.isInteger(days) || days < 1)) {
-      throw new Error(
-        `AwsS3 '${self.id}': lifecycleExpirationDays ${days} is not a whole number of at least 1.`,
-      );
-    }
   },
 });
 /**
@@ -371,13 +357,6 @@ export const AwsRdsPostgresDbms = defineOffer<
 >({
   satisfies: 'Storage.RelationalDbms',
   contract: Storage_PaaS_AwsRdsPostgres,
-  validate: (self, _all, config) =>
-    validateAwsRdsDbms(
-      'AwsRdsPostgresDbms',
-      self,
-      config,
-      POSTGRES_MAX_LOGIN_LENGTH,
-    ),
   provider: 'AWS',
   deliveryModel: 'PaaS',
   neutral: {
@@ -423,8 +402,6 @@ export const AwsRdsMySqlDbms = defineOffer<
 >({
   satisfies: 'Storage.RelationalDbms',
   contract: Storage_PaaS_AwsRdsMySql,
-  validate: (self, _all, config) =>
-    validateAwsRdsDbms('AwsRdsMySqlDbms', self, config, MYSQL_MAX_LOGIN_LENGTH),
   provider: 'AWS',
   deliveryModel: 'PaaS',
   neutral: {

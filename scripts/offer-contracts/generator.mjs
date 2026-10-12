@@ -1,16 +1,14 @@
 /**
- * The offer contract generator: published parameter contracts in, TypeScript
- * modules out. Pure functions only — reading the snapshot and writing files is
- * `scripts/generate-offer-contracts.mjs`; fetching the snapshot is
+ * The offer contract generator: the agents' published parameter contracts in,
+ * TypeScript modules out. Pure functions only — reading the snapshot and writing
+ * files is `scripts/generate-offer-contracts.mjs`; fetching the snapshot is
  * `scripts/refresh-offer-contracts.mjs`. See docs/offer-contracts.md.
  *
- * Input: aria-spec `ParamContractProjection` documents (`param-contract.json`),
- * schema 2.0 from the Java agents and 1.0 from the Go agents. Output: one module
+ * Input: `param-contract.json` documents (schema 1.x or 2.x). Output: one module
  * per infrastructure domain, exporting one `as const` contract per offer type.
- * An offer type several agents declare (the self-hosted CaaS offers, which every
- * Java agent and aria-agent-caas-k8s implement) is merged into one contract,
- * because the SDK emits ONE component for it and any of those agents may be the
- * one that reconciles it.
+ * An offer type several agents declare (the self-hosted CaaS offers) is merged
+ * into one contract, because the SDK emits ONE component for it and any of
+ * those agents may be the one that reconciles it.
  */
 import {createHash} from 'node:crypto';
 
@@ -38,7 +36,7 @@ const VALUE_TYPES = new Set([
   'object',
 ]);
 
-/** Java v1 spellings, normalized the way aria-spec section 2.2 prescribes. */
+/** Older type spellings, normalized to the contract vocabulary. */
 const TYPE_SPELLINGS = {map: 'object', list: 'array', int: 'integer'};
 
 const GENERATED_HEADER =
@@ -73,9 +71,7 @@ const fail = message => {
 const normalizeType = (type, where) => {
   const normalized = TYPE_SPELLINGS[type] ?? type;
   if (!VALUE_TYPES.has(normalized)) {
-    fail(
-      `${where} has type '${type}', which is not an aria-spec ConfigValueType`,
-    );
+    fail(`${where} has type '${type}', which is not a contract value type`);
   }
   return normalized;
 };

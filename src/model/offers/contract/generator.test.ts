@@ -170,7 +170,7 @@ describe('generator', () => {
     const badType = fixture('go-agent');
     badType.offers[0].params[0].type = 'text';
     expect(() => buildModel([badType])).toThrow(
-      /not an aria-spec ConfigValueType/,
+      /not a contract value type/,
     );
     const badOffer = fixture('go-agent');
     badOffer.offers[0].offerType = 'Kafka';

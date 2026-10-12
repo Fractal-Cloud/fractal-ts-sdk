@@ -11,11 +11,46 @@ of truth for what is on npm.
 
 ## Unreleased
 
+### Added — the control plane validates a Live System before it is deployed
+
+`cloud.liveSystems.deploy` now asks the control plane (`POST /livesystems/validate`,
+or `/livesystems/{id}/validate` for an update) to check every component's parameters
+against the contract of its offer before submitting anything. A blocking issue refuses
+the deploy with a `LiveSystemValidationError` carrying the full
+`ParameterValidationResult` (issues per component and parameter, with fixes); in `wait`
+mode one `ERROR Live System validation failed  system=… errors=… warnings=…` line is
+logged, and each warning is logged as a `WARN` line. A control plane without validation
+(404) is reported with a `WARN` line and the deploy continues. New:
+`cloud.liveSystems.validate(ls)`, `DeployOptions.skipValidation`, and the result types
+(`ParameterValidationResult`, `ComponentValidationResult`, `ValidationIssue`, ...). A
+`400 OfferParametersInvalid` from the create or update is surfaced as the same error.
+
+### Changed — parameter checks are the control plane's, not the SDK's
+
+The SDK no longer re-implements the agents' parameter checks: the per-offer `validate`
+functions that mirrored them (CloudFront redirects, timeouts and WAF limits; Traefik
+gateway ForwardAuth and TLS settings; SNS, SQS and SES names and bounds; RDS, Eks,
+CertManager, Grafana, SqsExporter and DNS-zone values; the Kubernetes workload probe,
+rollout and grant checks) are removed. Those values are now checked by the control plane
+before deploy, against the agents' own contracts. `toLiveSystem()` stays offline. What
+remains in the SDK involves several components (a CloudFront origin and the
+certificate of the gateway behind it, gateway route coverage, a Container App's
+environment, a Service Bus tier against its topics, a Grafana backend's bucket link, a
+load balancer's subnets) or how the SDK encodes a value (an empty list sent as blank).
+
+### Breaking — a load balancer declares its subnets
+
+A load balancer is placed only in the subnets it declares (the agents refuse one
+without a Subnet dependency, fractal-cloud-agents #872), so `LoadBalancer` now takes
+them: `LoadBalancer({id: 'edge-lb', subnets: [subnet]})`, a compile error without
+them. `AwsLb`, `AzureLb` and `GcpGlb` refuse a Live System whose load balancer has no
+dependency on a subnet of their own cloud.
+
 ### Changed — offer configs are generated from the agents' published contracts
 
 Every offer whose agent publishes a parameter contract is now defined from it: its
 offer type, its config keys, their types and which are required come from the
-contract (fractal-cloud-agents v8.25.1, aria-agent-caas-k8s v1.4.0, aria-agent-aruba
+contract (fractal-cloud-agents v8.25.2, aria-agent-caas-k8s v1.4.0, aria-agent-aruba
 v0.0.20), and every vendor key an offer writes from a neutral parameter (`lbScheme`,
 OCI `keyName`, the caas-k8s workload keys) is named through it, so a key an agent
 renames or drops is a compile error instead of a value nobody reads. See
@@ -30,12 +65,12 @@ New public types: `OfferContract`, `ContractConfig`, `ContractParameters`,
 **Breaking — config keys no agent read are removed.** A value set under them never
 took effect:
 
-- `AzureNsg`, `AzureServiceBus`, `AzurePostgresDbms`, `AzureDatalake`: `resourceGroup`.
+- `AzureServiceBus`, `AzurePostgresDbms`, `AzureDatalake`: `resourceGroup`
+  (`AzureNsg` keeps it, now optional: its agent declares it).
 - `AzureApiManagement`: `sku`; the agent reads `skuName`. `publisherEmail` is now
   optional, as the agent declares it.
-- `EcsService`: `launchType`.
 - `OciVcn`, `OciSubnet`, `OciSecurityList`, `OciInstance`: `region` (the OCI agent
-  reads no per-component region). `OciSecurityList`: `compartmentId`. `OciSubnet`:
+  reads no per-component region). `OciSubnet`:
   `availabilityDomain` is now the agent's own key, `availabilityZone`.
 - `GcpPostgresDbms`: `tier`. `ArubaMySqlDbms`: `region`.
 - `TraefikGateway`: `forwardAuthExcludedPrefixes` (already refused at runtime).

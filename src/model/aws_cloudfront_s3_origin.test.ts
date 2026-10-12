@@ -221,30 +221,6 @@ describe('AwsCloudFront — static site from an S3 bucket', () => {
       /redirectTo or an origin, not both/,
     ],
     [
-      'a defaultRootObject with a leading slash',
-      {aliases: ['a.example.com'], defaultRootObject: '/index.html'},
-      'read',
-      /defaultRootObject/,
-    ],
-    [
-      'a blank defaultRootObject',
-      {aliases: ['a.example.com'], defaultRootObject: ' '},
-      'read',
-      /defaultRootObject/,
-    ],
-    [
-      'a defaultRootObject longer than 255 characters',
-      {aliases: ['a.example.com'], defaultRootObject: 'a'.repeat(256)},
-      'read',
-      /defaultRootObject/,
-    ],
-    [
-      'a defaultRootObject with surrounding spaces',
-      {aliases: ['a.example.com'], defaultRootObject: ' index.html'},
-      'read',
-      /defaultRootObject/,
-    ],
-    [
       'a bucket together with redirectTo, without aliases',
       {redirectTo: 'https://x.example.com'},
       'read',
@@ -255,12 +231,6 @@ describe('AwsCloudFront — static site from an S3 bucket', () => {
       {defaultRootObject: 'index.html'},
       null,
       /defaultRootObject .* bucket/,
-    ],
-    [
-      'a spaFallback that is not a boolean',
-      {aliases: ['a.example.com'], spaFallback: 'yes'},
-      'read',
-      /spaFallback/,
     ],
     [
       'defaultRootObject without a bucket origin',
@@ -291,40 +261,6 @@ describe('AwsCloudFront — static site from an S3 bucket', () => {
       {defaultRootObject: 'index.html'},
       null,
       /defaultRootObject .* bucket/,
-    ],
-    [
-      'errorDocument together with spaFallback',
-      {
-        aliases: ['a.example.com'],
-        errorDocument: '404.html',
-        spaFallback: true,
-      },
-      'read',
-      /errorDocument .* spaFallback|spaFallback .* errorDocument/,
-    ],
-    [
-      'an errorDocument with a leading slash',
-      {aliases: ['a.example.com'], errorDocument: '/404.html'},
-      'read',
-      /errorDocument/,
-    ],
-    [
-      'a blank errorDocument',
-      {aliases: ['a.example.com'], errorDocument: ' '},
-      'read',
-      /errorDocument/,
-    ],
-    [
-      'an errorDocument climbing out with ..',
-      {aliases: ['a.example.com'], errorDocument: 'a/../404.html'},
-      'read',
-      /errorDocument/,
-    ],
-    [
-      'a defaultRootObject with a character outside letters, digits and ._/-',
-      {aliases: ['a.example.com'], defaultRootObject: 'index page.html'},
-      'read',
-      /defaultRootObject/,
     ],
     [
       'a bucket in another region than the distribution',

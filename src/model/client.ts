@@ -29,7 +29,9 @@ import {
   deployLiveSystem,
   destroyLiveSystem,
   liveSystemOutputs,
+  validateLiveSystem,
 } from './service';
+import type {ParameterValidationResult} from './validation/parameter_validation_result';
 import type {DeployOptions, LiveSystemState} from './service';
 import {
   deployEnvironment,
@@ -162,11 +164,25 @@ export type FractalCloudClient = {
      * Deploy (create or update) a LiveSystem. The blueprint it instantiates must
      * already be registered — the API rejects the deployment otherwise. Compose
      * `blueprints.create` before this when you own both.
+     *
+     * The control plane validates the components' parameters against the
+     * contracts of their offers first (see `validate`); a Live System with a
+     * blocking issue is refused with a `LiveSystemValidationError` before
+     * anything is submitted, and in `wait` mode warnings are logged.
      */
     deploy: (
       ls: LiveSystem,
       opts?: DeployOptions,
     ) => Promise<LiveSystemState | undefined>;
+    /**
+     * Ask the control plane what deploying this LiveSystem would answer about
+     * its component parameters, without changing anything: every component
+     * against the contract of its offer. Undefined when the control plane offers
+     * no validation.
+     */
+    validate: (
+      ls: LiveSystem,
+    ) => Promise<ParameterValidationResult | undefined>;
     /** Read a deployed LiveSystem's per-component output fields. */
     outputs: (target: LiveSystem | string) => Promise<LiveSystemState>;
     /** Destroy a deployed LiveSystem. Its blueprint stays registered. */
@@ -235,6 +251,7 @@ export const createFractalCloudClient = (
   },
   liveSystems: {
     deploy: (ls, opts) => deployLiveSystem(ls, cfg, opts),
+    validate: ls => validateLiveSystem(ls, cfg),
     outputs: target => liveSystemOutputs(target, cfg),
     destroy: ls => destroyLiveSystem(ls, cfg),
   },

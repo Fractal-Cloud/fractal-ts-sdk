@@ -8,6 +8,6 @@ export type ContractDeclaration = {
   readonly provider: string;
   /** The offer type this one is an alias of, when the agent serves it under two names. */
   readonly aliasOf?: string;
-  /** Cross-parameter rules (aria-spec `ParameterRule`), as declared. */
+  /** Cross-parameter rules, as declared. */
   readonly parameterRules: readonly unknown[];
 };

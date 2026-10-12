@@ -278,7 +278,11 @@ const NEUTRAL = new Map<string, ProbedNode['state']>(
     )
     .flatMap(factory => {
       try {
-        const node = factory({id: 'probe'});
+        // A LoadBalancer takes its subnets in its config; other factories ignore them.
+        const node = factory({
+          id: 'probe',
+          subnets: [networkComponents.Subnet({id: 'probe-subnet'})],
+        } as {id: string});
         return node?.state?.component ? [setEverything(node).state] : [];
       } catch (e) {
         if (e instanceof Error && e.message.startsWith('no SETTER_VALUES')) {
@@ -332,7 +336,8 @@ const refuses = (
 const supportedNeutral = (offer: OfferConstructor): Record<string, unknown> =>
   Object.fromEntries(
     Object.entries(NEUTRAL.get(offer.satisfies)?.parameters ?? {}).filter(
-      ([k, v]) => offer.neutral?.[k]?.kind !== 'unsupported' && !refuses(offer, k, v),
+      ([k, v]) =>
+        offer.neutral?.[k]?.kind !== 'unsupported' && !refuses(offer, k, v),
     ),
   );
 
@@ -361,10 +366,7 @@ const emitted = (
   instantiateWith(name, offer, supportedNeutral(offer));
 
 /** Keys each offer emits that the contract of the emitted type does not declare. */
-const undeclaredParameters = (): Record<
-  string,
-  Record<string, string[]>
-> => {
+const undeclaredParameters = (): Record<string, Record<string, string[]>> => {
   const out: Record<string, Record<string, string[]>> = {};
   for (const [name, offer] of OFFERS) {
     if (offer.contract === undefined) {
@@ -585,36 +587,31 @@ describe('offers and the contracts their agents publish', () => {
       parameters: {desiredCount: 3, launchType: 'FARGATE'},
       dependencies: ['cluster', 'subnet', 'web-task'],
     });
-    expect(() =>
-      ecs({} as never).instantiate({
-        id: 'web',
-        displayName: 'web',
-        parameters: {},
-        dependencies: [],
-        links: [],
-        children: [],
-      }),
-    ).toThrow("EcsService 'web' needs containerImage: set it with the Workload's withImage.");
-    expect(Object.fromEntries(OFFERS)['EcsCluster']({} as never).offerType).toBe(
-      'NetworkAndCompute.PaaS.ECS',
-    );
+    expect(
+      Object.fromEntries(OFFERS)['EcsCluster']({} as never).offerType,
+    ).toBe('NetworkAndCompute.PaaS.ECS');
   });
 
   it('refuses a neutral value no agent key can take', () => {
     const run = (name: string, parameters: Record<string, unknown>) =>
       instantiateWith(name, Object.fromEntries(OFFERS)[name], parameters);
     expect(() => run('Ec2Instance', {size: 'huge'})).toThrow(
-      'Offer NetworkAndCompute.IaaS.AwsEc2Instance cannot honor the parameter \'size\' of \'probe\': ' +
+      "Offer NetworkAndCompute.IaaS.AwsEc2Instance cannot honor the parameter 'size' of 'probe': " +
         'size "huge" is neither a neutral size (small, medium, large, xlarge) nor a AWS machine type such as t3.micro.',
     );
     expect(run('Ec2Instance', {size: 'c7g.large'})[0].parameters).toEqual({
       instanceType: 'c7g.large',
     });
-    expect(() => run('GcpVm', {size: 't3.micro'})).toThrow(/nor a GCP machine type/);
+    expect(() => run('GcpVm', {size: 't3.micro'})).toThrow(
+      /nor a GCP machine type/,
+    );
     expect(() => run('AzureContainerApp', {memoryRequest: 'lots'})).toThrow(
       '"lots" is not a Kubernetes memory quantity such as 512Mi or 1Gi',
     );
-    expect(run('AzureContainerApp', {memoryRequest: '1536Mi', cpuRequest: '1'})[0].parameters).toMatchObject({
+    expect(
+      run('AzureContainerApp', {memoryRequest: '1536Mi', cpuRequest: '1'})[0]
+        .parameters,
+    ).toMatchObject({
       memory: '1.5Gi',
       cpu: 1,
     });

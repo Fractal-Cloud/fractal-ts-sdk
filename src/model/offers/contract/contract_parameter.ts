@@ -1,8 +1,8 @@
 import type {ContractValueType} from './contract_value_type';
 
 /**
- * One parameter of an offer contract, as the agents publish it (aria-spec
- * `OfferConfigProperty`). Generated; see docs/offer-contracts.md.
+ * One parameter of an offer contract, as the agents publish it. Generated;
+ * see docs/offer-contracts.md.
  */
 export type ContractParameter = {
   readonly type: ContractValueType;

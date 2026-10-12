@@ -43,28 +43,28 @@ export const APIManagement_CaaS_Traefik = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -174,7 +174,7 @@ export const APIManagement_PaaS_ApiGateway = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -205,7 +205,7 @@ export const APIManagement_PaaS_ApiManagement = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -231,7 +231,7 @@ export const APIManagement_PaaS_AwsCloudFront = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -269,7 +269,7 @@ export const APIManagement_PaaS_AzureApiManagement = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -295,7 +295,7 @@ export const APIManagement_PaaS_CloudFront = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -333,7 +333,7 @@ export const APIManagement_PaaS_GcpApiGateway = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -364,36 +364,36 @@ export const APIManagement_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
-    secret: {type: 'object', required: false},
+    secret: {type: 'object', required: false, sensitive: true},
     secretName: {type: 'string', required: false, default: ''},
-    secretValue: {type: 'string', required: false},
+    secretValue: {type: 'string', required: false, sensitive: true},
   },
 } as const satisfies OfferContract;

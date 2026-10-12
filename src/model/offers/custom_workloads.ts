@@ -41,21 +41,6 @@ const asRecord = (v: unknown): Record<string, unknown> =>
 const requests = (v: unknown): Record<string, unknown> =>
   asRecord(asRecord(v).requests);
 
-/** Refuses an emitted component that lacks a key its contract requires. */
-const requireKey = (
-  offer: string,
-  componentId: string,
-  parameters: Record<string, unknown>,
-  key: string,
-  setter: string,
-): void => {
-  if (parameters[key] === undefined) {
-    throw new Error(
-      `${offer} '${componentId}' needs ${key}: set it with the Workload's ${setter}.`,
-    );
-  }
-};
-
 const unsupportedOnEcs = (what: string) =>
   unsupported(
     `the ECS task definition and service contracts declare no ${what}`,
@@ -150,13 +135,6 @@ export const EcsService = defineOffer<
         ([k]) => k in service.params || !(k in task.params),
       ),
     );
-    requireKey(
-      'EcsService',
-      ctx.id,
-      taskParameters,
-      'containerImage',
-      'withImage',
-    );
     const taskId = `${ctx.id}-task`;
     return [
       {
@@ -237,8 +215,6 @@ export const CloudRun = defineOffer<
     terminationGracePeriodSeconds: unsupportedOnCloudRun('stop timeout'),
     topologySpread: unsupportedOnCloudRun('placement spread'),
   },
-  validate: self =>
-    requireKey('CloudRun', self.id, self.parameters, 'image', 'withImage'),
 });
 /**
  * A Container App runs INSIDE a managed environment, and the agent will not

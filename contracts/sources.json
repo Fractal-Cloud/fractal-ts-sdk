@@ -4,46 +4,42 @@
     {
       "agentId": "fractal-cloud-agent-aws",
       "repository": "Fractal-Cloud/fractal-cloud-agents",
-      "tag": "v8.25.1",
+      "tag": "v8.25.2",
       "fetch": {
-        "kind": "gradle-build",
-        "task": ":fractal.cloudagent.aws.container:generateParamContract",
-        "output": "fractal.cloudagent.aws.container/build/param-contract/param-contract.json"
+        "kind": "release-asset",
+        "asset": "param-contract.aws.json"
       },
-      "snapshotSha256": "febe49c065b226d83d4bd22bc414bb223ea037ac4749f89439ed16c616a878f5"
+      "snapshotSha256": "9f2c5724cc4da600d53554ba173d6934487f733b551f3c351dcf8860a4fdba4c"
     },
     {
       "agentId": "fractal-cloud-agent-azure",
       "repository": "Fractal-Cloud/fractal-cloud-agents",
-      "tag": "v8.25.1",
+      "tag": "v8.25.2",
       "fetch": {
-        "kind": "gradle-build",
-        "task": ":fractal.cloudagent.azure.container:generateParamContract",
-        "output": "fractal.cloudagent.azure.container/build/param-contract/param-contract.json"
+        "kind": "release-asset",
+        "asset": "param-contract.azure.json"
       },
-      "snapshotSha256": "f22e9cfa7c4e349a7202b72c1a79affc2fa03602d213bee89a22a6b2a822851f"
+      "snapshotSha256": "f40b9674c90ef98ce45c3b9c5517ab183a4cbb44567d7534ece174291539dc48"
     },
     {
       "agentId": "fractal-cloud-agent-gcp",
       "repository": "Fractal-Cloud/fractal-cloud-agents",
-      "tag": "v8.25.1",
+      "tag": "v8.25.2",
       "fetch": {
-        "kind": "gradle-build",
-        "task": ":fractal.cloudagent.gcp.container:generateParamContract",
-        "output": "fractal.cloudagent.gcp.container/build/param-contract/param-contract.json"
+        "kind": "release-asset",
+        "asset": "param-contract.gcp.json"
       },
-      "snapshotSha256": "329b9a3ee2c0b7b2ff262baa0373560fa8f739aec47a3a1f52ad0b55be7aa047"
+      "snapshotSha256": "9dbb568cc2ad4a0e0c2d9f7da01b08d4ac2e9ebf0939dacdf9d0d7a45b28e37e"
     },
     {
       "agentId": "fractal-cloud-agent-oci",
       "repository": "Fractal-Cloud/fractal-cloud-agents",
-      "tag": "v8.25.1",
+      "tag": "v8.25.2",
       "fetch": {
-        "kind": "gradle-build",
-        "task": ":fractal.cloudagent.oci.container:generateParamContract",
-        "output": "fractal.cloudagent.oci.container/build/param-contract/param-contract.json"
+        "kind": "release-asset",
+        "asset": "param-contract.oci.json"
       },
-      "snapshotSha256": "52f64cb7647322be6cd7a87eb88c0997a9810cd2143d82615de795730c7d9bbf"
+      "snapshotSha256": "233a9f28115637b7a5627052d797ee7112df0923c96b6789caddc9af75a599c4"
     },
     {
       "agentId": "aria-agent-caas-k8s",

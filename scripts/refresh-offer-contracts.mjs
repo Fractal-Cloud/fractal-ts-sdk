@@ -1,7 +1,7 @@
 /**
  * Fetches the agents' published parameter contracts into contracts/snapshot/.
- * Needs network, the GitHub CLI with read access to the agent repositories
- * (GH_TOKEN), and, for the Java agents, a JDK 21: see docs/offer-contracts.md.
+ * Needs network and the GitHub CLI with read access to the agent repositories
+ * (GH_TOKEN): see docs/offer-contracts.md.
  *
  *   node scripts/refresh-offer-contracts.mjs            re-fetch the pinned tags
  *   node scripts/refresh-offer-contracts.mjs --latest   move every pin to its latest release
@@ -27,76 +27,60 @@ const latest = args.has('--latest');
 const check = args.has('--check');
 const root = process.cwd();
 
-const run = (command, commandArgs, options = {}) =>
-  execFileSync(command, commandArgs, {
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'inherit'],
-    ...options,
-  });
-
-const latestTag = repository =>
-  run('gh', [
-    'release',
-    'view',
-    '--repo',
-    repository,
-    '--json',
-    'tagName',
-    '--jq',
-    '.tagName',
-  ]).trim();
-
-/** A Go agent attaches param-contract.json to its GitHub release. */
-const fetchReleaseAsset = (agent, tag, work) => {
-  run('gh', [
-    'release',
-    'download',
-    tag,
-    '--repo',
-    agent.repository,
-    '--pattern',
-    agent.fetch.asset,
-    '--dir',
-    work,
-  ]);
-  return readFileSync(join(work, agent.fetch.asset), 'utf8');
+/**
+ * Runs a command with its output captured. The agent repositories are private,
+ * so their tools' output is never echoed (it would reach public CI logs): a
+ * failure is reported as the step that failed and its exit code only.
+ */
+const run = (command, commandArgs, step) => {
+  try {
+    return execFileSync(command, commandArgs, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+  } catch (e) {
+    throw new Error(`${step} failed (exit ${e.status ?? 'unknown'})`);
+  }
 };
 
-/**
- * The Java agents publish no downloadable 2.0 projection (docs/offer-contracts.md,
- * "Producer gaps"), so it is built from the release tag with the agents' own
- * generator, stamped with the tag as the release pipeline stamps it.
- */
-const builtCheckouts = new Map();
-const fetchGradleBuild = (agent, tag, work) => {
-  const key = `${agent.repository}@${tag}`;
-  let checkout = builtCheckouts.get(key);
-  if (checkout === undefined) {
-    checkout = join(work, 'checkout');
-    run('gh', [
-      'repo',
-      'clone',
-      agent.repository,
-      checkout,
-      '--',
-      '--depth',
-      '1',
-      '--branch',
+const latestTag = repository =>
+  run(
+    'gh',
+    [
+      'release',
+      'view',
+      '--repo',
+      repository,
+      '--json',
+      'tagName',
+      '--jq',
+      '.tagName',
+    ],
+    `reading the latest release of ${repository}`,
+  ).trim();
+
+/** Every agent attaches its parameter contract to its GitHub release. */
+const fetchReleaseAsset = (agent, tag, work) => {
+  run(
+    'gh',
+    [
+      'release',
+      'download',
       tag,
-    ]);
-    builtCheckouts.set(key, checkout);
-  }
-  run('./gradlew', [agent.fetch.task, '--console=plain', '-q'], {
-    cwd: checkout,
-    env: {...process.env, RELEASE_VERSION: tag},
-    stdio: ['ignore', 'inherit', 'inherit'],
-  });
-  return readFileSync(join(checkout, agent.fetch.output), 'utf8');
+      '--repo',
+      agent.repository,
+      '--pattern',
+      agent.fetch.asset,
+      '--dir',
+      work,
+    ],
+    `downloading ${agent.fetch.asset} of ${agent.agentId} ${tag}`,
+  );
+  return readFileSync(join(work, agent.fetch.asset), 'utf8');
 };
 
 const FETCHERS = {
   'release-asset': fetchReleaseAsset,
-  'gradle-build': fetchGradleBuild,
 };
 
 const sources = readSources(root);

@@ -13,7 +13,9 @@ import {describe, it, expect, beforeEach, vi} from 'vitest';
 
 const h = vi.hoisted(() => {
   const requests: {method: string; url: string; body?: unknown}[] = [];
-  const state = {queue: [] as {status: number; body?: unknown}[]};
+  const state = {
+    queue: [] as {status?: number; body?: unknown; throws?: unknown}[],
+  };
   return {requests, state};
 });
 
@@ -32,7 +34,9 @@ vi.mock('superagent', () => {
     ) => {
       h.requests.push({method, url, body: req.body});
       const next = h.state.queue.shift() ?? {status: 200, body: {}};
-      return Promise.resolve(next).then(resolve, reject);
+      return next.throws === undefined
+        ? Promise.resolve(next).then(resolve, reject)
+        : Promise.reject(next.throws).then(resolve, reject);
     };
     return req;
   };
@@ -51,6 +55,7 @@ import {ObjectStorage} from './components/storage';
 import {AwsS3} from './offers/storage';
 import {createFractalCloudClient} from './client';
 import {referenceTo} from './reference';
+import {LiveSystemValidationError} from './validation/live_system_validation_error';
 
 const cloud = createFractalCloudClient({
   clientId: 'cid',
@@ -78,6 +83,18 @@ function liveSystem() {
   });
 }
 
+/** The control plane's answer when every component's parameters satisfy their contracts. */
+const VALID = {
+  status: 200,
+  body: {
+    valid: true,
+    enforced: true,
+    summary: {errors: 0, warnings: 0, blocking: 0, unvalidatedComponents: 0},
+    liveSystemIssues: [],
+    components: [],
+  },
+};
+
 describe('liveSystems.deploy()', () => {
   beforeEach(() => {
     h.requests.length = 0;
@@ -85,11 +102,14 @@ describe('liveSystems.deploy()', () => {
   });
 
   it('fire-and-forget: creates (POST) and returns without polling', async () => {
-    h.state.queue = [{status: 404}, {status: 201}];
+    h.state.queue = [{status: 404}, VALID, {status: 201}];
     await cloud.liveSystems.deploy(liveSystem()); // default mode
 
-    const methods = h.requests.map(r => r.method);
-    expect(methods).toEqual(['GET', 'POST']); // existence probe + create, no poll
+    expect(h.requests.map(r => `${r.method} ${r.url}`)).toEqual([
+      `GET ${LS_URL}`, // existence probe
+      'POST https://api.fractal.cloud/livesystems/validate', // validation
+      'POST https://api.fractal.cloud/livesystems', // create, no poll
+    ]);
     const post = h.requests.find(
       r =>
         r.method === 'POST' &&
@@ -126,6 +146,7 @@ describe('liveSystems.deploy()', () => {
   it('wait: submits, polls until Active, and resolves to the LiveSystem state', async () => {
     h.state.queue = [
       {status: 404}, // LS existence
+      VALID, // validation
       {status: 201}, // LS create
       {status: 200, body: {status: 'Provisioning'}}, // poll 1
       {status: 200, body: {status: 'Active'}}, // poll 2
@@ -151,6 +172,7 @@ describe('liveSystems.deploy()', () => {
     });
     expect(h.requests.map(r => r.method)).toEqual([
       'GET',
+      'POST',
       'POST',
       'GET',
       'GET',
@@ -218,13 +240,18 @@ describe('liveSystems.deploy()', () => {
     expect(JSON.parse(fields.structured)).toEqual([{name: 'a', value: 1}]);
     expect(fields.names).toBe('["a","b"]');
     expect(JSON.parse(fields.certificateValidationRecords)).toEqual([
-      {name: '_a1.example.com.', type: 'CNAME', value: '_b2.acm-validations.aws.'},
+      {
+        name: '_a1.example.com.',
+        type: 'CNAME',
+        value: '_b2.acm-validations.aws.',
+      },
     ]);
   });
 
   it('wait: throws on terminal failure status', async () => {
     h.state.queue = [
       {status: 404}, // LS existence
+      VALID, // validation
       {status: 201}, // LS create
       {status: 200, body: {status: 'FailedMutation'}}, // poll
     ];
@@ -239,11 +266,196 @@ describe('liveSystems.deploy()', () => {
   });
 
   it('updates (PUT) when the live system already exists', async () => {
-    h.state.queue = [{status: 200}, {status: 200}];
+    h.state.queue = [{status: 200}, VALID, {status: 200}];
     await cloud.liveSystems.deploy(liveSystem());
     expect(h.requests.map(r => `${r.method} ${r.url}`)).toEqual([
       `GET ${LS_URL}`,
+      `POST ${LS_URL}/validate`,
       `PUT ${LS_URL}`,
+    ]);
+  });
+
+  const issue = (severity: 'error' | 'warn', message: string) => ({
+    severity,
+    blocking: severity === 'error',
+    code: severity === 'error' ? 'required' : 'unknownParameter',
+    ruleId: null,
+    field: '/bucket',
+    relatedFields: [],
+    detail: null,
+    message,
+    fix: {
+      text: 'fix it',
+      setField: null,
+      allowedValues: null,
+      example: null,
+      requiredBecause: null,
+    },
+    docsUrl: null,
+  });
+  const result = (issues: ReturnType<typeof issue>[]) => ({
+    status: 200,
+    body: {
+      valid: !issues.some(i => i.blocking),
+      enforced: true,
+      summary: {
+        errors: issues.filter(i => i.severity === 'error').length,
+        warnings: issues.filter(i => i.severity === 'warn').length,
+        blocking: issues.filter(i => i.blocking).length,
+        unvalidatedComponents: 0,
+      },
+      liveSystemIssues: [],
+      components: [
+        {
+          componentId: 'uploads',
+          offerType: 'Storage.PaaS.AwsS3',
+          provider: 'AWS',
+          contract: {
+            schemaVersion: '2.0',
+            digest: null,
+            declaredBy: 'fractal-cloud-agent-aws',
+            agentVersion: 'v8.25.2',
+          },
+          validated: true,
+          unvalidatedReason: null,
+          fields: [{field: '/bucket', issues}],
+        },
+      ],
+    },
+  });
+
+  it('refuses the deploy before submitting when validation finds a blocking issue', async () => {
+    h.state.queue = [
+      {status: 404},
+      result([issue('error', 'bucket is required.')]),
+    ];
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const deploy = cloud.liveSystems.deploy(liveSystem(), {mode: 'wait'});
+    await expect(deploy).rejects.toBeInstanceOf(LiveSystemValidationError);
+    await expect(deploy).rejects.toThrow(
+      `Live System 'Personal/${OWNER}/reusable-templates/acme-storage' failed parameter validation: uploads /bucket: bucket is required.`,
+    );
+    expect(h.requests.map(r => r.method)).toEqual(['GET', 'POST']); // nothing submitted
+    const lines = log.mock.calls.map(c => String(c[0]));
+    expect(
+      lines.some(l =>
+        /ERROR Live System validation failed {2}system=\S+ errors=1 warnings=0$/.test(
+          l,
+        ),
+      ),
+    ).toBe(true);
+    log.mockRestore();
+  });
+
+  it('logs each warning in wait mode and deploys', async () => {
+    h.state.queue = [
+      {status: 404},
+      result([issue('warn', 'bucket is not read by the agent.')]),
+      {status: 201},
+      {status: 200, body: {status: 'Active'}},
+      {status: 200, body: {status: 'Active', components: []}},
+    ];
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await cloud.liveSystems.deploy(liveSystem(), {
+      mode: 'wait',
+      pollIntervalMs: 1,
+      timeoutMs: 5000,
+    });
+    const lines = log.mock.calls.map(c => String(c[0]));
+    expect(
+      lines.some(
+        l =>
+          l.includes(
+            'WARN  Live System validation warning: bucket is not read by the agent.  system=',
+          ) &&
+          l.endsWith('component=uploads field=/bucket code=unknownParameter'),
+      ),
+    ).toBe(true);
+    log.mockRestore();
+  });
+
+  it('refuses silently in fire-and-forget, and logs nothing', async () => {
+    h.state.queue = [
+      {status: 404},
+      result([issue('error', 'bucket is required.')]),
+    ];
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await expect(cloud.liveSystems.deploy(liveSystem())).rejects.toBeInstanceOf(
+      LiveSystemValidationError,
+    );
+    expect(log).not.toHaveBeenCalled();
+    log.mockRestore();
+  });
+
+  it('submits unchecked, with a warning, when the control plane offers no validation', async () => {
+    h.state.queue = [
+      {status: 404},
+      {status: 404}, // an older control plane: no validate route
+      {status: 201},
+      {status: 200, body: {status: 'Active'}},
+      {status: 200, body: {status: 'Active', components: []}},
+    ];
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await cloud.liveSystems.deploy(liveSystem(), {
+      mode: 'wait',
+      pollIntervalMs: 1,
+      timeoutMs: 5000,
+    });
+    expect(h.requests.map(r => r.method)).toEqual([
+      'GET',
+      'POST',
+      'POST',
+      'GET',
+      'GET',
+    ]);
+    expect(
+      log.mock.calls.some(c =>
+        String(c[0]).includes(
+          'WARN  Live System validation unavailable, submitting',
+        ),
+      ),
+    ).toBe(true);
+    log.mockRestore();
+  });
+
+  it('skips validation when asked', async () => {
+    h.state.queue = [{status: 404}, {status: 201}];
+    await cloud.liveSystems.deploy(liveSystem(), {
+      mode: 'fire-and-forget',
+      skipValidation: true,
+    });
+    expect(h.requests.map(r => r.method)).toEqual(['GET', 'POST']);
+  });
+
+  it('turns an OfferParametersInvalid refusal of the create into a LiveSystemValidationError', async () => {
+    h.state.queue = [
+      {status: 404},
+      VALID,
+      {
+        throws: {
+          status: 400,
+          response: {
+            status: 400,
+            body: {
+              reasonCode: 'OfferParametersInvalid',
+              message: 'uploads: bucket is required',
+            },
+          },
+        },
+      },
+    ];
+    await expect(cloud.liveSystems.deploy(liveSystem())).rejects.toBeInstanceOf(
+      LiveSystemValidationError,
+    );
+  });
+
+  it('validate: returns the result without deploying', async () => {
+    h.state.queue = [{status: 200}, result([issue('warn', 'unread.')])];
+    const answer = await cloud.liveSystems.validate(liveSystem());
+    expect(answer?.summary.warnings).toBe(1);
+    expect(h.requests.map(r => `${r.method} ${r.url}`)).toEqual([
+      `GET ${LS_URL}`,
+      `POST ${LS_URL}/validate`,
     ]);
   });
 

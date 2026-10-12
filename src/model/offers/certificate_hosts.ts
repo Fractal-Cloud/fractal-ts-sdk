@@ -3,7 +3,7 @@
  * them (`internal/gateway/traefik/certificate_hosts.go`). Internal: not re-exported
  * from the model barrel.
  */
-import {isKubernetesName} from './caas_param_checks';
+import {isKubernetesName} from './kubernetes_name';
 
 /** What a certificate host in `tlsHosts` may be, once a leading `*.` is set aside. */
 export const isCertificateHost = (host: string): boolean => {

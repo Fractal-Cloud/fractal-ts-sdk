@@ -32,7 +32,11 @@ describe('AwsRdsPostgresDbms pinned for production', () => {
       boundedContextId,
       blueprint: bp => ({dbms: bp.add(RelationalDbms({id: 'postgres'}))}),
     })
-      .toLiveSystem({name: 'platform', environment, select: {postgres: AwsRdsPostgresDbms(config)}})
+      .toLiveSystem({
+        name: 'platform',
+        environment,
+        select: {postgres: AwsRdsPostgresDbms(config)},
+      })
       .components.find(c => c.id === 'postgres')!;
 
   it('carries every pin under the agent keys', () => {
@@ -58,11 +62,6 @@ describe('AwsRdsPostgresDbms pinned for production', () => {
       allocatedStorageGb: 50,
     });
   });
-
-  it('refuses a storage type RDS does not offer', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect(() => dbms({storageType: 'gp9' as any})).toThrow(/storageType 'gp9'/);
-  });
 });
 
 describe('AwsS3 lifecycle expiration', () => {
@@ -73,19 +72,17 @@ describe('AwsS3 lifecycle expiration', () => {
       boundedContextId,
       blueprint: bp => ({loki: bp.add(ObjectStorage({id: 'loki-chunks'}))}),
     })
-      .toLiveSystem({name: 'platform', environment, select: {'loki-chunks': AwsS3(config)}})
+      .toLiveSystem({
+        name: 'platform',
+        environment,
+        select: {'loki-chunks': AwsS3(config)},
+      })
       .components.find(c => c.id === 'loki-chunks')!;
 
   it('carries lifecycleExpirationDays', () => {
     expect(bucket({lifecycleExpirationDays: 30}).parameters).toEqual({
       lifecycleExpirationDays: 30,
     });
-  });
-
-  it.each([[0], [1.5]])('refuses lifecycleExpirationDays %s', days => {
-    expect(() => bucket({lifecycleExpirationDays: days})).toThrow(
-      /lifecycleExpirationDays/,
-    );
   });
 });
 

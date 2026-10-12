@@ -129,40 +129,6 @@ describe('AwsRdsMySqlDbms and AwsRdsMySqlDatabase', () => {
 
     expect(dbms.parameters).toEqual({});
   });
-
-  it('refuses a storage type RDS does not offer', () => {
-    expect(() =>
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      dbmsWith({storageType: 'st1' as any}),
-    ).toThrow(/AwsRdsMySqlDbms 'app-dbms': storageType 'st1'/);
-  });
-
-  it('refuses a master user name longer than MySQL allows (16 characters)', () => {
-    expect(() => dbmsWith({administratorLogin: 'a'.repeat(17)})).toThrow(
-      /AwsRdsMySqlDbms 'app-dbms': administratorLogin .* longer than 16/,
-    );
-    expect(() => dbmsWith({administratorLogin: 'a'.repeat(16)})).not.toThrow();
-  });
-});
-
-describe('administratorLogin on AwsRdsPostgresDbms', () => {
-  it('refuses a master user name longer than PostgreSQL allows (63 characters)', () => {
-    const pg = (administratorLogin: string) =>
-      createFractal({
-        id: 'pg',
-        version: {major: 1, minor: 0, patch: 0},
-        boundedContextId,
-        blueprint: bp => ({dbms: bp.add(RelationalDbms({id: 'pg'}))}),
-      }).toLiveSystem({
-        name: 'pg',
-        environment,
-        select: {pg: AwsRdsPostgresDbms({administratorLogin})},
-      });
-    expect(() => pg('a'.repeat(64))).toThrow(
-      /AwsRdsPostgresDbms 'pg': administratorLogin .* longer than 63/,
-    );
-    expect(() => pg('a'.repeat(63))).not.toThrow();
-  });
 });
 
 describe('cloudwatchLogExports on both RDS DBMS offers (opt-in)', () => {
@@ -210,22 +176,6 @@ describe('cloudwatchLogExports on both RDS DBMS offers (opt-in)', () => {
       cloudwatchLogExports: [],
     });
   });
-
-  it.each([
-    ['a log type that is not a string', [42], /cloudwatchLogExports/],
-    ['a blank log type', [' '], /cloudwatchLogExports/],
-    ['a log type listed twice', ['error', 'error'], /cloudwatchLogExports/],
-    [
-      'a log type listed twice in another case or with spaces',
-      ['error', ' ERROR'],
-      /cloudwatchLogExports/,
-    ],
-  ])('refuses %s', (_why, types, reason) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const exports = types as any;
-    expect(() => dbmsWith({cloudwatchLogExports: exports})).toThrow(reason);
-    expect(() => postgresWith({cloudwatchLogExports: exports})).toThrow(reason);
-  });
 });
 
 describe('requireSecureTransport on both RDS DBMS offers (no default)', () => {
@@ -246,9 +196,12 @@ describe('requireSecureTransport on both RDS DBMS offers (no default)', () => {
   it.each([
     ['PostgreSQL', () => postgresWith({}).parameters],
     ['MySQL', () => dbmsWith({}).parameters],
-  ])('%s: unset sends no key at all (never true, never false)', (_engine, parameters) => {
-    expect(Object.keys(parameters())).not.toContain('requireSecureTransport');
-  });
+  ])(
+    '%s: unset sends no key at all (never true, never false)',
+    (_engine, parameters) => {
+      expect(Object.keys(parameters())).not.toContain('requireSecureTransport');
+    },
+  );
 
   it.each([true, false])('sends %s as given, on both engines', value => {
     expect(postgresWith({requireSecureTransport: value}).parameters).toEqual({
@@ -257,21 +210,5 @@ describe('requireSecureTransport on both RDS DBMS offers (no default)', () => {
     expect(dbmsWith({requireSecureTransport: value}).parameters).toEqual({
       requireSecureTransport: value,
     });
-  });
-
-  it.each([
-    ['the string "true"', 'true'],
-    ['the string "false"', 'false'],
-    ['a number', 1],
-    ['null', null],
-  ])('refuses %s', (_why, value) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const requireSecureTransport = value as any;
-    expect(() => dbmsWith({requireSecureTransport})).toThrow(
-      /AwsRdsMySqlDbms 'app-dbms': requireSecureTransport must be true or false/,
-    );
-    expect(() => postgresWith({requireSecureTransport})).toThrow(
-      /AwsRdsPostgresDbms 'pg': requireSecureTransport must be true or false/,
-    );
   });
 });

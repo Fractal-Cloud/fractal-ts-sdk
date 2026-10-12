@@ -142,37 +142,6 @@ describe('CertManager', () => {
       }),
     ).not.toThrow();
   });
-
-  it.each([
-    [{email: 'a..b@fractal.cloud'}, /email 'a..b@fractal.cloud' is not/],
-    [{email: '.a@fractal.cloud'}, /email '.a@fractal.cloud' is not/],
-    [{email: 'a@.fractal.cloud'}, /email 'a@.fractal.cloud' is not/],
-    [{hostedZoneId: 'zone-1'}, /hostedZoneId 'zone-1' is not a Route 53/],
-    [{hostedZoneId: ''}, /hostedZoneId '' is not a Route 53/],
-    [
-      {role: 'arn:aws:iam::111122223333:user/acme'},
-      /role 'arn:aws:iam::111122223333:user\/acme' is not an IAM role ARN/,
-    ],
-    [{email: 'platform'}, /email 'platform' is not an email address/],
-    [
-      {acmeServer: 'http://acme.example.com/directory'},
-      /acmeServer 'http:\/\/acme.example.com\/directory' is neither production, staging nor an https/,
-    ],
-    [
-      {acmeServer: 'https://acme.example.com/dir%zz'},
-      /acmeServer 'https:\/\/acme.example.com\/dir%zz' is neither/,
-    ],
-    [
-      {clusterIssuerName: 'Lets_Encrypt'},
-      /clusterIssuerName 'Lets_Encrypt' is not a Kubernetes name/,
-    ],
-    [{namespace: 'Cert Manager'}, /namespace 'Cert Manager' is not/],
-  ])('refuses %o', (override, reason) => {
-    const config = {...required, ...override} as Parameters<
-      typeof CertManager
-    >[0];
-    expect(() => certManager(config)).toThrow(reason);
-  });
 });
 
 // ── SQS exporter ─────────────────────────────────────────────────────────────
@@ -289,35 +258,8 @@ describe('SqsExporter', () => {
   });
 
   it.each([
-    [
-      {queueUrls: ['https://sqs.eu-central-1.amazonaws.com/orders']},
-      /queueUrls holds 'https:\/\/sqs.eu-central-1.amazonaws.com\/orders'/,
-    ],
-    [
-      {queueUrls: ['http://sqs.eu-central-1.amazonaws.com/111122223333/q']},
-      /queueUrls holds/,
-    ],
-    [{queueUrls: [`${QUEUE_URL},x`]}, /queueUrls holds/],
-    [{queueUrls: [`${QUEUE_URL}?Action=x`]}, /queueUrls holds/],
-    [{queueUrls: [`${QUEUE_URL}#a%zz`]}, /queueUrls holds/],
-    [{monitorIntervalSeconds: 0}, /monitorIntervalSeconds 0 is not/],
-    [{monitorIntervalSeconds: 1.5}, /monitorIntervalSeconds 1.5 is not/],
-    [{image: ' '}, /image ' ' is blank/],
     [{queueUrls: []}, /queueUrls is an empty list/],
     [{imagePullSecrets: []}, /imagePullSecrets is an empty list/],
-    [
-      {imagePullSecrets: ['dockerhub', ' ']},
-      /imagePullSecrets holds a blank entry, which the agent would drop: remove it/,
-    ],
-    [
-      {imagePullSecrets: ['Docker_Hub']},
-      /imagePullSecrets entry 'Docker_Hub' is not a Secret name/,
-    ],
-    [{nodeSelector: {}}, /nodeSelector is empty/],
-    [
-      {nodeSelector: {'kubernetes.io/arch': 64}},
-      /nodeSelector 'kubernetes.io\/arch' is not a string/,
-    ],
   ])('refuses %o', (config, reason) => {
     expect(() => exporter(config as Parameters<typeof SqsExporter>[0])).toThrow(
       reason,
@@ -419,104 +361,6 @@ describe('TraefikGateway platform keys', () => {
 
   it.each([
     [
-      {tlsHosts: ['api.fractal.cloud']},
-      /tlsHosts is set, but neither tlsSecretName nor tlsClusterIssuer/,
-    ],
-    [{plainHttp: false}, /plainHttp is false and the gateway has no TLS/],
-    [
-      {
-        host: 'api.fractal.cloud',
-        tlsClusterIssuer: 'letsencrypt',
-        tlsCertificateArn:
-          'arn:aws:acm:eu-central-1:111122223333:certificate/abc-123',
-      },
-      /tlsCertificateArn and Traefik TLS .* both need port 443/,
-    ],
-    [
-      {tlsClusterIssuer: 'letsencrypt'},
-      /TLS needs the hosts the certificate covers: set tlsHosts, or host/,
-    ],
-    [
-      {tlsClusterIssuer: 'letsencrypt', tlsHosts: ['*.*.fractal.cloud']},
-      /tlsHosts entry '\*.\*.fractal.cloud' is not a host name/,
-    ],
-    [
-      {tlsClusterIssuer: 'letsencrypt', tlsHosts: ['localhost']},
-      /tlsHosts entry 'localhost' is not a host name/,
-    ],
-    [
-      {tlsClusterIssuer: 'letsencrypt', tlsHosts: ['a,b.example.com']},
-      /tlsHosts entry 'a,b.example.com' is not a host name/,
-    ],
-    [
-      {
-        host: 'api.fractal.cloud',
-        tlsClusterIssuer: 'letsencrypt',
-        tlsHosts: ['www.fractal.cloud'],
-      },
-      /host 'api.fractal.cloud', the default host of every route, is not covered by tlsHosts/,
-    ],
-    [
-      {
-        host: 'deep.api.fractal.cloud',
-        tlsClusterIssuer: 'letsencrypt',
-        tlsHosts: ['*.fractal.cloud'],
-      },
-      /is not covered by tlsHosts/,
-    ],
-    [
-      {host: 'api.fractal.cloud', tlsSecretName: 'API_TLS'},
-      /tlsSecretName 'API_TLS' is not a Kubernetes name/,
-    ],
-    [
-      {host: 'api.fractal.cloud', tlsClusterIssuer: 'Lets Encrypt'},
-      /tlsClusterIssuer 'Lets Encrypt' is not a Kubernetes name/,
-    ],
-    [
-      {
-        forwardAuthAddress: 'http://auth/',
-        forwardAuthExemptComponentIds: ['platform/'],
-      },
-      /forwardAuthExemptComponentIds entry 'platform\/' is neither a component id nor/,
-    ],
-    [
-      {
-        forwardAuthAddress: 'http://auth/',
-        forwardAuthExemptComponentIds: ['/ocelot'],
-      },
-      /forwardAuthExemptComponentIds entry '\/ocelot'/,
-    ],
-    [
-      {
-        forwardAuthAddress: 'http://auth/',
-        forwardAuthExemptComponentIds: ['a,b'],
-      },
-      /forwardAuthExemptComponentIds entry 'a,b'/,
-    ],
-    [
-      {forwardAuthAddress: 'http://auth/%zz'},
-      /forwardAuthAddress is not an http\(s\) URL/,
-    ],
-    [
-      {forwardAuthExemptComponentIds: ['ocelot']},
-      /ForwardAuth settings without forwardAuthAddress do nothing/,
-    ],
-    [
-      {loadBalancerSourceRanges: ['10.0.0.0/33']},
-      /loadBalancerSourceRanges entry '10.0.0.0\/33' is not a CIDR/,
-    ],
-    [
-      {loadBalancerSourceRanges: ['10.0.0.0']},
-      /loadBalancerSourceRanges entry '10.0.0.0' is not a CIDR/,
-    ],
-    [
-      {loadBalancerSourceRanges: ['1.2.3.4::1/64']},
-      /loadBalancerSourceRanges entry '1.2.3.4::1\/64' is not a CIDR/,
-    ],
-    [{loadBalancerSourceRanges: ['2001:db8::1::/64']}, /is not a CIDR/],
-    [{loadBalancerSourceRanges: ['1:2:3:4:5:6:7:8:9/64']}, /is not a CIDR/],
-    [{loadBalancerSourceRanges: ['2001:dg8::/32']}, /is not a CIDR/],
-    [
       {
         forwardAuthAddress: 'http://auth/',
         forwardAuthExemptComponentIds: [],
@@ -541,10 +385,6 @@ describe('TraefikGateway platform keys', () => {
         tlsHosts: [],
       },
       /tlsHosts is an empty list/,
-    ],
-    [
-      {loadBalancerSourceRanges: ['2001:db8::/129']},
-      /loadBalancerSourceRanges entry '2001:db8::\/129' is not a CIDR/,
     ],
   ])('refuses %o', (config, reason) => {
     expect(() =>
@@ -769,42 +609,6 @@ describe('caas-k8s observability parameters and links', () => {
       {},
       {alloyDependsOnLoki: false},
       /'alloy' ships logs to Loki: make it depend on an Observability.CaaS.GrafanaLoki component, or set lokiPushUrl/,
-    ],
-    [
-      'a lokiPushUrl that is not http(s)',
-      {alloy: GrafanaAlloy({lokiPushUrl: 'loki:3100'})},
-      {},
-      /lokiPushUrl 'loki:3100' is not an absolute http\(s\) URL/,
-    ],
-    [
-      'a lokiPushUrl with a malformed percent-escape',
-      {alloy: GrafanaAlloy({lokiPushUrl: 'http://loki:3100/%g1'})},
-      {},
-      /lokiPushUrl 'http:\/\/loki:3100\/%g1' is not an absolute http\(s\) URL/,
-    ],
-    [
-      'a lokiUrl that is neither none nor http(s)',
-      {prometheus: KubePrometheusStack({lokiUrl: 'ftp://loki'})},
-      {},
-      /lokiUrl 'ftp:\/\/loki' is neither none nor an absolute http\(s\) URL/,
-    ],
-    [
-      'prometheusStorageGi 0',
-      {prometheus: KubePrometheusStack({prometheusStorageGi: 0})},
-      {},
-      /prometheusStorageGi 0 is not a whole number of at least 1/,
-    ],
-    [
-      'a retention of 0 days',
-      {},
-      {retentionDays: 0},
-      /retentionDays 0 is not a whole number of at least 1/,
-    ],
-    [
-      'a storageClassName that is not a Kubernetes name',
-      {loki: GrafanaLoki({storageClassName: 'GP3'})},
-      {},
-      /storageClassName 'GP3' is not a Kubernetes name/,
     ],
   ])('refuses %s', (_name, select, opts, reason) => {
     expect(() => stack(select, opts)).toThrow(reason);
@@ -1115,20 +919,6 @@ describe('CloudFront alias coverage edge cases', () => {
   it('refuses an alias two labels below a wildcard', () => {
     expect(() => edge(['a.b.apps.fractal.cloud'], TLS)).toThrow(
       /alias a.b.apps.fractal.cloud is not covered by the certificate of gateway 'traefik'/,
-    );
-  });
-
-  it('refuses a wildcard alias, which the agent does not accept as a host name', () => {
-    expect(() => edge(['*.apps.fractal.cloud'], TLS)).toThrow(
-      /aliases holds '\*.apps.fractal.cloud', not a host name/,
-    );
-  });
-
-  it("leaves a TLS gateway without hosts to the gateway's own refusal", () => {
-    expect(() =>
-      edge(['api.fractal.cloud'], {tlsClusterIssuer: 'letsencrypt'}),
-    ).toThrow(
-      /^Live component 'traefik': TLS needs the hosts the certificate covers/,
     );
   });
 });

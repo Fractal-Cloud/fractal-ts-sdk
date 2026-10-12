@@ -5,7 +5,7 @@
  * present, replaces the flat `routes.<n>.*` keys; values are read as trimmed text.
  * Internal: not re-exported from the model barrel.
  */
-import {isKubernetesName} from './caas_param_checks';
+import {isKubernetesName} from './kubernetes_name';
 
 /** The largest index `strconv.Atoi` reads on a 64-bit agent. */
 const MAX_INT64 = 9223372036854775807n;

@@ -20,6 +20,9 @@ import {
 } from './components/network_and_compute';
 import {
   AwsLb,
+  AwsSubnet,
+  AzureSubnet,
+  GcpSubnet,
   AzureLb,
   GcpGlb,
   HetznerFirewall,
@@ -40,14 +43,22 @@ const lbFractal = (scheme?: LoadBalancerScheme) =>
     version: {major: 1, minor: 0, patch: 0},
     boundedContextId,
     blueprint: bp => {
-      const base = LoadBalancer({id: 'edge-lb'});
+      const subnet = bp.add(Subnet({id: 'edge-subnet'}));
+      const base = LoadBalancer({id: 'edge-lb', subnets: [subnet]});
       const lb = bp.add(scheme === undefined ? base : base.withScheme(scheme));
-      return {lb};
+      return {subnet, lb};
     },
     operations: s => ({
       setScheme: (v: string) => s.lb.set('scheme', v),
     }),
   });
+
+const subnetFor = (offer: ReturnType<typeof AwsLb>) =>
+  offer.provider === 'Azure'
+    ? AzureSubnet({})
+    : offer.provider === 'GCP'
+      ? GcpSubnet({})
+      : AwsSubnet({});
 
 const lbParameters = (
   scheme: LoadBalancerScheme | undefined,
@@ -55,9 +66,38 @@ const lbParameters = (
 ) => {
   const ls = lbFractal(scheme)
     .specialize()
-    .toLiveSystem({name: 'edge-ls', environment, select: {'edge-lb': offer}});
+    .toLiveSystem({
+      name: 'edge-ls',
+      environment,
+      select: {'edge-lb': offer, 'edge-subnet': subnetFor(offer)},
+    });
   return ls.components.find(c => c.id === 'edge-lb')!.parameters;
 };
+
+describe('LoadBalancer subnets', () => {
+  it('a load balancer declares its subnets, which become its dependencies', () => {
+    const lb = lbFractal().blueprint.components.find(c => c.id === 'edge-lb')!;
+    expect(lb.dependencies).toEqual(['edge-subnet']);
+  });
+
+  it('refuses a load balancer without subnets', () => {
+    expect(() => LoadBalancer({id: 'edge-lb', subnets: [] as never})).toThrow(
+      "LoadBalancer 'edge-lb' needs at least one subnet",
+    );
+  });
+
+  it('refuses an AWS load balancer whose subnet is not an AWS subnet', () => {
+    expect(() =>
+      lbFractal().toLiveSystem({
+        name: 'edge-ls',
+        environment,
+        select: {'edge-lb': AwsLb({}), 'edge-subnet': GcpSubnet({})},
+      }),
+    ).toThrow(
+      "LoadBalancer 'edge-lb' has no NetworkAndCompute.IaaS.AwsSubnet dependency",
+    );
+  });
+});
 
 describe('LoadBalancer scheme reaches each vendor agent', () => {
   it.each([
@@ -80,7 +120,12 @@ describe('LoadBalancer scheme reaches each vendor agent', () => {
       scheme: 'internet-facing',
       expected: 'internet-facing',
     },
-    {name: 'GcpGlb', offer: GcpGlb({}), scheme: 'internal', expected: 'INTERNAL'},
+    {
+      name: 'GcpGlb',
+      offer: GcpGlb({}),
+      scheme: 'internal',
+      expected: 'INTERNAL',
+    },
     {
       name: 'GcpGlb',
       offer: GcpGlb({}),
@@ -116,9 +161,11 @@ describe('LoadBalancer scheme reaches each vendor agent', () => {
       .toLiveSystem({
         name: 'edge-ls',
         environment,
-        select: {'edge-lb': GcpGlb({})},
+        select: {'edge-lb': GcpGlb({}), 'edge-subnet': GcpSubnet({})},
       });
-    expect(ls.components[0].parameters.lbScheme).toBe('EXTERNAL');
+    expect(
+      ls.components.find(c => c.id === 'edge-lb')!.parameters.lbScheme,
+    ).toBe('EXTERNAL');
   });
 
   it('a scheme outside the neutral vocabulary is refused, naming the accepted values', () => {
@@ -129,13 +176,15 @@ describe('LoadBalancer scheme reaches each vendor agent', () => {
         .toLiveSystem({
           name: 'edge-ls',
           environment,
-          select: {'edge-lb': AwsLb({})},
+          select: {'edge-lb': AwsLb({}), 'edge-subnet': AwsSubnet({})},
         }),
     ).toThrow(/'edge-lb'.*'EXTERNAL'.*'internal' or 'internet-facing'/);
   });
 
   it('the blueprint keeps the neutral key and value', () => {
-    const lb = lbFractal('internal').blueprint.components[0];
+    const lb = lbFractal('internal').blueprint.components.find(
+      c => c.id === 'edge-lb',
+    )!;
     expect(lb.parameters.scheme).toBe('internal');
     expect(lb.locked).toContain('scheme');
   });

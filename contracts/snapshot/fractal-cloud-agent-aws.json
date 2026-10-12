@@ -1,6 +1,6 @@
 {
   "agentId": "fractal-cloud-agent-aws",
-  "agentVersion": "v8.25.1",
+  "agentVersion": "v8.25.2",
   "offers": [
     {
       "aliasOfOfferType": null,
@@ -8,6 +8,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -17,6 +18,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -253,6 +255,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -262,6 +265,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -702,7 +706,13 @@
         {
           "default": "premium",
           "key": "pricingTier",
-          "type": "string"
+          "type": "string",
+          "values": [
+            "standard",
+            "premium",
+            "enterprise"
+          ],
+          "valuesCaseInsensitive": true
         },
         {
           "key": "region",
@@ -1164,7 +1174,13 @@
         {
           "default": "premium",
           "key": "pricingTier",
-          "type": "string"
+          "type": "string",
+          "values": [
+            "standard",
+            "premium",
+            "enterprise"
+          ],
+          "valuesCaseInsensitive": true
         },
         {
           "key": "region",
@@ -1591,6 +1607,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -1600,6 +1617,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -1689,6 +1707,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -1698,6 +1717,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -1991,6 +2011,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -2000,6 +2021,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -2060,7 +2082,13 @@
           "type": "string"
         },
         {
+          "description": "Environment variables of the container: name to a string, number or boolean, or to an environment-secret reference {\"$envSecret\": \"<shortName>\"}, which is passed as the cloud's secret reference and never as the raw value. Changing it rolls out a new revision.",
+          "key": "environment",
+          "type": "object"
+        },
+        {
           "default": "",
+          "description": "Task execution role. Granted read on the secrets 'environment' references. When unset and secrets are referenced, an agent-owned role is created and used.",
           "key": "executionRoleArn",
           "type": "string"
         },
@@ -2094,7 +2122,8 @@
       "offerType": "NetworkAndCompute.IaaS.AwsEc2Instance",
       "params": [
         {
-          "default": "latest Amazon Linux 2023 (resolved dynamically when unset)",
+          "default": "",
+          "description": "AMI id (ami-...). Leave empty to use the latest Amazon Linux 2023 AMI, resolved at create time.",
           "key": "amiId",
           "type": "string"
         },
@@ -2123,7 +2152,13 @@
         },
         {
           "default": "",
+          "description": "Name of an existing EC2 key pair to launch with. Wins over publicSSHKey.",
           "key": "keyName",
+          "type": "string"
+        },
+        {
+          "description": "OpenSSH public key (e.g. ssh-ed25519 AAAA...) to authorize on the instance. Imported as a key pair of this component, used at launch and deleted on teardown. Ignored when keyName is set. When neither is set, a new instance gets a generated ed25519 key pair whose private key is stored as an environment secret, named in the sshPrivateKeySecretName output. Changing it does not change a running instance's key.",
+          "key": "publicSSHKey",
           "type": "string"
         },
         {
@@ -2151,9 +2186,13 @@
       "offerType": "NetworkAndCompute.IaaS.AwsLb",
       "params": [
         {
-          "default": "",
+          "description": "ELBv2 scheme. Unset: internet-facing on declared Subnet dependencies, internal without them. Fixed once the load balancer exists.",
           "key": "lbScheme",
-          "type": "string"
+          "type": "string",
+          "values": [
+            "internet-facing",
+            "internal"
+          ]
         },
         {
           "default": "application",
@@ -2180,9 +2219,13 @@
       "offerType": "NetworkAndCompute.IaaS.AwsLoadBalancer",
       "params": [
         {
-          "default": "",
+          "description": "ELBv2 scheme. Unset: internet-facing on declared Subnet dependencies, internal without them. Fixed once the load balancer exists.",
           "key": "lbScheme",
-          "type": "string"
+          "type": "string",
+          "values": [
+            "internet-facing",
+            "internal"
+          ]
         },
         {
           "default": "application",
@@ -2209,6 +2252,11 @@
           "default": "",
           "key": "description",
           "type": "string"
+        },
+        {
+          "description": "Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On AWS declaring egress replaces the default allow-all egress rule of the group.",
+          "key": "egressRules",
+          "type": "array"
         },
         {
           "default": [],
@@ -2264,8 +2312,9 @@
       "offerType": "NetworkAndCompute.IaaS.AwsVpc",
       "params": [
         {
-          "default": "10.1.0.0/20",
+          "description": "IPv4 address block of the VPC, e.g. 10.20.0.0/16.",
           "key": "cidrBlock",
+          "required": true,
           "type": "string"
         },
         {
@@ -2303,7 +2352,8 @@
       "offerType": "NetworkAndCompute.IaaS.EC2",
       "params": [
         {
-          "default": "latest Amazon Linux 2023 (resolved dynamically when unset)",
+          "default": "",
+          "description": "AMI id (ami-...). Leave empty to use the latest Amazon Linux 2023 AMI, resolved at create time.",
           "key": "amiId",
           "type": "string"
         },
@@ -2328,7 +2378,13 @@
         },
         {
           "default": "",
+          "description": "Name of an existing EC2 key pair to launch with. Wins over publicSSHKey.",
           "key": "keyName",
+          "type": "string"
+        },
+        {
+          "description": "OpenSSH public key (e.g. ssh-ed25519 AAAA...) to authorize on the instance. Imported as a key pair of this component, used at launch and deleted on teardown. Ignored when keyName is set. When neither is set, a new instance gets a generated ed25519 key pair whose private key is stored as an environment secret, named in the sshPrivateKeySecretName output. Changing it does not change a running instance's key.",
+          "key": "publicSSHKey",
           "type": "string"
         },
         {
@@ -2353,7 +2409,8 @@
       "offerType": "NetworkAndCompute.PaaS.AwsEc2Instance",
       "params": [
         {
-          "default": "latest Amazon Linux 2023 (resolved dynamically when unset)",
+          "default": "",
+          "description": "AMI id (ami-...). Leave empty to use the latest Amazon Linux 2023 AMI, resolved at create time.",
           "key": "amiId",
           "type": "string"
         },
@@ -2378,7 +2435,13 @@
         },
         {
           "default": "",
+          "description": "Name of an existing EC2 key pair to launch with. Wins over publicSSHKey.",
           "key": "keyName",
+          "type": "string"
+        },
+        {
+          "description": "OpenSSH public key (e.g. ssh-ed25519 AAAA...) to authorize on the instance. Imported as a key pair of this component, used at launch and deleted on teardown. Ignored when keyName is set. When neither is set, a new instance gets a generated ed25519 key pair whose private key is stored as an environment secret, named in the sshPrivateKeySecretName output. Changing it does not change a running instance's key.",
+          "key": "publicSSHKey",
           "type": "string"
         },
         {
@@ -2473,9 +2536,13 @@
       "offerType": "NetworkAndCompute.PaaS.AwsLb",
       "params": [
         {
-          "default": "",
+          "description": "ELBv2 scheme. Unset: internet-facing on declared Subnet dependencies, internal without them. Fixed once the load balancer exists.",
           "key": "lbScheme",
-          "type": "string"
+          "type": "string",
+          "values": [
+            "internet-facing",
+            "internal"
+          ]
         },
         {
           "default": "application",
@@ -2745,6 +2812,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -2754,6 +2822,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -3043,6 +3112,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -3052,6 +3122,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -3859,6 +3930,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -3868,6 +3940,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],

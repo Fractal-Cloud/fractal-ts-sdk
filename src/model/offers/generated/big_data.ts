@@ -9,28 +9,28 @@ export const BigData_CaaS_MinioTenant = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -82,28 +82,28 @@ export const BigData_CaaS_SparkCluster = {
     },
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -177,28 +177,28 @@ export const BigData_CaaS_SparkJob = {
     },
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -417,28 +417,28 @@ export const BigData_CaaS_SparkMlExperiment = {
     },
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -579,28 +579,28 @@ export const BigData_CaaS_SparkOperator = {
     },
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -697,28 +697,28 @@ export const BigData_CaaS_SparkUnityCatalog = {
     },
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -830,7 +830,7 @@ export const BigData_PaaS_AwsDatabricks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -840,7 +840,13 @@ export const BigData_PaaS_AwsDatabricks = {
     accountId: {type: 'string', required: false},
     credentialsId: {type: 'string', required: true},
     networkId: {type: 'string', required: false, default: ''},
-    pricingTier: {type: 'string', required: false, default: 'premium'},
+    pricingTier: {
+      type: 'string',
+      required: false,
+      default: 'premium',
+      values: ['standard', 'premium', 'enterprise'],
+      valuesCaseInsensitive: true,
+    },
     region: {type: 'string', required: false},
     storageConfigurationId: {type: 'string', required: true},
   },
@@ -852,7 +858,7 @@ export const BigData_PaaS_AwsDatabricksCluster = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -900,7 +906,7 @@ export const BigData_PaaS_AwsDatabricksJob = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -1070,7 +1076,7 @@ export const BigData_PaaS_AwsDatabricksMlflow = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -1089,7 +1095,7 @@ export const BigData_PaaS_AwsS3Datalake = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -1111,7 +1117,7 @@ export const BigData_PaaS_AzureDatabricks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1131,7 +1137,7 @@ export const BigData_PaaS_AzureDatabricksCluster = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1179,7 +1185,7 @@ export const BigData_PaaS_AzureDatabricksJob = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [
@@ -1349,7 +1355,7 @@ export const BigData_PaaS_AzureDatabricksMlflow = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1368,7 +1374,7 @@ export const BigData_PaaS_AzureDatalake = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1424,7 +1430,7 @@ export const BigData_PaaS_CloudStorage = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'BigData.PaaS.GcpDatalake',
@@ -1446,21 +1452,21 @@ export const BigData_PaaS_Databricks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1495,7 +1501,13 @@ export const BigData_PaaS_Databricks = {
       default: '',
       agents: ['fractal-cloud-agent-aws', 'fractal-cloud-agent-gcp'],
     },
-    pricingTier: {type: 'string', required: false, default: 'premium'},
+    pricingTier: {
+      type: 'string',
+      required: false,
+      default: 'premium',
+      values: ['standard', 'premium', 'enterprise'],
+      valuesCaseInsensitive: true,
+    },
     region: {type: 'string', required: false},
     storageConfigurationId: {
       type: 'string',
@@ -1511,21 +1523,21 @@ export const BigData_PaaS_DatabricksCluster = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1573,7 +1585,7 @@ export const BigData_PaaS_DatabricksJob = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -1643,7 +1655,7 @@ export const BigData_PaaS_DatabricksJob = {
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [
@@ -1713,7 +1725,7 @@ export const BigData_PaaS_DatabricksJob = {
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [
@@ -1883,21 +1895,21 @@ export const BigData_PaaS_DatabricksMlflowExperiment = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1916,7 +1928,7 @@ export const BigData_PaaS_GcpDatabricks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1925,7 +1937,13 @@ export const BigData_PaaS_GcpDatabricks = {
   params: {
     accountId: {type: 'string', required: false, default: ''},
     networkId: {type: 'string', required: false, default: ''},
-    pricingTier: {type: 'string', required: false, default: 'premium'},
+    pricingTier: {
+      type: 'string',
+      required: false,
+      default: 'premium',
+      values: ['standard', 'premium', 'enterprise'],
+      valuesCaseInsensitive: true,
+    },
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1936,7 +1954,7 @@ export const BigData_PaaS_GcpDatabricksCluster = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1984,7 +2002,7 @@ export const BigData_PaaS_GcpDatabricksJob = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [
@@ -2154,7 +2172,7 @@ export const BigData_PaaS_GcpDatabricksMlflow = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -2173,7 +2191,7 @@ export const BigData_PaaS_GcpDatalake = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -2194,7 +2212,7 @@ export const BigData_PaaS_S3 = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'BigData.PaaS.AwsS3Datalake',
@@ -2298,7 +2316,7 @@ export const BigData_PaaS_StorageAccount = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'BigData.PaaS.AzureDatalake',
@@ -2355,36 +2373,36 @@ export const BigData_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
-    secret: {type: 'object', required: false},
+    secret: {type: 'object', required: false, sensitive: true},
     secretName: {type: 'string', required: false, default: ''},
-    secretValue: {type: 'string', required: false},
+    secretValue: {type: 'string', required: false, sensitive: true},
   },
 } as const satisfies OfferContract;

@@ -9,28 +9,28 @@ export const Storage_CaaS_CnpgCluster = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -74,28 +74,28 @@ export const Storage_CaaS_CnpgDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -132,28 +132,28 @@ export const Storage_CaaS_Elastic = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -201,28 +201,28 @@ export const Storage_CaaS_MinioTenant = {
     },
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -403,7 +403,7 @@ export const Storage_PaaS_AwsRdsMySql = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -440,7 +440,7 @@ export const Storage_PaaS_AwsRdsMySqlDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -458,7 +458,7 @@ export const Storage_PaaS_AwsRdsPostgres = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -495,7 +495,7 @@ export const Storage_PaaS_AwsRdsPostgresDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -514,7 +514,7 @@ export const Storage_PaaS_AwsS3 = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -539,7 +539,7 @@ export const Storage_PaaS_AzureBlob = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -595,7 +595,7 @@ export const Storage_PaaS_AzurePostgresDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -614,7 +614,7 @@ export const Storage_PaaS_AzurePostgresDbms = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -650,11 +650,8 @@ export const Storage_PaaS_AzurePostgresDbms = {
     skuName: {type: 'string', required: false, default: 'Standard_D4ds_v5'},
     storageAutoGrow: {type: 'string', required: false, default: 'Enabled'},
     storageGb: {type: 'integer', required: false, default: 128},
-    subnetAddressCidr: {
-      type: 'string',
-      required: false,
-      default: '10.1.1.0/27',
-    },
+    /** Delegated subnet range, e.g. 10.20.1.0/27. Leave empty to carve a free /27 inside the environment's VNet. */
+    subnetAddressCidr: {type: 'string', required: false},
     version: {type: 'string', required: false, default: '18'},
     workersCores: {type: 'integer', required: false, default: 4},
     workerStorageGb: {type: 'integer', required: false, default: 128},
@@ -667,7 +664,7 @@ export const Storage_PaaS_BigTable = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -687,7 +684,7 @@ export const Storage_PaaS_BigTableTable = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -706,7 +703,7 @@ export const Storage_PaaS_CloudStorage = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'Storage.PaaS.GcpGcsBucket',
@@ -728,7 +725,7 @@ export const Storage_PaaS_Collection = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -753,7 +750,7 @@ export const Storage_PaaS_CosmosDbAccount = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -773,7 +770,7 @@ export const Storage_PaaS_CosmosDbCassandra = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -804,7 +801,7 @@ export const Storage_PaaS_CosmosDbGremlinDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -823,7 +820,7 @@ export const Storage_PaaS_CosmosDbMongoDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -842,7 +839,7 @@ export const Storage_PaaS_CosmosDbPostgreSqlDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -878,11 +875,8 @@ export const Storage_PaaS_CosmosDbPostgreSqlDatabase = {
     skuName: {type: 'string', required: false, default: 'Standard_D4ds_v5'},
     storageAutoGrow: {type: 'string', required: false, default: 'Enabled'},
     storageGb: {type: 'integer', required: false, default: 128},
-    subnetAddressCidr: {
-      type: 'string',
-      required: false,
-      default: '10.1.1.0/27',
-    },
+    /** Delegated subnet range, e.g. 10.20.1.0/27. Leave empty to carve a free /27 inside the environment's VNet. */
+    subnetAddressCidr: {type: 'string', required: false},
     version: {type: 'string', required: false, default: '18'},
     workersCores: {type: 'integer', required: false, default: 4},
     workerStorageGb: {type: 'integer', required: false, default: 128},
@@ -895,7 +889,7 @@ export const Storage_PaaS_CosmosDbPostgresSqlCluster = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -931,11 +925,8 @@ export const Storage_PaaS_CosmosDbPostgresSqlCluster = {
     skuName: {type: 'string', required: false, default: 'Standard_D4ds_v5'},
     storageAutoGrow: {type: 'string', required: false, default: 'Enabled'},
     storageGb: {type: 'integer', required: false, default: 128},
-    subnetAddressCidr: {
-      type: 'string',
-      required: false,
-      default: '10.1.1.0/27',
-    },
+    /** Delegated subnet range, e.g. 10.20.1.0/27. Leave empty to carve a free /27 inside the environment's VNet. */
+    subnetAddressCidr: {type: 'string', required: false},
     version: {type: 'string', required: false, default: '18'},
     workersCores: {type: 'integer', required: false, default: 4},
     workerStorageGb: {type: 'integer', required: false, default: 128},
@@ -948,7 +939,7 @@ export const Storage_PaaS_CosmosDbSqlDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -967,7 +958,7 @@ export const Storage_PaaS_CosmosDbTable = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -986,7 +977,7 @@ export const Storage_PaaS_DataflowJob = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1005,7 +996,7 @@ export const Storage_PaaS_FileShare = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1032,7 +1023,7 @@ export const Storage_PaaS_FileStorage = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1059,7 +1050,7 @@ export const Storage_PaaS_Firestore = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1078,7 +1069,7 @@ export const Storage_PaaS_GcpGcsBucket = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1099,7 +1090,7 @@ export const Storage_PaaS_GcpMySqlDbms = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1125,6 +1116,10 @@ export const Storage_PaaS_GcpMySqlDbms = {
         note: "defaults to the environment's spoke network when absent",
       },
     },
+    /** Network address of the private-services range, e.g. 10.20.8.0. Not needed when the network already has a private-services range, or in spoke mode, where the environment's range is used; required otherwise. */
+    peeringNetworkAddress: {type: 'string', required: false},
+    /** Prefix length of the private-services range. */
+    peeringNetworkPrefix: {type: 'integer', required: false, default: 22},
     region: {
       type: 'string',
       required: false,
@@ -1140,7 +1135,7 @@ export const Storage_PaaS_GcpPostgresDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1164,7 +1159,7 @@ export const Storage_PaaS_GcpPostgresDbms = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1179,6 +1174,10 @@ export const Storage_PaaS_GcpPostgresDbms = {
         note: "defaults to the environment's spoke network when absent",
       },
     },
+    /** Network address of the private-services range, e.g. 10.20.8.0. Not needed when the network already has a private-services range, or in spoke mode, where the environment's range is used; required otherwise. */
+    peeringNetworkAddress: {type: 'string', required: false},
+    /** Prefix length of the private-services range. */
+    peeringNetworkPrefix: {type: 'integer', required: false, default: 22},
     region: {
       type: 'string',
       required: false,
@@ -1218,21 +1217,21 @@ export const Storage_PaaS_PostgreSqlDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1277,7 +1276,7 @@ export const Storage_PaaS_PostgreSqlDbms = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'Storage.PaaS.AwsRdsPostgres',
@@ -1285,7 +1284,7 @@ export const Storage_PaaS_PostgreSqlDbms = {
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'Storage.PaaS.AzurePostgresDbms',
@@ -1293,7 +1292,7 @@ export const Storage_PaaS_PostgreSqlDbms = {
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'Storage.PaaS.GcpPostgresDbms',
@@ -1432,6 +1431,19 @@ export const Storage_PaaS_PostgreSqlDbms = {
       default: 'MemoryOptimized',
       agents: ['fractal-cloud-agent-azure'],
     },
+    /** Network address of the private-services range, e.g. 10.20.8.0. Not needed when the network already has a private-services range, or in spoke mode, where the environment's range is used; required otherwise. */
+    peeringNetworkAddress: {
+      type: 'string',
+      required: false,
+      agents: ['fractal-cloud-agent-gcp'],
+    },
+    /** Prefix length of the private-services range. */
+    peeringNetworkPrefix: {
+      type: 'integer',
+      required: false,
+      default: 22,
+      agents: ['fractal-cloud-agent-gcp'],
+    },
     port: {
       type: 'number',
       required: false,
@@ -1494,10 +1506,10 @@ export const Storage_PaaS_PostgreSqlDbms = {
       required: false,
       agents: ['fractal-cloud-agent-aws'],
     },
+    /** Delegated subnet range, e.g. 10.20.1.0/27. Leave empty to carve a free /27 inside the environment's VNet. */
     subnetAddressCidr: {
       type: 'string',
       required: false,
-      default: '10.1.1.0/27',
       agents: ['fractal-cloud-agent-azure'],
     },
     version: {
@@ -1526,7 +1538,7 @@ export const Storage_PaaS_Rds = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'Storage.PaaS.AwsRdsPostgres',
@@ -1564,7 +1576,7 @@ export const Storage_PaaS_S3 = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'Storage.PaaS.AwsS3',
@@ -1587,7 +1599,7 @@ export const Storage_PaaS_StorageAccount = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'Storage.PaaS.AzureBlob',
@@ -1644,7 +1656,7 @@ export const Storage_PaaS_StorageBlobContainer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1676,36 +1688,36 @@ export const Storage_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.1',
+      agentVersion: 'v8.25.2',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
-    secret: {type: 'object', required: false},
+    secret: {type: 'object', required: false, sensitive: true},
     secretName: {type: 'string', required: false, default: ''},
-    secretValue: {type: 'string', required: false},
+    secretValue: {type: 'string', required: false, sensitive: true},
   },
 } as const satisfies OfferContract;

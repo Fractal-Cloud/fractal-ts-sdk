@@ -35,6 +35,16 @@ export * from './client';
 // LiveSystem operation options + results (the operations live on the client).
 export type {DeployOptions, ComponentState, LiveSystemState} from './service';
 
+// Parameter validation by the control plane, before a deploy.
+export {LiveSystemValidationError} from './validation/live_system_validation_error';
+export type {ParameterValidationResult} from './validation/parameter_validation_result';
+export type {ComponentValidationResult} from './validation/component_validation_result';
+export type {ValidationFieldIssues} from './validation/validation_field_issues';
+export type {ValidationIssue} from './validation/validation_issue';
+export type {ValidationFix} from './validation/validation_fix';
+export type {ValidationSummary} from './validation/validation_summary';
+export type {ValidationContractRef} from './validation/validation_contract_ref';
+
 // Environment authoring (management + operational envs, cloud agents, secrets,
 // CI/CD profiles). Deploying them is `cloud.environments.deploy`.
 export * from './environment';

@@ -21,20 +21,17 @@ import {
 } from './generated/observability';
 import type {ContractConfig} from './contract/contract_config';
 import {defineOffer, type LiveSystemComponent} from '../core';
-import {
-  ensureNamespace,
-  hasMalformedEscape,
-  isHttpUrl,
-  isKubernetesName,
-  isWholeAtLeastOne,
-  refuse,
-} from './caas_param_checks';
 import type {GrafanaAlloyConfig} from './grafana_alloy_config';
 import type {GrafanaObjectStorageBackendConfig} from './grafana_object_storage_backend_config';
 import type {KubePrometheusStackConfig} from './kube_prometheus_stack_config';
 import {TRAEFIK_GATEWAY_OFFER_TYPE} from './offer_type_ids';
 import {parseRouteLink, routeRefusal} from './route_link_routes';
 import type {SqsExporterConfig} from './sqs_exporter_config';
+
+/** Throw the error every check here throws, naming the component. */
+const refuse = (id: string, why: string): never => {
+  throw new Error(`Live component '${id}': ${why}.`);
+};
 
 // ── Observability.Monitoring offers ──────────────────────────────────────────
 export const Prometheus = defineOffer<
@@ -95,37 +92,8 @@ const S3_BUCKET_TYPES: readonly string[] = [
   Storage_PaaS_S3.offerType,
 ];
 const SQS_QUEUE_TYPE = Messaging_PaaS_AwsSqsQueue.offerType;
-/** A queue URL the exporter can poll and derive the queue ARN from, as the agent reads it. */
-const SQS_QUEUE_URL =
-  /^[Hh][Tt][Tt][Pp][Ss]:\/\/sqs\.[a-z0-9-]+\.amazonaws\.com\/[0-9]{12}\/[A-Za-z0-9_-]{1,80}(\.fifo)?(#\S*)?$/;
 
-/** The component's neutral `retentionDays` (from `withRetentionDays`), when set, must be at least one day. */
-const ensureRetention = (self: LiveSystemComponent): void => {
-  const days = self.parameters.retentionDays;
-  if (
-    days !== undefined &&
-    !(typeof days === 'number' && isWholeAtLeastOne(days))
-  ) {
-    refuse(
-      self.id,
-      `retentionDays ${String(days)} is not a whole number of at least 1`,
-    );
-  }
-};
-
-const ensureStorageClass = (id: string, storageClassName?: string): void => {
-  if (
-    storageClassName !== undefined &&
-    !isKubernetesName(storageClassName.trim())
-  ) {
-    refuse(
-      id,
-      `storageClassName '${storageClassName}' is not a Kubernetes name`,
-    );
-  }
-};
-
-/** Loki and Tempo keep their data in exactly one S3 bucket, linked read-write. */
+/** The one bucket a Grafana storage backend keeps its data in, linked read-write. */
 const ensureOneReadWriteBucket = (
   self: LiveSystemComponent,
   all: readonly LiveSystemComponent[],
@@ -158,33 +126,11 @@ const ensureOneReadWriteBucket = (
 const ensureBackend = (
   self: LiveSystemComponent,
   all: readonly LiveSystemComponent[],
-  config: GrafanaObjectStorageBackendConfig,
 ): void => {
-  ensureNamespace(self.id, config.namespace);
-  ensureStorageClass(self.id, config.storageClassName);
-  ensureRetention(self);
   ensureOneReadWriteBucket(self, all);
 };
 
-/** A Grafana datasource URL: `none` (no datasource) or an absolute http(s) URL. */
-const ensureDatasource = (id: string, key: string, value?: string): void => {
-  if (
-    value !== undefined &&
-    value.trim().toLowerCase() !== 'none' &&
-    !isHttpUrl(value.trim())
-  ) {
-    refuse(id, `${key} '${value}' is neither none nor an absolute http(s) URL`);
-  }
-};
-
-/**
- * Grafana's routes on a `TraefikGateway` (a route link, as a workload's), refused
- * as the agent refuses them: the link must carry routes, each well-formed (see
- * `routeRefusal`); and since the agent serves Grafana at `/` and strips the
- * sub-path itself, a sub-path must end with `/` and no route may set
- * `rewritePath`. A referenced gateway is checked too, except for the host it
- * would default a route to, which is not known here.
- */
+/** The routes a Grafana link to a TraefikGateway carries, as the agent reads them. */
 const ensureGrafanaRoutes = (
   self: LiveSystemComponent,
   all: readonly LiveSystemComponent[],
@@ -259,23 +205,7 @@ export const KubePrometheusStack = defineOffer<
   neutral: {
     scrapeInterval: unsupported('the agent sets no scrape interval'),
   },
-  validate: (self, all, config) => {
-    ensureNamespace(self.id, config.namespace);
-    ensureStorageClass(self.id, config.storageClassName);
-    ensureRetention(self);
-    ensureGrafanaRoutes(self, all);
-    if (
-      config.prometheusStorageGi !== undefined &&
-      !isWholeAtLeastOne(config.prometheusStorageGi)
-    ) {
-      refuse(
-        self.id,
-        `prometheusStorageGi ${config.prometheusStorageGi} is not a whole number of at least 1`,
-      );
-    }
-    ensureDatasource(self.id, 'lokiUrl', config.lokiUrl);
-    ensureDatasource(self.id, 'tempoUrl', config.tempoUrl);
-  },
+  validate: (self, all) => ensureGrafanaRoutes(self, all),
 });
 
 /**
@@ -314,14 +244,7 @@ export const GrafanaAlloy = defineOffer<
   contract: Observability_CaaS_GrafanaAlloy,
   deliveryModel: 'CaaS',
   validate: (self, all, config) => {
-    ensureNamespace(self.id, config.namespace);
     if (config.lokiPushUrl !== undefined) {
-      if (!isHttpUrl(config.lokiPushUrl.trim())) {
-        refuse(
-          self.id,
-          `lokiPushUrl '${config.lokiPushUrl}' is not an absolute http(s) URL`,
-        );
-      }
       return;
     }
     const dependsOnLoki = self.dependencies.some(id =>
@@ -412,71 +335,14 @@ export const SqsExporter = defineOffer<
     ];
   },
   validate: (self, all, config) => {
-    ensureNamespace(self.id, config.namespace);
-    if (config.queueUrls !== undefined && config.queueUrls.length === 0) {
-      refuse(
-        self.id,
-        'queueUrls is an empty list: it is sent blank, which the agent reads as unset; omit it',
-      );
-    }
-    if (
-      config.imagePullSecrets !== undefined &&
-      config.imagePullSecrets.length === 0
-    ) {
-      refuse(
-        self.id,
-        'imagePullSecrets is an empty list: it is sent blank, which the agent reads as unset; omit it',
-      );
-    }
-    if ((config.imagePullSecrets ?? []).some(n => n.trim() === '')) {
-      refuse(
-        self.id,
-        'imagePullSecrets holds a blank entry, which the agent would drop: remove it',
-      );
-    }
-    const badSecret = (config.imagePullSecrets ?? []).find(
-      n => !isKubernetesName(n.trim()),
-    );
-    if (badSecret !== undefined) {
-      refuse(
-        self.id,
-        `imagePullSecrets entry '${badSecret}' is not a Secret name`,
-      );
-    }
-    if (
-      config.nodeSelector !== undefined &&
-      Object.keys(config.nodeSelector).length === 0
-    ) {
-      refuse(
-        self.id,
-        'nodeSelector is empty: the agent reads an empty selector as unset; omit it',
-      );
-    }
-    const badUrl = (config.queueUrls ?? []).find(
-      u => !SQS_QUEUE_URL.test(u.trim()) || hasMalformedEscape(u),
-    );
-    if (badUrl !== undefined) {
-      refuse(
-        self.id,
-        `queueUrls holds '${badUrl}', which is not https://sqs.<region>.amazonaws.com/<account>/<name>`,
-      );
-    }
-    const interval = config.monitorIntervalSeconds;
-    if (interval !== undefined && !isWholeAtLeastOne(interval)) {
-      refuse(
-        self.id,
-        `monitorIntervalSeconds ${interval} is not a whole number of seconds of at least 1`,
-      );
-    }
-    if (config.image !== undefined && config.image.trim() === '') {
-      refuse(
-        self.id,
-        `image '${config.image}' is blank: omit it for the agent's own image`,
-      );
-    }
-    for (const [key, value] of Object.entries(config.nodeSelector ?? {})) {
-      if (typeof value !== 'string') {
-        refuse(self.id, `nodeSelector '${key}' is not a string`);
+    // Lists travel comma-separated: an empty one is sent blank, which the agent
+    // reads as unset.
+    for (const key of ['queueUrls', 'imagePullSecrets'] as const) {
+      if (config[key] !== undefined && config[key].length === 0) {
+        refuse(
+          self.id,
+          `${key} is an empty list: it is sent blank, which the agent reads as unset; omit it`,
+        );
       }
     }
     const linkedQueues = self.links.filter(l =>

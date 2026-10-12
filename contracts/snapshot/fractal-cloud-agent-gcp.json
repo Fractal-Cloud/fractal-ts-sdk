@@ -1,6 +1,6 @@
 {
   "agentId": "fractal-cloud-agent-gcp",
-  "agentVersion": "v8.25.1",
+  "agentVersion": "v8.25.2",
   "offers": [
     {
       "aliasOfOfferType": null,
@@ -8,6 +8,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -17,6 +18,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -160,6 +162,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -169,6 +172,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -641,7 +645,13 @@
         {
           "default": "premium",
           "key": "pricingTier",
-          "type": "string"
+          "type": "string",
+          "values": [
+            "standard",
+            "premium",
+            "enterprise"
+          ],
+          "valuesCaseInsensitive": true
         },
         {
           "key": "region",
@@ -1024,7 +1034,6 @@
         {
           "default": "",
           "key": "accountId",
-          "prefill": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
           "type": "string"
         },
         {
@@ -1036,7 +1045,13 @@
         {
           "default": "premium",
           "key": "pricingTier",
-          "type": "string"
+          "type": "string",
+          "values": [
+            "standard",
+            "premium",
+            "enterprise"
+          ],
+          "valuesCaseInsensitive": true
         },
         {
           "key": "region",
@@ -1362,7 +1377,6 @@
           "example": "/Shared/etl",
           "key": "notebookPath",
           "placeholderIsAbsent": true,
-          "prefill": "/Users/user@example.com/ETL",
           "type": "string"
         },
         {
@@ -1506,6 +1520,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -1515,6 +1530,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -1636,6 +1652,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -1645,6 +1662,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -1864,7 +1882,6 @@
         },
         {
           "key": "topicName",
-          "prefill": "my-topic",
           "required": true,
           "type": "string"
         }
@@ -1886,6 +1903,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -1895,6 +1913,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -1914,6 +1933,11 @@
           "default": "1",
           "key": "cpu",
           "type": "string"
+        },
+        {
+          "description": "Environment variables of the container: name to a string, number or boolean, or to an environment-secret reference {\"$envSecret\": \"<shortName>\"}, which is passed as the cloud's secret reference and never as the raw value. Changing it rolls out a new revision.",
+          "key": "environment",
+          "type": "object"
         },
         {
           "key": "image",
@@ -1952,6 +1976,7 @@
         },
         {
           "default": "",
+          "description": "Service account the revision runs as. Granted secretAccessor on the secrets 'environment' references. When unset and secrets are referenced, an agent-owned account is created and used.",
           "key": "serviceAccountEmail",
           "prefill": "cloud-run-sa@my-project.iam.gserviceaccount.com",
           "type": "string"
@@ -1992,6 +2017,12 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "keyData"
+            }
+          ],
           "default": "",
           "key": "publicSSHKey",
           "type": "string"
@@ -2025,6 +2056,11 @@
           "key": "description",
           "prefill": "Allow SSH and RDP through Identity-Aware Proxy",
           "type": "string"
+        },
+        {
+          "description": "Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On GCP each rule becomes an EGRESS firewall of its own on the same target tags, named <component id>-egress-<hash>; GCP's implied allow-all egress still applies below them. A rule whose destination is a component is skipped: GCP egress cannot target a tag.",
+          "key": "egressRules",
+          "type": "array"
         },
         {
           "default": [],
@@ -2071,7 +2107,12 @@
         {
           "default": "INTERNAL",
           "key": "lbScheme",
-          "type": "string"
+          "type": "string",
+          "values": [
+            "INTERNAL",
+            "EXTERNAL"
+          ],
+          "valuesLevel": "warn"
         },
         {
           "key": "region",
@@ -2090,7 +2131,12 @@
         {
           "default": "INTERNAL",
           "key": "lbScheme",
-          "type": "string"
+          "type": "string",
+          "values": [
+            "INTERNAL",
+            "EXTERNAL"
+          ],
+          "valuesLevel": "warn"
         },
         {
           "key": "region",
@@ -2106,6 +2152,11 @@
         {
           "key": "description",
           "type": "string"
+        },
+        {
+          "description": "Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On GCP each rule becomes an EGRESS firewall of its own on the same target tags, named <component id>-egress-<hash>; GCP's implied allow-all egress still applies below them. A rule whose destination is a component is skipped: GCP egress cannot target a tag.",
+          "key": "egressRules",
+          "type": "array"
         },
         {
           "default": [],
@@ -2133,15 +2184,14 @@
       "offerType": "NetworkAndCompute.IaaS.GcpSubnet",
       "params": [
         {
-          "default": "",
+          "description": "IPv4 range of the subnet, e.g. 10.20.1.0/24.",
           "key": "cidrBlock",
-          "prefill": "10.0.1.0/24",
+          "required": true,
           "type": "string"
         },
         {
           "default": "",
           "key": "networkName",
-          "prefill": "my-vpc",
           "type": "string"
         },
         {
@@ -2183,6 +2233,12 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "keyData"
+            }
+          ],
           "default": "",
           "key": "publicSSHKey",
           "type": "string"
@@ -2236,6 +2292,12 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "keyData"
+            }
+          ],
           "default": "",
           "key": "publicSSHKey",
           "type": "string"
@@ -2296,7 +2358,12 @@
         {
           "default": "INTERNAL",
           "key": "lbScheme",
-          "type": "string"
+          "type": "string",
+          "values": [
+            "INTERNAL",
+            "EXTERNAL"
+          ],
+          "valuesLevel": "warn"
         },
         {
           "key": "region",
@@ -2312,6 +2379,11 @@
         {
           "key": "description",
           "type": "string"
+        },
+        {
+          "description": "Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On GCP each rule becomes an EGRESS firewall of its own on the same target tags, named <component id>-egress-<hash>; GCP's implied allow-all egress still applies below them. A rule whose destination is a component is skipped: GCP egress cannot target a tag.",
+          "key": "egressRules",
+          "type": "array"
         },
         {
           "default": [],
@@ -2358,6 +2430,12 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "keyData"
+            }
+          ],
           "default": "",
           "key": "publicSSHKey",
           "type": "string"
@@ -2398,6 +2476,11 @@
           "type": "string"
         },
         {
+          "description": "Environment variables of the container: name to a string, number or boolean, or to an environment-secret reference {\"$envSecret\": \"<shortName>\"}, which is passed as the cloud's secret reference and never as the raw value. Changing it rolls out a new revision.",
+          "key": "environment",
+          "type": "object"
+        },
+        {
           "key": "image",
           "prefill": "us-docker.pkg.dev/cloudrun/container/hello",
           "required": true,
@@ -2434,6 +2517,7 @@
         },
         {
           "default": "",
+          "description": "Service account the revision runs as. Granted secretAccessor on the secrets 'environment' references. When unset and secrets are referenced, an agent-owned account is created and used.",
           "key": "serviceAccountEmail",
           "prefill": "cloud-run-sa@my-project.iam.gserviceaccount.com",
           "type": "string"
@@ -2459,7 +2543,7 @@
           "type": "string"
         },
         {
-          "default": "",
+          "description": "Control-plane range of a private cluster, e.g. 172.16.0.0/28. Not set when omitted.",
           "key": "masterIpv4CidrBlock",
           "type": "string"
         },
@@ -2484,7 +2568,7 @@
           "type": "integer"
         },
         {
-          "default": "",
+          "description": "Pod range of the cluster. Allocated by IPAM in spoke mode; required in atom mode.",
           "key": "podIpRange",
           "type": "string"
         },
@@ -2518,7 +2602,7 @@
           "type": "integer"
         },
         {
-          "default": "",
+          "description": "Service range of the cluster. Allocated by IPAM in spoke mode; required in atom mode.",
           "key": "serviceIpRange",
           "type": "string"
         },
@@ -2528,7 +2612,7 @@
           "type": "string"
         },
         {
-          "default": "",
+          "description": "Primary range of the cluster's subnet. Allocated by IPAM in spoke mode; required in atom mode.",
           "key": "subnetworkIpRange",
           "type": "string"
         },
@@ -2552,6 +2636,14 @@
       "providerResources": [
         {
           "type": "container.googleapis.com/Cluster"
+        }
+      ],
+      "runtimeChecks": [
+        {
+          "fix": "Declare subnetworkIpRange, podIpRange and serviceIpRange (for example 10.20.0.0/22, 10.24.0.0/14 and 10.20.32.0/20), or create the cluster in an environment with a spoke network.",
+          "id": "gke-subnet-ranges-required",
+          "message": "The cluster's subnet needs subnetworkIpRange, podIpRange and serviceIpRange. The environment has no spoke network, so IPAM cannot allocate them, and no default range is applied.",
+          "reason": "ENVIRONMENT_STATE"
         }
       ]
     },
@@ -2662,9 +2754,8 @@
           "type": "string"
         },
         {
-          "default": "",
+          "description": "Control-plane range of a private cluster, e.g. 172.16.0.0/28. Not set when omitted.",
           "key": "masterIpv4CidrBlock",
-          "prefill": "172.16.0.0/28",
           "type": "string"
         },
         {
@@ -2689,9 +2780,8 @@
           "type": "integer"
         },
         {
-          "default": "",
+          "description": "Pod range of the cluster. Allocated by IPAM in spoke mode; required in atom mode.",
           "key": "podIpRange",
-          "prefill": "172.21.0.0/16",
           "type": "string"
         },
         {
@@ -2725,9 +2815,8 @@
           "type": "integer"
         },
         {
-          "default": "",
+          "description": "Service range of the cluster. Allocated by IPAM in spoke mode; required in atom mode.",
           "key": "serviceIpRange",
-          "prefill": "172.20.0.0/16",
           "type": "string"
         },
         {
@@ -2737,9 +2826,8 @@
           "type": "string"
         },
         {
-          "default": "",
+          "description": "Primary range of the cluster's subnet. Allocated by IPAM in spoke mode; required in atom mode.",
           "key": "subnetworkIpRange",
-          "prefill": "10.0.0.0/20",
           "type": "string"
         },
         {
@@ -2765,6 +2853,14 @@
           "type": "container.googleapis.com/Cluster"
         }
       ],
+      "runtimeChecks": [
+        {
+          "fix": "Declare subnetworkIpRange, podIpRange and serviceIpRange (for example 10.20.0.0/22, 10.24.0.0/14 and 10.20.32.0/20), or create the cluster in an environment with a spoke network.",
+          "id": "gke-subnet-ranges-required",
+          "message": "The cluster's subnet needs subnetworkIpRange, podIpRange and serviceIpRange. The environment has no spoke network, so IPAM cannot allocate them, and no default range is applied.",
+          "reason": "ENVIRONMENT_STATE"
+        }
+      ],
       "serviceTypes": [
         "NetworkAndCompute.PaaS.Kubernetes"
       ]
@@ -2776,7 +2872,12 @@
         {
           "default": "INTERNAL",
           "key": "lbScheme",
-          "type": "string"
+          "type": "string",
+          "values": [
+            "INTERNAL",
+            "EXTERNAL"
+          ],
+          "valuesLevel": "warn"
         },
         {
           "key": "region",
@@ -2809,6 +2910,12 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "keyData"
+            }
+          ],
           "default": "",
           "key": "publicSSHKey",
           "type": "string"
@@ -2844,7 +2951,7 @@
           "type": "string"
         },
         {
-          "default": "",
+          "description": "Control-plane range of a private cluster, e.g. 172.16.0.0/28. Not set when omitted.",
           "key": "masterIpv4CidrBlock",
           "type": "string"
         },
@@ -2869,7 +2976,7 @@
           "type": "integer"
         },
         {
-          "default": "",
+          "description": "Pod range of the cluster. Allocated by IPAM in spoke mode; required in atom mode.",
           "key": "podIpRange",
           "type": "string"
         },
@@ -2903,7 +3010,7 @@
           "type": "integer"
         },
         {
-          "default": "",
+          "description": "Service range of the cluster. Allocated by IPAM in spoke mode; required in atom mode.",
           "key": "serviceIpRange",
           "type": "string"
         },
@@ -2913,7 +3020,7 @@
           "type": "string"
         },
         {
-          "default": "",
+          "description": "Primary range of the cluster's subnet. Allocated by IPAM in spoke mode; required in atom mode.",
           "key": "subnetworkIpRange",
           "type": "string"
         },
@@ -2938,6 +3045,14 @@
         {
           "type": "container.googleapis.com/Cluster"
         }
+      ],
+      "runtimeChecks": [
+        {
+          "fix": "Declare subnetworkIpRange, podIpRange and serviceIpRange (for example 10.20.0.0/22, 10.24.0.0/14 and 10.20.32.0/20), or create the cluster in an environment with a spoke network.",
+          "id": "gke-subnet-ranges-required",
+          "message": "The cluster's subnet needs subnetworkIpRange, podIpRange and serviceIpRange. The environment has no spoke network, so IPAM cannot allocate them, and no default range is applied.",
+          "reason": "ENVIRONMENT_STATE"
+        }
       ]
     },
     {
@@ -2946,6 +3061,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -2955,6 +3071,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -3208,6 +3325,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -3217,6 +3335,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
@@ -3515,7 +3634,6 @@
       "params": [
         {
           "key": "clusterId",
-          "prefill": "my-cluster-c1",
           "type": "string"
         },
         {
@@ -3551,7 +3669,6 @@
         },
         {
           "key": "instanceId",
-          "prefill": "my-instance",
           "required": true,
           "type": "string"
         },
@@ -3633,7 +3750,6 @@
         {
           "default": "",
           "key": "jobId",
-          "prefill": "my-dataflow-job",
           "type": "string"
         },
         {
@@ -3751,6 +3867,17 @@
           "type": "string"
         },
         {
+          "description": "Network address of the private-services range, e.g. 10.20.8.0. Not needed when the network already has a private-services range, or in spoke mode, where the environment's range is used; required otherwise.",
+          "key": "peeringNetworkAddress",
+          "type": "string"
+        },
+        {
+          "default": 22,
+          "description": "Prefix length of the private-services range.",
+          "key": "peeringNetworkPrefix",
+          "type": "integer"
+        },
+        {
           "derived": {
             "note": "defaults to the environment's region when absent"
           },
@@ -3772,6 +3899,15 @@
             "value": "mysql"
           },
           "type": "sqladmin.googleapis.com/Instance"
+        }
+      ],
+      "runtimeChecks": [
+        {
+          "field": "peeringNetworkAddress",
+          "fix": "Set peeringNetworkAddress (and peeringNetworkPrefix) to a free block of the network, for example 10.20.8.0 with prefix 22.",
+          "id": "cloudsql-private-services-range-required",
+          "message": "The network has no private-services range for Cloud SQL yet, peeringNetworkAddress is not set, and the environment publishes no private-services range. No default range is applied.",
+          "reason": "ENVIRONMENT_STATE"
         }
       ]
     },
@@ -3822,6 +3958,17 @@
           "type": "string"
         },
         {
+          "description": "Network address of the private-services range, e.g. 10.20.8.0. Not needed when the network already has a private-services range, or in spoke mode, where the environment's range is used; required otherwise.",
+          "key": "peeringNetworkAddress",
+          "type": "string"
+        },
+        {
+          "default": 22,
+          "description": "Prefix length of the private-services range.",
+          "key": "peeringNetworkPrefix",
+          "type": "integer"
+        },
+        {
           "derived": {
             "note": "defaults to the environment's region when absent"
           },
@@ -3844,6 +3991,15 @@
             "value": "postgres"
           },
           "type": "sqladmin.googleapis.com/Instance"
+        }
+      ],
+      "runtimeChecks": [
+        {
+          "field": "peeringNetworkAddress",
+          "fix": "Set peeringNetworkAddress (and peeringNetworkPrefix) to a free block of the network, for example 10.20.8.0 with prefix 22.",
+          "id": "cloudsql-private-services-range-required",
+          "message": "The network has no private-services range for Cloud SQL yet, peeringNetworkAddress is not set, and the environment publishes no private-services range. No default range is applied.",
+          "reason": "ENVIRONMENT_STATE"
         }
       ],
       "serviceTypes": [
@@ -3894,6 +4050,17 @@
           "type": "string"
         },
         {
+          "description": "Network address of the private-services range, e.g. 10.20.8.0. Not needed when the network already has a private-services range, or in spoke mode, where the environment's range is used; required otherwise.",
+          "key": "peeringNetworkAddress",
+          "type": "string"
+        },
+        {
+          "default": 22,
+          "description": "Prefix length of the private-services range.",
+          "key": "peeringNetworkPrefix",
+          "type": "integer"
+        },
+        {
           "derived": {
             "note": "defaults to the environment's region when absent"
           },
@@ -3916,6 +4083,15 @@
           },
           "type": "sqladmin.googleapis.com/Instance"
         }
+      ],
+      "runtimeChecks": [
+        {
+          "field": "peeringNetworkAddress",
+          "fix": "Set peeringNetworkAddress (and peeringNetworkPrefix) to a free block of the network, for example 10.20.8.0 with prefix 22.",
+          "id": "cloudsql-private-services-range-required",
+          "message": "The network has no private-services range for Cloud SQL yet, peeringNetworkAddress is not set, and the environment publishes no private-services range. No default range is applied.",
+          "reason": "ENVIRONMENT_STATE"
+        }
       ]
     },
     {
@@ -3924,6 +4100,7 @@
       "params": [
         {
           "key": "secret",
+          "sensitive": true,
           "type": "object"
         },
         {
@@ -3933,6 +4110,7 @@
         },
         {
           "key": "secretValue",
+          "sensitive": true,
           "type": "string"
         }
       ],
