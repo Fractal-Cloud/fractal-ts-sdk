@@ -44,7 +44,16 @@ export const applyNeutralRules = (args: {
           'offer whose agent supports it.',
       );
     }
-    for (const [vendorKey, vendorValue] of Object.entries(rule.apply(value))) {
+    let vendorValues: Readonly<Record<string, unknown>>;
+    try {
+      vendorValues = rule.apply(value);
+    } catch (e) {
+      throw new Error(
+        `Offer ${args.offerType} cannot honor the parameter '${key}' of ` +
+          `'${args.componentId}': ${e instanceof Error ? e.message.replace(/\.$/, '') : String(e)}.`,
+      );
+    }
+    for (const [vendorKey, vendorValue] of Object.entries(vendorValues)) {
       if (!isSet(vendorValue) || translated.has(vendorKey)) {
         continue;
       }

@@ -961,7 +961,7 @@ An offer's config keys, their types and which are required are generated from th
 | `Subnet` | `AwsSubnet` | `AzureSubnet` | `GcpSubnet` | `OciSubnet` | `HetznerSubnet` | `VsphereVlan` | — |
 | `SecurityGroup` | `AwsSecurityGroup` | `AzureNsg` | `GcpFirewall` | `OciSecurityList` | `HetznerFirewall` | — | `OpenshiftSecurityGroup` |
 | `VirtualMachine` | `Ec2Instance` | `AzureVm` | `GcpVm` | `OciInstance` | `HetznerServer` | `VsphereVm` | `OpenshiftVm` |
-| `ContainerPlatform` | `Eks` | `Aks` | `Gke` | — | — | — | — |
+| `ContainerPlatform` | `Eks`, `EcsCluster` | `Aks`, `AzureContainerAppsEnvironment` | `Gke` | — | — | — | — |
 | `LoadBalancer` | `AwsLb` | `AzureLb` | `GcpGlb` | — | — | — | `OpenshiftService` |
 
 ### CustomWorkloads

@@ -7,15 +7,24 @@
  * OMIT `provider` — they run on any cluster and are identified by deliveryModel
  * + offerType. Vendor knobs live in each offer's config type.
  */
+import {
+  NetworkAndCompute_CaaS_CloudRunService,
+  NetworkAndCompute_CaaS_ECSService,
+  NetworkAndCompute_CaaS_ECSTaskDefinition,
+} from './generated/network_and_compute';
+import {
+  cpuCores,
+  ecsCpuUnits,
+  ecsMemoryMiB,
+  memoryGi,
+} from './resource_quantities';
 import {toContractKey, toContractKeys, unsupported} from './neutral_rules';
 import {
   CustomWorkloads_CaaS_KubernetesWorkload,
   CustomWorkloads_FaaS_AwsLambda,
   CustomWorkloads_FaaS_AzureFunction,
   CustomWorkloads_FaaS_GcpFunction,
-  CustomWorkloads_PaaS_AwsEcsService,
   CustomWorkloads_PaaS_AzureContainerApp,
-  CustomWorkloads_PaaS_GcpCloudRun,
 } from './generated/custom_workloads';
 import type {ContractConfig} from './contract/contract_config';
 import {defineOffer} from '../core';
@@ -29,163 +38,207 @@ import type {WorkloadSsmParameters} from './workload_ssm_parameters';
 const asRecord = (v: unknown): Record<string, unknown> =>
   typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {};
 
-/** A Kubernetes CPU quantity (`250m`, `1`) as the cores a Container App takes. */
-const cpuCores = (v: unknown): unknown => {
-  if (typeof v !== 'string') {
-    return v;
+const requests = (v: unknown): Record<string, unknown> =>
+  asRecord(asRecord(v).requests);
+
+/** Refuses an emitted component that lacks a key its contract requires. */
+const requireKey = (
+  offer: string,
+  componentId: string,
+  parameters: Record<string, unknown>,
+  key: string,
+  setter: string,
+): void => {
+  if (parameters[key] === undefined) {
+    throw new Error(
+      `${offer} '${componentId}' needs ${key}: set it with the Workload's ${setter}.`,
+    );
   }
-  const milli = /^(\d+)m$/.exec(v.trim());
-  return milli ? Number(milli[1]) / 1000 : Number(v);
 };
 
+const unsupportedOnEcs = (what: string) =>
+  unsupported(
+    `the ECS task definition and service contracts declare no ${what}`,
+  );
+const unsupportedOnCloudRun = (what: string) =>
+  unsupported(`the Cloud Run service contract declares no ${what}`);
+
 // ── Workload offers ──────────────────────────────────────────────────────────
+/**
+ * An Amazon ECS service. One `Workload` becomes the two components the AWS
+ * agent reconciles: an `NetworkAndCompute.CaaS.ECSTaskDefinition` with the id
+ * `<id>-task`, carrying the container (image, port, CPU, memory), and the
+ * `NetworkAndCompute.CaaS.ECSService` itself, which depends on it (a
+ * live-system-only dependency, see the platform contract's "Live System
+ * Sub-Component Dependencies"). The service also needs an ECS cluster: make
+ * the Workload depend on a ContainerPlatform with `EcsCluster` selected, and on
+ * a Subnet.
+ */
 export const EcsService = defineOffer<
   'CustomWorkloads.Workload',
-  ContractConfig<typeof CustomWorkloads_PaaS_AwsEcsService>
+  ContractConfig<typeof NetworkAndCompute_CaaS_ECSService, 'desiredCount'> &
+    ContractConfig<
+      typeof NetworkAndCompute_CaaS_ECSTaskDefinition,
+      'containerImage' | 'containerPort' | 'cpu' | 'memory'
+    >
 >({
   satisfies: 'CustomWorkloads.Workload',
-  contract: CustomWorkloads_PaaS_AwsEcsService,
+  contract: NetworkAndCompute_CaaS_ECSService,
   provider: 'AWS',
-  deliveryModel: 'PaaS',
+  deliveryModel: 'CaaS',
   neutral: {
-    autoscaling: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    image: toContractKey(
+      NetworkAndCompute_CaaS_ECSTaskDefinition,
+      'containerImage',
     ),
-    cpuRequest: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    port: toContractKey(
+      NetworkAndCompute_CaaS_ECSTaskDefinition,
+      'containerPort',
     ),
-    env: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    resources: toContractKeys(
+      NetworkAndCompute_CaaS_ECSTaskDefinition,
+      ['cpu', 'memory'],
+      v => ({
+        cpu:
+          requests(v).cpu === undefined
+            ? undefined
+            : ecsCpuUnits(requests(v).cpu),
+        memory:
+          requests(v).memory === undefined
+            ? undefined
+            : ecsMemoryMiB(requests(v).memory),
+      }),
     ),
-    healthCheck: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    cpuRequest: toContractKey(
+      NetworkAndCompute_CaaS_ECSTaskDefinition,
+      'cpu',
+      ecsCpuUnits,
     ),
-    image: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    memoryRequest: toContractKey(
+      NetworkAndCompute_CaaS_ECSTaskDefinition,
+      'memory',
+      ecsMemoryMiB,
     ),
-    livenessProbe: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
-    ),
-    maxReplicas: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
-    ),
-    maxSurge: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
-    ),
-    maxUnavailable: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
-    ),
-    memoryRequest: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
-    ),
-    nodeSelector: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
-    ),
-    podDisruptionBudget: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
-    ),
-    port: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
-    ),
-    preStopSleepSeconds: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
-    ),
-    readinessProbe: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
-    ),
-    replicas: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
-    ),
-    resources: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
-    ),
-    secretEnv: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
-    ),
-    startupProbe: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
-    ),
-    terminationGracePeriodSeconds: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
-    ),
-    topologySpread: unsupported(
-      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
-    ),
+    replicas: toContractKey(NetworkAndCompute_CaaS_ECSService, 'desiredCount'),
+    autoscaling: unsupportedOnEcs('autoscaling'),
+    maxReplicas: unsupportedOnEcs('autoscaling'),
+    env: unsupportedOnEcs('container environment'),
+    secretEnv: unsupportedOnEcs('container secrets'),
+    healthCheck: unsupportedOnEcs('health check'),
+    readinessProbe: unsupportedOnEcs('health check'),
+    livenessProbe: unsupportedOnEcs('health check'),
+    startupProbe: unsupportedOnEcs('health check'),
+    maxSurge: unsupportedOnEcs('deployment rollout setting'),
+    maxUnavailable: unsupportedOnEcs('deployment rollout setting'),
+    nodeSelector: unsupportedOnEcs('node selector'),
+    podDisruptionBudget: unsupportedOnEcs('disruption budget'),
+    preStopSleepSeconds: unsupportedOnEcs('stop hook'),
+    terminationGracePeriodSeconds: unsupportedOnEcs('stop timeout'),
+    topologySpread: unsupportedOnEcs('placement spread'),
+  },
+  instantiate: (ctx, config) => {
+    const task = NetworkAndCompute_CaaS_ECSTaskDefinition;
+    const service = NetworkAndCompute_CaaS_ECSService;
+    const all: Record<string, unknown> = {...ctx.parameters, ...config};
+    const taskParameters = Object.fromEntries(
+      Object.entries(all).filter(([k]) => k in task.params),
+    );
+    // Everything that is not a task-definition key goes to the service, so a
+    // key neither contract declares is still visible on the emitted component.
+    const serviceParameters = Object.fromEntries(
+      Object.entries(all).filter(
+        ([k]) => k in service.params || !(k in task.params),
+      ),
+    );
+    requireKey(
+      'EcsService',
+      ctx.id,
+      taskParameters,
+      'containerImage',
+      'withImage',
+    );
+    const taskId = `${ctx.id}-task`;
+    return [
+      {
+        id: taskId,
+        displayName: `${ctx.displayName} task definition`,
+        type: task.offerType,
+        provider: 'AWS',
+        deliveryModel: 'CaaS',
+        parameters: taskParameters,
+        dependencies: [],
+        links: [],
+      },
+      {
+        id: ctx.id,
+        displayName: ctx.displayName,
+        type: service.offerType,
+        provider: 'AWS',
+        deliveryModel: 'CaaS',
+        parameters: serviceParameters,
+        dependencies: [...ctx.dependencies, taskId],
+        links: ctx.links,
+      },
+    ];
   },
 });
+/** A Google Cloud Run service (`NetworkAndCompute.CaaS.CloudRunService`). */
 export const CloudRun = defineOffer<
   'CustomWorkloads.Workload',
-  ContractConfig<typeof CustomWorkloads_PaaS_GcpCloudRun>
+  ContractConfig<
+    typeof NetworkAndCompute_CaaS_CloudRunService,
+    // Filled by the Workload's withImage / withPort.
+    'image' | 'port'
+  >
 >({
   satisfies: 'CustomWorkloads.Workload',
-  contract: CustomWorkloads_PaaS_GcpCloudRun,
+  contract: NetworkAndCompute_CaaS_CloudRunService,
   provider: 'GCP',
-  deliveryModel: 'PaaS',
+  deliveryModel: 'CaaS',
   neutral: {
-    autoscaling: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    resources: toContractKeys(
+      NetworkAndCompute_CaaS_CloudRunService,
+      ['cpu', 'memory'],
+      v => ({cpu: requests(v).cpu, memory: requests(v).memory}),
     ),
-    cpuRequest: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    cpuRequest: toContractKey(NetworkAndCompute_CaaS_CloudRunService, 'cpu'),
+    memoryRequest: toContractKey(
+      NetworkAndCompute_CaaS_CloudRunService,
+      'memory',
     ),
-    env: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    autoscaling: toContractKeys(
+      NetworkAndCompute_CaaS_CloudRunService,
+      ['minInstances', 'maxInstances'],
+      v => ({
+        minInstances: asRecord(v).minReplicas,
+        maxInstances: asRecord(v).maxReplicas,
+      }),
     ),
-    healthCheck: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    replicas: toContractKeys(
+      NetworkAndCompute_CaaS_CloudRunService,
+      ['minInstances', 'maxInstances'],
+      v => ({minInstances: v, maxInstances: v}),
     ),
-    image: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    maxReplicas: toContractKey(
+      NetworkAndCompute_CaaS_CloudRunService,
+      'maxInstances',
     ),
-    livenessProbe: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
-    ),
-    maxReplicas: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
-    ),
-    maxSurge: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
-    ),
-    maxUnavailable: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
-    ),
-    memoryRequest: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
-    ),
-    nodeSelector: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
-    ),
-    podDisruptionBudget: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
-    ),
-    port: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
-    ),
-    preStopSleepSeconds: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
-    ),
-    readinessProbe: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
-    ),
-    replicas: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
-    ),
-    resources: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
-    ),
-    secretEnv: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
-    ),
-    startupProbe: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
-    ),
-    terminationGracePeriodSeconds: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
-    ),
-    topologySpread: unsupported(
-      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
-    ),
+    env: unsupportedOnCloudRun('container environment'),
+    secretEnv: unsupportedOnCloudRun('container secrets'),
+    healthCheck: unsupportedOnCloudRun('health check'),
+    readinessProbe: unsupportedOnCloudRun('health check'),
+    livenessProbe: unsupportedOnCloudRun('health check'),
+    startupProbe: unsupportedOnCloudRun('health check'),
+    maxSurge: unsupportedOnCloudRun('deployment rollout setting'),
+    maxUnavailable: unsupportedOnCloudRun('deployment rollout setting'),
+    nodeSelector: unsupportedOnCloudRun('node selector'),
+    podDisruptionBudget: unsupportedOnCloudRun('disruption budget'),
+    preStopSleepSeconds: unsupportedOnCloudRun('stop hook'),
+    terminationGracePeriodSeconds: unsupportedOnCloudRun('stop timeout'),
+    topologySpread: unsupportedOnCloudRun('placement spread'),
   },
+  validate: self =>
+    requireKey('CloudRun', self.id, self.parameters, 'image', 'withImage'),
 });
 /**
  * A Container App runs INSIDE a managed environment, and the agent will not
@@ -240,6 +293,7 @@ export const AzureContainerApp = defineOffer<
     memoryRequest: toContractKey(
       CustomWorkloads_PaaS_AzureContainerApp,
       'memory',
+      memoryGi,
     ),
     nodeSelector: unsupported(
       'the agent declares no such Container App setting',
@@ -262,8 +316,12 @@ export const AzureContainerApp = defineOffer<
       CustomWorkloads_PaaS_AzureContainerApp,
       ['cpu', 'memory'],
       v => ({
-        cpu: cpuCores(asRecord(asRecord(v).requests).cpu),
-        memory: asRecord(asRecord(v).requests).memory,
+        cpu:
+          requests(v).cpu === undefined ? undefined : cpuCores(requests(v).cpu),
+        memory:
+          requests(v).memory === undefined
+            ? undefined
+            : memoryGi(requests(v).memory),
       }),
     ),
     secretEnv: unsupported('the agent declares no such Container App setting'),
@@ -307,13 +365,11 @@ export const OpenshiftWorkload = defineOffer<
  * Vendor-neutral: runs on any Kubernetes cluster, so `provider` is omitted.
  *
  * The neutral `Workload` component records a container image under `image`.
- * Of the five offers that satisfy this component, only two claim a strategy
- * that reads an image at all — `OpenshiftWorkload`, which REQUIRES `image`,
- * and `AzureContainerApp`, which reads `image`. `EcsService` and `CloudRun`
- * both map to a phantom strategy whose declared parameter contract is empty,
- * so they consume nothing. This offer is the lone outlier: the caas-k8s agent
- * reads `containerImage` and nothing else. Translating at the outlier is
- * therefore right, and renaming the neutral parameter would break OpenShift.
+ * The offers that satisfy this component read the image under different
+ * names: `OpenshiftWorkload`, `AzureContainerApp` and `CloudRun` read `image`,
+ * `EcsService` sends it to its task definition as `containerImage`, and so
+ * does this offer, for the caas-k8s agent. Each offer translates to its own
+ * agent's key; renaming the neutral parameter would break the others.
  *
  * Emitting `image` was a silent data loss, not a visible error: the parameter
  * contract prunes names it does not declare, so the value never reached the

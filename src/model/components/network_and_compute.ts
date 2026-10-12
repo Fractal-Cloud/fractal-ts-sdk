@@ -15,6 +15,7 @@ import {
   addDependency,
 } from '../core';
 import type {LoadBalancerScheme} from './load_balancer_scheme';
+import type {VmSize} from './vm_size';
 
 // ── Shared value types ───────────────────────────────────────────────────────
 export type Rule = {
@@ -103,7 +104,12 @@ export type VirtualMachineNode<Id extends string = string> = ComponentNode<
   'NetworkAndCompute.VirtualMachine'
 > & {
   withOsType: (v: 'linux' | 'windows') => VirtualMachineNode<Id>;
-  withSize: (v: string) => VirtualMachineNode<Id>;
+  /**
+   * A neutral size (`small`, `medium`, `large`, `xlarge`; see `VmSize`), which
+   * each VM offer maps to its own machine type, or a vendor machine type name,
+   * which only that vendor's offer accepts.
+   */
+  withSize: (v: VmSize | (string & {})) => VirtualMachineNode<Id>;
   withTags: (v: Record<string, string>) => VirtualMachineNode<Id>;
   /**
    * OpenSSH public key material (e.g. `ssh-ed25519 AAAA...`) to authorize on the VM. Optional:

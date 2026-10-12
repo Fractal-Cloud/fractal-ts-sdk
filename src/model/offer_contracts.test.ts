@@ -290,21 +290,49 @@ const NEUTRAL = new Map<string, ProbedNode['state']>(
     .map(state => [state.component, state]),
 );
 
-/** Contract keys of `type`, its aliases, and the platform-owned key. */
+/**
+ * Contract keys every declaring agent reads (or some agent requires), their
+ * aliases, and the platform-owned key. A key only some of the agents of a
+ * merged offer read does not count: the agent that reconciles the component
+ * may be one that ignores it.
+ */
 const declaredKeys = (contract: OfferContract): Set<string> =>
   new Set([
-    ...Object.keys(contract.params),
+    ...Object.entries(contract.params)
+      .filter(([, p]) => p.agents === undefined || p.required)
+      .map(([k]) => k),
     ...Object.values(contract.params).flatMap(p =>
       (p.aliases ?? []).map(a => a.key),
     ),
     'containerPlatform',
   ]);
 
+/** Does the offer's rule refuse this neutral value? */
+const refuses = (
+  offer: OfferConstructor,
+  key: string,
+  value: unknown,
+): boolean => {
+  const rule = offer.neutral?.[key];
+  if (rule === undefined) {
+    return false;
+  }
+  if (rule.kind === 'unsupported') {
+    return !rule.satisfiedBy?.(value);
+  }
+  try {
+    rule.apply(value);
+    return false;
+  } catch {
+    return true;
+  }
+};
+
 /** The probed neutral parameters, without those the offer refuses. */
 const supportedNeutral = (offer: OfferConstructor): Record<string, unknown> =>
   Object.fromEntries(
     Object.entries(NEUTRAL.get(offer.satisfies)?.parameters ?? {}).filter(
-      ([k]) => offer.neutral?.[k]?.kind !== 'unsupported',
+      ([k, v]) => offer.neutral?.[k]?.kind !== 'unsupported' && !refuses(offer, k, v),
     ),
   );
 
@@ -446,6 +474,34 @@ describe('offers and the contracts their agents publish', () => {
     }
   });
 
+  it('refuses the translations whose target value the agents would not take', () => {
+    // A translation is refused, not sent, when the contract would not accept
+    // its result: here because only the Java agents read retentionMs, and
+    // aria-agent-caas-k8s may be the one reconciling the topic.
+    const refused = OFFERS.flatMap(([name, offer]) =>
+      Object.entries(NEUTRAL.get(offer.satisfies)?.parameters ?? {})
+        .filter(
+          ([k, v]) =>
+            offer.neutral?.[k]?.kind === 'translate' && refuses(offer, k, v),
+        )
+        .map(([k]) => `${name}.${k}`),
+    );
+    expect(refused).toEqual([
+      'CaaSSparkCluster.sparkVersion',
+      'CaaSSparkJob.maxRetries',
+      'KafkaTopic.messageRetentionHours',
+    ]);
+    const kafka = Object.fromEntries(OFFERS)['KafkaTopic'];
+    expect(() =>
+      instantiateWith('KafkaTopic', kafka, {messageRetentionHours: 24}),
+    ).toThrow(
+      "Offer Messaging.CaaS.KafkaTopic cannot honor the parameter 'messageRetentionHours' of 'probe': " +
+        "'retentionMs' is read only by fractal-cloud-agent-aws, fractal-cloud-agent-azure, " +
+        'fractal-cloud-agent-gcp, fractal-cloud-agent-oci; aria-agent-caas-k8s also reconciles ' +
+        'Messaging.CaaS.KafkaTopic and ignores it.',
+    );
+  });
+
   it('has no rule for a key the contract declares', () => {
     for (const [name, offer] of OFFERS) {
       if (offer.contract === undefined) {
@@ -463,19 +519,17 @@ describe('offers and the contracts their agents publish', () => {
       const [c] = emitted(name, Object.fromEntries(OFFERS)[name]);
       return c.parameters;
     };
-    expect(vm('Ec2Instance')).toMatchObject({instanceType: 'small'});
-    expect(vm('AzureVm')).toMatchObject({vmSize: 'small'});
-    expect(vm('GcpVm')).toMatchObject({machineType: 'small'});
-    expect(vm('OciInstance')).toMatchObject({shape: 'small'});
+    // the neutral size vocabulary, in each vendor's machine types
+    expect(vm('Ec2Instance')).toMatchObject({instanceType: 't3.small'});
+    expect(vm('AzureVm')).toMatchObject({vmSize: 'Standard_B1ms'});
+    expect(vm('GcpVm')).toMatchObject({machineType: 'e2-small'});
+    expect(vm('OciInstance')).toMatchObject({shape: 'VM.Standard.E2.1.Micro'});
     expect(vm('AwsRdsPostgresDbms')).toMatchObject({
       version: '16',
       allocatedStorageGb: 32,
     });
     expect(vm('AwsLambda')).toMatchObject({memoryMb: 512, timeoutSeconds: 30});
-    expect(vm('KafkaTopic')).toMatchObject({
-      partitions: 2,
-      retentionMs: 24 * 3_600_000,
-    });
+    expect(vm('KafkaTopic')).toMatchObject({partitions: 2});
     expect(vm('AzureServiceBusTopic')).toMatchObject({
       defaultMessageTimeToLive: 'PT24H',
     });
@@ -483,10 +537,90 @@ describe('offers and the contracts their agents publish', () => {
       minReplicas: 2,
       maxReplicas: 6,
       cpu: 0.25,
+      memory: '0.5Gi',
+    });
+    expect(vm('CloudRun')).toMatchObject({
+      image: 'registry/accounts:2.21.12',
+      port: 8080,
+      minInstances: 2,
+      maxInstances: 6,
+      cpu: '250m',
       memory: '512Mi',
     });
     expect(vm('AwsCloudFront')).toMatchObject({aliases: ['api.example.com']});
     expect(vm('AzureServiceBus')).not.toHaveProperty('tier');
+  });
+
+  it('emits an ECS workload as a task definition and the service that depends on it', () => {
+    const ecs = Object.fromEntries(OFFERS)['EcsService'];
+    const [task, service] = ecs({launchType: 'FARGATE'} as never).instantiate({
+      id: 'web',
+      displayName: 'web',
+      parameters: {
+        image: 'registry/app:1',
+        port: 8080,
+        replicas: 3,
+        resources: {requests: {cpu: '500m', memory: '1Gi'}},
+      },
+      locked: [],
+      dependencies: ['cluster', 'subnet'],
+      links: [],
+      children: [],
+    });
+    expect(task).toMatchObject({
+      id: 'web-task',
+      type: 'NetworkAndCompute.CaaS.ECSTaskDefinition',
+      provider: 'AWS',
+      parameters: {
+        containerImage: 'registry/app:1',
+        containerPort: 8080,
+        cpu: '512',
+        memory: '1024',
+      },
+      dependencies: [],
+    });
+    expect(service).toMatchObject({
+      id: 'web',
+      type: 'NetworkAndCompute.CaaS.ECSService',
+      parameters: {desiredCount: 3, launchType: 'FARGATE'},
+      dependencies: ['cluster', 'subnet', 'web-task'],
+    });
+    expect(() =>
+      ecs({} as never).instantiate({
+        id: 'web',
+        displayName: 'web',
+        parameters: {},
+        dependencies: [],
+        links: [],
+        children: [],
+      }),
+    ).toThrow("EcsService 'web' needs containerImage: set it with the Workload's withImage.");
+    expect(Object.fromEntries(OFFERS)['EcsCluster']({} as never).offerType).toBe(
+      'NetworkAndCompute.PaaS.ECS',
+    );
+  });
+
+  it('refuses a neutral value no agent key can take', () => {
+    const run = (name: string, parameters: Record<string, unknown>) =>
+      instantiateWith(name, Object.fromEntries(OFFERS)[name], parameters);
+    expect(() => run('Ec2Instance', {size: 'huge'})).toThrow(
+      'Offer NetworkAndCompute.IaaS.AwsEc2Instance cannot honor the parameter \'size\' of \'probe\': ' +
+        'size "huge" is neither a neutral size (small, medium, large, xlarge) nor a AWS machine type such as t3.micro.',
+    );
+    expect(run('Ec2Instance', {size: 'c7g.large'})[0].parameters).toEqual({
+      instanceType: 'c7g.large',
+    });
+    expect(() => run('GcpVm', {size: 't3.micro'})).toThrow(/nor a GCP machine type/);
+    expect(() => run('AzureContainerApp', {memoryRequest: 'lots'})).toThrow(
+      '"lots" is not a Kubernetes memory quantity such as 512Mi or 1Gi',
+    );
+    expect(run('AzureContainerApp', {memoryRequest: '1536Mi', cpuRequest: '1'})[0].parameters).toMatchObject({
+      memory: '1.5Gi',
+      cpu: 1,
+    });
+    expect(() => run('AwsLambda', {memory: '512'})).toThrow(
+      `"512" is not the integer 'memoryMb' takes`,
+    );
   });
 
   it('lets an explicit vendor value win over an open neutral one, never over a locked one', () => {

@@ -68,9 +68,9 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
     expect(web.locked).toContain('healthCheck');
   });
 
-  it('refuses a workload on EcsService, a type the AWS agent provisions nothing for', () => {
-    // CustomWorkloads.PaaS.AwsEcsService is a phantom strategy in the AWS
-    // agent: every workload parameter sent to it was read by nobody.
+  it('refuses on EcsService the workload guardrails ECS cannot honor', () => {
+    // The ECS service and task definition contracts declare no autoscaling and
+    // no health check, so the locked maxReplicas / healthCheck are refused.
     expect(() =>
       authorFractal()
         .specialize()
@@ -78,7 +78,7 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
         .withReplicas(6)
         .toLiveSystem({name: 'acme-prod', environment, select: fullSelect()}),
     ).toThrow(
-      "Offer CustomWorkloads.PaaS.AwsEcsService cannot honor the parameter 'cpuRequest' of 'web'",
+      "Offer NetworkAndCompute.CaaS.ECSService cannot honor the parameter 'maxReplicas' of 'web': the ECS task definition and service contracts declare no autoscaling",
     );
   });
 

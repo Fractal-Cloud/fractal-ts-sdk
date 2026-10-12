@@ -11,6 +11,12 @@
  * Cluster-scoped offers (CaaS, self-hosted, vSphere/OpenShift) take their region
  * from the underlying cluster and therefore do NOT expose it.
  */
+import {
+  awsInstanceType,
+  azureVmSize,
+  gcpMachineType,
+  ociShape,
+} from './vm_sizes';
 import {toContractKey, unsupported} from './neutral_rules';
 import {
   NetworkAndCompute_IaaS_AwsEc2Instance,
@@ -36,6 +42,7 @@ import {
   NetworkAndCompute_PaaS_AzureAks,
   NetworkAndCompute_PaaS_AzureContainerAppsEnvironment,
   NetworkAndCompute_PaaS_GcpGke,
+  NetworkAndCompute_PaaS_ECS,
 } from './generated/network_and_compute';
 import type {ContractConfig} from './contract/contract_config';
 import {contractKey} from './contract/contract_key';
@@ -283,7 +290,11 @@ export const Ec2Instance = defineOffer<
     publicSSHKey: unsupported(
       'the agent takes an EC2 key pair name (keyName), not public key material',
     ),
-    size: toContractKey(NetworkAndCompute_IaaS_AwsEc2Instance, 'instanceType'),
+    size: toContractKey(
+      NetworkAndCompute_IaaS_AwsEc2Instance,
+      'instanceType',
+      awsInstanceType,
+    ),
     tags: unsupported('the agent applies no tags to it'),
   },
 });
@@ -314,7 +325,7 @@ export const AzureVm = defineOffer<
   deliveryModel: 'IaaS',
   neutral: {
     osType: unsupported('the operating system follows imageId'),
-    size: toContractKey(NetworkAndCompute_IaaS_AzureVm, 'vmSize'),
+    size: toContractKey(NetworkAndCompute_IaaS_AzureVm, 'vmSize', azureVmSize),
     tags: unsupported('the agent applies no tags to it'),
   },
 });
@@ -352,7 +363,11 @@ export const GcpVm = defineOffer<
   deliveryModel: 'IaaS',
   neutral: {
     osType: unsupported('the operating system follows imageLink'),
-    size: toContractKey(NetworkAndCompute_IaaS_GcpVm, 'machineType'),
+    size: toContractKey(
+      NetworkAndCompute_IaaS_GcpVm,
+      'machineType',
+      gcpMachineType,
+    ),
     tags: unsupported('the agent applies no tags to it'),
   },
 });
@@ -540,6 +555,35 @@ export const Gke = defineOffer<
     NetworkAndCompute_PaaS_GcpGke.offerType,
     'GCP',
   ),
+});
+
+/**
+ * An Amazon ECS cluster (`NetworkAndCompute.PaaS.ECS`), the platform an
+ * `EcsService` workload runs on: the AWS agent resolves the service's cluster
+ * from a dependency of this type. It is not a Kubernetes cluster, so the
+ * Kubernetes guardrails of `ContainerPlatform` are refused, and workloads added
+ * as its children are not emitted (select `EcsService` for a Workload that
+ * depends on it instead).
+ */
+export const EcsCluster = defineOffer<
+  'NetworkAndCompute.ContainerPlatform',
+  ContractConfig<typeof NetworkAndCompute_PaaS_ECS>
+>({
+  satisfies: 'NetworkAndCompute.ContainerPlatform',
+  contract: NetworkAndCompute_PaaS_ECS,
+  provider: 'AWS',
+  deliveryModel: 'PaaS',
+  neutral: {
+    kubernetesVersion: unsupported(
+      'an ECS cluster is not a Kubernetes cluster',
+    ),
+    networkPolicyProvider: unsupported(
+      'an ECS cluster is not a Kubernetes cluster',
+    ),
+    nodePools: unsupported(
+      'an ECS cluster runs Fargate tasks, not Kubernetes node pools',
+    ),
+  },
 });
 
 /**
@@ -733,7 +777,7 @@ export const OciInstance = defineOffer<
   deliveryModel: 'IaaS',
   neutral: {
     osType: unsupported('the operating system follows imageId'),
-    size: toContractKey(NetworkAndCompute_IaaS_OciInstance, 'shape'),
+    size: toContractKey(NetworkAndCompute_IaaS_OciInstance, 'shape', ociShape),
     tags: unsupported('the agent applies no tags to it'),
   },
   // The OCI agent reads the authorized public key under `keyName` and writes it

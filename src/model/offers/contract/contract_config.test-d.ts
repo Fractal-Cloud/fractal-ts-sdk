@@ -43,8 +43,11 @@ AzureNsg({resourceGroup: 'rg'});
 // @ts-expect-error the API Management contract names its SKU `skuName`.
 AzureApiManagement({sku: 'Developer'});
 AzureApiManagement({skuName: 'Developer'});
-// @ts-expect-error the ECS service contract has no `launchType`.
+// EcsService emits the real ECS service and task definition, whose contracts
+// declare `launchType`; the image is the Workload's withImage, not config.
 EcsService({launchType: 'FARGATE'});
+// @ts-expect-error `containerImage` is filled by the Workload's withImage.
+EcsService({containerImage: 'registry/app:1'});
 
 // A key the contract requires is required.
 CertManager({

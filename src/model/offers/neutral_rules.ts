@@ -5,8 +5,30 @@
 import type {NeutralRule} from '../neutral_rule';
 import type {OfferContract} from './contract/offer_contract';
 import {contractKey} from './contract/contract_key';
+import {contractValueProblem} from './contract/contract_value_problem';
 
-/** The neutral value becomes contract key `key`, through `map` when given. */
+/** Refuses a translated value the contract would not accept. */
+const checked = (
+  contract: OfferContract,
+  out: Record<string, unknown>,
+): Record<string, unknown> => {
+  for (const [key, value] of Object.entries(out)) {
+    if (value === undefined) {
+      continue;
+    }
+    const problem = contractValueProblem(contract, key, value);
+    if (problem !== undefined) {
+      throw new Error(problem);
+    }
+  }
+  return out;
+};
+
+/**
+ * The neutral value becomes contract key `key`, through `map` when given. The
+ * result must be a value the contract accepts; `map` may also throw to refuse
+ * a neutral value it cannot translate.
+ */
 export const toContractKey = <
   C extends OfferContract,
   K extends keyof C['params'] & string,
@@ -16,7 +38,10 @@ export const toContractKey = <
   map: (value: unknown) => unknown = v => v,
 ): NeutralRule => {
   const vendorKey = contractKey(contract, key);
-  return {kind: 'translate', apply: value => ({[vendorKey]: map(value)})};
+  return {
+    kind: 'translate',
+    apply: value => checked(contract, {[vendorKey]: map(value)}),
+  };
 };
 
 /** The neutral value becomes several contract keys. */
@@ -41,7 +66,7 @@ export const toContractKeys = <
           `${contract.offerType}: a neutral translation wrote '${extra}', not one of ${keys.join(', ')}.`,
         );
       }
-      return out;
+      return checked(contract, out);
     },
   };
 };

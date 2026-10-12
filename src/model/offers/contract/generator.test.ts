@@ -21,6 +21,8 @@ import {
 } from '../../../../scripts/offer-contracts/snapshot.mjs';
 import {contractKey} from './contract_key';
 import {contractKeys} from './contract_keys';
+import {contractValueProblem} from './contract_value_problem';
+import type {OfferContract} from './offer_contract';
 import {toContractKeys} from '../neutral_rules';
 import {NetworkAndCompute_IaaS_AwsLb} from '../generated/network_and_compute';
 
@@ -238,5 +240,59 @@ describe('contract keys', () => {
     ).toThrow(
       "NetworkAndCompute.IaaS.AwsLb declares no parameter 'scheme' (declared: lbScheme, lbType, region).",
     );
+  });
+});
+
+describe('contract values', () => {
+  const contract = {
+    offerType: 'X.CaaS.Y',
+    serviceTypes: [],
+    declaredBy: [
+      {
+        agentId: 'a',
+        agentVersion: 'v1',
+        contractSchemaVersion: '2.0',
+        provider: 'CaaS',
+        parameterRules: [],
+      },
+    ],
+    params: {
+      name: {
+        type: 'string',
+        required: false,
+        constraints: {pattern: '[a-z]+', minLength: 2, maxLength: 4},
+      },
+      soft: {type: 'string', required: false, constraints: {pattern: '[a-z]+', level: 'warn'}},
+      tier: {type: 'string', required: false, values: ['Basic', 'Premium'], valuesCaseInsensitive: true},
+      zones: {type: 'array', required: false, values: ['1', '2']},
+      label: {type: 'string', required: false, values: ['x'], valuesLevel: 'warn'},
+      count: {type: 'integer', required: false, constraints: {minimum: 1, maximum: 3}},
+      ratio: {type: 'number', required: false},
+      on: {type: 'boolean', required: false},
+      spec: {type: 'object', required: false},
+    },
+  } as const satisfies OfferContract;
+
+  it.each([
+    ['name', 'ab', undefined],
+    ['name', 'A1', `'name' "A1" does not match [a-z]+`],
+    ['name', 'a', `'name' "a" is shorter than 2`],
+    ['name', 'abcde', `'name' "abcde" is longer than 4`],
+    ['soft', 'A1', undefined],
+    ['tier', 'premium', undefined],
+    ['tier', 'Gold', `"Gold" is not one of Basic, Premium for 'tier'`],
+    ['zones', ['1', '2'], undefined],
+    ['zones', ['3'], `["3"] is not one of 1, 2 for 'zones'`],
+    ['label', 'y', undefined],
+    ['count', 2, undefined],
+    ['count', 2.5, `2.5 is not the integer 'count' takes`],
+    ['count', 0, `'count' 0 is below 1`],
+    ['count', 4, `'count' 4 is above 3`],
+    ['ratio', 'x', `"x" is not the number 'ratio' takes`],
+    ['on', 'true', `"true" is not the boolean 'on' takes`],
+    ['spec', [], `[] is not the object 'spec' takes`],
+    ['missing', 1, `X.CaaS.Y declares no 'missing'`],
+  ])('%s = %j', (key, value, problem) => {
+    expect(contractValueProblem(contract, key, value)).toBe(problem);
   });
 });

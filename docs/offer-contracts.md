@@ -115,6 +115,13 @@ export const NetworkAndCompute_IaaS_AwsLb = {
   requires it, `integer` and `number` meet at `number`, closed vocabularies intersect, differing
   defaults are dropped, and `agents` records which agents read a key when not all do. Any other
   disagreement fails the generator with both agents named.
+- **Merging never widens an offer.** The generated data keeps the per-agent key sets (`agents`), and
+  the SDK treats a key as supported only if every agent declaring the offer reads it: an optional
+  key only some read is not a config key (`ContractParameters`), and a neutral translation into one
+  is refused with the agents named. A key some agent requires stays in the config, since that agent
+  cannot work without it (the others ignore it). Today this hides, among others, the Java agents'
+  Kafka, MinIO, Spark and MLflow sizing keys and the `region` of every self-hosted CaaS offer (the
+  OCI agent declares none), until every agent declaring the offer reads them.
 - Generated modules hold data only. Unused contracts are tree-shaken from the bundle.
 
 Dependencies and links are **not** generated: the projection does not carry an offer's
@@ -153,15 +160,23 @@ neutral parameter of its component that its contract does not declare a rule (`d
 
 - `toContractKey(contract, key, map?)` / `toContractKeys(...)`: the value becomes the contract key
   the agent reads (`size` → `instanceType`, `retentionDays` → S3 `lifecycleExpirationDays`,
-  `messageRetentionHours` → Service Bus `defaultMessageTimeToLive` `PT<n>H` / Kafka `retentionMs`,
+  `messageRetentionHours` → Service Bus `defaultMessageTimeToLive` `PT<n>H`,
   `engineVersion` → RDS `version`, `customDomain` → CloudFront `aliases`, ...). The key is checked
-  by the contract's type. An explicit vendor value (offer config, or a dev-set parameter) wins over
+  by the contract's type, and **the translated value is checked against the contract**
+  (`contractValueProblem`): every declaring agent must read the key, and the value must have the
+  key's type and be in its closed vocabulary and constraints where the contract carries them;
+  otherwise the parameter is refused with the reason. Translations convert units rather than pass
+  them on: `withSize` takes the neutral vocabulary `small` / `medium` / `large` / `xlarge`
+  (`VmSize`, mapped per vendor in `offers/vm_sizes.ts`) or that vendor's own machine type name,
+  and refuses anything else; Kubernetes quantities become Container App cores and `0.5Gi`, ECS
+  task CPU units and MiB (`offers/resource_quantities.ts`), and a value that is not a quantity is
+  refused. An explicit vendor value (offer config, or a dev-set parameter) wins over
   an open neutral one, and is refused against a locked one, whose lock would otherwise guard a
   value nobody reads.
 - `unsupported(reason)`: no key of the agent's contract can honor it, so `toLiveSystem` refuses the
   Live System, naming the offer, the parameter, the component and the reason (`withTags` on
-  `AwsVpc`, egress rules on every security group, workload settings on the `EcsService` /
-  `CloudRun` placeholders, ...). The setter is refused even with an `undefined` value: the call is
+  `AwsVpc`, egress rules on every security group, container environment on `EcsService` /
+  `CloudRun`, ...). The setter is refused even with an `undefined` value: the call is
   the mistake.
 - `unsupportedUnless(satisfiedBy, reason)`: refused unless the offer already does what the value
   asks (`withEncryption('at-rest')` on S3, `withPublicAccess(false)` on a private bucket,
@@ -242,13 +257,23 @@ Keys the contracts require, now required in the config (each failed at reconcile
 `clusterName` on `KafkaTopic`, `elasticInstances` and `storage` on `ObservabilityElastic`, `host`
 on `Ocelot`, `entryPoints` on `Traefik`.
 
+`EcsService` and `CloudRun` emitted `CustomWorkloads.PaaS.AwsEcsService` / `GcpCloudRun`, types the
+agents register as placeholders and provision nothing for. They now emit the real offers, checked
+against the agents' registrations and catalogue: `CloudRun` is `NetworkAndCompute.CaaS.CloudRunService`
+(the catalogue's Cloud Run workload offer; the GCP agent serves it with the same strategy as its
+canonical `NetworkAndCompute.PaaS.CloudRun`), and `EcsService` emits a
+`NetworkAndCompute.CaaS.ECSTaskDefinition` `<id>-task` plus the `NetworkAndCompute.CaaS.ECSService`
+that depends on it (the AWS agent's CaaS tier). The ECS service needs an ECS cluster dependency, so
+`EcsCluster` (`NetworkAndCompute.PaaS.ECS`) is added for the `ContainerPlatform` the workload
+depends on.
+
 Neutral parameters an offer's agent cannot honor are refused when the Live System is built,
 instead of being sent under a key nobody reads (section 3.1). The ones translated now take effect:
 `withSize` (EC2 `instanceType`, Azure `vmSize`, GCP `machineType`, OCI `shape`), RDS / Azure
 PostgreSQL `withEngineVersion` (`version`) and RDS `withStorageGb` (`allocatedStorageGb`), Cloud
 SQL MySQL `withStorageGb`, S3 `withRetentionDays` (`lifecycleExpirationDays`), Lambda `withMemory`
 / `withTimeout`, Azure Functions `withEnvironment` (`appSettings`), Container App replicas,
-autoscaling range and CPU / memory requests, Kafka topic partitions and retention, Service Bus
+autoscaling range and CPU / memory requests, Kafka topic partitions, Service Bus
 topic retention, CloudFront / Traefik / Ambassador `withCustomDomain`, Spark job `cronSchedule`.
 `instanceType`, `vmSize` and `machineType` are therefore optional in the VM configs, as the
 contracts declare them.
@@ -289,7 +314,12 @@ src/model/offers/contract/*.ts          OfferContract, ContractConfig, contractK
 5. **ARIA read API drops the 2.0 members** until fractal-aria #97 merges.
 6. **`@fractal-cloud/offer-contracts` is private** (GitHub Packages, `UNLICENSED`), so the public
    SDK cannot evaluate rules with it.
-7. **Contract content gaps** the generated types now make visible (each is the agent's to fix):
+7. **aria-agent-caas-k8s reads less than the Java agents for the offers both declare**, so those
+   keys are unsupported in the SDK: notably Kafka topic retention (`retentionMs`; the neutral
+   `withMessageRetentionHours` is refused on `KafkaTopic`), the Kafka / MinIO / Spark / MLflow
+   sizing keys, and Spark `sparkVersion` / `maxRetries`. caas-k8s should support topic retention
+   (and declare the rest it can honor); then the refusals turn into translations by themselves.
+8. **Contract content gaps** the generated types now make visible (each is the agent's to fix):
    aria-agent-caas-k8s 1.0 types its comma-separated lists (`tlsHosts`, `queueUrls`, ...) as
    `string` and declares no `values`; `AI.SaaS.Unmanaged.secret` is not `sensitive`;
    `CustomWorkloads.PaaS.AwsEcsService` declares only `region`; `lbScheme` has no `values` on any

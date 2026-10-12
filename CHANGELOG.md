@@ -51,7 +51,7 @@ reconcile when missing: `nodeTypeId` on `AwsDatabricksCluster`,
 `toLiveSystem` used to send it under a key nobody reads; it now throws, naming the
 offer, the parameter, the component and why (e.g. `withTags` on `AwsVpc` or `AwsS3`,
 `withEgressRules` on every security group, `withRetentionDays` on Prometheus, workload
-settings on the `EcsService` and `CloudRun` placeholders, which no agent provisions).
+settings `EcsService` and `CloudRun` have no key for, such as `withEnv`).
 A value the offer satisfies anyway is accepted and not sent (`withEncryption('at-rest')`
 and `withPublicAccess(false)` on S3, `withDeadLetterEnabled(true)` on SQS). This
 replaces the `scrapeInterval` / `samplingRate` refusal, whose message changes. The
@@ -64,11 +64,31 @@ PostgreSQL DBMS (`version`), `withStorageGb` on RDS (`allocatedStorageGb`) and C
 MySQL (`instanceDataDiskSizeGb`), `withRetentionDays` on `AwsS3` / `AwsS3Datalake`
 (`lifecycleExpirationDays`), `withMemory` / `withTimeout` on `AwsLambda`,
 `withEnvironment` on `AzureFunction` (`appSettings`), replicas, autoscaling and CPU /
-memory requests on `AzureContainerApp`, partitions and retention on `KafkaTopic`,
+memory requests on `AzureContainerApp`, partitions on `KafkaTopic`,
 retention on `AzureServiceBusTopic` (`defaultMessageTimeToLive`), `withCustomDomain` on
 `AwsCloudFront` (`aliases`), `Traefik` (`hostname`), `TraefikGateway` and `Ambassador`
 (`host`), and `cronSchedule` on `CaaSSparkJob` (`schedule`). An explicit vendor value
 wins over an open neutral one and is refused against a locked one.
+
+**Fixed — `EcsService` and `CloudRun` deploy.** They emitted placeholder types the agents
+provision nothing for. `CloudRun` now emits `NetworkAndCompute.CaaS.CloudRunService`, and
+`EcsService` an ECS task definition `<id>-task` plus the `NetworkAndCompute.CaaS.ECSService`
+that depends on it, with the Workload's image, port, CPU / memory requests and replicas
+translated into their keys. New `EcsCluster` offer (`NetworkAndCompute.PaaS.ECS`) for the
+`ContainerPlatform` an `EcsService` workload depends on.
+
+**Breaking — translated values must be values the agent accepts.** `withSize` takes
+`small` / `medium` / `large` / `xlarge` (new `VmSize`, mapped to each vendor's machine types)
+or that vendor's own type name, and refuses anything else; Kubernetes CPU / memory quantities
+are converted (Container Apps `0.5Gi`, ECS CPU units and MiB) and refused when they are not
+quantities; every translated value is checked against the contract's type, vocabulary and
+constraints.
+
+**Breaking — keys only some agents of a self-hosted CaaS offer read are not offered.** Any
+of them may reconcile the component, so such a key is neither a config key nor a translation
+target: `KafkaTopic` refuses `withMessageRetentionHours` (aria-agent-caas-k8s reads no
+retention), `CaaSSparkCluster` / `CaaSSparkJob` refuse `withSparkVersion` / `withMaxRetries`,
+and the Java-only sizing keys and `region` are no longer config keys of the CaaS offers.
 
 **Added — every other contract key is an optional config key**, e.g. `AwsLb.lbType`,
 the storage-account settings of `AzureBlob`, `AwsVpc.enableDnsHostnames`. Keys a

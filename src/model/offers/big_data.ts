@@ -96,6 +96,9 @@ export const CaaSSparkCluster = defineOffer<
   contract: BigData_CaaS_SparkCluster,
   deliveryModel: 'CaaS',
   neutral: {
+    // Read only by the Java agents' Spark offers: refused (with the agents
+    // named) while aria-agent-caas-k8s, which may reconcile it, ignores it.
+    sparkVersion: toContractKey(BigData_CaaS_SparkCluster, 'sparkVersion'),
     autoTerminationMinutes: unsupported(
       'a Spark-on-Kubernetes cluster is sized by its driver and executors',
     ),
@@ -160,6 +163,9 @@ export const CaaSSparkJob = defineOffer<
   contract: BigData_CaaS_SparkJob,
   deliveryModel: 'CaaS',
   neutral: {
+    // Read only by the Java agents' Spark offers: refused (with the agents
+    // named) while aria-agent-caas-k8s, which may reconcile it, ignores it.
+    maxRetries: toContractKey(BigData_CaaS_SparkJob, 'maxRetries'),
     cronSchedule: toContractKey(BigData_CaaS_SparkJob, 'schedule'),
     jobName: unsupported('the job is named after the component'),
     taskType: unsupported(

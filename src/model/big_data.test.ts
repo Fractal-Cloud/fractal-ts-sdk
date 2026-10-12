@@ -142,13 +142,11 @@ describe('BigData domain — data-platform Fractal', () => {
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
       blueprint: bp => {
-        const cluster = bp.add(
-          ComputeCluster({id: 'cluster'}).withSparkVersion('3.5.3'),
-        );
+        // No Spark version and no retry count either: only the Java agents
+        // read them, and aria-agent-caas-k8s may be the one reconciling.
+        const cluster = bp.add(ComputeCluster({id: 'cluster'}));
         const job = bp.add(
-          DataProcessingJob({id: 'etl-job'})
-            .withMaxRetries(3)
-            .dependsOn(cluster),
+          DataProcessingJob({id: 'etl-job'}).dependsOn(cluster),
         );
         const experiment = bp.add(MlExperiment({id: 'experiment'}));
         return {cluster, job, experiment};
