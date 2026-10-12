@@ -10,6 +10,7 @@
  * the environment region (unchanged behavior). Vendor-neutral CaaS offers run
  * on a cluster and take their region from it, so they do NOT expose `region`.
  */
+import {toContractKey, unsupported} from './neutral_rules';
 import {
   BigData_CaaS_SparkCluster,
   BigData_CaaS_SparkJob,
@@ -94,6 +95,23 @@ export const CaaSSparkCluster = defineOffer<
   satisfies: 'BigData.ComputeCluster',
   contract: BigData_CaaS_SparkCluster,
   deliveryModel: 'CaaS',
+  neutral: {
+    autoTerminationMinutes: unsupported(
+      'a Spark-on-Kubernetes cluster is sized by its driver and executors',
+    ),
+    clusterName: unsupported(
+      'a Spark-on-Kubernetes cluster is sized by its driver and executors',
+    ),
+    dataSecurityMode: unsupported(
+      'a Spark-on-Kubernetes cluster is sized by its driver and executors',
+    ),
+    maxWorkers: unsupported(
+      'a Spark-on-Kubernetes cluster is sized by its driver and executors',
+    ),
+    minWorkers: unsupported(
+      'a Spark-on-Kubernetes cluster is sized by its driver and executors',
+    ),
+  },
 });
 
 // ── DataProcessingJob offers ─────────────────────────────────────────────────
@@ -141,6 +159,13 @@ export const CaaSSparkJob = defineOffer<
   satisfies: 'BigData.DataProcessingJob',
   contract: BigData_CaaS_SparkJob,
   deliveryModel: 'CaaS',
+  neutral: {
+    cronSchedule: toContractKey(BigData_CaaS_SparkJob, 'schedule'),
+    jobName: unsupported('the job is named after the component'),
+    taskType: unsupported(
+      'the job type is set by type and mainApplicationFile',
+    ),
+  },
 });
 
 // ── MlExperiment offers ──────────────────────────────────────────────────────
@@ -180,6 +205,9 @@ export const CaaSMlflow = defineOffer<
   satisfies: 'BigData.MlExperiment',
   contract: BigData_CaaS_SparkMlExperiment,
   deliveryModel: 'CaaS',
+  neutral: {
+    experimentName: unsupported('the agent creates no named experiment'),
+  },
 });
 
 // ── Datalake offers ──────────────────────────────────────────────────────────
@@ -195,6 +223,12 @@ export const AwsS3Datalake = defineOffer<
   contract: BigData_PaaS_AwsS3Datalake,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  neutral: {
+    retentionDays: toContractKey(
+      BigData_PaaS_AwsS3Datalake,
+      'lifecycleExpirationDays',
+    ),
+  },
 });
 export const AzureDatalake = defineOffer<
   'BigData.Datalake',
@@ -204,6 +238,10 @@ export const AzureDatalake = defineOffer<
   contract: BigData_PaaS_AzureDatalake,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  neutral: {
+    retentionDays: unsupported('the agent sets no retention'),
+    versioningEnabled: unsupported('the agent sets no blob versioning'),
+  },
 });
 export const GcpDatalake = defineOffer<
   'BigData.Datalake',
@@ -217,6 +255,9 @@ export const GcpDatalake = defineOffer<
   contract: BigData_PaaS_GcpDatalake,
   provider: 'GCP',
   deliveryModel: 'PaaS',
+  neutral: {
+    retentionDays: unsupported('the agent sets no retention'),
+  },
 });
 
 // ── DistributedDataProcessing offers ─────────────────────────────────────────
@@ -243,6 +284,9 @@ export const AwsDatabricks = defineOffer<
   contract: BigData_PaaS_AwsDatabricks,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  neutral: {
+    workspaceName: unsupported('the agent names the workspace itself'),
+  },
 });
 export const AzureDatabricks = defineOffer<
   'BigData.DistributedDataProcessing',
@@ -256,6 +300,9 @@ export const AzureDatabricks = defineOffer<
   contract: BigData_PaaS_AzureDatabricks,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  neutral: {
+    workspaceName: unsupported('the agent names the workspace itself'),
+  },
 });
 export const GcpDatabricks = defineOffer<
   'BigData.DistributedDataProcessing',
@@ -269,4 +316,7 @@ export const GcpDatabricks = defineOffer<
   contract: BigData_PaaS_GcpDatabricks,
   provider: 'GCP',
   deliveryModel: 'PaaS',
+  neutral: {
+    workspaceName: unsupported('the agent names the workspace itself'),
+  },
 });

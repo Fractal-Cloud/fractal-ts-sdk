@@ -40,8 +40,7 @@ function authorFractal() {
     blueprint: bp => {
       const network = bp.add(
         VirtualNetwork({id: 'main-network'})
-          .withCidrBlock('10.0.0.0/16')
-          .withTags({team: 'platform'}),
+          .withCidrBlock('10.0.0.0/16'),
       );
       const subnet = bp.add(
         Subnet({id: 'app-subnet'})
@@ -57,8 +56,6 @@ function authorFractal() {
       );
       const vm = bp.add(
         VirtualMachine({id: 'app-vm'})
-          .withOsType('linux')
-          .withSize('medium')
           .dependsOn(subnet),
       );
       const cluster = bp.add(
@@ -93,11 +90,10 @@ const fullSelect = () => ({
 });
 
 describe('NetworkAndCompute domain', () => {
-  it('blueprint records guardrails (tags array) and locks them', () => {
+  it('blueprint records guardrails and locks them', () => {
     const net = authorFractal().blueprint.components.find(
       c => c.id === 'main-network',
     )!;
-    expect(net.parameters.tags).toEqual({team: 'platform'});
     expect(net.parameters.cidrBlock).toBe('10.0.0.0/16');
     expect(net.locked).toContain('cidrBlock');
 
@@ -126,6 +122,7 @@ describe('NetworkAndCompute domain', () => {
     expect(byId['main-network'].provider).toBe('AWS');
     expect(byId['app-vm'].type).toBe('NetworkAndCompute.IaaS.AwsEc2Instance');
     expect(byId['app-vm'].parameters.amiId).toBe('ami-123');
+    expect(byId['app-vm'].parameters.instanceType).toBe('t3.medium');
     // guardrail flowed into the live component
     expect(byId['main-network'].parameters.cidrBlock).toBe('10.0.0.0/16');
     // structure (dependency) preserved through specialization + selection

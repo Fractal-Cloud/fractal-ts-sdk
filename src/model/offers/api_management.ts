@@ -5,6 +5,7 @@
  * type, its vendor (provider) and delivery model, and carries vendor knobs in
  * its config type. Vendor-neutral self-hosted offers (CaaS) OMIT `provider`.
  */
+import {toContractKey, unsupported} from './neutral_rules';
 import {Storage_PaaS_AwsS3} from './generated/storage';
 import {
   APIManagement_CaaS_Ambassador,
@@ -342,6 +343,17 @@ export const AwsCloudFront = defineOffer<
   contract: APIManagement_PaaS_AwsCloudFront,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  neutral: {
+    cors: unsupported('the agent configures no CORS policy'),
+    customDomain: toContractKey(
+      APIManagement_PaaS_AwsCloudFront,
+      'aliases',
+      v => [v],
+    ),
+    httpsOnly: unsupported('the agent has no HTTPS-only setting'),
+    rateLimit: unsupported('the agent has no rate limit setting'),
+    routes: unsupported('the agent reads no route list from parameters'),
+  },
   validate: (self, all, config) => {
     // Blank is no redirect, as the agent reads it; the agent trims the value.
     const target =
@@ -529,6 +541,13 @@ export const AzureApiManagement = defineOffer<
   contract: APIManagement_PaaS_AzureApiManagement,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  neutral: {
+    cors: unsupported('the agent configures no CORS policy'),
+    customDomain: unsupported('the agent configures no custom domain'),
+    httpsOnly: unsupported('the agent has no HTTPS-only setting'),
+    rateLimit: unsupported('the agent has no rate limit setting'),
+    routes: unsupported('the agent reads no route list from parameters'),
+  },
 });
 export const GcpApiGateway = defineOffer<
   'APIManagement.ApiGateway',
@@ -538,6 +557,13 @@ export const GcpApiGateway = defineOffer<
   contract: APIManagement_PaaS_GcpApiGateway,
   provider: 'GCP',
   deliveryModel: 'PaaS',
+  neutral: {
+    cors: unsupported('the agent configures no CORS policy'),
+    customDomain: unsupported('the agent configures no custom domain'),
+    httpsOnly: unsupported('the agent has no HTTPS-only setting'),
+    rateLimit: unsupported('the agent has no rate limit setting'),
+    routes: unsupported('the agent reads no route list from parameters'),
+  },
 });
 // Vendor-neutral CaaS offers — no provider; identified by deliveryModel + offerType.
 export const Ambassador = defineOffer<
@@ -547,6 +573,13 @@ export const Ambassador = defineOffer<
   satisfies: 'APIManagement.ApiGateway',
   contract: APIManagement_CaaS_Ambassador,
   deliveryModel: 'CaaS',
+  neutral: {
+    cors: unsupported('the agent configures no CORS policy'),
+    customDomain: toContractKey(APIManagement_CaaS_Ambassador, 'host'),
+    httpsOnly: unsupported('the agent has no HTTPS-only setting'),
+    rateLimit: unsupported('the agent has no rate limit setting'),
+    routes: unsupported('the agent reads no route list from parameters'),
+  },
 });
 /** The list knobs of `TraefikGateway`, sent comma-separated as the agent reads them. */
 const TRAEFIK_GATEWAY_LISTS = [
@@ -740,6 +773,13 @@ export const Traefik = defineOffer<
   satisfies: 'APIManagement.ApiGateway',
   contract: APIManagement_CaaS_Traefik,
   deliveryModel: 'CaaS',
+  neutral: {
+    cors: unsupported('the agent configures no CORS policy'),
+    customDomain: toContractKey(APIManagement_CaaS_Traefik, 'hostname'),
+    httpsOnly: unsupported('the agent has no HTTPS-only setting'),
+    rateLimit: unsupported('the agent has no rate limit setting'),
+    routes: unsupported('the agent reads no route list from parameters'),
+  },
 });
 /**
  * Traefik on a Kubernetes cluster, installed and owned by the caas-k8s agent
@@ -773,6 +813,13 @@ export const TraefikGateway = defineOffer<
   satisfies: 'APIManagement.ApiGateway',
   contract: APIManagement_CaaS_TraefikGateway,
   deliveryModel: 'CaaS',
+  neutral: {
+    cors: unsupported('the agent configures no CORS policy'),
+    customDomain: toContractKey(APIManagement_CaaS_TraefikGateway, 'host'),
+    httpsOnly: unsupported('the agent has no HTTPS-only setting'),
+    rateLimit: unsupported('the agent has no rate limit setting'),
+    routes: unsupported('the agent reads no route list from parameters'),
+  },
   // Lists travel comma-separated, as the agent's defaults are written.
   instantiate: (ctx, config) => {
     const params: Record<string, unknown> = {...ctx.parameters, ...config};

@@ -113,8 +113,8 @@ export const fractal = createFractal({
         .withIngressRules([{protocol: 'tcp', fromPort: 443, sourceCidr: '0.0.0.0/0'}])
         .dependsOn(network),
     );
-    const web = bp.add(VirtualMachine({id: 'web-server'}).withOsType('linux').dependsOn(subnet));
-    const api = bp.add(VirtualMachine({id: 'api-server'}).withOsType('linux').dependsOn(subnet));
+    const web = bp.add(VirtualMachine({id: 'web-server'}).dependsOn(subnet));
+    const api = bp.add(VirtualMachine({id: 'api-server'}).dependsOn(subnet));
     const cluster = bp.add(
       ContainerPlatform({id: 'app-cluster'}).withKubernetesVersion('1.29').dependsOn(subnet),
     );
@@ -951,7 +951,7 @@ as a step-summary section.
 
 The blueprint references the **Component** in the left column; a Live System selects any **Offer** beneath it. Offers with no provider are vendor-neutral self-hosted (run on any cluster).
 
-An offer's config keys, their types and which are required are generated from the parameter contract its agent publishes, so they are exactly the keys the agent reads; see [`docs/offer-contracts.md`](docs/offer-contracts.md). The Hetzner, VMware and OpenShift offers, whose agents publish no contract yet, are hand-written.
+An offer's config keys, their types and which are required are generated from the parameter contract its agent publishes, so they are exactly the keys the agent reads. A component's neutral setters reach the agent under its own keys (`withSize` becomes `instanceType` on `Ec2Instance`), and one the selected offer's agent cannot honor (`withTags` on `AwsVpc`) is refused by `toLiveSystem` rather than sent unread; see [`docs/offer-contracts.md`](docs/offer-contracts.md). The Hetzner, VMware and OpenShift offers, whose agents publish no contract yet, are hand-written.
 
 ### NetworkAndCompute
 

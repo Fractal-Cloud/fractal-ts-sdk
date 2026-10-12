@@ -858,15 +858,13 @@ describe('scrapeInterval and samplingRate are refused, never pruned', () => {
     ],
   ])('refuses scrapeInterval on %s', (_name, offer, type) => {
     expect(() => build(offer, Jaeger({}), 15)).toThrow(
-      new RegExp(
-        `'metrics': scrapeInterval is not honored by ${type.replace(/\./g, '\\.')}`,
-      ),
+      `Offer ${type} cannot honor the parameter 'scrapeInterval' of 'metrics'`,
     );
   });
 
   it('refuses samplingRate on Jaeger', () => {
     expect(() => build(Prometheus({}), Jaeger({}), undefined, 0.1)).toThrow(
-      /'traces': samplingRate is not honored by Observability.CaaS.Jaeger/,
+      "Offer Observability.CaaS.Jaeger cannot honor the parameter 'samplingRate' of 'traces'",
     );
   });
 
@@ -888,7 +886,7 @@ describe('scrapeInterval and samplingRate are refused, never pruned', () => {
         environment,
         select: {metrics: Prometheus({})},
       }),
-    ).toThrow(/'metrics': scrapeInterval is not honored/);
+    ).toThrow("cannot honor the parameter 'scrapeInterval' of 'metrics'");
   });
 
   it('builds without them', () => {
@@ -915,7 +913,7 @@ describe('samplingRate on GrafanaTempo', () => {
         select: {bucket: AwsS3({}), traces: GrafanaTempo({})},
       }),
     ).toThrow(
-      /'traces': samplingRate is not honored by Observability.CaaS.GrafanaTempo/,
+      "Offer Observability.CaaS.GrafanaTempo cannot honor the parameter 'samplingRate' of 'traces'",
     );
   });
 });

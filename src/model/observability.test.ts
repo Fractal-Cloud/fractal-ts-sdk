@@ -27,7 +27,8 @@ import {
 const environment = {};
 const boundedContextId = {id: 'reusable-templates'};
 
-function authorFractal() {
+/** Guardrails as an architect writes them, before any offer is chosen. */
+function guardedFractal() {
   return createFractal({
     id: 'observability-stack',
     version: {major: 1, minor: 0, patch: 0},
@@ -40,6 +41,22 @@ function authorFractal() {
         Tracing({id: 'tracing'}).withRetentionDays(7).withSamplingRate(0.1),
       );
       const logging = bp.add(Logging({id: 'logging'}).withRetentionDays(14));
+      return {monitoring, tracing, logging};
+    },
+  });
+}
+
+// Prometheus, Jaeger and Elastic read no retention and no sampling rate, so the
+// blueprint selected with them sets none (they are refused, see below).
+function authorFractal() {
+  return createFractal({
+    id: 'observability-stack',
+    version: {major: 1, minor: 0, patch: 0},
+    boundedContextId,
+    blueprint: bp => {
+      const monitoring = bp.add(Monitoring({id: 'monitoring'}));
+      const tracing = bp.add(Tracing({id: 'tracing'}));
+      const logging = bp.add(Logging({id: 'logging'}));
       return {monitoring, tracing, logging};
     },
     operations: s => ({
@@ -66,12 +83,12 @@ describe('Observability domain', () => {
   });
 
   it('guardrails are recorded and locked', () => {
-    const mon = authorFractal().blueprint.components.find(
+    const mon = guardedFractal().blueprint.components.find(
       c => c.id === 'monitoring',
     )!;
     expect(mon.parameters.retentionDays).toBe(30);
     expect(mon.locked).toContain('retentionDays');
-    const trace = authorFractal().blueprint.components.find(
+    const trace = guardedFractal().blueprint.components.find(
       c => c.id === 'tracing',
     )!;
     expect(trace.parameters.samplingRate).toBe(0.1);
@@ -85,7 +102,19 @@ describe('Observability domain', () => {
         .withScrape(15)
         .toLiveSystem({name: 'acme-obs', environment, select: fullSelect()}),
     ).toThrow(
-      /'monitoring': scrapeInterval is not honored by Observability.CaaS.Prometheus/,
+      "Offer Observability.CaaS.Prometheus cannot honor the parameter 'scrapeInterval' of 'monitoring'",
+    );
+  });
+
+  it('refuses a retention the selected offers do not read', () => {
+    expect(() =>
+      guardedFractal().toLiveSystem({
+        name: 'acme-obs',
+        environment,
+        select: fullSelect(),
+      }),
+    ).toThrow(
+      "Offer Observability.CaaS.Prometheus cannot honor the parameter 'retentionDays' of 'monitoring'",
     );
   });
 
@@ -95,11 +124,9 @@ describe('Observability domain', () => {
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
       blueprint: bp => ({
-        monitoring: bp.add(
-          Monitoring({id: 'monitoring'}).withRetentionDays(30),
-        ),
-        tracing: bp.add(Tracing({id: 'tracing'}).withRetentionDays(7)),
-        logging: bp.add(Logging({id: 'logging'}).withRetentionDays(14)),
+        monitoring: bp.add(Monitoring({id: 'monitoring'})),
+        tracing: bp.add(Tracing({id: 'tracing'})),
+        logging: bp.add(Logging({id: 'logging'})),
       }),
     }).toLiveSystem({name: 'acme-obs', environment, select: fullSelect()});
 
@@ -111,8 +138,6 @@ describe('Observability domain', () => {
     // vendor-neutral — no provider on any CaaS offer
     expect(byId['monitoring'].provider).toBeUndefined();
     expect(byId['monitoring'].deliveryModel).toBe('CaaS');
-    // guardrail flowed
-    expect(byId['monitoring'].parameters.retentionDays).toBe(30);
   });
 
   it('selecting a wrong offer for a Component is a type error AND throws', () => {

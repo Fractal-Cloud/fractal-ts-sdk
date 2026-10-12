@@ -47,6 +47,29 @@ reconcile when missing: `nodeTypeId` on `AwsDatabricksCluster`,
 `apiConfig` on `GcpApiGateway`; `clusterName` on `KafkaTopic`; `elasticInstances` and
 `storage` on `ObservabilityElastic`; `host` on `Ocelot`; `entryPoints` on `Traefik`.
 
+**Breaking — a neutral setter the selected offer's agent cannot honor is refused.**
+`toLiveSystem` used to send it under a key nobody reads; it now throws, naming the
+offer, the parameter, the component and why (e.g. `withTags` on `AwsVpc` or `AwsS3`,
+`withEgressRules` on every security group, `withRetentionDays` on Prometheus, workload
+settings on the `EcsService` and `CloudRun` placeholders, which no agent provisions).
+A value the offer satisfies anyway is accepted and not sent (`withEncryption('at-rest')`
+and `withPublicAccess(false)` on S3, `withDeadLetterEnabled(true)` on SQS). This
+replaces the `scrapeInterval` / `samplingRate` refusal, whose message changes. The
+`AzureServiceBus` offer no longer sends the neutral `tier` it consumes.
+
+**Fixed — neutral setters that reached no agent now do**, under the agent's key:
+`withSize` (EC2 `instanceType`, Azure `vmSize`, GCP `machineType`, OCI `shape`; the
+first three are now optional in the configs), `withEngineVersion` on the RDS and Azure
+PostgreSQL DBMS (`version`), `withStorageGb` on RDS (`allocatedStorageGb`) and Cloud SQL
+MySQL (`instanceDataDiskSizeGb`), `withRetentionDays` on `AwsS3` / `AwsS3Datalake`
+(`lifecycleExpirationDays`), `withMemory` / `withTimeout` on `AwsLambda`,
+`withEnvironment` on `AzureFunction` (`appSettings`), replicas, autoscaling and CPU /
+memory requests on `AzureContainerApp`, partitions and retention on `KafkaTopic`,
+retention on `AzureServiceBusTopic` (`defaultMessageTimeToLive`), `withCustomDomain` on
+`AwsCloudFront` (`aliases`), `Traefik` (`hostname`), `TraefikGateway` and `Ambassador`
+(`host`), and `cronSchedule` on `CaaSSparkJob` (`schedule`). An explicit vendor value
+wins over an open neutral one and is refused against a locked one.
+
 **Added — every other contract key is an optional config key**, e.g. `AwsLb.lbType`,
 the storage-account settings of `AzureBlob`, `AwsVpc.enableDnsHostnames`. Keys a
 neutral setter fills (`lbScheme`, `cidrBlock`, `ingressRules`, ...) are not offered

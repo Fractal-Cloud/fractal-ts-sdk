@@ -41,36 +41,43 @@ describe('Locked Fractal model — APIManagement', () => {
     expect(gw.locked).toContain('httpsOnly');
   });
 
-  it('AWS selection: routes flow into the live CloudFront component', () => {
-    const ls = authorFractal()
-      .specialize()
-      .withRoute({path: '/orders', methods: ['GET']})
-      .toLiveSystem({
-        name: 'acme-prod',
-        environment,
-        select: {'api-gateway': AwsCloudFront({region: 'us-east-1'})},
-      });
-
-    const gw = ls.components.find(c => c.id === 'api-gateway')!;
-    expect(gw.type).toBe('APIManagement.PaaS.AwsCloudFront');
-    expect(gw.provider).toBe('AWS');
-    const routes = gw.parameters.routes as Route[];
-    expect(routes).toContainEqual({path: '/orders', methods: ['GET']});
+  it('AWS selection: CloudFront refuses the gateway guardrails its agent does not read', () => {
+    // The CloudFront agent reads no HTTPS-only switch, rate limit or route list
+    // from parameters; sending them would deploy a distribution without them.
+    expect(() =>
+      authorFractal()
+        .specialize()
+        .withRoute({path: '/orders', methods: ['GET']})
+        .toLiveSystem({
+          name: 'acme-prod',
+          environment,
+          select: {'api-gateway': AwsCloudFront({region: 'us-east-1'})},
+        }),
+    ).toThrow(
+      "Offer APIManagement.PaaS.AwsCloudFront cannot honor the parameter 'httpsOnly' of 'api-gateway'",
+    );
   });
 
-  it('future-proof + vendor-neutral: Ambassador (CaaS) has no provider', () => {
-    const ls = authorFractal()
-      .specialize()
-      .withRoute({path: '/orders', methods: ['GET']})
-      .toLiveSystem({
-        name: 'acme-onprem',
-        environment,
-        select: {'api-gateway': Ambassador({})},
-      });
+  it('future-proof + vendor-neutral: Ambassador (CaaS) has no provider, and takes the custom domain as its host', () => {
+    const ls = createFractal({
+      id: 'api-management-domain',
+      version: {major: 1, minor: 0, patch: 0},
+      boundedContextId,
+      blueprint: bp => ({
+        gateway: bp.add(
+          ApiGateway({id: 'api-gateway'}).withCustomDomain('api.example.com'),
+        ),
+      }),
+    }).toLiveSystem({
+      name: 'acme-onprem',
+      environment,
+      select: {'api-gateway': Ambassador({})},
+    });
 
     const gw = ls.components.find(c => c.id === 'api-gateway')!;
     expect(gw.type).toBe('APIManagement.CaaS.Ambassador');
     expect(gw.provider).toBeUndefined();
+    expect(gw.parameters).toEqual({host: 'api.example.com'});
   });
 
   it('a missing component selection is a type error AND throws', () => {

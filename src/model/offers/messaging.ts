@@ -5,6 +5,7 @@
  * Components in components/messaging.ts. Vendor knobs live in each offer's Cfg.
  * Vendor-neutral self-hosted offers (Kafka on any cluster) OMIT `provider`.
  */
+import {toContractKey, unsupported, unsupportedUnless} from './neutral_rules';
 import {
   Messaging_CaaS_Kafka,
   Messaging_CaaS_KafkaTopic,
@@ -133,6 +134,11 @@ const resolveSkuTier = (
   }
   return cfg.skuTier ?? 'Standard';
 };
+const withoutTier = (
+  parameters: Readonly<Record<string, unknown>>,
+): Record<string, unknown> =>
+  Object.fromEntries(Object.entries(parameters).filter(([k]) => k !== 'tier'));
+
 export const AzureServiceBus = defineOffer<
   'Messaging.Broker',
   ContractConfig<
@@ -190,8 +196,10 @@ export const AzureServiceBus = defineOffer<
       deliveryModel: 'PaaS',
       // `skuTier` last so the resolved SKU always beats a spread-in value, and an
       // explicitly-passed `undefined` still falls back to the default.
+      // The neutral `tier` is consumed here (see `resolveSkuTier`); the agent
+      // reads only `skuTier`, so it is not sent.
       parameters: {
-        ...ctx.parameters,
+        ...withoutTier(ctx.parameters),
         ...cfg,
         skuTier: resolveSkuTier(ctx, cfg),
       },
@@ -208,6 +216,13 @@ export const GcpPubSub = defineOffer<
   contract: Messaging_PaaS_GcpPubSub,
   provider: 'GCP',
   deliveryModel: 'PaaS',
+  neutral: {
+    encryption: unsupportedUnless(
+      v => v === 'at-rest',
+      'Pub/Sub always encrypts at rest',
+    ),
+    tier: unsupported('Pub/Sub has no tiers'),
+  },
 });
 /** Vendor-neutral self-hosted Kafka — no `provider`. */
 export const Kafka = defineOffer<
@@ -217,6 +232,10 @@ export const Kafka = defineOffer<
   satisfies: 'Messaging.Broker',
   contract: Messaging_CaaS_Kafka,
   deliveryModel: 'CaaS',
+  neutral: {
+    encryption: unsupported('the agent configures no encryption'),
+    tier: unsupported('the agent has no tiers'),
+  },
 });
 
 // ── MessagingEntity offers (satisfy 'Messaging.MessagingEntity') ──────────────
@@ -228,6 +247,16 @@ export const AzureServiceBusTopic = defineOffer<
   contract: Messaging_PaaS_AzureServiceBusTopic,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  neutral: {
+    deadLetterEnabled: unsupported('the agent has no dead-letter setting'),
+    maxDeliveryAttempts: unsupported('the agent has no delivery-attempt limit'),
+    messageRetentionHours: toContractKey(
+      Messaging_PaaS_AzureServiceBusTopic,
+      'defaultMessageTimeToLive',
+      v => `PT${String(v)}H`,
+    ),
+    partitionCount: unsupported('the agent has no partition setting'),
+  },
 });
 export const GcpPubSubTopic = defineOffer<
   'Messaging.MessagingEntity',
@@ -237,6 +266,14 @@ export const GcpPubSubTopic = defineOffer<
   contract: Messaging_PaaS_GcpPubSubTopic,
   provider: 'GCP',
   deliveryModel: 'PaaS',
+  neutral: {
+    deadLetterEnabled: unsupported('the agent has no dead-letter setting'),
+    maxDeliveryAttempts: unsupported('the agent has no delivery-attempt limit'),
+    messageRetentionHours: unsupported(
+      'the agent has no message retention setting',
+    ),
+    partitionCount: unsupported('the agent has no partition setting'),
+  },
 });
 /** Vendor-neutral self-hosted Kafka topic — no `provider`. */
 export const KafkaTopic = defineOffer<
@@ -246,6 +283,19 @@ export const KafkaTopic = defineOffer<
   satisfies: 'Messaging.MessagingEntity',
   contract: Messaging_CaaS_KafkaTopic,
   deliveryModel: 'CaaS',
+  neutral: {
+    deadLetterEnabled: unsupportedUnless(
+      v => v === false,
+      'Kafka has no dead-letter queue',
+    ),
+    maxDeliveryAttempts: unsupported('Kafka has no delivery-attempt limit'),
+    messageRetentionHours: toContractKey(
+      Messaging_CaaS_KafkaTopic,
+      'retentionMs',
+      v => Number(v) * 3_600_000,
+    ),
+    partitionCount: toContractKey(Messaging_CaaS_KafkaTopic, 'partitions'),
+  },
 });
 
 // ── AWS: SNS topic + SQS queue (satisfy 'Messaging.MessagingEntity') ─────────
@@ -287,6 +337,14 @@ export const AwsSnsTopic = defineOffer<
   contract: Messaging_PaaS_AwsSnsTopic,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  neutral: {
+    deadLetterEnabled: unsupported('the agent has no dead-letter setting'),
+    maxDeliveryAttempts: unsupported('the agent has no delivery-attempt limit'),
+    messageRetentionHours: unsupported(
+      'the agent has no message retention setting',
+    ),
+    partitionCount: unsupported('the agent has no partition setting'),
+  },
   validate: (self, _all, config) => {
     const size = config.maximumMessageSize;
     if (
@@ -545,6 +603,13 @@ export const AwsSqsQueue = defineOffer<
   contract: Messaging_PaaS_AwsSqsQueue,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  neutral: {
+    deadLetterEnabled: unsupportedUnless(
+      v => v === true,
+      'the queue always has a dead-letter queue',
+    ),
+    partitionCount: unsupported('SQS has no partitions'),
+  },
   instantiate: (ctx, config) => {
     // dlqAlarm false is what the agent does anyway (it creates no alarm), so it
     // is dropped rather than sent; any other value is refused in validate.

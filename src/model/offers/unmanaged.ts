@@ -9,6 +9,7 @@
  * domains (Storage.SaaS.Unmanaged, ...) are added here the same way, all
  * satisfying the single `Unmanaged` component.
  */
+import {unsupported} from './neutral_rules';
 import {AI_SaaS_Unmanaged} from './generated/ai';
 import type {ContractConfig} from './contract/contract_config';
 import {defineOffer} from '../core';
@@ -32,4 +33,7 @@ export const UnmanagedAi = defineOffer<'Unmanaged', UnmanagedConfig>({
   satisfies: 'Unmanaged',
   contract: AI_SaaS_Unmanaged,
   deliveryModel: 'SaaS',
+  neutral: {
+    tags: unsupported('an external service carries no tags'),
+  },
 });

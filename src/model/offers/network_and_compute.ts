@@ -11,6 +11,7 @@
  * Cluster-scoped offers (CaaS, self-hosted, vSphere/OpenShift) take their region
  * from the underlying cluster and therefore do NOT expose it.
  */
+import {toContractKey, unsupported} from './neutral_rules';
 import {
   NetworkAndCompute_IaaS_AwsEc2Instance,
   NetworkAndCompute_IaaS_AwsLb,
@@ -109,6 +110,9 @@ export const AwsVpc = defineOffer<
   contract: NetworkAndCompute_IaaS_AwsVpc,
   provider: 'AWS',
   deliveryModel: 'IaaS',
+  neutral: {
+    tags: unsupported('the agent applies no tags to it'),
+  },
 });
 export const AzureVnet = defineOffer<
   'NetworkAndCompute.VirtualNetwork',
@@ -118,6 +122,9 @@ export const AzureVnet = defineOffer<
   contract: NetworkAndCompute_IaaS_AzureVnet,
   provider: 'Azure',
   deliveryModel: 'IaaS',
+  neutral: {
+    tags: unsupported('the agent applies no tags to it'),
+  },
 });
 export const GcpVpc = defineOffer<
   'NetworkAndCompute.VirtualNetwork',
@@ -127,6 +134,12 @@ export const GcpVpc = defineOffer<
   contract: NetworkAndCompute_IaaS_GcpVpc,
   provider: 'GCP',
   deliveryModel: 'IaaS',
+  neutral: {
+    cidrBlock: unsupported(
+      'a custom-mode GCP VPC has no address range; its subnets carry it',
+    ),
+    tags: unsupported('the agent applies no tags to it'),
+  },
 });
 
 // ── Subnet ───────────────────────────────────────────────────────────────────
@@ -183,6 +196,9 @@ export const AwsSecurityGroup = defineOffer<
   contract: NetworkAndCompute_IaaS_AwsSecurityGroup,
   provider: 'AWS',
   deliveryModel: 'IaaS',
+  neutral: {
+    egressRules: unsupported('the agent reconciles ingress rules only'),
+  },
 });
 export const AzureNsg = defineOffer<
   'NetworkAndCompute.SecurityGroup',
@@ -192,6 +208,9 @@ export const AzureNsg = defineOffer<
   contract: NetworkAndCompute_IaaS_AzureNsg,
   provider: 'Azure',
   deliveryModel: 'IaaS',
+  neutral: {
+    egressRules: unsupported('the agent reconciles ingress rules only'),
+  },
 });
 export const GcpFirewall = defineOffer<
   'NetworkAndCompute.SecurityGroup',
@@ -201,6 +220,9 @@ export const GcpFirewall = defineOffer<
   contract: NetworkAndCompute_IaaS_GcpFirewall,
   provider: 'GCP',
   deliveryModel: 'IaaS',
+  neutral: {
+    egressRules: unsupported('the agent reconciles ingress rules only'),
+  },
 });
 
 // ── VirtualMachine ───────────────────────────────────────────────────────────
@@ -235,7 +257,6 @@ export const Ec2Instance = defineOffer<
     typeof NetworkAndCompute_IaaS_AwsEc2Instance,
     never,
     {
-      instanceType: string;
       identity?: VmIdentity;
       /**
        * Give the instance an auto-assigned public IPv4 address. Defaults to `false`.
@@ -257,6 +278,14 @@ export const Ec2Instance = defineOffer<
   contract: NetworkAndCompute_IaaS_AwsEc2Instance,
   provider: 'AWS',
   deliveryModel: 'IaaS',
+  neutral: {
+    osType: unsupported('the operating system follows amiId'),
+    publicSSHKey: unsupported(
+      'the agent takes an EC2 key pair name (keyName), not public key material',
+    ),
+    size: toContractKey(NetworkAndCompute_IaaS_AwsEc2Instance, 'instanceType'),
+    tags: unsupported('the agent applies no tags to it'),
+  },
 });
 export const AzureVm = defineOffer<
   'NetworkAndCompute.VirtualMachine',
@@ -264,7 +293,6 @@ export const AzureVm = defineOffer<
     typeof NetworkAndCompute_IaaS_AzureVm,
     'publicSSHKey',
     {
-      vmSize: string;
       identity?: VmIdentity;
       /**
        * Give the VM a public IPv4 address. Defaults to `false`.
@@ -284,6 +312,11 @@ export const AzureVm = defineOffer<
   contract: NetworkAndCompute_IaaS_AzureVm,
   provider: 'Azure',
   deliveryModel: 'IaaS',
+  neutral: {
+    osType: unsupported('the operating system follows imageId'),
+    size: toContractKey(NetworkAndCompute_IaaS_AzureVm, 'vmSize'),
+    tags: unsupported('the agent applies no tags to it'),
+  },
 });
 export const GcpVm = defineOffer<
   'NetworkAndCompute.VirtualMachine',
@@ -291,7 +324,6 @@ export const GcpVm = defineOffer<
     typeof NetworkAndCompute_IaaS_GcpVm,
     'publicSSHKey',
     {
-      machineType: string;
       identity?: VmIdentity;
       /**
        * Give the VM an external IPv4 address. Defaults to `false`.
@@ -318,6 +350,11 @@ export const GcpVm = defineOffer<
   contract: NetworkAndCompute_IaaS_GcpVm,
   provider: 'GCP',
   deliveryModel: 'IaaS',
+  neutral: {
+    osType: unsupported('the operating system follows imageLink'),
+    size: toContractKey(NetworkAndCompute_IaaS_GcpVm, 'machineType'),
+    tags: unsupported('the agent applies no tags to it'),
+  },
 });
 export const VsphereVm = defineOffer<
   'NetworkAndCompute.VirtualMachine',
@@ -475,6 +512,14 @@ export const Aks = defineOffer<
   contract: NetworkAndCompute_PaaS_AzureAks,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  neutral: {
+    kubernetesVersion: unsupported(
+      'the agent declares no Kubernetes version for AKS',
+    ),
+    networkPolicyProvider: unsupported(
+      'the agent declares no network policy provider for AKS',
+    ),
+  },
   instantiate: containerPlatformInstantiate(
     NetworkAndCompute_PaaS_AzureAks.offerType,
     'Azure',
@@ -546,6 +591,17 @@ export const AzureContainerAppsEnvironment = defineOffer<
   contract: NetworkAndCompute_PaaS_AzureContainerAppsEnvironment,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  neutral: {
+    kubernetesVersion: unsupported(
+      'a Container Apps environment is not a Kubernetes cluster',
+    ),
+    networkPolicyProvider: unsupported(
+      'a Container Apps environment is not a Kubernetes cluster',
+    ),
+    nodePools: unsupported(
+      'a Container Apps environment is not a Kubernetes cluster',
+    ),
+  },
 });
 
 /**
@@ -636,6 +692,9 @@ export const OciVcn = defineOffer<
   contract: NetworkAndCompute_IaaS_OciVcn,
   provider: 'OCI',
   deliveryModel: 'IaaS',
+  neutral: {
+    tags: unsupported('the agent applies no tags to it'),
+  },
 });
 export const OciSubnet = defineOffer<
   'NetworkAndCompute.Subnet',
@@ -654,6 +713,9 @@ export const OciSecurityList = defineOffer<
   contract: NetworkAndCompute_IaaS_OciSecurityList,
   provider: 'OCI',
   deliveryModel: 'IaaS',
+  neutral: {
+    egressRules: unsupported('the agent reconciles ingress rules only'),
+  },
 });
 export const OciInstance = defineOffer<
   'NetworkAndCompute.VirtualMachine',
@@ -669,6 +731,11 @@ export const OciInstance = defineOffer<
   contract: NetworkAndCompute_IaaS_OciInstance,
   provider: 'OCI',
   deliveryModel: 'IaaS',
+  neutral: {
+    osType: unsupported('the operating system follows imageId'),
+    size: toContractKey(NetworkAndCompute_IaaS_OciInstance, 'shape'),
+    tags: unsupported('the agent applies no tags to it'),
+  },
   // The OCI agent reads the authorized public key under `keyName` and writes it
   // to the instance's `ssh_authorized_keys` metadata.
   instantiate: instantiateWithVendorParameters(

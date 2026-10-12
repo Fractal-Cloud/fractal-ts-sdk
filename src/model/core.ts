@@ -18,6 +18,8 @@
 
 import type {ComponentReference} from './component_reference';
 import type {OfferContract} from './offers/contract/offer_contract';
+import type {NeutralRule} from './neutral_rule';
+import {applyNeutralRules} from './apply_neutral_rules';
 import {isRouteSettings, mergeRouteSettings} from './route_link_merge';
 
 // ── Catalogue value types ────────────────────────────────────────────────────
@@ -136,12 +138,18 @@ export type Offer<C extends string = string, Cfg = unknown> = {
  * `offerType`: the type then comes from the contract, as do the config keys
  * (`ContractConfig`). The constructor carries `offerType` and `contract`, so
  * both can be read without choosing a config.
+ *
+ * `neutral` gives every neutral parameter of the satisfied component that the
+ * contract does not declare a rule: translate it to the contract keys the
+ * agent reads, or refuse it (`offers/neutral_rules.ts`). The rules run before
+ * `instantiate`, on the component's own parameters.
  */
 export const defineOffer = <C extends string, Cfg>(
   spec: {
     satisfies: C;
     provider?: Provider;
     deliveryModel: DeliveryModel;
+    neutral?: Readonly<Record<string, NeutralRule>>;
     instantiate?: (
       ctx: InstantiationContext,
       config: Cfg,
@@ -169,8 +177,21 @@ export const defineOffer = <C extends string, Cfg>(
     validate: spec.validate
       ? (self, all) => spec.validate!(self, all, config)
       : undefined,
-    instantiate: ctx =>
-      spec.instantiate
+    instantiate: raw => {
+      const ctx: InstantiationContext = spec.neutral
+        ? {
+            ...raw,
+            parameters: applyNeutralRules({
+              offerType,
+              componentId: raw.id,
+              parameters: raw.parameters,
+              locked: raw.locked ?? [],
+              config,
+              rules: spec.neutral,
+            }),
+          }
+        : raw;
+      return spec.instantiate
         ? spec.instantiate(ctx, config)
         : [
             {
@@ -186,12 +207,14 @@ export const defineOffer = <C extends string, Cfg>(
               dependencies: ctx.dependencies,
               links: ctx.links,
             },
-          ],
+          ];
+    },
   });
   return Object.assign(construct, {
     offerType,
     contract: spec.contract,
     satisfies: spec.satisfies,
+    neutral: spec.neutral,
   });
 };
 

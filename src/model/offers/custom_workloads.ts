@@ -7,6 +7,7 @@
  * OMIT `provider` — they run on any cluster and are identified by deliveryModel
  * + offerType. Vendor knobs live in each offer's config type.
  */
+import {toContractKey, toContractKeys, unsupported} from './neutral_rules';
 import {
   CustomWorkloads_CaaS_KubernetesWorkload,
   CustomWorkloads_FaaS_AwsLambda,
@@ -25,6 +26,18 @@ import {
 import {toKubernetesWorkloadParameters} from './kubernetes_workload_contract';
 import type {WorkloadSsmParameters} from './workload_ssm_parameters';
 
+const asRecord = (v: unknown): Record<string, unknown> =>
+  typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {};
+
+/** A Kubernetes CPU quantity (`250m`, `1`) as the cores a Container App takes. */
+const cpuCores = (v: unknown): unknown => {
+  if (typeof v !== 'string') {
+    return v;
+  }
+  const milli = /^(\d+)m$/.exec(v.trim());
+  return milli ? Number(milli[1]) / 1000 : Number(v);
+};
+
 // ── Workload offers ──────────────────────────────────────────────────────────
 export const EcsService = defineOffer<
   'CustomWorkloads.Workload',
@@ -34,6 +47,71 @@ export const EcsService = defineOffer<
   contract: CustomWorkloads_PaaS_AwsEcsService,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  neutral: {
+    autoscaling: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+    cpuRequest: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+    env: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+    healthCheck: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+    image: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+    livenessProbe: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+    maxReplicas: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+    maxSurge: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+    maxUnavailable: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+    memoryRequest: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+    nodeSelector: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+    podDisruptionBudget: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+    port: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+    preStopSleepSeconds: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+    readinessProbe: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+    replicas: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+    resources: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+    secretEnv: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+    startupProbe: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+    terminationGracePeriodSeconds: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+    topologySpread: unsupported(
+      'CustomWorkloads.PaaS.AwsEcsService is a placeholder the AWS agent provisions nothing for',
+    ),
+  },
 });
 export const CloudRun = defineOffer<
   'CustomWorkloads.Workload',
@@ -43,6 +121,71 @@ export const CloudRun = defineOffer<
   contract: CustomWorkloads_PaaS_GcpCloudRun,
   provider: 'GCP',
   deliveryModel: 'PaaS',
+  neutral: {
+    autoscaling: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+    cpuRequest: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+    env: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+    healthCheck: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+    image: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+    livenessProbe: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+    maxReplicas: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+    maxSurge: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+    maxUnavailable: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+    memoryRequest: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+    nodeSelector: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+    podDisruptionBudget: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+    port: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+    preStopSleepSeconds: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+    readinessProbe: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+    replicas: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+    resources: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+    secretEnv: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+    startupProbe: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+    terminationGracePeriodSeconds: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+    topologySpread: unsupported(
+      'CustomWorkloads.PaaS.GcpCloudRun is a placeholder the GCP agent provisions nothing for',
+    ),
+  },
 });
 /**
  * A Container App runs INSIDE a managed environment, and the agent will not
@@ -69,6 +212,71 @@ export const AzureContainerApp = defineOffer<
   contract: CustomWorkloads_PaaS_AzureContainerApp,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  neutral: {
+    autoscaling: toContractKeys(
+      CustomWorkloads_PaaS_AzureContainerApp,
+      ['minReplicas', 'maxReplicas'],
+      v => ({
+        minReplicas: asRecord(v).minReplicas,
+        maxReplicas: asRecord(v).maxReplicas,
+      }),
+    ),
+    cpuRequest: toContractKey(
+      CustomWorkloads_PaaS_AzureContainerApp,
+      'cpu',
+      cpuCores,
+    ),
+    env: unsupported('the agent declares no such Container App setting'),
+    healthCheck: unsupported(
+      'the agent declares no such Container App setting',
+    ),
+    livenessProbe: unsupported(
+      'the agent declares no such Container App setting',
+    ),
+    maxSurge: unsupported('the agent declares no such Container App setting'),
+    maxUnavailable: unsupported(
+      'the agent declares no such Container App setting',
+    ),
+    memoryRequest: toContractKey(
+      CustomWorkloads_PaaS_AzureContainerApp,
+      'memory',
+    ),
+    nodeSelector: unsupported(
+      'the agent declares no such Container App setting',
+    ),
+    podDisruptionBudget: unsupported(
+      'the agent declares no such Container App setting',
+    ),
+    preStopSleepSeconds: unsupported(
+      'the agent declares no such Container App setting',
+    ),
+    readinessProbe: unsupported(
+      'the agent declares no such Container App setting',
+    ),
+    replicas: toContractKeys(
+      CustomWorkloads_PaaS_AzureContainerApp,
+      ['minReplicas', 'maxReplicas'],
+      v => ({minReplicas: v, maxReplicas: v}),
+    ),
+    resources: toContractKeys(
+      CustomWorkloads_PaaS_AzureContainerApp,
+      ['cpu', 'memory'],
+      v => ({
+        cpu: cpuCores(asRecord(asRecord(v).requests).cpu),
+        memory: asRecord(asRecord(v).requests).memory,
+      }),
+    ),
+    secretEnv: unsupported('the agent declares no such Container App setting'),
+    startupProbe: unsupported(
+      'the agent declares no such Container App setting',
+    ),
+    terminationGracePeriodSeconds: unsupported(
+      'the agent declares no such Container App setting',
+    ),
+    topologySpread: unsupported(
+      'the agent declares no such Container App setting',
+    ),
+  },
   validate: (self, all) => {
     const hasEnvironment = all.some(
       c =>
@@ -185,6 +393,11 @@ export const AwsLambda = defineOffer<
   contract: CustomWorkloads_FaaS_AwsLambda,
   provider: 'AWS',
   deliveryModel: 'FaaS',
+  neutral: {
+    concurrency: unsupported('the agent sets no concurrency limit'),
+    memory: toContractKey(CustomWorkloads_FaaS_AwsLambda, 'memoryMb'),
+    timeout: toContractKey(CustomWorkloads_FaaS_AwsLambda, 'timeoutSeconds'),
+  },
 });
 export const AzureFunction = defineOffer<
   'CustomWorkloads.Function',
@@ -194,6 +407,16 @@ export const AzureFunction = defineOffer<
   contract: CustomWorkloads_FaaS_AzureFunction,
   provider: 'Azure',
   deliveryModel: 'FaaS',
+  neutral: {
+    concurrency: unsupported('the agent declares no such Function setting'),
+    environment: toContractKey(
+      CustomWorkloads_FaaS_AzureFunction,
+      'appSettings',
+    ),
+    memory: unsupported('the agent declares no such Function setting'),
+    runtime: unsupported('the agent declares no such Function setting'),
+    timeout: unsupported('the agent declares no such Function setting'),
+  },
 });
 export const GcpFunction = defineOffer<
   'CustomWorkloads.Function',
@@ -206,4 +429,10 @@ export const GcpFunction = defineOffer<
   contract: CustomWorkloads_FaaS_GcpFunction,
   provider: 'GCP',
   deliveryModel: 'FaaS',
+  neutral: {
+    concurrency: unsupported('the agent declares no such Function setting'),
+    environment: unsupported('the agent declares no such Function setting'),
+    memory: unsupported('the agent declares no such Function setting'),
+    timeout: unsupported('the agent declares no such Function setting'),
+  },
 });

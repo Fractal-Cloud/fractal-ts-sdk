@@ -69,7 +69,7 @@ function liveSystem() {
       name: 'reusable-templates',
     },
     blueprint: bp => ({
-      uploads: bp.add(ObjectStorage({id: 'uploads'}).withEncryption('at-rest')),
+      uploads: bp.add(ObjectStorage({id: 'uploads'}).withRetentionDays(30)),
     }),
   }).toLiveSystem({
     name: 'acme-storage',
@@ -113,7 +113,9 @@ describe('liveSystems.deploy()', () => {
     // payload keyed by component id, carrying the RESOLVED offer + flowed guardrail
     expect(body.blueprintMap.uploads.type).toBe('Storage.PaaS.AwsS3');
     expect(body.blueprintMap.uploads.provider).toBe('AWS');
-    expect(body.blueprintMap.uploads.parameters.encryption).toBe('at-rest');
+    expect(body.blueprintMap.uploads.parameters.lifecycleExpirationDays).toBe(
+      30,
+    );
     expect(body.environment.id).toEqual({
       type: 'Personal',
       ownerId: OWNER,
@@ -270,7 +272,7 @@ describe('liveSystems.deploy() with a cross-Live-System reference', () => {
         name: 'reusable-templates',
       },
       blueprint: bp => ({
-        uploads: bp.add(ObjectStorage({id: 'uploads'}).withEncryption('at-rest')),
+        uploads: bp.add(ObjectStorage({id: 'uploads'}).withRetentionDays(30)),
       }),
     }).toLiveSystem({
       name: 'acme-consumer',

@@ -134,13 +134,34 @@ describe('BigData domain — data-platform Fractal', () => {
     // Spelled out on purpose: importing a constant would make this pass after
     // any rename. The literals are what pin the wire contract. A component
     // whose type matches no registered handler is skipped in silence.
-    const ls = authorFractal().toLiveSystem({
+    // The Databricks-shaped guardrails of authorFractal (workers, auto
+    // termination, task type, experiment name) mean nothing to Spark on
+    // Kubernetes and are refused there, so this blueprint sets none.
+    const ls = createFractal({
+      id: 'spark-on-k8s',
+      version: {major: 1, minor: 0, patch: 0},
+      boundedContextId,
+      blueprint: bp => {
+        const cluster = bp.add(
+          ComputeCluster({id: 'cluster'}).withSparkVersion('3.5.3'),
+        );
+        const job = bp.add(
+          DataProcessingJob({id: 'etl-job'})
+            .withMaxRetries(3)
+            .dependsOn(cluster),
+        );
+        const experiment = bp.add(MlExperiment({id: 'experiment'}));
+        return {cluster, job, experiment};
+      },
+    }).toLiveSystem({
       name: 'acme-data',
       environment,
       select: {
-        ...fullSelect(),
-        cluster: CaaSSparkCluster({}),
-        'etl-job': CaaSSparkJob({}),
+        cluster: CaaSSparkCluster({sparkOperatorName: 'spark-operator'}),
+        'etl-job': CaaSSparkJob({
+          sparkOperatorName: 'spark-operator',
+          mainApplicationFile: 'local:///opt/app.jar',
+        }),
         experiment: CaaSMlflow({}),
       },
     });
@@ -184,9 +205,9 @@ function authorDatabricksPlatform() {
     boundedContextId,
     blueprint: bp => {
       const workspace = bp.add(
-        DistributedDataProcessing({id: 'workspace'}).withWorkspaceName(
-          'acme-analytics',
-        ),
+        // No withWorkspaceName: the Databricks agents name the workspace
+        // themselves and refuse the neutral name.
+        DistributedDataProcessing({id: 'workspace'}),
       );
       const cluster = bp.add(
         ComputeCluster({id: 'cluster'})

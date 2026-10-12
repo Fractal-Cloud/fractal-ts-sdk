@@ -45,10 +45,10 @@ function authorFractalWithTier(tier: string | undefined) {
         ),
       );
       const ordersTopic = bp.add(
+        // Dead-lettering and delivery attempts are subscription settings the
+        // Service Bus topic agent does not read; they are refused there.
         MessagingEntity({id: 'orders-topic'})
           .withMessageRetentionHours(72)
-          .withDeadLetterEnabled(true)
-          .withMaxDeliveryAttempts(5)
           .dependsOn(broker),
       );
       const shipmentsTopic = bp.add(
@@ -69,7 +69,7 @@ function authorFractalWithTier(tier: string | undefined) {
 }
 
 const fullSelect = () => ({
-  broker: AzureServiceBus({resourceGroup: 'acme', region: 'westeurope'}),
+  broker: AzureServiceBus({region: 'westeurope'}),
   'orders-topic': AzureServiceBusTopic({}),
   'shipments-topic': AzureServiceBusTopic({}),
 });
@@ -119,7 +119,6 @@ describe('Messaging domain — event-backbone', () => {
     )!;
     expect(orders.parameters.messageRetentionHours).toBe(72);
     expect(orders.locked).toContain('messageRetentionHours');
-    expect(orders.locked).toContain('deadLetterEnabled');
     // partitionCount is dev-open, so it must NOT be locked at author time
     expect(orders.locked).not.toContain('partitionCount');
 
@@ -138,12 +137,23 @@ describe('Messaging domain — event-backbone', () => {
     expect(shipments.dependencies).toContain('broker');
   });
 
-  it('specialize sets dev-open param and builds an all-Azure LiveSystem', () => {
-    const ls = authorFractal()
-      .specialize()
-      .withOrdersPartitions(8)
-      .withShipmentsPartitions(4)
-      .toLiveSystem({name: 'acme-prod', environment, select: fullSelect()});
+  it('refuses a partition count, which a Service Bus topic does not have', () => {
+    expect(() =>
+      authorFractal()
+        .specialize()
+        .withOrdersPartitions(8)
+        .toLiveSystem({name: 'acme-prod', environment, select: fullSelect()}),
+    ).toThrow(
+      "Offer Messaging.PaaS.AzureServiceBusTopic cannot honor the parameter 'partitionCount' of 'orders-topic'",
+    );
+  });
+
+  it('builds an all-Azure LiveSystem, the retention as the topic message TTL', () => {
+    const ls = authorFractal().toLiveSystem({
+      name: 'acme-prod',
+      environment,
+      select: fullSelect(),
+    });
 
     const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
 
@@ -155,12 +165,10 @@ describe('Messaging domain — event-backbone', () => {
     );
     expect(byId['orders-topic'].provider).toBe('Azure');
 
-    // dev-open neutral param flowed
-    expect(byId['orders-topic'].parameters.partitionCount).toBe(8);
-    // guardrail flowed into the live component
-    expect(byId['orders-topic'].parameters.messageRetentionHours).toBe(72);
-    // vendor config merged in by the offer
-    expect(byId['broker'].parameters.resourceGroup).toBe('acme');
+    // the retention guardrail reaches the agent as the topic's message TTL
+    expect(byId['orders-topic'].parameters).toEqual({
+      defaultMessageTimeToLive: 'PT72H',
+    });
     // blueprint structure preserved
     expect(byId['orders-topic'].dependencies).toContain('broker');
   });
@@ -180,15 +188,14 @@ describe('Messaging domain — event-backbone', () => {
         })
         .components.find(c => c.id === 'broker')!;
 
-    const asShipped = brokerOf(AzureServiceBus({resourceGroup: 'acme'}));
+    const asShipped = brokerOf(AzureServiceBus({}));
     expect(asShipped.parameters.skuTier).toBe('Standard');
     // The default must not smother the offer's other vendor knobs.
-    expect(asShipped.parameters.resourceGroup).toBe('acme');
 
     // An explicit tier always wins over the default.
     for (const tier of ['Standard', 'Premium'] as const) {
       expect(
-        brokerOf(AzureServiceBus({resourceGroup: 'acme', skuTier: tier}))
+        brokerOf(AzureServiceBus({skuTier: tier}))
           .parameters.skuTier,
       ).toBe(tier);
     }
@@ -200,7 +207,7 @@ describe('Messaging domain — event-backbone', () => {
     // unchanged, only the Live System shape it is made in.
     expect(
       brokerOnlyComponent(
-        AzureServiceBus({resourceGroup: 'acme', skuTier: 'Basic'}),
+        AzureServiceBus({skuTier: 'Basic'}),
       ).parameters.skuTier,
     ).toBe('Basic');
   });
@@ -216,12 +223,13 @@ describe('Messaging domain — event-backbone', () => {
     // Broker-only, because a locked SKU of 'Basic' is only legal without topics.
     const brokerLockedTo = (
       tier: string,
-      broker = AzureServiceBus({resourceGroup: 'acme'}),
+      broker = AzureServiceBus({}),
     ) => brokerOnlyComponent(broker, tier);
 
     it('an exact SKU spelling in a locked tier decides the SKU', () => {
       const basic = brokerLockedTo('Basic');
-      expect(basic.parameters.tier).toBe('Basic');
+      // The neutral tier is consumed by the offer; the agent reads skuTier.
+      expect(basic.parameters).not.toHaveProperty('tier');
       expect(basic.parameters.skuTier).toBe('Basic');
 
       const premium = brokerLockedTo('Premium');
@@ -238,7 +246,7 @@ describe('Messaging domain — event-backbone', () => {
       'a locked tier of %o is a label, not a SKU, and leaves the default alone',
       label => {
         const broker = brokerLockedTo(label);
-        expect(broker.parameters.tier).toBe(label);
+        expect(broker.parameters).not.toHaveProperty('tier');
         expect(broker.parameters.skuTier).toBe('Standard');
       },
     );
@@ -247,7 +255,7 @@ describe('Messaging domain — event-backbone', () => {
       expect(() =>
         brokerLockedTo(
           'Basic',
-          AzureServiceBus({resourceGroup: 'acme', skuTier: 'Premium'}),
+          AzureServiceBus({skuTier: 'Premium'}),
         ),
       ).toThrow(/locked guardrail/);
     });
@@ -256,7 +264,7 @@ describe('Messaging domain — event-backbone', () => {
       expect(
         brokerLockedTo(
           'Basic',
-          AzureServiceBus({resourceGroup: 'acme', skuTier: 'Basic'}),
+          AzureServiceBus({skuTier: 'Basic'}),
         ).parameters.skuTier,
       ).toBe('Basic');
     });
@@ -267,7 +275,7 @@ describe('Messaging domain — event-backbone', () => {
       expect(
         brokerLockedTo(
           'premium',
-          AzureServiceBus({resourceGroup: 'acme', skuTier: 'Premium'}),
+          AzureServiceBus({skuTier: 'Premium'}),
         ).parameters.skuTier,
       ).toBe('Premium');
     });
@@ -290,10 +298,10 @@ describe('Messaging domain — event-backbone', () => {
         .toLiveSystem({
           name: 'acme-prod',
           environment,
-          select: {broker: AzureServiceBus({resourceGroup: 'acme'})},
+          select: {broker: AzureServiceBus({})},
         });
       const broker = ls.components.find(c => c.id === 'broker')!;
-      expect(broker.parameters.tier).toBe('Premium');
+      expect(broker.parameters).not.toHaveProperty('tier');
       expect(broker.parameters.skuTier).toBe('Standard');
     });
   });
@@ -309,7 +317,7 @@ describe('Messaging domain — event-backbone', () => {
         environment,
         select: {
           ...fullSelect(),
-          broker: AzureServiceBus({resourceGroup: 'acme', skuTier: 'Basic'}),
+          broker: AzureServiceBus({skuTier: 'Basic'}),
         },
       }),
     ).toThrow(/Basic.*cannot host/s);

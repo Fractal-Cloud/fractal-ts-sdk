@@ -13,7 +13,7 @@
  *    `lbScheme`) fails here until it is translated to a contract key or
  *    knowingly added to that inventory.
  */
-import {readFileSync, writeFileSync} from 'node:fs';
+import {readFileSync} from 'node:fs';
 import {describe, expect, it} from 'vitest';
 import * as apiManagementComponents from './components/api_management';
 import * as bigDataComponents from './components/big_data';
@@ -48,11 +48,13 @@ import * as storageContracts from './offers/generated/storage';
 import {secretRef} from './secret';
 import type {LiveSystemComponent, Offer} from './core';
 import type {OfferContract} from './offers/contract/offer_contract';
+import type {NeutralRule} from './neutral_rule';
 
 type OfferConstructor = ((config: never) => Offer) & {
   readonly offerType: string;
   readonly satisfies: string;
   readonly contract?: OfferContract;
+  readonly neutral?: Readonly<Record<string, NeutralRule>>;
 };
 
 const isOfferConstructor = (v: unknown): v is OfferConstructor =>
@@ -298,16 +300,25 @@ const declaredKeys = (contract: OfferContract): Set<string> =>
     'containerPlatform',
   ]);
 
-const emitted = (
+/** The probed neutral parameters, without those the offer refuses. */
+const supportedNeutral = (offer: OfferConstructor): Record<string, unknown> =>
+  Object.fromEntries(
+    Object.entries(NEUTRAL.get(offer.satisfies)?.parameters ?? {}).filter(
+      ([k]) => offer.neutral?.[k]?.kind !== 'unsupported',
+    ),
+  );
+
+const instantiateWith = (
   name: string,
   offer: OfferConstructor,
+  parameters: Record<string, unknown>,
 ): LiveSystemComponent[] => {
   const neutral = NEUTRAL.get(offer.satisfies);
   const config = (SAMPLE_CONFIG[name] ?? {}) as never;
   return offer(config).instantiate({
     id: 'probe',
     displayName: 'probe',
-    parameters: {...(neutral?.parameters ?? {})},
+    parameters,
     locked: [...(neutral?.locked ?? [])],
     dependencies: [],
     links: [],
@@ -315,8 +326,17 @@ const emitted = (
   });
 };
 
+const emitted = (
+  name: string,
+  offer: OfferConstructor,
+): LiveSystemComponent[] =>
+  instantiateWith(name, offer, supportedNeutral(offer));
+
 /** Keys each offer emits that the contract of the emitted type does not declare. */
-const undeclaredParameters = (): Record<string, Record<string, string[]>> => {
+const undeclaredParameters = (): Record<
+  string,
+  Record<string, string[]>
+> => {
   const out: Record<string, Record<string, string[]>> = {};
   for (const [name, offer] of OFFERS) {
     if (offer.contract === undefined) {
@@ -338,14 +358,6 @@ const undeclaredParameters = (): Record<string, Record<string, string[]>> => {
   }
   return out;
 };
-
-const UNDECLARED_COMMENT =
-  'Parameter keys the SDK emits that the contract of the emitted offer type does not ' +
-  'declare, per offer, with every neutral setter of its component applied. Each is a ' +
-  'neutral guardrail the agent ignores or a translation the SDK lacks. Pinned by ' +
-  'src/model/offer_contracts.test.ts; regenerate with ' +
-  'UPDATE_UNDECLARED_PARAMETERS=1 npx vitest run src/model/offer_contracts.test.ts ' +
-  'and review the diff. See docs/offer-contracts.md.';
 
 describe('offers and the contracts their agents publish', () => {
   it('finds every offer of the catalogue', () => {
@@ -383,25 +395,138 @@ describe('offers and the contracts their agents publish', () => {
     }
   });
 
-  it('emits only contract keys, apart from the pinned inventory of undeclared ones', () => {
-    const file = 'contracts/undeclared-parameters.json';
+  it('emits only contract keys, apart from the reasoned exceptions', () => {
+    const pinned = JSON.parse(
+      readFileSync('contracts/undeclared-parameters.json', 'utf8'),
+    ) as {offers: Record<string, Record<string, Record<string, string>>>};
+    const allowed = Object.fromEntries(
+      Object.entries(pinned.offers).map(([offer, types]) => [
+        offer,
+        Object.fromEntries(
+          Object.entries(types).map(([type, keys]) => {
+            for (const [key, reason] of Object.entries(keys)) {
+              expect(reason.trim(), `${offer} ${key}: a reason`).not.toBe('');
+            }
+            return [type, Object.keys(keys).sort()];
+          }),
+        ),
+      ]),
+    );
     const actual = undeclaredParameters();
-    if (process.env.UPDATE_UNDECLARED_PARAMETERS === '1') {
-      writeFileSync(
-        file,
-        `${JSON.stringify({$comment: UNDECLARED_COMMENT, offers: actual}, null, 2)}\n`,
-      );
-    }
-    const pinned = JSON.parse(readFileSync(file, 'utf8')) as {
-      offers: Record<string, Record<string, string[]>>;
-    };
     expect(
       actual,
-      'An offer emits a key its agent does not declare. Translate it to the ' +
-        'contract key (see LoadBalancer scheme → lbScheme), or, if it is a ' +
-        'neutral guardrail the agent genuinely does not read yet, add it to ' +
+      'An offer emits a key its agent does not declare. Give the neutral parameter ' +
+        "a rule in the offer's `neutral` (translate it with toContractKey, or refuse " +
+        'it with unsupported), or, only with a written reason, list it in ' +
         `contracts/undeclared-parameters.json:\n${JSON.stringify(actual, null, 2)}`,
-    ).toEqual(pinned.offers);
+    ).toEqual(allowed);
+  });
+
+  it('refuses every neutral parameter an offer cannot honor', () => {
+    for (const [name, offer] of OFFERS) {
+      const probed = NEUTRAL.get(offer.satisfies)?.parameters ?? {};
+      for (const [key, rule] of Object.entries(offer.neutral ?? {})) {
+        if (rule.kind !== 'unsupported' || !(key in probed)) {
+          continue;
+        }
+        const run = () =>
+          instantiateWith(name, offer, {
+            ...supportedNeutral(offer),
+            [key]: probed[key],
+          });
+        if (rule.satisfiedBy?.(probed[key])) {
+          const emittedKeys = run().flatMap(c => Object.keys(c.parameters));
+          expect(emittedKeys, `${name} ${key}`).not.toContain(key);
+        } else {
+          expect(run, `${name} ${key}`).toThrow(
+            `Offer ${offer.offerType} cannot honor the parameter '${key}' of 'probe': ${rule.reason}.`,
+          );
+        }
+      }
+    }
+  });
+
+  it('has no rule for a key the contract declares', () => {
+    for (const [name, offer] of OFFERS) {
+      if (offer.contract === undefined) {
+        continue;
+      }
+      const stale = Object.keys(offer.neutral ?? {}).filter(k =>
+        declaredKeys(offer.contract!).has(k),
+      );
+      expect(stale, `${name}: the agent reads these now`).toEqual([]);
+    }
+  });
+
+  it('translates neutral parameters into the keys the agents read', () => {
+    const vm = (name: string) => {
+      const [c] = emitted(name, Object.fromEntries(OFFERS)[name]);
+      return c.parameters;
+    };
+    expect(vm('Ec2Instance')).toMatchObject({instanceType: 'small'});
+    expect(vm('AzureVm')).toMatchObject({vmSize: 'small'});
+    expect(vm('GcpVm')).toMatchObject({machineType: 'small'});
+    expect(vm('OciInstance')).toMatchObject({shape: 'small'});
+    expect(vm('AwsRdsPostgresDbms')).toMatchObject({
+      version: '16',
+      allocatedStorageGb: 32,
+    });
+    expect(vm('AwsLambda')).toMatchObject({memoryMb: 512, timeoutSeconds: 30});
+    expect(vm('KafkaTopic')).toMatchObject({
+      partitions: 2,
+      retentionMs: 24 * 3_600_000,
+    });
+    expect(vm('AzureServiceBusTopic')).toMatchObject({
+      defaultMessageTimeToLive: 'PT24H',
+    });
+    expect(vm('AzureContainerApp')).toMatchObject({
+      minReplicas: 2,
+      maxReplicas: 6,
+      cpu: 0.25,
+      memory: '512Mi',
+    });
+    expect(vm('AwsCloudFront')).toMatchObject({aliases: ['api.example.com']});
+    expect(vm('AzureServiceBus')).not.toHaveProperty('tier');
+  });
+
+  it('lets an explicit vendor value win over an open neutral one, never over a locked one', () => {
+    const ec2 = Object.fromEntries(OFFERS)['Ec2Instance'];
+    const run = (locked: string[]) =>
+      ec2({instanceType: 't3.micro'} as never).instantiate({
+        id: 'vm',
+        displayName: 'vm',
+        parameters: {size: 'small'},
+        locked,
+        dependencies: [],
+        links: [],
+        children: [],
+      });
+    expect(run([])[0].parameters).toEqual({instanceType: 't3.micro'});
+    expect(() => run(['size'])).toThrow(
+      "Parameter 'size' on 'vm' is a locked guardrail, and 'instanceType' sets the same thing",
+    );
+  });
+
+  it('refuses a database parameter an RDS DBMS cannot honor on the databases it emits', () => {
+    const dbms = Object.fromEntries(OFFERS)['AwsRdsPostgresDbms'];
+    expect(() =>
+      dbms({} as never).instantiate({
+        id: 'db',
+        displayName: 'db',
+        parameters: {},
+        dependencies: [],
+        links: [],
+        children: [
+          {
+            id: 'orders',
+            displayName: 'orders',
+            parameters: {charset: 'UTF8'},
+            dependencies: [],
+            links: [],
+          },
+        ],
+      }),
+    ).toThrow("cannot honor the parameter 'charset' of 'orders'");
   });
 
   it('never emits a former drift', () => {

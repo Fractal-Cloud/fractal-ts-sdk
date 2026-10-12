@@ -21,6 +21,7 @@ import {
 } from '../../../../scripts/offer-contracts/snapshot.mjs';
 import {contractKey} from './contract_key';
 import {contractKeys} from './contract_keys';
+import {toContractKeys} from '../neutral_rules';
 import {NetworkAndCompute_IaaS_AwsLb} from '../generated/network_and_compute';
 
 const fixture = (name: string) =>
@@ -218,6 +219,17 @@ describe('contract keys', () => {
       'lbScheme',
     );
     expect(contractKeys(NetworkAndCompute_IaaS_AwsLb).lbType).toBe('lbType');
+  });
+
+  it('refuses a translation that writes a key it did not name', () => {
+    const rule = toContractKeys(NetworkAndCompute_IaaS_AwsLb, ['lbType'], () => ({
+      lbScheme: 'internal',
+    }));
+    expect(() =>
+      rule.kind === 'translate' ? rule.apply('x') : undefined,
+    ).toThrow(
+      "NetworkAndCompute.IaaS.AwsLb: a neutral translation wrote 'lbScheme', not one of lbType.",
+    );
   });
 
   it('refuses a key the contract does not declare', () => {

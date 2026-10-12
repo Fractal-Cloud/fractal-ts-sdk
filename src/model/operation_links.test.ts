@@ -30,7 +30,8 @@ function authorFractal() {
     boundedContextId,
     blueprint: bp => {
       const platform = bp.add(
-        ContainerPlatform({id: 'app-platform'}).withKubernetesVersion('1.29'),
+        // No Kubernetes version: the AKS selected below declares none.
+        ContainerPlatform({id: 'app-platform'}),
       );
       const dbms = bp.add(
         RelationalDbms({id: 'app-dbms'}).withEngineVersion('16'),

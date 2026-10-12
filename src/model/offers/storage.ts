@@ -5,6 +5,9 @@
  * Component each satisfies. Vendor knobs live in each offer's config only.
  * Vendor-neutral self-hosted offers (e.g. MinIO on any cluster) omit `provider`.
  */
+import type {NeutralRule} from '../neutral_rule';
+import {applyNeutralRules} from '../apply_neutral_rules';
+import {toContractKey, unsupported, unsupportedUnless} from './neutral_rules';
 import {
   Storage_CaaS_MinioTenant,
   Storage_PaaS_ArubaMySqlDbms,
@@ -37,8 +40,26 @@ import {validateAwsRdsDbms} from './aws_rds_dbms_validation';
  * vendor family, so it is not independently offer-selected. Swap the DBMS offer
  * and the databases' offer type follows.
  */
+/**
+ * The neutral `RelationalDatabase` parameters an RDS database cannot honor,
+ * applied both when it is selected on its own and when a DBMS emits it.
+ */
+const RDS_DATABASE_RULES: Readonly<Record<string, NeutralRule>> = {
+  charset: unsupported(
+    'the agent creates every database with its engine default character set',
+  ),
+  collation: unsupported(
+    'the agent creates every database with its engine default collation',
+  ),
+};
+
 const dbmsInstantiate =
-  (dbmsType: string, provider: Provider, databaseType: string) =>
+  (
+    dbmsType: string,
+    provider: Provider,
+    databaseType: string,
+    databaseRules?: Readonly<Record<string, NeutralRule>>,
+  ) =>
   (ctx: InstantiationContext, config: unknown): LiveSystemComponent[] => [
     {
       id: ctx.id,
@@ -56,7 +77,14 @@ const dbmsInstantiate =
       type: databaseType,
       provider,
       deliveryModel: 'PaaS' as const,
-      parameters: {...child.parameters},
+      parameters: applyNeutralRules({
+        offerType: databaseType,
+        componentId: child.id,
+        parameters: child.parameters,
+        locked: child.locked ?? [],
+        config: {},
+        rules: databaseRules,
+      }),
       dependencies: [...child.dependencies],
       links: [...child.links],
     })),
@@ -86,6 +114,19 @@ export const AwsS3 = defineOffer<
   contract: Storage_PaaS_AwsS3,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  neutral: {
+    encryption: unsupportedUnless(
+      v => v === 'at-rest',
+      'S3 always encrypts at rest',
+    ),
+    publicAccess: unsupportedUnless(
+      v => v === false,
+      'the agent keeps every bucket private',
+    ),
+    retentionDays: toContractKey(Storage_PaaS_AwsS3, 'lifecycleExpirationDays'),
+    storageClass: unsupported('the agent sets no storage class'),
+    tags: unsupported('the agent applies no tags to it'),
+  },
   validate: (self, _all, config) => {
     const days = config.lifecycleExpirationDays;
     if (days !== undefined && (!Number.isInteger(days) || days < 1)) {
@@ -121,6 +162,12 @@ export const AzureBlob = defineOffer<
   contract: Storage_PaaS_AzureBlob,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  neutral: {
+    retentionDays: unsupported('the agent sets no retention'),
+    storageClass: unsupported('the tier is set by accessTier'),
+    tags: unsupported('the agent applies no tags to it'),
+    versioningEnabled: unsupported('the agent sets no blob versioning'),
+  },
 });
 export const GcsBucket = defineOffer<
   'Storage.ObjectStorage',
@@ -133,6 +180,18 @@ export const GcsBucket = defineOffer<
   contract: Storage_PaaS_GcpGcsBucket,
   provider: 'GCP',
   deliveryModel: 'PaaS',
+  neutral: {
+    encryption: unsupportedUnless(
+      v => v === 'at-rest',
+      'Cloud Storage always encrypts at rest',
+    ),
+    publicAccess: unsupportedUnless(
+      v => v === false,
+      'the agent keeps every bucket private',
+    ),
+    retentionDays: unsupported('the agent sets no retention'),
+    tags: unsupported('the agent applies no tags to it'),
+  },
 });
 // Vendor-neutral self-hosted — runs on any cluster, so no `provider`.
 // Exported symbol stays `MinIO`; the wire value is the catalogue offer id
@@ -145,6 +204,16 @@ export const MinIO = defineOffer<
   satisfies: 'Storage.ObjectStorage',
   contract: Storage_CaaS_MinioTenant,
   deliveryModel: 'CaaS',
+  neutral: {
+    encryption: unsupported('the agent configures no encryption'),
+    publicAccess: unsupportedUnless(
+      v => v === false,
+      'the agent exposes no bucket publicly',
+    ),
+    retentionDays: unsupported('the agent sets no retention'),
+    tags: unsupported('the agent applies no tags to it'),
+    versioningEnabled: unsupported('the agent sets no bucket versioning'),
+  },
 });
 
 // ── Storage.RelationalDbms offers ────────────────────────────────────────────
@@ -159,6 +228,13 @@ export const AzurePostgresDbms = defineOffer<
   contract: Storage_PaaS_AzurePostgresDbms,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  neutral: {
+    engineVersion: toContractKey(Storage_PaaS_AzurePostgresDbms, 'version'),
+    highAvailability: unsupported(
+      'availability is set by highAvailabilityMode',
+    ),
+    sizeTier: unsupported('size is set by skuName'),
+  },
   instantiate: dbmsInstantiate(
     Storage_PaaS_AzurePostgresDbms.offerType,
     'Azure',
@@ -173,6 +249,23 @@ export const GcpPostgresDbms = defineOffer<
   contract: Storage_PaaS_GcpPostgresDbms,
   provider: 'GCP',
   deliveryModel: 'PaaS',
+  neutral: {
+    backupRetentionDays: unsupported(
+      'the agent declares no such setting for Cloud SQL for PostgreSQL',
+    ),
+    engineVersion: unsupported(
+      'the agent declares no such setting for Cloud SQL for PostgreSQL',
+    ),
+    highAvailability: unsupported(
+      'the agent declares no such setting for Cloud SQL for PostgreSQL',
+    ),
+    sizeTier: unsupported(
+      'the agent declares no such setting for Cloud SQL for PostgreSQL',
+    ),
+    storageGb: unsupported(
+      'the agent declares no such setting for Cloud SQL for PostgreSQL',
+    ),
+  },
   instantiate: dbmsInstantiate(
     Storage_PaaS_GcpPostgresDbms.offerType,
     'GCP',
@@ -233,6 +326,24 @@ export const GcpMySqlDbms = defineOffer<
   contract: Storage_PaaS_GcpMySqlDbms,
   provider: 'GCP',
   deliveryModel: 'PaaS',
+  neutral: {
+    backupRetentionDays: unsupported(
+      'the agent declares no such setting for Cloud SQL for MySQL',
+    ),
+    engineVersion: unsupported(
+      'the agent declares no such setting for Cloud SQL for MySQL',
+    ),
+    highAvailability: unsupported(
+      'the agent declares no such setting for Cloud SQL for MySQL',
+    ),
+    sizeTier: unsupported(
+      'the agent declares no such setting for Cloud SQL for MySQL',
+    ),
+    storageGb: toContractKey(
+      Storage_PaaS_GcpMySqlDbms,
+      'instanceDataDiskSizeGb',
+    ),
+  },
 });
 /**
  * Amazon RDS for PostgreSQL. One offer covers both shapes RDS provides, selected
@@ -269,10 +380,19 @@ export const AwsRdsPostgresDbms = defineOffer<
     ),
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  neutral: {
+    engineVersion: toContractKey(Storage_PaaS_AwsRdsPostgres, 'version'),
+    highAvailability: unsupported(
+      'availability is set by multiAz and readerCount',
+    ),
+    sizeTier: unsupported('size is set by instanceClass or the ACU range'),
+    storageGb: toContractKey(Storage_PaaS_AwsRdsPostgres, 'allocatedStorageGb'),
+  },
   instantiate: dbmsInstantiate(
     Storage_PaaS_AwsRdsPostgres.offerType,
     'AWS',
     Storage_PaaS_AwsRdsPostgresDatabase.offerType,
+    RDS_DATABASE_RULES,
   ),
 });
 
@@ -307,10 +427,19 @@ export const AwsRdsMySqlDbms = defineOffer<
     validateAwsRdsDbms('AwsRdsMySqlDbms', self, config, MYSQL_MAX_LOGIN_LENGTH),
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  neutral: {
+    engineVersion: toContractKey(Storage_PaaS_AwsRdsMySql, 'version'),
+    highAvailability: unsupported(
+      'availability is set by multiAz and readerCount',
+    ),
+    sizeTier: unsupported('size is set by instanceClass or the ACU range'),
+    storageGb: toContractKey(Storage_PaaS_AwsRdsMySql, 'allocatedStorageGb'),
+  },
   instantiate: dbmsInstantiate(
     Storage_PaaS_AwsRdsMySql.offerType,
     'AWS',
     Storage_PaaS_AwsRdsMySqlDatabase.offerType,
+    RDS_DATABASE_RULES,
   ),
 });
 export const ArubaMySqlDbms = defineOffer<
@@ -321,6 +450,13 @@ export const ArubaMySqlDbms = defineOffer<
   contract: Storage_PaaS_ArubaMySqlDbms,
   provider: 'Aruba',
   deliveryModel: 'PaaS',
+  neutral: {
+    backupRetentionDays: unsupported('the agent reads only flavorName'),
+    engineVersion: unsupported('the agent reads only flavorName'),
+    highAvailability: unsupported('the agent reads only flavorName'),
+    sizeTier: unsupported('the agent reads only flavorName'),
+    storageGb: unsupported('the agent reads only flavorName'),
+  },
   instantiate: dbmsInstantiate(
     Storage_PaaS_ArubaMySqlDbms.offerType,
     'Aruba',
@@ -374,6 +510,7 @@ export const AwsRdsPostgresDatabase = defineOffer<
   contract: Storage_PaaS_AwsRdsPostgresDatabase,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  neutral: RDS_DATABASE_RULES,
 });
 
 /**
@@ -400,6 +537,7 @@ export const AwsRdsMySqlDatabase = defineOffer<
   contract: Storage_PaaS_AwsRdsMySqlDatabase,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  neutral: RDS_DATABASE_RULES,
 });
 
 // ── OpenShift persistent storage (RedHat, CaaS) ──────────────────────────────

@@ -57,8 +57,7 @@ everything downstream stay the same.
 node scripts/refresh-offer-contracts.mjs            # re-fetch the pinned tags (reproduce the snapshot)
 node scripts/refresh-offer-contracts.mjs --latest   # move every pin to the agent's latest release
 npm run contracts:generate                           # regenerate src/model/offers/generated/
-UPDATE_UNDECLARED_PARAMETERS=1 npx vitest run src/model/offer_contracts.test.ts   # if the inventory moved
-npm test
+npm test   # offer_contracts.test.ts names any neutral parameter that now needs a rule, or whose rule is stale
 ```
 
 Go agents are fetched with `gh release download <tag> --pattern param-contract.json`. The Java
@@ -66,6 +65,14 @@ agents publish no downloadable 2.0 projection, so the script clones the release 
 agents' own `generateParamContract` with `RELEASE_VERSION=<tag>`, exactly as their release
 pipeline does. Every document is stored in canonical form (object keys sorted), which also
 neutralizes a producer that serializes a map in nondeterministic order (section 7).
+
+**The Gradle path is a workaround with a planned removal.** It exists only because of producer
+gaps 1 and 2 in section 7. Once a fractal-cloud-agents release attaches its deterministic 2.0
+projection to the GitHub release, switch the four Java entries in `contracts/sources.json` to
+`"kind": "release-asset"` (with the asset name the agents release uses), delete
+`fetchGradleBuild` from `scripts/refresh-offer-contracts.mjs`, and drop the `setup-java` step from
+`.github/workflows/offer-contracts.yml`. Canonicalization stays: it costs nothing and keeps the
+digest stable.
 
 ### Staleness check
 
@@ -120,7 +127,7 @@ declared at component level in the catalogue. In the SDK both are carried by the
 | Generated (from the agent) | Hand-written (SDK ergonomics) |
 |---|---|
 | offer type id (`defineOffer({contract})` takes it from the contract) | which Component an offer satisfies, its provider and delivery model |
-| config keys, their types, required-ness (`ContractConfig<typeof X>`) | neutral → vendor translations (`withScheme` → `lbScheme`, `withPublicSSHKey` → OCI `keyName`, Workload → caas-k8s keys) |
+| config keys, their types, required-ness (`ContractConfig<typeof X>`) | neutral → vendor translations (`withScheme` → `lbScheme`, `withPublicSSHKey` → OCI `keyName`, `withSize` → `instanceType` / `vmSize` / `machineType` / `shape`, Workload → caas-k8s keys) and refusals, as each offer's `neutral` rules (section 3.1) |
 | the vendor keys a translation writes (`contractKey(X, 'lbScheme')`, `contractKeys(X).containerImage`) | sealed builders, `satisfy()`, live-system-only sub-component dependencies |
 | | ergonomic re-typing of a contract key (`ContractConfig`'s `Overrides`: a list the offer joins into the agent's comma-separated string, a sub-shape the contract only types `object`, a stricter literal union) |
 | | cross-component checks in `validate`, and pre-submit checks the contracts cannot express yet |
@@ -137,17 +144,45 @@ The rules that keep the hand-written side honest, all compile-time:
   one.
 - `src/model/offers/contract/contract_config.test-d.ts` pins the former drifts as type errors.
 
+### 3.1 Neutral parameters: translated or refused, never sent unread
+
+A component's neutral setters (`withSize`, `withTags`, `withRetentionDays`, ...) are chosen before
+any offer is, so whether one reaches an agent depends on the offer selected. Each offer gives every
+neutral parameter of its component that its contract does not declare a rule (`defineOffer`'s
+`neutral`, helpers in `offers/neutral_rules.ts`), applied before the offer instantiates:
+
+- `toContractKey(contract, key, map?)` / `toContractKeys(...)`: the value becomes the contract key
+  the agent reads (`size` → `instanceType`, `retentionDays` → S3 `lifecycleExpirationDays`,
+  `messageRetentionHours` → Service Bus `defaultMessageTimeToLive` `PT<n>H` / Kafka `retentionMs`,
+  `engineVersion` → RDS `version`, `customDomain` → CloudFront `aliases`, ...). The key is checked
+  by the contract's type. An explicit vendor value (offer config, or a dev-set parameter) wins over
+  an open neutral one, and is refused against a locked one, whose lock would otherwise guard a
+  value nobody reads.
+- `unsupported(reason)`: no key of the agent's contract can honor it, so `toLiveSystem` refuses the
+  Live System, naming the offer, the parameter, the component and the reason (`withTags` on
+  `AwsVpc`, egress rules on every security group, workload settings on the `EcsService` /
+  `CloudRun` placeholders, ...). The setter is refused even with an `undefined` value: the call is
+  the mistake.
+- `unsupportedUnless(satisfiedBy, reason)`: refused unless the offer already does what the value
+  asks (`withEncryption('at-rest')` on S3, `withPublicAccess(false)` on a private bucket,
+  `withDeadLetterEnabled(true)` on SQS, which always has a dead-letter queue); a satisfied value is
+  not sent.
+
+The refusal is at Live System build time, not compile time: the blueprint is written before the
+offer is chosen. The same rules apply to the databases a DBMS offer emits as children.
+`contracts/undeclared-parameters.json` lists the keys an offer may still send undeclared, each with
+a written reason; it is empty.
+
 And two tests:
 
 - `src/model/offer_contracts.test.ts` lists every offer of the catalogue: each one whose agent
   publishes a contract must be defined from it; the ones whose agent does not are an explicit
   list, each with the producer-side reason. It instantiates every offer with **every** neutral
   setter of its component and checks the emitted parameters against the contract of each emitted
-  type. Keys the contract does not declare are pinned in `contracts/undeclared-parameters.json`;
-  a new one fails the test until it is translated to a contract key or knowingly added. That
-  inventory (220 keys over 65 offers at v8.25.1 / v1.4.0 / v0.0.20) is the to-do list of neutral
-  guardrails no agent reads yet, and of translations the SDK lacks (e.g. `VirtualMachine.withSize`
-  reaches no VM agent as `instanceType` / `vmSize` / `machineType`).
+  type: an emitted key the contract does not declare fails the test unless
+  `contracts/undeclared-parameters.json` lists it with a reason (none does). It also checks that
+  every `unsupported` rule refuses, that no rule exists for a key the contract now declares (a stale
+  refusal of something the agent learned to read), and the translations' values.
 - `src/model/offers/contract/generator.test.ts` runs the generator on a fixture pair of contracts
   (a 2.0 Java and a 1.0 Go projection co-declaring an offer) and checks the committed generated
   sources against the committed snapshot.
@@ -162,9 +197,11 @@ What remains hand-written and why:
   `constraints`, rules on the Databricks jobs only), and the shared evaluator
   `@fractal-cloud/offer-contracts` is published only to private GitHub Packages, which a public npm
   package cannot depend on. When both change, these checks move to the contract evaluator.
-- **Stricter-than-contract requirements**, kept as `Overrides` with their reason, e.g.
+- **Stricter-than-contract requirements**, kept as `Overrides` with their reason:
   `AzureContainerAppsEnvironment.location` (the agent passes it to ARM unguarded but declares it
-  optional with default `""`), `Ec2Instance.instanceType`, `AzureVm.vmSize`.
+  optional with default `""`).
+- **The neutral rules themselves**: which contract key a neutral parameter means is a semantic
+  choice the contracts cannot make; the keys they name are generated.
 
 ## 4. Breaking-change policy for SDK consumers
 
@@ -176,6 +213,8 @@ Offer config types follow the contracts, so refreshing the snapshot can change t
 | key becomes optional, vocabulary widens | config loosens | minor |
 | key removed or renamed **with** a declared alias | the alias stays readable by the agent; the SDK offers the canonical key | minor, noted |
 | key removed or renamed without an alias, becomes required, type or vocabulary narrows | consumer code stops compiling | listed under **Breaking** in the CHANGELOG, with the agent release that caused it |
+| an agent starts reading a key the SDK refuses | the conformance test flags the stale `unsupported` rule; it becomes a translation | minor |
+| an agent stops reading a key a translation writes | the translation stops compiling (`toContractKey`); it becomes a refusal | listed under **Breaking** |
 
 A break is never papered over with an SDK-side alias: the SDK cannot invent a key the agent does
 not read. A rename should be declared by the agent as an `aliases` entry, which keeps old
@@ -203,6 +242,17 @@ Keys the contracts require, now required in the config (each failed at reconcile
 `clusterName` on `KafkaTopic`, `elasticInstances` and `storage` on `ObservabilityElastic`, `host`
 on `Ocelot`, `entryPoints` on `Traefik`.
 
+Neutral parameters an offer's agent cannot honor are refused when the Live System is built,
+instead of being sent under a key nobody reads (section 3.1). The ones translated now take effect:
+`withSize` (EC2 `instanceType`, Azure `vmSize`, GCP `machineType`, OCI `shape`), RDS / Azure
+PostgreSQL `withEngineVersion` (`version`) and RDS `withStorageGb` (`allocatedStorageGb`), Cloud
+SQL MySQL `withStorageGb`, S3 `withRetentionDays` (`lifecycleExpirationDays`), Lambda `withMemory`
+/ `withTimeout`, Azure Functions `withEnvironment` (`appSettings`), Container App replicas,
+autoscaling range and CPU / memory requests, Kafka topic partitions and retention, Service Bus
+topic retention, CloudFront / Traefik / Ambassador `withCustomDomain`, Spark job `cronSchedule`.
+`instanceType`, `vmSize` and `machineType` are therefore optional in the VM configs, as the
+contracts declare them.
+
 Every other contract key of an offer is now an optional config key (e.g. `AwsLb.lbType`,
 `AzureBlob`'s storage-account settings).
 
@@ -211,7 +261,7 @@ Every other contract key of an offer is now an optional config key (e.g. `AwsLb.
 ```
 contracts/sources.json                  pins: agent, repository, tag, fetch method, snapshot digest
 contracts/snapshot/<agentId>.json       canonical published projections
-contracts/undeclared-parameters.json    inventory of emitted keys the contracts do not declare
+contracts/undeclared-parameters.json    undeclared keys an offer may still send, each with a reason (empty)
 scripts/offer-contracts/generator.mjs   projections -> modules (pure)
 scripts/offer-contracts/snapshot.mjs    read + verify the snapshot
 scripts/generate-offer-contracts.mjs    npm run contracts:generate
@@ -245,5 +295,5 @@ src/model/offers/contract/*.ts          OfferContract, ContractConfig, contractK
    `CustomWorkloads.PaaS.AwsEcsService` declares only `region`; `lbScheme` has no `values` on any
    provider; `AzureContainerAppsEnvironment.location` is optional with default `""` although the
    agent cannot work without it, and its `resourceGroup` is declared and read into the config but
-   never used by the component (the SDK withholds it). And `contracts/undeclared-parameters.json` lists every neutral
-   guardrail no agent reads.
+   never used by the component (the SDK withholds it). The offers' `unsupported` rules list every
+   neutral guardrail no agent reads (e.g. no agent applies `withTags`).

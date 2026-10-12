@@ -47,7 +47,7 @@ function authorFractal() {
 }
 
 const fullSelect = () => ({
-  web: EcsService({launchType: 'FARGATE'}),
+  web: EcsService({}),
   'ingest-fn': AwsLambda({roleArn: 'arn:x', handler: 'index.handler'}),
 });
 
@@ -68,23 +68,47 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
     expect(web.locked).toContain('healthCheck');
   });
 
-  it('builds a LiveSystem by per-component offer selection (AWS)', () => {
-    const ls = authorFractal()
-      .specialize()
-      .withImage('registry/app:1')
-      .withReplicas(6)
-      .toLiveSystem({name: 'acme-prod', environment, select: fullSelect()});
+  it('refuses a workload on EcsService, a type the AWS agent provisions nothing for', () => {
+    // CustomWorkloads.PaaS.AwsEcsService is a phantom strategy in the AWS
+    // agent: every workload parameter sent to it was read by nobody.
+    expect(() =>
+      authorFractal()
+        .specialize()
+        .withImage('registry/app:1')
+        .withReplicas(6)
+        .toLiveSystem({name: 'acme-prod', environment, select: fullSelect()}),
+    ).toThrow(
+      "Offer CustomWorkloads.PaaS.AwsEcsService cannot honor the parameter 'cpuRequest' of 'web'",
+    );
+  });
 
-    const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
-
-    // Workload resolved to AWS ECS.
-    expect(byId['web'].type).toBe('CustomWorkloads.PaaS.AwsEcsService');
-    expect(byId['web'].provider).toBe('AWS');
-    // dev-open params flowed into the live component.
-    expect(byId['web'].parameters.image).toBe('registry/app:1');
-    expect(byId['web'].parameters.replicas).toBe(6);
-    // vendor config merged.
-    expect(byId['web'].parameters.launchType).toBe('FARGATE');
+  it('builds the Function on AWS Lambda with its runtime', () => {
+    const ls = createFractal({
+      id: 'functions',
+      version: {major: 1, minor: 0, patch: 0},
+      boundedContextId,
+      blueprint: bp => ({
+        fn: bp.add(
+          Function({id: 'ingest-fn'})
+            .withRuntime('nodejs20.x')
+            .withMemory(256)
+            .withTimeout(30),
+        ),
+      }),
+    }).toLiveSystem({
+      name: 'acme-prod',
+      environment,
+      select: {
+        'ingest-fn': AwsLambda({roleArn: 'arn:x', handler: 'index.handler'}),
+      },
+    });
+    const fn = ls.components.find(c => c.id === 'ingest-fn')!;
+    expect(fn.type).toBe('CustomWorkloads.FaaS.AwsLambda');
+    expect(fn.parameters).toMatchObject({
+      runtime: 'nodejs20.x',
+      memoryMb: 256,
+      timeoutSeconds: 30,
+    });
   });
 
   it('future-proof: a vendor-neutral CaaS offer leaves provider undefined', () => {

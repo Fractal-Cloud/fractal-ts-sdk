@@ -6,6 +6,7 @@
  * vendor-neutral self-hosted CaaS offers (Prometheus/Jaeger/Elastic on any
  * cluster), so they omit `provider`.
  */
+import {unsupported} from './neutral_rules';
 import {Messaging_PaaS_AwsSqsQueue} from './generated/messaging';
 import {Storage_PaaS_AwsS3, Storage_PaaS_S3} from './generated/storage';
 import {
@@ -43,7 +44,10 @@ export const Prometheus = defineOffer<
   satisfies: 'Observability.Monitoring',
   contract: Observability_CaaS_Prometheus,
   deliveryModel: 'CaaS',
-  validate: self => ensureNoUnhonoredKeys(self),
+  neutral: {
+    retentionDays: unsupported('the agent sets no retention'),
+    scrapeInterval: unsupported('the agent sets no scrape interval'),
+  },
 });
 
 // ── Observability.Tracing offers ─────────────────────────────────────────────
@@ -54,7 +58,12 @@ export const Jaeger = defineOffer<
   satisfies: 'Observability.Tracing',
   contract: Observability_CaaS_Jaeger,
   deliveryModel: 'CaaS',
-  validate: self => ensureNoUnhonoredKeys(self),
+  neutral: {
+    retentionDays: unsupported('the agent sets no retention'),
+    samplingRate: unsupported(
+      'sampling is decided by the instrumented applications',
+    ),
+  },
 });
 
 // ── Observability.Logging offers ─────────────────────────────────────────────
@@ -69,6 +78,9 @@ export const ObservabilityElastic = defineOffer<
   satisfies: 'Observability.Logging',
   contract: Observability_CaaS_Elastic,
   deliveryModel: 'CaaS',
+  neutral: {
+    retentionDays: unsupported('the agent sets no retention'),
+  },
 });
 
 // ── caas-k8s Grafana stack (Helm, on any Kubernetes cluster) ─────────────────
@@ -86,26 +98,6 @@ const SQS_QUEUE_TYPE = Messaging_PaaS_AwsSqsQueue.offerType;
 /** A queue URL the exporter can poll and derive the queue ARN from, as the agent reads it. */
 const SQS_QUEUE_URL =
   /^[Hh][Tt][Tt][Pp][Ss]:\/\/sqs\.[a-z0-9-]+\.amazonaws\.com\/[0-9]{12}\/[A-Za-z0-9_-]{1,80}(\.fifo)?(#\S*)?$/;
-
-/**
- * Neutral parameters of `Monitoring` and `Tracing` that no agent reads: no
- * observability offer declares them, so the platform would prune them before any
- * agent saw them. They are refused instead of being dropped in silence. A key
- * that is present with the value `undefined` (e.g. `withScrapeInterval(undefined)`
- * past the type) is refused too: the call is the mistake, whatever its value.
- */
-const UNHONORED_NEUTRAL_KEYS = ['scrapeInterval', 'samplingRate'] as const;
-
-const ensureNoUnhonoredKeys = (self: LiveSystemComponent): void => {
-  const key = UNHONORED_NEUTRAL_KEYS.find(k => k in self.parameters);
-  if (key !== undefined) {
-    refuse(
-      self.id,
-      `${key} is not honored by ${self.type}: no agent reads it and the platform would ` +
-        'drop it before deploying. Remove it (withScrapeInterval / withSamplingRate are deprecated)',
-    );
-  }
-};
 
 /** The component's neutral `retentionDays` (from `withRetentionDays`), when set, must be at least one day. */
 const ensureRetention = (self: LiveSystemComponent): void => {
@@ -168,7 +160,6 @@ const ensureBackend = (
   all: readonly LiveSystemComponent[],
   config: GrafanaObjectStorageBackendConfig,
 ): void => {
-  ensureNoUnhonoredKeys(self);
   ensureNamespace(self.id, config.namespace);
   ensureStorageClass(self.id, config.storageClassName);
   ensureRetention(self);
@@ -265,8 +256,10 @@ export const KubePrometheusStack = defineOffer<
   satisfies: 'Observability.Monitoring',
   contract: Observability_CaaS_KubePrometheusStack,
   deliveryModel: 'CaaS',
+  neutral: {
+    scrapeInterval: unsupported('the agent sets no scrape interval'),
+  },
   validate: (self, all, config) => {
-    ensureNoUnhonoredKeys(self);
     ensureNamespace(self.id, config.namespace);
     ensureStorageClass(self.id, config.storageClassName);
     ensureRetention(self);
@@ -360,6 +353,11 @@ export const GrafanaTempo = defineOffer<
   satisfies: 'Observability.Tracing',
   contract: Observability_CaaS_GrafanaTempo,
   deliveryModel: 'CaaS',
+  neutral: {
+    samplingRate: unsupported(
+      'sampling is decided by the instrumented applications',
+    ),
+  },
   validate: ensureBackend,
 });
 
@@ -388,6 +386,10 @@ export const SqsExporter = defineOffer<
   satisfies: 'Observability.Monitoring',
   contract: Observability_CaaS_SqsExporter,
   deliveryModel: 'CaaS',
+  neutral: {
+    retentionDays: unsupported('an exporter keeps no data'),
+    scrapeInterval: unsupported('the agent sets no scrape interval'),
+  },
   instantiate: (ctx, config) => {
     const {queueUrls, imagePullSecrets, ...rest} = config;
     const params: Record<string, unknown> = {...ctx.parameters, ...rest};
@@ -410,7 +412,6 @@ export const SqsExporter = defineOffer<
     ];
   },
   validate: (self, all, config) => {
-    ensureNoUnhonoredKeys(self);
     ensureNamespace(self.id, config.namespace);
     if (config.queueUrls !== undefined && config.queueUrls.length === 0) {
       refuse(

@@ -5,6 +5,7 @@
  * satisfies. Vendor knobs live in each offer's config only. Vendor-neutral
  * self-hosted offers (e.g. Ocelot / Keycloak on any cluster) omit `provider`.
  */
+import {unsupported} from './neutral_rules';
 import {
   Security_CaaS_CertManager,
   Security_CaaS_Ocelot,
@@ -30,6 +31,13 @@ export const Ocelot = defineOffer<
   satisfies: 'Security.ServiceMesh',
   contract: Security_CaaS_Ocelot,
   deliveryModel: 'CaaS',
+  neutral: {
+    authenticationMode: unsupported(
+      'the agent has no authentication mode setting',
+    ),
+    mtlsMode: unsupported('the agent configures no mTLS'),
+    tags: unsupported('the agent applies no tags to it'),
+  },
 });
 
 // ── Security.IdentityProvider offers ─────────────────────────────────────────
@@ -47,6 +55,9 @@ export const Cognito = defineOffer<
   contract: Security_PaaS_AwsCognito,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  neutral: {
+    tags: unsupported('the agent applies no tags to it'),
+  },
 });
 // Vendor-neutral self-hosted — runs on any cluster, so no `provider`.
 export const Keycloak = defineOffer<
@@ -74,6 +85,9 @@ export const EntraExternalId = defineOffer<
   contract: Security_PaaS_AzureEntraExternalId,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  neutral: {
+    tags: unsupported('the agent applies no tags to it'),
+  },
 });
 
 // ── Security.CertificateManager offers ───────────────────────────────────────
