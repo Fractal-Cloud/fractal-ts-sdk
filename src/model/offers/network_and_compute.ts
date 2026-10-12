@@ -17,6 +17,11 @@ import {
   KUBERNETES_WORKLOAD_OFFER_TYPE,
 } from './offer_type_ids';
 import {toKubernetesWorkloadParameters} from './kubernetes_workload_contract';
+import {toLbScheme} from './load_balancer_scheme_parameters';
+import {
+  instantiateWithVendorParameters,
+  renameParameter,
+} from './vendor_parameters';
 import type {
   InstantiationContext,
   LiveSystemComponent,
@@ -520,6 +525,8 @@ export type AzureContainerAppsEnvironmentConfig = RequiresLocation<
 >;
 
 // ── LoadBalancer ─────────────────────────────────────────────────────────────
+// The neutral `withScheme` guardrail is emitted as `lbScheme`, the key every
+// LoadBalancer agent reads, spelled the way that agent expects.
 export const AwsLb = defineOffer<
   'NetworkAndCompute.LoadBalancer',
   {region?: string}
@@ -528,6 +535,12 @@ export const AwsLb = defineOffer<
   offerType: 'NetworkAndCompute.IaaS.AwsLb',
   provider: 'AWS',
   deliveryModel: 'IaaS',
+  instantiate: instantiateWithVendorParameters(
+    'NetworkAndCompute.IaaS.AwsLb',
+    'AWS',
+    'IaaS',
+    toLbScheme(scheme => scheme),
+  ),
 });
 export const AzureLb = defineOffer<
   'NetworkAndCompute.LoadBalancer',
@@ -537,6 +550,13 @@ export const AzureLb = defineOffer<
   offerType: 'NetworkAndCompute.IaaS.AzureLb',
   provider: 'Azure',
   deliveryModel: 'IaaS',
+  // The Azure agent provisions a public frontend only for `internet-facing`.
+  instantiate: instantiateWithVendorParameters(
+    'NetworkAndCompute.IaaS.AzureLb',
+    'Azure',
+    'IaaS',
+    toLbScheme(scheme => scheme),
+  ),
 });
 export const GcpGlb = defineOffer<
   'NetworkAndCompute.LoadBalancer',
@@ -546,6 +566,13 @@ export const GcpGlb = defineOffer<
   offerType: 'NetworkAndCompute.IaaS.GcpGlb',
   provider: 'GCP',
   deliveryModel: 'IaaS',
+  // Passed straight to the forwarding rule's `loadBalancingScheme`.
+  instantiate: instantiateWithVendorParameters(
+    'NetworkAndCompute.IaaS.GcpGlb',
+    'GCP',
+    'IaaS',
+    toLbScheme(scheme => (scheme === 'internal' ? 'INTERNAL' : 'EXTERNAL')),
+  ),
 });
 
 // ── OCI ──────────────────────────────────────────────────────────────────────
@@ -566,6 +593,13 @@ export const OciSubnet = defineOffer<
   offerType: 'NetworkAndCompute.IaaS.OciSubnet',
   provider: 'OCI',
   deliveryModel: 'IaaS',
+  // The OCI agent reads the availability domain under `availabilityZone`.
+  instantiate: instantiateWithVendorParameters(
+    'NetworkAndCompute.IaaS.OciSubnet',
+    'OCI',
+    'IaaS',
+    renameParameter('availabilityDomain', 'availabilityZone'),
+  ),
 });
 export const OciSecurityList = defineOffer<
   'NetworkAndCompute.SecurityGroup',
@@ -590,6 +624,14 @@ export const OciInstance = defineOffer<
   offerType: 'NetworkAndCompute.IaaS.OciInstance',
   provider: 'OCI',
   deliveryModel: 'IaaS',
+  // The OCI agent reads the authorized public key under `keyName` and writes it
+  // to the instance's `ssh_authorized_keys` metadata.
+  instantiate: instantiateWithVendorParameters(
+    'NetworkAndCompute.IaaS.OciInstance',
+    'OCI',
+    'IaaS',
+    renameParameter('publicSSHKey', 'keyName'),
+  ),
 });
 
 // ── Hetzner ──────────────────────────────────────────────────────────────────

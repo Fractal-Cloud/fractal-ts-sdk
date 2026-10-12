@@ -11,8 +11,28 @@ of truth for what is on npm.
 
 ## Unreleased
 
-No change to the published code: the SDK built from this release behaves exactly as
-2.11.0. What changed is this file, as packaged with the release.
+### Fixed — IaaS parameters now reach the agents under the keys they read
+
+- **`LoadBalancer.withScheme(...)` takes effect.** It was emitted as `scheme`, a key
+  no agent reads: the AWS, Azure and GCP agents read `lbScheme`, so every load
+  balancer got the agent default whatever the blueprint said (AWS and the SDK's
+  absent value: `internet-facing`; Azure: `internal`; GCP: `INTERNAL`). `AwsLb`,
+  `AzureLb` and `GcpGlb` now emit `lbScheme`, spelled for each agent: `internal` /
+  `internet-facing` on AWS and Azure, `INTERNAL` / `EXTERNAL` on GCP. An unset scheme
+  still emits nothing. A value other than `internal` or `internet-facing` (possible
+  through a dev-open `.set('scheme', ...)`) is now refused at `toLiveSystem`. The
+  blueprint keeps the neutral `scheme`. The type is exported as `LoadBalancerScheme`.
+
+  **Existing AWS load balancers:** a load balancer whose blueprint asked for
+  `internal` was created `internet-facing`. Its next reconcile now asks for
+  `internal`, and the AWS agent refuses a scheme change on an existing load balancer
+  ("scheme cannot be changed"). Drop `withScheme('internal')` to keep the running one,
+  or let the agent recreate it by replacing the component. Azure and GCP read the
+  scheme only when creating, so their existing load balancers are untouched.
+- **`OciSubnet` `availabilityDomain` takes effect.** The OCI agent reads it as
+  `availabilityZone`; the offer now emits that key.
+- **`VirtualMachine.withPublicSSHKey(...)` reaches OCI.** `OciInstance` now emits it as
+  `keyName`, which the OCI agent writes to the instance's `ssh_authorized_keys`.
 
 ### Changed — the 2.10.0 and 2.11.0 notes, corrected
 

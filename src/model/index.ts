@@ -71,6 +71,7 @@ export * from './components/dns_record_management_mode';
 export * from './offers/network_and_compute';
 export type {EksAutoModeNodePool} from './offers/eks_auto_mode_node_pool';
 export type {EksControlPlaneLogType} from './offers/eks_control_plane_log_type';
+export type {LoadBalancerScheme} from './components/load_balancer_scheme';
 export * from './offers/storage';
 export type {AwsRdsStorageType} from './offers/aws_rds_storage_type';
 export type {AwsRdsDbmsConfig} from './offers/aws_rds_dbms_config';

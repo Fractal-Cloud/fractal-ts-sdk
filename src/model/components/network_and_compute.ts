@@ -14,6 +14,7 @@ import {
   guardrail,
   addDependency,
 } from '../core';
+import type {LoadBalancerScheme} from './load_balancer_scheme';
 
 // ── Shared value types ───────────────────────────────────────────────────────
 export type Rule = {
@@ -166,7 +167,13 @@ export type LoadBalancerNode<Id extends string = string> = ComponentNode<
   Id,
   'NetworkAndCompute.LoadBalancer'
 > & {
-  withScheme: (v: 'internal' | 'internet-facing') => LoadBalancerNode<Id>;
+  /**
+   * Whether the load balancer is reachable only from inside the network or from
+   * the internet. Each offer translates it for its agent (AWS / Azure
+   * `lbScheme` as given, GCP `lbScheme` `INTERNAL` / `EXTERNAL`). Unset, the
+   * agent's default applies.
+   */
+  withScheme: (v: LoadBalancerScheme) => LoadBalancerNode<Id>;
   dependsOn: (other: AnyNode) => LoadBalancerNode<Id>;
 };
 const loadBalancerNode = <Id extends string>(
