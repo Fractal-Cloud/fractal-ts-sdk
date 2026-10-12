@@ -58,3 +58,21 @@ export const renameParameter =
     const {[from]: value, ...rest} = parameters;
     return {...rest, [to]: value};
   };
+
+/** Removes a parameter the agent has no use for, so it is not shipped unread. */
+export const dropParameter =
+  (key: string): VendorParameters =>
+  (_componentId, parameters) => {
+    if (!(key in parameters)) {
+      return parameters;
+    }
+    return Object.fromEntries(
+      Object.entries(parameters).filter(([name]) => name !== key),
+    );
+  };
+
+/** Applies several rewrites in order. */
+export const composeVendorParameters =
+  (...steps: readonly VendorParameters[]): VendorParameters =>
+  (componentId, parameters) =>
+    steps.reduce((acc, step) => step(componentId, acc), parameters);

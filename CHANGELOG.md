@@ -33,6 +33,18 @@ of truth for what is on npm.
   `availabilityZone`; the offer now emits that key.
 - **`VirtualMachine.withPublicSSHKey(...)` reaches OCI.** `OciInstance` now emits it as
   `keyName`, which the OCI agent writes to the instance's `ssh_authorized_keys`.
+- **`HetznerServer` is reconciled.** It was emitted as
+  `NetworkAndCompute.IaaS.HetznerServer`, the type of the retired Java Hetzner agent;
+  `aria-agent-hetzner` reconciles `NetworkAndCompute.IaaS.HetznerCloudServer`, which
+  is what the offer now emits. Its `region` is sent as `location`, the key that agent
+  reads. No migration is needed: no running agent reconciled the old type, so no
+  server was ever created from it.
+- **Hetzner network and firewall parameters match the agent.** `HetznerNetwork` sends
+  the neutral `cidrBlock` as `ipRange` (it was ignored, and every network got
+  `10.0.0.0/16`). `HetznerFirewall` sends each egress rule's peer CIDR as `destCidr`;
+  the agent refused egress rules without one. `region` on `HetznerNetwork`,
+  `HetznerSubnet` and `HetznerFirewall` is deprecated and no longer sent: Hetzner has
+  no location for those resources (a subnet is placed by `networkZone`).
 
 ### Changed — the 2.10.0 and 2.11.0 notes, corrected
 

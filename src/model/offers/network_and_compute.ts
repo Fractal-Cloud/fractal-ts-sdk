@@ -19,9 +19,12 @@ import {
 import {toKubernetesWorkloadParameters} from './kubernetes_workload_contract';
 import {toLbScheme} from './load_balancer_scheme_parameters';
 import {
+  composeVendorParameters,
+  dropParameter,
   instantiateWithVendorParameters,
   renameParameter,
 } from './vendor_parameters';
+import {toHetznerEgressRules} from './hetzner_firewall_rules';
 import type {
   InstantiationContext,
   LiveSystemComponent,
@@ -635,33 +638,82 @@ export const OciInstance = defineOffer<
 });
 
 // ── Hetzner ──────────────────────────────────────────────────────────────────
+// Emitted for aria-agent-hetzner. Hetzner networks and firewalls are global and a
+// subnet is placed by `networkZone`, so only the server has a location.
 export const HetznerNetwork = defineOffer<
   'NetworkAndCompute.VirtualNetwork',
-  {region?: string}
+  {
+    /**
+     * @deprecated Hetzner has no location for this resource, so `region` is not
+     * sent to the agent. Kept so existing callers still compile.
+     */
+    region?: string;
+  }
 >({
   satisfies: 'NetworkAndCompute.VirtualNetwork',
   offerType: 'NetworkAndCompute.IaaS.HetznerNetwork',
   provider: 'Hetzner',
   deliveryModel: 'IaaS',
+  // The agent reads the network range as `ipRange`.
+  instantiate: instantiateWithVendorParameters(
+    'NetworkAndCompute.IaaS.HetznerNetwork',
+    'Hetzner',
+    'IaaS',
+    composeVendorParameters(
+      renameParameter('cidrBlock', 'ipRange'),
+      dropParameter('region'),
+    ),
+  ),
 });
 export const HetznerSubnet = defineOffer<
   'NetworkAndCompute.Subnet',
-  {region?: string; networkZone?: string}
+  {
+    /**
+     * @deprecated Hetzner has no location for this resource, so `region` is not
+     * sent to the agent. Kept so existing callers still compile.
+     */
+    region?: string;
+    networkZone?: string;
+  }
 >({
   satisfies: 'NetworkAndCompute.Subnet',
   offerType: 'NetworkAndCompute.IaaS.HetznerSubnet',
   provider: 'Hetzner',
   deliveryModel: 'IaaS',
+  instantiate: instantiateWithVendorParameters(
+    'NetworkAndCompute.IaaS.HetznerSubnet',
+    'Hetzner',
+    'IaaS',
+    dropParameter('region'),
+  ),
 });
 export const HetznerFirewall = defineOffer<
   'NetworkAndCompute.SecurityGroup',
-  {region?: string}
+  {
+    /**
+     * @deprecated Hetzner has no location for this resource, so `region` is not
+     * sent to the agent. Kept so existing callers still compile.
+     */
+    region?: string;
+  }
 >({
   satisfies: 'NetworkAndCompute.SecurityGroup',
   offerType: 'NetworkAndCompute.IaaS.HetznerFirewall',
   provider: 'Hetzner',
   deliveryModel: 'IaaS',
+  instantiate: instantiateWithVendorParameters(
+    'NetworkAndCompute.IaaS.HetznerFirewall',
+    'Hetzner',
+    'IaaS',
+    composeVendorParameters(toHetznerEgressRules, dropParameter('region')),
+  ),
 });
+/**
+ * A Hetzner Cloud server, reconciled by aria-agent-hetzner as
+ * `NetworkAndCompute.IaaS.HetznerCloudServer`. `region` is the Hetzner location
+ * (`fsn1`, `nbg1`, `hel1`, `ash`, `hil`, `sin`) and is sent as `location`; unset,
+ * the agent's configured default location applies.
+ */
 export const HetznerServer = defineOffer<
   'NetworkAndCompute.VirtualMachine',
   {
@@ -681,9 +733,15 @@ export const HetznerServer = defineOffer<
   }
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
-  offerType: 'NetworkAndCompute.IaaS.HetznerServer',
+  offerType: 'NetworkAndCompute.IaaS.HetznerCloudServer',
   provider: 'Hetzner',
   deliveryModel: 'IaaS',
+  instantiate: instantiateWithVendorParameters(
+    'NetworkAndCompute.IaaS.HetznerCloudServer',
+    'Hetzner',
+    'IaaS',
+    renameParameter('region', 'location'),
+  ),
 });
 
 // ── VMware (vSphere) ─────────────────────────────────────────────────────────

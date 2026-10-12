@@ -13,13 +13,19 @@ import {describe, it, expect} from 'vitest';
 import {createFractal} from './core';
 import {
   LoadBalancer,
+  SecurityGroup,
   Subnet,
   VirtualMachine,
+  VirtualNetwork,
 } from './components/network_and_compute';
 import {
   AwsLb,
   AzureLb,
   GcpGlb,
+  HetznerFirewall,
+  HetznerNetwork,
+  HetznerServer,
+  HetznerSubnet,
   OciInstance,
   OciSubnet,
 } from './offers/network_and_compute';
@@ -187,5 +193,95 @@ describe('OCI offers emit the keys the OCI agent reads', () => {
     expect(vm.keyName).toBe('ssh-ed25519 AAAAexample');
     expect(vm).not.toHaveProperty('publicSSHKey');
     expect(vm.shape).toBe('VM.Standard.E4.Flex');
+  });
+});
+
+describe('Hetzner offers emit the types and keys aria-agent-hetzner reads', () => {
+  const hetznerComponents = () =>
+    Object.fromEntries(
+      createFractal({
+        id: 'hetzner-net',
+        version: {major: 1, minor: 0, patch: 0},
+        boundedContextId,
+        blueprint: bp => {
+          const network = bp.add(
+            VirtualNetwork({id: 'net'}).withCidrBlock('10.20.0.0/16'),
+          );
+          const subnet = bp.add(
+            Subnet({id: 'subnet'})
+              .withCidrBlock('10.20.1.0/24')
+              .dependsOn(network),
+          );
+          const firewall = bp.add(
+            SecurityGroup({id: 'fw'})
+              .withIngressRules([
+                {protocol: 'tcp', fromPort: 22, sourceCidr: '203.0.113.0/24'},
+              ])
+              .withEgressRules([
+                {protocol: 'tcp', fromPort: 443, sourceCidr: '0.0.0.0/0'},
+              ]),
+          );
+          const server = bp.add(VirtualMachine({id: 'vm'}).dependsOn(subnet));
+          return {network, subnet, firewall, server};
+        },
+        operations: () => ({}),
+      })
+        .specialize()
+        .toLiveSystem({
+          name: 'hetzner-ls',
+          environment,
+          select: {
+            net: HetznerNetwork({region: 'fsn1'}),
+            subnet: HetznerSubnet({region: 'fsn1', networkZone: 'eu-central'}),
+            fw: HetznerFirewall({region: 'fsn1'}),
+            vm: HetznerServer({serverType: 'cx22', region: 'nbg1'}),
+          },
+        })
+        .components.map(c => [c.id, c]),
+    );
+
+  it('HetznerServer is emitted as the HetznerCloudServer offer the agent reconciles', () => {
+    expect(hetznerComponents().vm.type).toBe(
+      'NetworkAndCompute.IaaS.HetznerCloudServer',
+    );
+  });
+
+  it('HetznerServer region is emitted as location', () => {
+    const vm = hetznerComponents().vm.parameters;
+    expect(vm.location).toBe('nbg1');
+    expect(vm).not.toHaveProperty('region');
+    expect(vm.serverType).toBe('cx22');
+  });
+
+  it('HetznerNetwork cidrBlock is emitted as ipRange', () => {
+    const net = hetznerComponents().net;
+    expect(net.type).toBe('NetworkAndCompute.IaaS.HetznerNetwork');
+    expect(net.parameters.ipRange).toBe('10.20.0.0/16');
+    expect(net.parameters).not.toHaveProperty('cidrBlock');
+  });
+
+  it('HetznerSubnet keeps cidrBlock and networkZone', () => {
+    const subnet = hetznerComponents().subnet;
+    expect(subnet.type).toBe('NetworkAndCompute.IaaS.HetznerSubnet');
+    expect(subnet.parameters.cidrBlock).toBe('10.20.1.0/24');
+    expect(subnet.parameters.networkZone).toBe('eu-central');
+  });
+
+  it('HetznerFirewall egress rules carry their peer CIDR as destCidr', () => {
+    const fw = hetznerComponents().fw;
+    expect(fw.type).toBe('NetworkAndCompute.IaaS.HetznerFirewall');
+    expect(fw.parameters.ingressRules).toEqual([
+      {protocol: 'tcp', fromPort: 22, sourceCidr: '203.0.113.0/24'},
+    ]);
+    expect(fw.parameters.egressRules).toEqual([
+      {protocol: 'tcp', fromPort: 443, destCidr: '0.0.0.0/0'},
+    ]);
+  });
+
+  it('region is not emitted where the agent has no location to set', () => {
+    const c = hetznerComponents();
+    expect(c.net.parameters).not.toHaveProperty('region');
+    expect(c.subnet.parameters).not.toHaveProperty('region');
+    expect(c.fw.parameters).not.toHaveProperty('region');
   });
 });
