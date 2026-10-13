@@ -244,6 +244,7 @@ export const AwsCloudFront = defineOffer<
     httpsOnly: unsupported('the agent has no HTTPS-only setting'),
     rateLimit: unsupported('the agent has no rate limit setting'),
     routes: unsupported('the agent reads no route list from parameters'),
+    dnsZones: unsupported('its agent takes no DNS zone access'),
   },
   // Only what involves other components is checked here: which linked bucket
   // or gateway is the origin, and whether a TLS gateway's certificate covers
@@ -315,7 +316,8 @@ export const AwsCloudFront = defineOffer<
     ) {
       throw new Error(
         `Live component '${self.id}': CloudFront reaches gateway '${origin.id}' over https, ` +
-          'but it does not terminate TLS (no tlsClusterIssuer or tlsSecretName), so its ' +
+          'but it does not terminate TLS (no tlsSecretName, and no dnsZones with TXT write on ' +
+          'the zone of its hosts), so its ' +
           "load balancer has no listener on 443: give the gateway TLS, or set originProtocol: 'http'.",
       );
     }
@@ -352,6 +354,7 @@ export const AzureApiManagement = defineOffer<
     httpsOnly: unsupported('the agent has no HTTPS-only setting'),
     rateLimit: unsupported('the agent has no rate limit setting'),
     routes: unsupported('the agent reads no route list from parameters'),
+    dnsZones: unsupported('its agent takes no DNS zone access'),
   },
 });
 export const GcpApiGateway = defineOffer<
@@ -368,6 +371,7 @@ export const GcpApiGateway = defineOffer<
     httpsOnly: unsupported('the agent has no HTTPS-only setting'),
     rateLimit: unsupported('the agent has no rate limit setting'),
     routes: unsupported('the agent reads no route list from parameters'),
+    dnsZones: unsupported('its agent takes no DNS zone access'),
   },
 });
 // Vendor-neutral CaaS offers — no provider; identified by deliveryModel + offerType.
@@ -384,6 +388,7 @@ export const Ambassador = defineOffer<
     httpsOnly: unsupported('the agent has no HTTPS-only setting'),
     rateLimit: unsupported('the agent has no rate limit setting'),
     routes: unsupported('the agent reads no route list from parameters'),
+    dnsZones: unsupported('its agent takes no DNS zone access'),
   },
 });
 /** The list knobs of `TraefikGateway`, sent comma-separated as the agent reads them. */
@@ -448,6 +453,7 @@ export const Traefik = defineOffer<
     httpsOnly: unsupported('the agent has no HTTPS-only setting'),
     rateLimit: unsupported('the agent has no rate limit setting'),
     routes: unsupported('the agent reads no route list from parameters'),
+    dnsZones: unsupported('its agent takes no DNS zone access'),
   },
 });
 /**
@@ -460,9 +466,14 @@ export const Traefik = defineOffer<
  * `gatewayRouteSettings`), so a Domain Service references the platform's
  * Traefik rather than owning one.
  *
- * With `tlsClusterIssuer` (or `tlsSecretName`) Traefik terminates TLS itself on
- * `websecure`: the NLB passes TCP 443 through, which a CloudFront VPC origin
- * can reach with `originProtocol: 'https'`.
+ * Traefik terminates TLS itself on `websecure` with an operator's Secret
+ * (`tlsSecretName`) or with a certificate the gateway issues itself: give its
+ * component `dnsZones` with TXT write on the zone of its hosts
+ * (`ApiGateway.withDnsZones`) and, optionally, `acmeEmail` / `acmeServer`. The
+ * agent runs one cert-manager per cluster for its gateways and solves ACME
+ * DNS-01 in the zone through the gateway's grant. The NLB passes TCP 443
+ * through, which a CloudFront VPC origin can reach with
+ * `originProtocol: 'https'`.
  *
  * Output fields: `namespace`, `serviceName`, `releaseName`, `host`,
  * `entryPoint` (`web` while plain HTTP is served, else `websecure`),
@@ -473,7 +484,10 @@ export const Traefik = defineOffer<
  * (always), `tlsEntryPoint`, `tlsSecretName`, `tlsHosts`,
  * `tlsCertificateExpiresAt` (with TLS),
  * `tlsCertificateName` (`traefik-tls`, when the gateway requested the
- * Certificate).
+ * Certificate), `certManagerRelease` and `clusterIssuerName` (when it issues
+ * its own), and the identity granted DNS access (`workloadRoleArn` on EKS,
+ * `workloadServiceAccount` on GKE, `workloadPrincipalId` and
+ * `workloadClientId` on AKS).
  */
 export const TraefikGateway = defineOffer<
   'APIManagement.ApiGateway',

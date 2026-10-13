@@ -11,6 +11,7 @@
  * shortName), never exposing the term to describe a Bounded Context.
  */
 import type {DnsRecord, DnsZoneGuardrails} from '../components/dns';
+import type {DnsZoneComponentAccess} from '../components/dns_zone_component_access';
 import type {CloudAccount, CloudAgent} from './cloud_agents';
 
 /** Ownership flavor of an environment (matches the API's environment type). */
@@ -85,6 +86,20 @@ export type DnsZone = DnsZoneGuardrails & {
   dnsZoneType?: string;
   /** Record sets of the zone, validated against the guardrails. */
   records?: DnsRecord[];
+  /**
+   * The most access a component of the environment may be granted on the
+   * zone, by record type, e.g. `{'*': 'read', TXT: 'write'}` for components
+   * that solve ACME DNS-01 challenges. A component asks for access with its
+   * `dnsZones` (`withDnsZones`) and is granted its request cut down to this
+   * ceiling; lowering the ceiling reduces existing grants. Omitted or empty,
+   * nothing is granted. Write is granted only in a `lax` zone (an
+   * `authoritative` zone allows read only) and only on the zone's
+   * `allowedRecordTypes`; the control plane warns about what is inert.
+   * Operational environments reach their management environment's zones too.
+   * Needs a control plane that knows component DNS access; an older one keeps
+   * the key without acting on it.
+   */
+  componentAccess?: DnsZoneComponentAccess;
 };
 
 /**

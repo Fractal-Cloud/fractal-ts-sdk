@@ -44,12 +44,12 @@
     {
       "agentId": "aria-agent-caas-k8s",
       "repository": "Fractal-Cloud/aria-agent-caas-k8s",
-      "tag": "v1.4.0",
+      "tag": "v0.0.0-main-6bd0d73",
       "fetch": {
         "kind": "release-asset",
         "asset": "param-contract.json"
       },
-      "snapshotSha256": "35be7f8f4525ff536dd8594c5a86cbedda61f08ff847c782b88b5d7b5108c169"
+      "snapshotSha256": "d8553c8c5ee65c723673387e67c3f6720ba29b5eaa874fe7950ffd518a4f9dbd"
     },
     {
       "agentId": "aria-agent-aruba",

@@ -13,6 +13,8 @@ import {
   AnyNode,
   addDependency,
 } from '../core';
+import type {DnsZoneAccessRequest} from './dns_zone_access_request';
+import {withDnsZonesParameter} from './dns_zones_parameter';
 
 // ── Shared value types ───────────────────────────────────────────────────────
 export type Route = {
@@ -32,6 +34,17 @@ export type ApiGatewayNode<Id extends string = string> = ComponentNode<
   withRateLimit: (v: {requestsPerSecond: number}) => ApiGatewayNode<Id>;
   withRoutes: (v: Route[]) => ApiGatewayNode<Id>;
   /**
+   * Ask for access to environment DNS zones, e.g. `[{name: 'example.com',
+   * access: {TXT: 'write'}}]`: the control plane grants the component's own
+   * identity that access, cut down to each zone's `componentAccess` ceiling, and
+   * the component writes its records itself. An open default, not a guardrail:
+   * the zones depend on the environment, so an operation may change them.
+   *
+   * A `TraefikGateway` with TXT write on the zone of its hosts issues its own
+   * certificate (ACME DNS-01); see its `acmeEmail` and `acmeServer`.
+   */
+  withDnsZones: (zones: readonly DnsZoneAccessRequest[]) => ApiGatewayNode<Id>;
+  /**
    * Declare a structural dependency: e.g. the ContainerPlatform a self-hosted
    * offer is installed on, which its agent requires.
    */
@@ -46,6 +59,7 @@ const apiGatewayNode = <Id extends string>(
   withCors: v => apiGatewayNode<Id>(guardrail(s, 'cors', v)),
   withRateLimit: v => apiGatewayNode<Id>(guardrail(s, 'rateLimit', v)),
   withRoutes: v => apiGatewayNode<Id>(guardrail(s, 'routes', v)),
+  withDnsZones: zones => apiGatewayNode<Id>(withDnsZonesParameter(s, zones)),
   dependsOn: other => apiGatewayNode<Id>(addDependency(s, other.state.id)),
 });
 export const ApiGateway = <const Id extends string>(cfg: {

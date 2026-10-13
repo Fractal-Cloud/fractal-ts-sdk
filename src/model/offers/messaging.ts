@@ -386,6 +386,12 @@ export const AwsSesIdentity = defineOffer<
   contract: Messaging_PaaS_AwsSesIdentity,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  neutral: {
+    dnsZones: unsupported(
+      'its agent does not write the SES records through a DNS zone grant yet; ' +
+        'it publishes them as output fields for the zone to declare',
+    ),
+  },
 });
 
 /** The SQS knob a neutral `MessagingEntity` guardrail maps onto, and how. */

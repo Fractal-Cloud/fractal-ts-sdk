@@ -118,6 +118,7 @@ export const EcsService = defineOffer<
     nodeSelector: unsupportedOnEcs('node selector'),
     podDisruptionBudget: unsupportedOnEcs('disruption budget'),
     preStopSleepSeconds: unsupportedOnEcs('stop hook'),
+    dnsZones: unsupported('its agent takes no DNS zone access'),
     terminationGracePeriodSeconds: unsupportedOnEcs('stop timeout'),
     topologySpread: unsupportedOnEcs('placement spread'),
   },
@@ -214,6 +215,7 @@ export const CloudRun = defineOffer<
     preStopSleepSeconds: unsupportedOnCloudRun('stop hook'),
     terminationGracePeriodSeconds: unsupportedOnCloudRun('stop timeout'),
     topologySpread: unsupportedOnCloudRun('placement spread'),
+    dnsZones: unsupported('its agent takes no DNS zone access'),
   },
 });
 /**
@@ -255,6 +257,7 @@ export const AzureContainerApp = defineOffer<
       'cpu',
       cpuCores,
     ),
+    dnsZones: unsupported('its agent takes no DNS zone access'),
     env: unsupported('the agent declares no such Container App setting'),
     healthCheck: unsupported(
       'the agent declares no such Container App setting',
@@ -366,6 +369,7 @@ export const K8sWorkload = defineOffer<
     typeof CustomWorkloads_CaaS_KubernetesWorkload,
     | 'autoscaling'
     | 'cpuRequest'
+    | 'dnsZones'
     | 'env'
     | 'healthCheck'
     | 'livenessProbe'

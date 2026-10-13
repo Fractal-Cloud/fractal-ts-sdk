@@ -3,37 +3,6 @@
 // (npm run contracts:generate). See docs/offer-contracts.md.
 import type {OfferContract} from '../contract/offer_contract';
 
-export const Security_CaaS_CertManager = {
-  offerType: 'Security.CaaS.CertManager',
-  serviceTypes: ['Security.CaaS.CertManager'],
-  declaredBy: [
-    {
-      agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.4.0',
-      contractSchemaVersion: '1.0',
-      provider: 'CaaS',
-      parameterRules: [],
-    },
-  ],
-  params: {
-    /** production, staging, or an https ACME directory URL */
-    acmeServer: {type: 'string', required: false, default: 'production'},
-    /** Name of the ClusterIssuer, for a TraefikGateway's tlsClusterIssuer */
-    clusterIssuerName: {
-      type: 'string',
-      required: false,
-      default: 'letsencrypt',
-    },
-    /** ACME account email */
-    email: {type: 'string', required: true},
-    /** Route 53 hosted zone id the DNS-01 challenges are written to */
-    hostedZoneId: {type: 'string', required: true},
-    namespace: {type: 'string', required: false, default: 'cert-manager'},
-    /** ARN of the zone role cert-manager assumes (usually in the zone's account); its own Pod Identity role may do nothing else */
-    role: {type: 'string', required: true},
-  },
-} as const satisfies OfferContract;
-
 export const Security_CaaS_Ocelot = {
   offerType: 'Security.CaaS.Ocelot',
   serviceTypes: [],

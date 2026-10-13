@@ -42,28 +42,82 @@ export const certificateCovers = (
 const setString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
 
+/** A DNS name as the agent compares them: trimmed, lower case, no trailing dot. */
+const dnsName = (name: string): string =>
+  name.trim().replace(/\.$/, '').toLowerCase();
+
+/** The gateway's `dnsZones` as the agent reads them: zone name to access map. */
+const requestedZones = (
+  value: unknown,
+): ReadonlyArray<{name: string; access: Readonly<Record<string, string>>}> =>
+  (Array.isArray(value) ? value : []).flatMap(entry => {
+    if (entry === null || typeof entry !== 'object') {
+      return [];
+    }
+    const {name, access} = entry as {name?: unknown; access?: unknown};
+    if (typeof name !== 'string' || name.trim() === '') {
+      return [];
+    }
+    const levels: Record<string, string> = {};
+    if (access !== null && typeof access === 'object') {
+      for (const [type, level] of Object.entries(access)) {
+        if (typeof level === 'string') {
+          levels[type.trim().toUpperCase()] = level.trim().toLowerCase();
+        }
+      }
+    }
+    return [{name: dnsName(name), access: levels}];
+  });
+
+/** Write on TXT records: TXT itself, or `'*'` when TXT is not named. */
+const txtWrite = (access: Readonly<Record<string, string>>): boolean =>
+  'TXT' in access ? access.TXT === 'write' : access['*'] === 'write';
+
+/**
+ * The zone a certificate host's DNS-01 challenge is written in: the longest of
+ * `zones` that is the host or a parent of it (`*.a.b` is challenged at `a.b`).
+ */
+const zoneOf = (host: string, zones: readonly string[]): string | undefined =>
+  zones
+    .filter(zone => {
+      const name = dnsName(host).replace(/^\*\./, '');
+      return name === zone || name.endsWith(`.${zone}`);
+    })
+    .sort((a, b) => b.length - a.length)[0];
+
 /**
  * The hosts the certificate of an emitted `TraefikGateway` component covers, or
  * undefined when Traefik does not terminate TLS (or the component is a reference,
- * whose parameters are not known here). As the agent reads them: TLS is on iff
- * `tlsSecretName` or `tlsClusterIssuer` is set, and `tlsHosts` defaults to `host`.
+ * whose parameters are not known here). As the agent reads them: TLS is on when
+ * `tlsSecretName` is set, when the ignored `tlsClusterIssuer` names the issuer of
+ * a certificate the gateway already serves, or when the gateway issues its own:
+ * its `dnsZones` ask for TXT write on the zone of one of its hosts. `tlsHosts`
+ * defaults to `host`. Whether the grant is in force is known only at
+ * reconciliation; until it is, the gateway is in progress.
  */
 export const gatewayCertificateHosts = (
   parameters: Readonly<Record<string, unknown>>,
 ): readonly string[] | undefined => {
-  const tls =
-    setString(parameters.tlsSecretName) !== undefined ||
-    setString(parameters.tlsClusterIssuer) !== undefined;
-  if (!tls) {
-    return undefined;
-  }
+  const secret = setString(parameters.tlsSecretName) !== undefined;
+  const issuer = setString(parameters.tlsClusterIssuer) !== undefined;
+  const zones = requestedZones(parameters.dnsZones);
   const listed = (setString(parameters.tlsHosts) ?? '')
     .split(',')
     .map(h => h.trim())
     .filter(h => h !== '');
-  if (listed.length > 0) {
-    return listed;
-  }
   const host = setString(parameters.host);
-  return host === undefined ? [] : [host];
+  const hosts =
+    listed.length > 0
+      ? listed
+      : host !== undefined && (secret || issuer || zones.length > 0)
+        ? [host]
+        : [];
+  const names = zones.map(z => z.name);
+  const issues =
+    !secret &&
+    hosts.some(h => {
+      const zone = zoneOf(h, names);
+      return zones.some(z => z.name === zone && txtWrite(z.access));
+    });
+  return secret || issuer || issues ? hosts : undefined;
 };

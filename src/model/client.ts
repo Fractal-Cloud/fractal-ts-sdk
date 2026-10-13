@@ -8,6 +8,9 @@
  *   cloud.blueprints.create(fractal)   — register the reusable, ABSTRACT blueprint
  *   cloud.liveSystems.deploy(ls)       — deploy a vendor-resolved instantiation
  *
+ * `cloud.boundedContexts` manages the Bounded Contexts that blueprints, Live
+ * Systems and environments belong to.
+ *
  * These are segregated on purpose. A blueprint references Level-1 Component
  * contracts (`Storage.ObjectStorage`) so it stays satisfiable by any vendor's
  * Offer; only a LiveSystem carries resolved Offer types (`Storage.PaaS.AwsS3`)
@@ -54,6 +57,15 @@ import type {
   EnvironmentType,
 } from './environment/types';
 import type {EnvironmentDnsZones} from './environment/environment_dns_zones';
+import {
+  createBoundedContext,
+  deleteBoundedContext,
+  getBoundedContext,
+  listBoundedContexts,
+} from './bounded_context/service';
+import type {BoundedContext} from './bounded_context/bounded_context';
+import type {BoundedContextDefinition} from './bounded_context/bounded_context_definition';
+import type {BoundedContextOwner} from './bounded_context/bounded_context_owner';
 
 export type FractalCloudClientConfig = ApiConfig;
 
@@ -145,6 +157,24 @@ const createBlueprint = async (
 
 // ── client ───────────────────────────────────────────────────────────────────
 export type FractalCloudClient = {
+  boundedContexts: {
+    /**
+     * Create a Bounded Context, or update its display name, description and
+     * icon when the owner already has one with this short name. Resolves to it
+     * as stored; its `qualifiedId` is what an environment's
+     * `withResourceGroup` takes.
+     */
+    create: (definition: BoundedContextDefinition) => Promise<BoundedContext>;
+    /** Read one Bounded Context; `null` when the owner has none by that name. */
+    get: (
+      owner: BoundedContextOwner,
+      shortName: string,
+    ) => Promise<BoundedContext | null>;
+    /** List the owner's Bounded Contexts the caller may see; `[]` when none. */
+    list: (owner: BoundedContextOwner) => Promise<BoundedContext[]>;
+    /** Delete a Bounded Context. */
+    delete: (owner: BoundedContextOwner, shortName: string) => Promise<void>;
+  };
   blueprints: {
     /**
      * Register a Fractal's blueprint — its abstract Component contracts.
@@ -246,6 +276,12 @@ export type FractalCloudClient = {
 export const createFractalCloudClient = (
   cfg: FractalCloudClientConfig,
 ): FractalCloudClient => ({
+  boundedContexts: {
+    create: definition => createBoundedContext(definition, cfg),
+    get: (owner, shortName) => getBoundedContext(owner, shortName, cfg),
+    list: owner => listBoundedContexts(owner, cfg),
+    delete: (owner, shortName) => deleteBoundedContext(owner, shortName, cfg),
+  },
   blueprints: {
     create: (fractal, opts = {}) => createBlueprint(cfg, fractal, opts),
   },

@@ -17,7 +17,6 @@ import {readFileSync} from 'node:fs';
 import {describe, expect, it} from 'vitest';
 import * as apiManagementComponents from './components/api_management';
 import * as bigDataComponents from './components/big_data';
-import * as certificateManagerComponents from './components/certificate_manager';
 import * as customWorkloadComponents from './components/custom_workloads';
 import * as dnsComponents from './components/dns';
 import * as messagingComponents from './components/messaging';
@@ -134,6 +133,7 @@ const SETTER_VALUES: Readonly<Record<string, unknown>> = {
   withCronSchedule: '0 0 * * *',
   withCustomDomain: 'api.example.com',
   withDataSecurityMode: 'SINGLE_USER',
+  withDnsZones: [{name: 'example.com', access: {TXT: 'write'}}],
   withDeadLetterEnabled: true,
   withDnssec: 'optional',
   withDomainName: 'example.com',
@@ -262,7 +262,6 @@ const NEUTRAL = new Map<string, ProbedNode['state']>(
   [
     apiManagementComponents,
     bigDataComponents,
-    certificateManagerComponents,
     customWorkloadComponents,
     dnsComponents,
     messagingComponents,

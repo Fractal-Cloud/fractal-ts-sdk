@@ -9,14 +9,111 @@ The version published for a release is the GitHub release tag: `release.yml` run
 `npm version <tag>` at publish time, so `package.json` on `main` is not the source
 of truth for what is on npm.
 
-## Unreleased
+## 2.13.0
+
+### Added — components ask for access to environment DNS zones
+
+`ApiGateway`, `Workload` and `EmailSender` gain `withDnsZones([{name, access}])`: the
+environment DNS zones the component may read or write in, e.g.
+`[{name: 'example.com', access: {TXT: 'write'}}]`. The control plane grants the
+component's own identity that access, cut down to each zone's `componentAccess`
+ceiling, in the copy of the zone on the component's own cloud; the component writes
+its records itself. `access` maps `'*'` or a record type (`A`, `AAAA`, `CAA`, `CNAME`,
+`MX`, `PTR`, `SRV`, `TXT`) to `none`, `read` or `write`.
+
+- It is an **open default**, not a guardrail: the zones depend on the environment a
+  Live System runs in, so an Interface operation may change them. New authoring
+  primitive `openDefault` (the unlocked counterpart of `guardrail`).
+- A list the control plane could not read (two entries for one zone, a type such as
+  `NS` that cannot be granted, an unknown level) is refused when it is set.
+- `TraefikGateway` and `K8sWorkload` send it (aria-agent-caas-k8s; `dnsZones` is no
+  longer a `K8sWorkload` config key, the component carries it). Every other offer of
+  these components refuses it, naming the offer: their agents take no DNS zone access.
+  `AwsSesIdentity` refuses it until the AWS agent writes the SES records through a
+  grant; it publishes them as output fields meanwhile.
+- New public types: `DnsZoneAccessRequest`, `DnsZoneAccess`, `DnsAccessLevel`,
+  `DnsGrantableRecordType`.
+
+Needs fractal-livesystems v2.37.0 and fractal-environments v3.38.0 or later; the
+zone's agent grants only with the `dnsZoneGrants` capability (fractal-cloud-agents
+with DNS zone grants).
+
+### Added — `componentAccess` on environment DNS zones
+
+An environment zone (`withDnsZones`) takes `componentAccess`, the ceiling on what its
+components may be granted, e.g. `{'*': 'read', TXT: 'write'}` (new type
+`DnsZoneComponentAccess`). Absent or empty, nothing is granted. A type takes `write` or
+`none` only: any access reads the whole zone, so read is allowed for every type at once
+(`'*': 'read'`). A per-type `read`, an unknown type or level, or a ceiling that is not a
+map is refused when the tree is resolved, naming the environment and the zone, as
+fractal-environments refuses it. Write is granted only in a `lax` zone and on the zone's
+`allowedRecordTypes`; the control plane warns about the rest. Needs
+fractal-environments v3.38.0 or later.
+
+### Added — `TraefikGateway` issues its own certificate; `tlsClusterIssuer` deprecated
+
+The gateway issues its own certificate (ACME DNS-01) when it has TLS hosts
+(`tlsHosts`, or `host`), no `tlsSecretName`, and its component's `dnsZones` grant it
+TXT write on the zone of a host: the agent runs one cert-manager per cluster, shared by
+its gateways, and solves the challenge through the gateway's grant. New config keys
+`acmeEmail` and `acmeServer` (`'production'`, the default, `'staging'` or an
+`https://` directory URL). New output fields `certManagerRelease`, `clusterIssuerName`
+and the identity granted DNS access.
+
+`tlsClusterIssuer` is `@deprecated` and still compiles: the agent ignores it with a
+warning, keeps serving a certificate it issued, and moves that certificate to the
+gateway's own issuer once its grant is in force. A gateway asking for TXT write on the
+zone of its host now counts as terminating TLS for the `AwsCloudFront` checks (an https
+VPC origin, aliases covered by its hosts); the refusal for a gateway without TLS names
+`dnsZones` instead of `tlsClusterIssuer`.
+
+Needs the first aria-agent-caas-k8s release after v1.5.0; the offer configs are
+generated from its contract.
+
+### Added — `cloud.boundedContexts`
+
+Create, read, list and delete Bounded Contexts, so a script can create the one an
+environment refers to: `create({type, ownerId?, shortName, displayName, description?,
+icon?})` (an upsert), `get(owner, shortName)` (`null` when absent), `list(owner)` and
+`delete(owner, shortName)`. An owner is `{type: 'Organizational', ownerId}` or
+`{type: 'Personal'}`, the caller's own. A `BoundedContext` carries its `qualifiedId`
+(`Type/ownerId/shortName`), which an environment's `withResourceGroup` takes. New
+public types: `BoundedContext`, `BoundedContextId`, `BoundedContextOwner`,
+`BoundedContextDefinition`.
+
+### Removed (BREAKING) — `CertificateManager`, `CertManager`, `CertManagerConfig`
+
+The caas-k8s agent retired the offer `Security.CaaS.CertManager` and the component
+`Security.CertificateManager`: cert-manager is now internal to `TraefikGateway` (see
+above), and the agent no longer declares either. The `CertificateManager` component
+factory, the `CertManager` offer and the `CertManagerConfig` type are removed.
+
+**Migrating.** Give the gateway's component `dnsZones` with TXT write on the zone of its
+hosts, allow it in the zone's `componentAccess` (in a `lax` zone), set `acmeEmail`, then
+remove the `CertificateManager` component from the Live System. Remove it only once the
+caas-k8s agent reconciling it is the release that retired the offer: that release
+reconciles a leftover component to nothing (`RetiredOffer`) and completes its deletion
+without touching the cluster, adopting its cert-manager; an older agent deleting it
+uninstalls cert-manager, and a gateway still serving a certificate from it loses
+renewal. The retired offer's ClusterIssuer and its former IAM roles are left for an
+operator to remove.
+
+**Why removed, not deprecated.** A deprecated builder would keep emitting a component
+no agent declares, which the agent reconciles to nothing; there is no behavior left to
+deprecate. The removal ships in the 2.13.0 minor, as the `LogShipper` break shipped in
+the 2.11.0 minor. It is a compile error only: deployed infrastructure changes when the
+component is removed from a Live System, in the order above.
+
+### Changed — dependencies
+
+- `vitest` and `@vitest/coverage-v8` 5.0.4 (development only).
 
 ### Added — `dependsOn` on every component an offer may need to place
 
-`ApiGateway`, `CertificateManager`, `ServiceMesh`, `IdentityProvider`,
-`ObjectStorage`, `RelationalDbms`, `Broker`, `Monitoring`, `Tracing` and `Logging`
-gain `dependsOn(other)`. Without it, the cluster that a self-hosted gateway,
-certificate issuer, broker or monitoring stack is installed on could not be declared
+`ApiGateway`, `ServiceMesh`, `IdentityProvider`, `ObjectStorage`,
+`RelationalDbms`, `Broker`, `Monitoring`, `Tracing` and `Logging` gain
+`dependsOn(other)`. Without it, the cluster that a self-hosted gateway, broker or
+monitoring stack is installed on could not be declared
 from TypeScript, and neither could the subnets an RDS DBMS is placed in. The agents
 place these components through their dependencies, so they now get the dependency
 they need.
@@ -45,7 +142,7 @@ logged, and each warning is logged as a `WARN` line. A control plane without val
 The SDK no longer re-implements the agents' parameter checks: the per-offer `validate`
 functions that mirrored them (CloudFront redirects, timeouts and WAF limits; Traefik
 gateway ForwardAuth and TLS settings; SNS, SQS and SES names and bounds; RDS, Eks,
-CertManager, Grafana, SqsExporter and DNS-zone values; the Kubernetes workload probe,
+Grafana, SqsExporter and DNS-zone values; the Kubernetes workload probe,
 rollout and grant checks) are removed. Those values are now checked by the control plane
 before deploy, against the agents' own contracts. `toLiveSystem()` stays offline. What
 remains in the SDK involves several components (a CloudFront origin and the
@@ -65,8 +162,8 @@ dependency on a subnet of their own cloud.
 
 Every offer whose agent publishes a parameter contract is now defined from it: its
 offer type, its config keys, their types and which are required come from the
-contract (fractal-cloud-agents v8.25.2, aria-agent-caas-k8s v1.4.0, aria-agent-aruba
-v0.0.20), and every vendor key an offer writes from a neutral parameter (`lbScheme`,
+contract (fractal-cloud-agents v8.25.2, the first aria-agent-caas-k8s release after
+v1.5.0, aria-agent-aruba v0.0.20), and every vendor key an offer writes from a neutral parameter (`lbScheme`,
 OCI `keyName`, the caas-k8s workload keys) is named through it, so a key an agent
 renames or drops is a compile error instead of a value nobody reads. See
 [`docs/offer-contracts.md`](docs/offer-contracts.md). Offers whose agent publishes no
@@ -180,6 +277,8 @@ as config, so a config value cannot bypass a locked guardrail.
   the agent refused egress rules without one. `region` on `HetznerNetwork`,
   `HetznerSubnet` and `HetznerFirewall` is deprecated and no longer sent: Hetzner has
   no location for those resources (a subnet is placed by `networkZone`).
+
+## 2.12.0
 
 ### Changed — the 2.10.0 and 2.11.0 notes, corrected
 

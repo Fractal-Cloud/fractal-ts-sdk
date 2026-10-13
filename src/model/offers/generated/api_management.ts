@@ -9,8 +9,8 @@ export const APIManagement_CaaS_Ambassador = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.4.0',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.0-main-6bd0d73',
+      contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
     },
@@ -106,15 +106,21 @@ export const APIManagement_CaaS_TraefikGateway = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.4.0',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.0-main-6bd0d73',
+      contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
     },
   ],
   params: {
+    /** ACME account email of the gateway's certificate issuer; optional */
+    acmeEmail: {type: 'string', required: false},
+    /** ACME directory of the gateway's certificate issuer: production, staging, or an https URL */
+    acmeServer: {type: 'string', required: false, default: 'production'},
     /** traefik chart version (39.0.9 is Traefik v3.6.15) */
     chartVersion: {type: 'string', required: false, default: '39.0.9'},
+    /** [{name, access}]: environment DNS zones the gateway may write in with its cert-manager's identity; TXT write on the zone of a TLS host lets the gateway issue its own certificate for it (DNS-01) */
+    dnsZones: {type: 'array', required: false},
     /** Idle timeout of the web entrypoint; must exceed the CloudFront keep-alive */
     entryPointIdleTimeoutSeconds: {
       type: 'integer',
@@ -155,13 +161,19 @@ export const APIManagement_CaaS_TraefikGateway = {
     /** Expose web (80) and serve the routes on it. Default true without TLS (unchanged gateways), false with TLS */
     plainHttp: {type: 'boolean', required: false},
     replicas: {type: 'integer', required: false, default: 2},
-    /** EKS: ACM certificate for an NLB TLS listener on 443 forwarding to the web entrypoint. Not for a gateway behind CloudFront: an NLB with a TLS listener cannot be a CloudFront VPC origin. Excludes tlsSecretName / tlsClusterIssuer */
+    /** EKS: ACM certificate for an NLB TLS listener on 443 forwarding to the web entrypoint. Not for a gateway behind CloudFront: an NLB with a TLS listener cannot be a CloudFront VPC origin. Excludes Traefik TLS (tlsSecretName, or the gateway's own certificate) */
     tlsCertificateArn: {type: 'string', required: false},
-    /** Traefik TLS: cert-manager ClusterIssuer (e.g. the Security.CaaS.CertManager offer's clusterIssuerName) the gateway requests its own Certificate for tlsHosts from */
-    tlsClusterIssuer: {type: 'string', required: false},
+    /** Ignored: the gateway issues its own certificate through its dnsZones grant */
+    tlsClusterIssuer: {
+      type: 'string',
+      required: false,
+      deprecated: {
+        note: 'ignored, with the TlsClusterIssuerIgnored warning: the gateway runs cert-manager itself and solves DNS-01 through its own dnsZones grant',
+      },
+    },
     /** Comma-separated hosts the certificate covers (exact or *.one-label wildcards); default host. Must cover every viewer host CloudFront forwards: every route host is checked against it */
     tlsHosts: {type: 'string', required: false},
-    /** Traefik TLS: kubernetes.io/tls Secret in the gateway namespace served on websecure (TCP 443 through the NLB). Default traefik-tls when tlsClusterIssuer is set; unset with no issuer = no TLS */
+    /** Traefik TLS from an operator's kubernetes.io/tls Secret in the gateway namespace, served on websecure (TCP 443 through the NLB). Unset: the gateway issues its own certificate when dnsZones grants it TXT write on the zone of its hosts */
     tlsSecretName: {type: 'string', required: false},
     /** Chart values deep-merged over the agent's, for operators */
     values: {type: 'object', required: false},

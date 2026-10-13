@@ -14,6 +14,8 @@ import {
   addDependency,
 } from '../core';
 import type {SecretRef} from '../secret';
+import type {DnsZoneAccessRequest} from './dns_zone_access_request';
+import {withDnsZonesParameter} from './dns_zones_parameter';
 import type {WorkloadResources} from './workload/workload_resources';
 import type {WorkloadAutoscaling} from './workload/workload_autoscaling';
 import type {WorkloadProbe} from './workload/workload_probe';
@@ -54,6 +56,18 @@ export type WorkloadNode<Id extends string = string> = ComponentNode<
   /** Spread replicas across zones (the agent's default with more than one replica). */
   withTopologySpread: (v: boolean) => WorkloadNode<Id>;
   withNodeSelector: (v: Record<string, string>) => WorkloadNode<Id>;
+  /**
+   * Ask for access to environment DNS zones, e.g. `[{name: 'example.com',
+   * access: {TXT: 'write'}}]`: the control plane grants the component's own
+   * identity that access, cut down to each zone's `componentAccess` ceiling, and
+   * the component writes its records itself. An open default, not a guardrail:
+   * the zones depend on the environment, so an operation may change them.
+   *
+   * On Kubernetes (`K8sWorkload`) the workload reaches each AWS grant through
+   * the profile `fractal-dns-<zone with '.' as '-'>` of a mounted AWS config
+   * file; on GCP and Azure its workload identity is granted directly.
+   */
+  withDnsZones: (zones: readonly DnsZoneAccessRequest[]) => WorkloadNode<Id>;
   dependsOn: (other: AnyNode) => WorkloadNode<Id>;
 };
 const withRollout = (s: NodeState, v: WorkloadRollout): NodeState => {
@@ -88,6 +102,7 @@ const workloadNode = <Id extends string>(s: NodeState): WorkloadNode<Id> => ({
   withStartupProbe: v => workloadNode<Id>(guardrail(s, 'startupProbe', v)),
   withTopologySpread: v => workloadNode<Id>(guardrail(s, 'topologySpread', v)),
   withNodeSelector: v => workloadNode<Id>(guardrail(s, 'nodeSelector', v)),
+  withDnsZones: zones => workloadNode<Id>(withDnsZonesParameter(s, zones)),
   dependsOn: other => workloadNode<Id>(addDependency(s, other.state.id)),
 });
 export const Workload = <const Id extends string>(cfg: {
