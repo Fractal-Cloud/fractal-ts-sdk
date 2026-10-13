@@ -11,6 +11,16 @@ of truth for what is on npm.
 
 ## Unreleased
 
+### Added — `dependsOn` on every component an offer may need to place
+
+`ApiGateway`, `CertificateManager`, `ServiceMesh`, `IdentityProvider`,
+`ObjectStorage`, `RelationalDbms`, `Broker`, `Monitoring`, `Tracing` and `Logging`
+gain `dependsOn(other)`. Without it, the cluster that a self-hosted gateway,
+certificate issuer, broker or monitoring stack is installed on could not be declared
+from TypeScript, and neither could the subnets an RDS DBMS is placed in. The agents
+place these components through their dependencies, so they now get the dependency
+they need.
+
 ### Added — the control plane validates a Live System before it is deployed
 
 `cloud.liveSystems.deploy` now asks the control plane (`POST /livesystems/validate`,

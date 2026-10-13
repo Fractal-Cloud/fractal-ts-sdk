@@ -21,11 +21,17 @@ export type BrokerNode<Id extends string = string> = ComponentNode<
 > & {
   withTier: (v: string) => BrokerNode<Id>;
   withEncryption: (v: 'at-rest' | 'none') => BrokerNode<Id>;
+  /**
+   * Declare a structural dependency: e.g. the ContainerPlatform a self-hosted
+   * offer is installed on, which its agent requires.
+   */
+  dependsOn: (other: AnyNode) => BrokerNode<Id>;
 };
 const brokerNode = <Id extends string>(s: NodeState): BrokerNode<Id> => ({
   state: s,
   withTier: v => brokerNode<Id>(guardrail(s, 'tier', v)),
   withEncryption: v => brokerNode<Id>(guardrail(s, 'encryption', v)),
+  dependsOn: other => brokerNode<Id>(addDependency(s, other.state.id)),
 });
 export const Broker = <const Id extends string>(cfg: {
   id: Id;
