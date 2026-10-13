@@ -5,6 +5,19 @@
  * Components in components/messaging.ts. Vendor knobs live in each offer's Cfg.
  * Vendor-neutral self-hosted offers (Kafka on any cluster) OMIT `provider`.
  */
+import {toContractKey, unsupported, unsupportedUnless} from './neutral_rules';
+import {
+  Messaging_CaaS_Kafka,
+  Messaging_CaaS_KafkaTopic,
+  Messaging_PaaS_AwsSesIdentity,
+  Messaging_PaaS_AwsSnsTopic,
+  Messaging_PaaS_AwsSqsQueue,
+  Messaging_PaaS_AzureServiceBus,
+  Messaging_PaaS_AzureServiceBusTopic,
+  Messaging_PaaS_GcpPubSub,
+  Messaging_PaaS_GcpPubSubTopic,
+} from './generated/messaging';
+import type {ContractConfig} from './contract/contract_config';
 import {defineOffer} from '../core';
 import type {InstantiationContext} from '../core';
 
@@ -46,7 +59,8 @@ const exactSkuTier = (value: unknown): AzureServiceBusSkuTier | undefined =>
   typeof value === 'string' ? SKU_TIERS.find(t => t === value) : undefined;
 
 /** Offer type of the only Azure `Messaging.MessagingEntity` in this catalogue. */
-const AZURE_SERVICE_BUS_TOPIC_TYPE = 'Messaging.PaaS.AzureServiceBusTopic';
+const AZURE_SERVICE_BUS_TOPIC_TYPE =
+  Messaging_PaaS_AzureServiceBusTopic.offerType;
 
 /**
  * Refuse a Basic namespace that a topic in the same Live System depends on. ARM
@@ -120,17 +134,24 @@ const resolveSkuTier = (
   }
   return cfg.skuTier ?? 'Standard';
 };
+const withoutTier = (
+  parameters: Readonly<Record<string, unknown>>,
+): Record<string, unknown> =>
+  Object.fromEntries(Object.entries(parameters).filter(([k]) => k !== 'tier'));
+
 export const AzureServiceBus = defineOffer<
   'Messaging.Broker',
-  {
-    region?: string;
-    resourceGroup: string;
-    /** Namespace SKU; defaults to Standard. See {@link AzureServiceBusSkuTier}. */
-    skuTier?: AzureServiceBusSkuTier;
-  }
+  ContractConfig<
+    typeof Messaging_PaaS_AzureServiceBus,
+    'encryption',
+    {
+      /** Namespace SKU; defaults to Standard. See {@link AzureServiceBusSkuTier}. */
+      skuTier?: AzureServiceBusSkuTier;
+    }
+  >
 >({
   satisfies: 'Messaging.Broker',
-  offerType: 'Messaging.PaaS.AzureServiceBus',
+  contract: Messaging_PaaS_AzureServiceBus,
   provider: 'Azure',
   deliveryModel: 'PaaS',
   validate: refuseBasicNamespaceWithTopics,
@@ -170,13 +191,15 @@ export const AzureServiceBus = defineOffer<
     {
       id: ctx.id,
       displayName: ctx.displayName,
-      type: 'Messaging.PaaS.AzureServiceBus',
+      type: Messaging_PaaS_AzureServiceBus.offerType,
       provider: 'Azure',
       deliveryModel: 'PaaS',
       // `skuTier` last so the resolved SKU always beats a spread-in value, and an
       // explicitly-passed `undefined` still falls back to the default.
+      // The neutral `tier` is consumed here (see `resolveSkuTier`); the agent
+      // reads only `skuTier`, so it is not sent.
       parameters: {
-        ...ctx.parameters,
+        ...withoutTier(ctx.parameters),
         ...cfg,
         skuTier: resolveSkuTier(ctx, cfg),
       },
@@ -185,56 +208,96 @@ export const AzureServiceBus = defineOffer<
     },
   ],
 });
-export const GcpPubSub = defineOffer<'Messaging.Broker', {region?: string}>({
+export const GcpPubSub = defineOffer<
+  'Messaging.Broker',
+  ContractConfig<typeof Messaging_PaaS_GcpPubSub>
+>({
   satisfies: 'Messaging.Broker',
-  offerType: 'Messaging.PaaS.GcpPubSub',
+  contract: Messaging_PaaS_GcpPubSub,
   provider: 'GCP',
   deliveryModel: 'PaaS',
+  neutral: {
+    encryption: unsupportedUnless(
+      v => v === 'at-rest',
+      'Pub/Sub always encrypts at rest',
+    ),
+    tier: unsupported('Pub/Sub has no tiers'),
+  },
 });
 /** Vendor-neutral self-hosted Kafka — no `provider`. */
-export const Kafka = defineOffer<'Messaging.Broker', {namespace?: string}>({
+export const Kafka = defineOffer<
+  'Messaging.Broker',
+  ContractConfig<typeof Messaging_CaaS_Kafka>
+>({
   satisfies: 'Messaging.Broker',
-  offerType: 'Messaging.CaaS.Kafka',
+  contract: Messaging_CaaS_Kafka,
   deliveryModel: 'CaaS',
+  neutral: {
+    encryption: unsupported('the agent configures no encryption'),
+    tier: unsupported('the agent has no tiers'),
+  },
 });
 
 // ── MessagingEntity offers (satisfy 'Messaging.MessagingEntity') ──────────────
 export const AzureServiceBusTopic = defineOffer<
   'Messaging.MessagingEntity',
-  Record<string, never>
+  ContractConfig<typeof Messaging_PaaS_AzureServiceBusTopic>
 >({
   satisfies: 'Messaging.MessagingEntity',
-  offerType: 'Messaging.PaaS.AzureServiceBusTopic',
+  contract: Messaging_PaaS_AzureServiceBusTopic,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  neutral: {
+    deadLetterEnabled: unsupported('the agent has no dead-letter setting'),
+    maxDeliveryAttempts: unsupported('the agent has no delivery-attempt limit'),
+    messageRetentionHours: toContractKey(
+      Messaging_PaaS_AzureServiceBusTopic,
+      'defaultMessageTimeToLive',
+      v => `PT${String(v)}H`,
+    ),
+    partitionCount: unsupported('the agent has no partition setting'),
+  },
 });
 export const GcpPubSubTopic = defineOffer<
   'Messaging.MessagingEntity',
-  Record<string, never>
+  ContractConfig<typeof Messaging_PaaS_GcpPubSubTopic>
 >({
   satisfies: 'Messaging.MessagingEntity',
-  offerType: 'Messaging.PaaS.GcpPubSubTopic',
+  contract: Messaging_PaaS_GcpPubSubTopic,
   provider: 'GCP',
   deliveryModel: 'PaaS',
+  neutral: {
+    deadLetterEnabled: unsupported('the agent has no dead-letter setting'),
+    maxDeliveryAttempts: unsupported('the agent has no delivery-attempt limit'),
+    messageRetentionHours: unsupported(
+      'the agent has no message retention setting',
+    ),
+    partitionCount: unsupported('the agent has no partition setting'),
+  },
 });
 /** Vendor-neutral self-hosted Kafka topic — no `provider`. */
 export const KafkaTopic = defineOffer<
   'Messaging.MessagingEntity',
-  Record<string, never>
+  ContractConfig<typeof Messaging_CaaS_KafkaTopic>
 >({
   satisfies: 'Messaging.MessagingEntity',
-  offerType: 'Messaging.CaaS.KafkaTopic',
+  contract: Messaging_CaaS_KafkaTopic,
   deliveryModel: 'CaaS',
+  neutral: {
+    deadLetterEnabled: unsupportedUnless(
+      v => v === false,
+      'Kafka has no dead-letter queue',
+    ),
+    maxDeliveryAttempts: unsupported('Kafka has no delivery-attempt limit'),
+    messageRetentionHours: toContractKey(
+      Messaging_CaaS_KafkaTopic,
+      'retentionMs',
+      v => Number(v) * 3_600_000,
+    ),
+    partitionCount: toContractKey(Messaging_CaaS_KafkaTopic, 'partitions'),
+  },
 });
-
-// ── AWS: SNS topic + SQS queue (satisfy 'Messaging.MessagingEntity') ─────────
-const AWS_SNS_TOPIC_TYPE = 'Messaging.PaaS.AwsSnsTopic';
-const AWS_SQS_QUEUE_TYPE = 'Messaging.PaaS.AwsSqsQueue';
-
-/** SNS topic names: 1–256 letters, digits, hyphens and underscores (standard topics). */
-const SNS_TOPIC_NAME = /^[A-Za-z0-9_-]{1,256}$/;
-/** SQS queue names: 1–80 of the same characters; the DLQ appends `-dlq`, so 76 here. */
-const SQS_QUEUE_NAME = /^[A-Za-z0-9_-]{1,76}$/;
+const AWS_SQS_QUEUE_TYPE = Messaging_PaaS_AwsSqsQueue.offerType;
 
 /**
  * A standard Amazon SNS topic: the events a Domain Service publishes. Other
@@ -245,117 +308,36 @@ const SQS_QUEUE_NAME = /^[A-Za-z0-9_-]{1,76}$/;
  */
 export const AwsSnsTopic = defineOffer<
   'Messaging.MessagingEntity',
-  {
-    /** Defaults to the component id. */
-    topicName?: string;
-    /** Server-side encryption key; defaults to the AWS-managed `alias/aws/sns`. */
-    kmsMasterKeyId?: string;
-    /**
-     * Largest message in bytes, 1024 to 1048576; the agent defaults to 262144.
-     * Above 262144 SNS accepts only SQS, Firehose and Lambda subscribers (at
-     * most 100). The queue's limit is 1 MiB, so the topic's is the end-to-end one.
-     */
-    maximumMessageSize?: number;
-  }
+  ContractConfig<
+    typeof Messaging_PaaS_AwsSnsTopic,
+    never,
+    {
+      /** Defaults to the component id. */
+      topicName?: string;
+      /** Server-side encryption key; defaults to the AWS-managed `alias/aws/sns`. */
+      kmsMasterKeyId?: string;
+      /**
+       * Largest message in bytes, 1024 to 1048576; the agent defaults to 262144.
+       * Above 262144 SNS accepts only SQS, Firehose and Lambda subscribers (at
+       * most 100). The queue's limit is 1 MiB, so the topic's is the end-to-end one.
+       */
+      maximumMessageSize?: number;
+    }
+  >
 >({
   satisfies: 'Messaging.MessagingEntity',
-  offerType: AWS_SNS_TOPIC_TYPE,
+  contract: Messaging_PaaS_AwsSnsTopic,
   provider: 'AWS',
   deliveryModel: 'PaaS',
-  validate: (self, _all, config) => {
-    const size = config.maximumMessageSize;
-    if (
-      size !== undefined &&
-      (!Number.isInteger(size) || size < 1024 || size > 1048576)
-    ) {
-      throw new Error(
-        `AwsSnsTopic '${self.id}': maximumMessageSize ${size} is not a whole number of bytes from 1024 to 1048576.`,
-      );
-    }
-    if (
-      config.topicName !== undefined &&
-      !SNS_TOPIC_NAME.test(config.topicName)
-    ) {
-      throw new Error(
-        `AwsSnsTopic '${self.id}': topicName '${config.topicName}' is not an SNS ` +
-          'topic name (1-256 letters, digits, hyphens and underscores).',
-      );
-    }
+  neutral: {
+    deadLetterEnabled: unsupported('the agent has no dead-letter setting'),
+    maxDeliveryAttempts: unsupported('the agent has no delivery-attempt limit'),
+    messageRetentionHours: unsupported(
+      'the agent has no message retention setting',
+    ),
+    partitionCount: unsupported('the agent has no partition setting'),
   },
 });
-
-// ── AWS: SES identity (satisfies 'Messaging.EmailSender') ────────────────────
-/** A domain name as the AWS agent accepts it (lower case, at least two labels). */
-const SES_DOMAIN =
-  /^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$/;
-/** One DNS label. */
-const DNS_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
-
-/**
- * A DNS name as the AWS agent reads it: trimmed, lower case, without a trailing
- * dot; blank is unset (undefined).
- */
-const normalizedDnsName = (value: string | undefined): string | undefined => {
-  if (value === undefined || value.trim() === '') {
-    return undefined;
-  }
-  const trimmed = value.trim().toLowerCase();
-  return trimmed.endsWith('.') ? trimmed.slice(0, -1) : trimmed;
-};
-
-/**
- * The production access request as the AWS agent sends it: with
- * `productionAccess`, `websiteUrl` (http(s)) and `useCaseDescription` are
- * required; `mailType` and `contactLanguage` are read case-insensitively.
- * Without it the agent reads none of them, so none is checked.
- */
-const validateSesProductionAccess = (
-  id: string,
-  config: {
-    productionAccess?: boolean;
-    mailType?: string;
-    websiteUrl?: string;
-    useCaseDescription?: string;
-    contactLanguage?: string;
-  },
-): void => {
-  if (config.productionAccess !== true) {
-    return;
-  }
-  for (const key of ['websiteUrl', 'useCaseDescription'] as const) {
-    const value = config[key];
-    if (value === undefined || value.trim() === '') {
-      throw new Error(
-        `AwsSesIdentity '${id}': productionAccess needs ${key}; without it the agent sends no request.`,
-      );
-    }
-  }
-  if (!/^https?:\/\/\S+$/.test(config.websiteUrl!.trim())) {
-    throw new Error(
-      `AwsSesIdentity '${id}': websiteUrl '${config.websiteUrl}' is not an http(s) URL.`,
-    );
-  }
-  const mailType = config.mailType?.trim().toUpperCase();
-  if (
-    mailType !== undefined &&
-    mailType !== '' &&
-    !['TRANSACTIONAL', 'MARKETING'].includes(mailType)
-  ) {
-    throw new Error(
-      `AwsSesIdentity '${id}': mailType '${config.mailType}' is not TRANSACTIONAL or MARKETING.`,
-    );
-  }
-  const language = config.contactLanguage?.trim().toUpperCase();
-  if (
-    language !== undefined &&
-    language !== '' &&
-    !['EN', 'JA'].includes(language)
-  ) {
-    throw new Error(
-      `AwsSesIdentity '${id}': contactLanguage '${config.contactLanguage}' is not EN or JA.`,
-    );
-  }
-};
 
 /**
  * An Amazon SES v2 domain identity with Easy DKIM (2048-bit), optionally with a
@@ -376,54 +358,34 @@ const validateSesProductionAccess = (
  */
 export const AwsSesIdentity = defineOffer<
   'Messaging.EmailSender',
-  {
-    /** The domain mail is sent from, e.g. `example.com`. */
-    domain: string;
-    /** One DNS label; MAIL FROM becomes `<label>.<domain>`. Unset or blank = SES's own. */
-    mailFromSubdomain?: string;
-    /**
-     * `true`: request SES production access once. Account-wide and per region;
-     * cannot be reverted. Unset or `false` = the sandbox.
-     */
-    productionAccess?: boolean;
-    /** For the production access request. The agent's default: `TRANSACTIONAL`. */
-    mailType?: 'TRANSACTIONAL' | 'MARKETING';
-    /** Required with `productionAccess`: the sender's http(s) website. */
-    websiteUrl?: string;
-    /** Required with `productionAccess`: what is sent, to whom, and how bounces and complaints are handled. */
-    useCaseDescription?: string;
-    /** The language AWS answers the request in. The agent's default: `EN`. */
-    contactLanguage?: 'EN' | 'JA';
-  }
+  ContractConfig<
+    typeof Messaging_PaaS_AwsSesIdentity,
+    never,
+    {
+      /** The domain mail is sent from, e.g. `example.com`. */
+      domain: string;
+      /** One DNS label; MAIL FROM becomes `<label>.<domain>`. Unset or blank = SES's own. */
+      mailFromSubdomain?: string;
+      /**
+       * `true`: request SES production access once. Account-wide and per region;
+       * cannot be reverted. Unset or `false` = the sandbox.
+       */
+      productionAccess?: boolean;
+      /** For the production access request. The agent's default: `TRANSACTIONAL`. */
+      mailType?: 'TRANSACTIONAL' | 'MARKETING';
+      /** Required with `productionAccess`: the sender's http(s) website. */
+      websiteUrl?: string;
+      /** Required with `productionAccess`: what is sent, to whom, and how bounces and complaints are handled. */
+      useCaseDescription?: string;
+      /** The language AWS answers the request in. The agent's default: `EN`. */
+      contactLanguage?: 'EN' | 'JA';
+    }
+  >
 >({
   satisfies: 'Messaging.EmailSender',
-  offerType: 'Messaging.PaaS.AwsSesIdentity',
+  contract: Messaging_PaaS_AwsSesIdentity,
   provider: 'AWS',
   deliveryModel: 'PaaS',
-  validate: (self, _all, config) => {
-    const domain = normalizedDnsName(config.domain);
-    if (domain === undefined || !SES_DOMAIN.test(domain)) {
-      throw new Error(
-        `AwsSesIdentity '${self.id}': domain '${config.domain}' is not a domain name.`,
-      );
-    }
-    validateSesProductionAccess(self.id, config);
-    const sub = normalizedDnsName(config.mailFromSubdomain);
-    if (sub === undefined) {
-      return;
-    }
-    if (!DNS_LABEL.test(sub)) {
-      throw new Error(
-        `AwsSesIdentity '${self.id}': mailFromSubdomain '${config.mailFromSubdomain}' must be one DNS label ` +
-          "(letters, digits, '-').",
-      );
-    }
-    if (sub.length + 1 + domain.length > 253) {
-      throw new Error(
-        `AwsSesIdentity '${self.id}': '${sub}.${domain}' is longer than a domain name may be.`,
-      );
-    }
-  },
 });
 
 /** The SQS knob a neutral `MessagingEntity` guardrail maps onto, and how. */
@@ -473,34 +435,21 @@ const queueParameters = (
   return params;
 };
 
-type SqsQueueConfig = {
-  /** Defaults to the component id. The dead-letter queue is `<queueName>-dlq`. */
-  queueName?: string;
-  /** Default 60. */
-  visibilityTimeoutSeconds?: number;
-  /** Default 345600 (4 days). */
-  messageRetentionSeconds?: number;
-  /** Receives before a message moves to the dead-letter queue; default 5. */
-  maxReceiveCount?: number;
-  /** Default 1209600 (14 days). */
-  dlqRetentionSeconds?: number;
-  /** Deliver the published message as is, without the SNS envelope; default true. */
-  rawMessageDelivery?: boolean;
-  /**
-   * Deliver only messages whose `eventName` attribute is one of these. Empty or
-   * absent: every message of the topic.
-   */
-  filterEventNames?: readonly string[];
-  /** A raw SNS filter policy, in place of `filterEventNames`. */
-  filterPolicy?: Record<string, unknown> | string;
-};
-
-const INTEGER_BOUNDS: ReadonlyArray<[keyof SqsQueueConfig, number, number]> = [
-  ['visibilityTimeoutSeconds', 0, 43200],
-  ['messageRetentionSeconds', 60, 1209600],
-  ['maxReceiveCount', 1, 1000],
-  ['dlqRetentionSeconds', 60, 1209600],
-];
+type SqsQueueConfig = ContractConfig<
+  typeof Messaging_PaaS_AwsSqsQueue,
+  never,
+  {
+    /** Defaults to the component id. The dead-letter queue is `<queueName>-dlq`. */
+    queueName?: string;
+    /**
+     * Deliver only messages whose `eventName` attribute is one of these. Empty or
+     * absent: every message of the topic.
+     */
+    filterEventNames?: readonly string[];
+    /** A raw SNS filter policy, in place of `filterEventNames`. */
+    filterPolicy?: Record<string, unknown> | string;
+  }
+>;
 
 /**
  * A standard Amazon SQS queue with a dead-letter queue (`<queueName>-dlq`,
@@ -519,9 +468,16 @@ export const AwsSqsQueue = defineOffer<
   SqsQueueConfig
 >({
   satisfies: 'Messaging.MessagingEntity',
-  offerType: AWS_SQS_QUEUE_TYPE,
+  contract: Messaging_PaaS_AwsSqsQueue,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  neutral: {
+    deadLetterEnabled: unsupportedUnless(
+      v => v === true,
+      'the queue always has a dead-letter queue',
+    ),
+    partitionCount: unsupported('SQS has no partitions'),
+  },
   instantiate: (ctx, config) => {
     // dlqAlarm false is what the agent does anyway (it creates no alarm), so it
     // is dropped rather than sent; any other value is refused in validate.
@@ -556,84 +512,5 @@ export const AwsSqsQueue = defineOffer<
         links: ctx.links,
       },
     ];
-  },
-  validate: (self, all, config) => {
-    if (
-      config.queueName !== undefined &&
-      !SQS_QUEUE_NAME.test(config.queueName)
-    ) {
-      throw new Error(
-        `AwsSqsQueue '${self.id}': queueName '${config.queueName}' is not an SQS ` +
-          "queue name (1-76 letters, digits, hyphens and underscores, leaving room for '-dlq').",
-      );
-    }
-    if (
-      self.parameters['dlqAlarm'] !== undefined &&
-      self.parameters['dlqAlarm'] !== false
-    ) {
-      throw new Error(
-        `AwsSqsQueue '${self.id}': dlqAlarm was removed, the agent creates no CloudWatch alarm. ` +
-          'Alert on the dead-letter queue depth in Prometheus / Grafana instead.',
-      );
-    }
-    if (self.parameters['deadLetterEnabled'] === false) {
-      throw new Error(
-        `AwsSqsQueue '${self.id}': deadLetterEnabled false cannot be honored, every ` +
-          'AwsSqsQueue has a dead-letter queue.',
-      );
-    }
-    // Checked on what is emitted, so values mapped from neutral guardrails count too.
-    for (const [key, min, max] of INTEGER_BOUNDS) {
-      const value = self.parameters[key];
-      if (
-        value !== undefined &&
-        (!Number.isInteger(value) ||
-          (value as number) < min ||
-          (value as number) > max)
-      ) {
-        throw new Error(
-          `AwsSqsQueue '${self.id}': ${key} ${String(value)} is not a whole number from ${min} to ${max}.`,
-        );
-      }
-    }
-    const messagingDependencies = all.filter(
-      c => self.dependencies.includes(c.id) && c.type.startsWith('Messaging.'),
-    );
-    const foreign = messagingDependencies.find(
-      c => c.type !== AWS_SNS_TOPIC_TYPE,
-    );
-    if (foreign) {
-      throw new Error(
-        `AwsSqsQueue '${self.id}' can subscribe only to an AwsSnsTopic, but '${foreign.id}' ` +
-          `is a ${foreign.type}.`,
-      );
-    }
-    if (messagingDependencies.length > 1) {
-      throw new Error(
-        `AwsSqsQueue '${self.id}' subscribes to at most one AwsSnsTopic, but depends on ` +
-          `[${messagingDependencies.map(c => c.id).join(', ')}]. Give each subscription its own queue.`,
-      );
-    }
-    const names = config.filterEventNames ?? [];
-    if (names.length > 0 && config.filterPolicy !== undefined) {
-      throw new Error(
-        `AwsSqsQueue '${self.id}': set either filterEventNames or filterPolicy, not both.`,
-      );
-    }
-    const badName = names.find(n => n.trim() === '' || n.includes(','));
-    if (badName !== undefined) {
-      throw new Error(
-        `AwsSqsQueue '${self.id}': filterEventNames holds '${badName}', which is blank or holds a comma.`,
-      );
-    }
-    if (
-      (names.length > 0 || config.filterPolicy !== undefined) &&
-      messagingDependencies.length === 0
-    ) {
-      throw new Error(
-        `AwsSqsQueue '${self.id}': a filter filters a subscription, but '${self.id}' subscribes ` +
-          'to no topic. Subscribe it with withTopic(topic).',
-      );
-    }
   },
 });

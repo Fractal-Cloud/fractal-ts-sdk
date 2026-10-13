@@ -14,6 +14,8 @@ import {
   guardrail,
   addDependency,
 } from '../core';
+import type {LoadBalancerScheme} from './load_balancer_scheme';
+import type {VmSize} from './vm_size';
 
 // ── Shared value types ───────────────────────────────────────────────────────
 export type Rule = {
@@ -102,7 +104,12 @@ export type VirtualMachineNode<Id extends string = string> = ComponentNode<
   'NetworkAndCompute.VirtualMachine'
 > & {
   withOsType: (v: 'linux' | 'windows') => VirtualMachineNode<Id>;
-  withSize: (v: string) => VirtualMachineNode<Id>;
+  /**
+   * A neutral size (`small`, `medium`, `large`, `xlarge`; see `VmSize`), which
+   * each VM offer maps to its own machine type, or a vendor machine type name,
+   * which only that vendor's offer accepts.
+   */
+  withSize: (v: VmSize | (string & {})) => VirtualMachineNode<Id>;
   withTags: (v: Record<string, string>) => VirtualMachineNode<Id>;
   /**
    * OpenSSH public key material (e.g. `ssh-ed25519 AAAA...`) to authorize on the VM. Optional:
@@ -166,7 +173,13 @@ export type LoadBalancerNode<Id extends string = string> = ComponentNode<
   Id,
   'NetworkAndCompute.LoadBalancer'
 > & {
-  withScheme: (v: 'internal' | 'internet-facing') => LoadBalancerNode<Id>;
+  /**
+   * Whether the load balancer is reachable only from inside the network or from
+   * the internet. Each offer translates it for its agent (AWS / Azure
+   * `lbScheme` as given, GCP `lbScheme` `INTERNAL` / `EXTERNAL`). Unset, the
+   * agent's default applies.
+   */
+  withScheme: (v: LoadBalancerScheme) => LoadBalancerNode<Id>;
   dependsOn: (other: AnyNode) => LoadBalancerNode<Id>;
 };
 const loadBalancerNode = <Id extends string>(
@@ -176,10 +189,26 @@ const loadBalancerNode = <Id extends string>(
   withScheme: v => loadBalancerNode<Id>(guardrail(s, 'scheme', v)),
   dependsOn: other => loadBalancerNode<Id>(addDependency(s, other.state.id)),
 });
+/**
+ * A load balancer is placed only in the subnets it declares, so it takes at
+ * least one: `LoadBalancer({id: 'edge-lb', subnets: [publicSubnet]})`. The
+ * agents refuse a load balancer without a Subnet dependency, and there is no
+ * fallback placement.
+ */
 export const LoadBalancer = <const Id extends string>(cfg: {
   id: Id;
   displayName?: string;
-}): LoadBalancerNode<Id> =>
-  loadBalancerNode<Id>(
-    newNode(cfg.id, 'NetworkAndCompute.LoadBalancer', cfg.displayName),
+  subnets: readonly [SubnetNode, ...SubnetNode[]];
+}): LoadBalancerNode<Id> => {
+  if ((cfg.subnets?.length ?? 0) === 0) {
+    throw new Error(
+      `LoadBalancer '${cfg.id}' needs at least one subnet: it is placed only in the subnets it declares.`,
+    );
+  }
+  return loadBalancerNode<Id>(
+    cfg.subnets.reduce(
+      (state, subnet) => addDependency(state, subnet.state.id),
+      newNode(cfg.id, 'NetworkAndCompute.LoadBalancer', cfg.displayName),
+    ),
   );
+};

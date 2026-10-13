@@ -1,101 +1,24 @@
 /**
- * kubernetes_workload_contract.ts — the parameter names the caas-k8s agent
- * publishes for `CustomWorkloads.CaaS.KubernetesWorkload`.
+ * kubernetes_workload_contract.ts — a Workload's neutral parameters in the
+ * vocabulary of the caas-k8s agent's `CustomWorkloads.CaaS.KubernetesWorkload`
+ * contract.
  *
- * WHY THIS FILE EXISTS. Nothing in this repository can see an offer's parameter
- * contract. Offers declare a type id, a provider and a delivery model; the names
- * of the parameters the claiming agent actually reads live in that agent's
- * source and are published by the platform catalogue at runtime. A component
- * parameter whose name is not in the contract is pruned before the agent sees
- * it, so a setter that emits the wrong name fails SILENTLY — the value is
- * accepted by the API, stored on the component, and read by nobody. That is how
- * `withImage` shipped writing `image` against a contract that only declares
- * `containerImage`, and how two tier-3 samples failed with
- * `containerImage is required when manifestUri is not set` while both the
- * sample and the agent were correct.
- *
- * A test can only catch that class of defect by comparing the emitted key
- * against the contract. With no machine-readable contract to import, this is a
- * TRANSCRIPTION, and its value is entirely in being kept honest:
- *
- *   source: Fractal-Cloud/aria-agent-caas-k8s
- *   symbol: K8sWorkloadHandler.CatalogEntry().Config
- *   file:   internal/reconciler/handlers/k8s_workload.go
- *   read:   2026-09-10, extended 2026-10-03 with the Phase 5 workload contract
- *           (rollout, drain, disruption, autoscaling, probes, spread, secretEnv),
- *           and 2026-10-07 with ssmParameters / sesIdentityArns (caas-k8s #53)
- *
- * Transcribing a contract is strictly worse than importing one. The real fix is
- * for the catalogue to publish these contracts in a form the SDK can consume at
- * build time, so a rename on either side breaks a build instead of a sweep;
- * until then this file is the seam where the two sides are compared at all.
- *
- * NOTHING HERE DETECTS DRIFT. When the agent renames or adds a parameter, this
- * file silently becomes wrong and every test in this repository stays green —
- * the failure resurfaces as a sweep, which is exactly the loop this file was
- * added to shorten. Re-read the source above whenever a workload parameter
- * misbehaves, and treat a green suite as no evidence that the transcription is
- * current.
- *
- * Note also that the premise "no machine-readable contract exists" is only true
- * on the SDK side. `fractal-cloud-agents` already publishes `ParamSpec`
- * contracts guarded by `AzureParamContractDriftTest` / `GcpParamContractDriftTest`,
- * and the Go agents publish `CatalogEntry().Config`. Two machine-readable
- * sources exist; what is missing is publication in a form npm can consume. The
- * durable fix is that publication, not a better transcription.
- *
- * NOTE — the handler also reads `manifestUri`, which its own `CatalogEntry` does
- * NOT declare. That is an agent-side contract gap, not an SDK one; it is
- * recorded in `KUBERNETES_WORKLOAD_UNDECLARED_PARAMS` so this file stays a
- * faithful record of the agent rather than a tidied-up version of it.
+ * Every key this file writes is named through `KEY`, built from the contract
+ * the agent publishes (offers/generated/, see docs/offer-contracts.md), so a
+ * key the agent renames or drops is a compile error here. This file used to
+ * be a hand transcription of that contract, which drifted silently: `withImage`
+ * shipped `image` against a contract that only declares `containerImage`.
  */
 
 import {isSecretRef} from '../secret';
+import {contractKeys} from './contract/contract_keys';
+import {CustomWorkloads_CaaS_KubernetesWorkload} from './generated/custom_workloads';
 
-/** Parameter names declared by the agent's published contract. */
-export const KUBERNETES_WORKLOAD_CONTRACT_PARAMS = [
-  'namespace',
-  'containerImage',
-  'containerPort',
-  'cpu',
-  'memory',
-  'replicas',
-  'env',
-  'imagePullSecrets',
-  'resourceRequests',
-  'resourceLimits',
-  'helmChart',
-  'helmRepo',
-  'helmVersion',
-  'helmValues',
-  // Added for the Domain Service fractal (Phase 5 contract §4): rollout, drain,
-  // disruption, autoscaling, probes, spread, placement and secret env.
-  'autoscaling',
-  'podDisruptionBudget',
-  'maxSurge',
-  'maxUnavailable',
-  'terminationGracePeriodSeconds',
-  'preStopSleepSeconds',
-  'readinessProbe',
-  'livenessProbe',
-  'startupProbe',
-  'topologySpread',
-  'nodeSelector',
-  'secretEnv',
-  // AWS grants on the workload's Pod Identity role (caas-k8s v1.4.0).
-  'ssmParameters',
-  'sesIdentityArns',
-] as const;
-
-/**
- * Parameters the handler reads but its `CatalogEntry` does not declare. Read by
- * the agent, absent from the contract the platform prunes against — so whether
- * one survives the trip is a property of the platform, not of this SDK.
- */
-export const KUBERNETES_WORKLOAD_UNDECLARED_PARAMS = ['manifestUri'] as const;
+/** The workload contract's keys. */
+const KEY = contractKeys(CustomWorkloads_CaaS_KubernetesWorkload);
 
 /** The contract's name for a workload's container image. */
-export const KUBERNETES_WORKLOAD_IMAGE_PARAM = 'containerImage';
+export const KUBERNETES_WORKLOAD_IMAGE_PARAM = KEY.containerImage;
 
 /** The neutral `Workload` component's name for the same value. */
 export const NEUTRAL_IMAGE_PARAM = 'image';
@@ -240,98 +163,8 @@ const compact = (
 const asRecord = (v: unknown): Record<string, unknown> =>
   typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {};
 
-const isWhole = (v: unknown, min: number, max = Number.MAX_SAFE_INTEGER) =>
-  typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
-
 const refuse = (componentId: string, what: string): never => {
   throw new Error(`Kubernetes workload '${componentId}': ${what}.`);
-};
-
-const PROBES = ['readinessProbe', 'livenessProbe', 'startupProbe'] as const;
-
-// The agent's own patterns (caas-k8s internal/identity/resource_names.go).
-const SSM_SERVICE = /^[A-Za-z0-9_.-]+$/;
-const KMS_KEY_ARN = /^arn:aws[a-z-]*:kms:[a-z0-9-]+:[0-9]{12}:key\/[0-9a-f-]+$/;
-const SES_IDENTITY_ARN =
-  /^arn:aws[a-z-]*:ses:[a-z0-9-]+:[0-9]{12}:identity\/[^*?/]+$/;
-
-const isPlainObject = (v: unknown): v is Record<string, unknown> =>
-  typeof v === 'object' && v !== null && !Array.isArray(v);
-
-/** Refuse the AWS grant parameters the agent would refuse. */
-const ensureGrantsDeployable = (
-  params: Record<string, unknown>,
-  componentId: string,
-): void => {
-  const ssm = params['ssmParameters'];
-  if (ssm !== undefined) {
-    if (!isPlainObject(ssm)) {
-      refuse(
-        componentId,
-        'ssmParameters must be {service, access, kmsKeyArn?}',
-      );
-    }
-    const {service, access, kmsKeyArn} = ssm as Record<string, unknown>;
-    if (
-      typeof service !== 'string' ||
-      !SSM_SERVICE.test(service) ||
-      service === '.' ||
-      service === '..'
-    ) {
-      refuse(
-        componentId,
-        `ssmParameters.service '${String(service)}' is not one path segment of /fractal/<service>`,
-      );
-    }
-    if (access !== 'read' && access !== 'read-write') {
-      refuse(
-        componentId,
-        `ssmParameters.access '${String(access)}': expected read or read-write`,
-      );
-    }
-    if (
-      kmsKeyArn !== undefined &&
-      (typeof kmsKeyArn !== 'string' || !KMS_KEY_ARN.test(kmsKeyArn))
-    ) {
-      refuse(
-        componentId,
-        `ssmParameters.kmsKeyArn '${String(kmsKeyArn)}' is not one KMS key ARN (arn:aws:kms:<region>:<account>:key/<id>)`,
-      );
-    }
-  }
-  const ses = params['sesIdentityArns'];
-  if (ses !== undefined) {
-    if (!Array.isArray(ses)) {
-      refuse(
-        componentId,
-        'sesIdentityArns must be a list of SES identity ARNs',
-      );
-    }
-    for (const arn of ses as unknown[]) {
-      if (typeof arn !== 'string' || !SES_IDENTITY_ARN.test(arn)) {
-        refuse(
-          componentId,
-          `sesIdentityArns entry '${String(arn)}' is not one SES identity ARN (arn:aws:ses:<region>:<account>:identity/<domain or address>)`,
-        );
-      }
-    }
-  }
-};
-
-/**
- * A rolling-update pace as Kubernetes reads it: a whole count, or a whole
- * percentage up to 100%. Returns its size (0 for `0` and `0%`), or undefined
- * when it is neither.
- */
-const rolloutAmount = (v: unknown): number | undefined => {
-  if (isWhole(v, 0)) {
-    return v as number;
-  }
-  const match = typeof v === 'string' ? /^(\d{1,3})%$/.exec(v) : null;
-  if (match !== null && Number(match[1]) <= 100) {
-    return Number(match[1]);
-  }
-  return undefined;
 };
 
 /**
@@ -343,7 +176,7 @@ const moveSecretRefsToSecretEnv = (
   params: Record<string, unknown>,
   componentId: string,
 ): void => {
-  const env = params['env'];
+  const env = params[KEY.env];
   if (env === undefined || Array.isArray(env)) {
     return;
   }
@@ -351,7 +184,9 @@ const moveSecretRefsToSecretEnv = (
   if (refs.length === 0) {
     return;
   }
-  const secretEnv: Record<string, unknown> = {...asRecord(params['secretEnv'])};
+  const secretEnv: Record<string, unknown> = {
+    ...asRecord(params[KEY.secretEnv]),
+  };
   for (const [name] of refs) {
     if (name in secretEnv) {
       refuse(
@@ -360,130 +195,10 @@ const moveSecretRefsToSecretEnv = (
       );
     }
   }
-  params['env'] = Object.fromEntries(
+  params[KEY.env] = Object.fromEntries(
     Object.entries(asRecord(env)).filter(([, v]) => !isSecretRef(v)),
   );
-  params['secretEnv'] = {...secretEnv, ...Object.fromEntries(refs)};
-};
-
-/** Refuse what the agent could only reject mid-deployment, or would apply wrongly. */
-const ensureDeployable = (
-  params: Record<string, unknown>,
-  componentId: string,
-): void => {
-  const secretEnv = params['secretEnv'];
-  if (secretEnv !== undefined) {
-    for (const [name, value] of Object.entries(asRecord(secretEnv))) {
-      if (!isSecretRef(value)) {
-        // The value itself is never echoed: it is what must not be printed.
-        refuse(
-          componentId,
-          `secretEnv '${name}' on '${componentId}' is not an environment-secret ` +
-            "reference: pass secretRef('<shortName>'), never the secret itself",
-        );
-      }
-    }
-  }
-  if (params['autoscaling'] !== undefined) {
-    const a = asRecord(params['autoscaling']);
-    // replicas 0 scales to zero; an HPA's floor (minReplicas, defaulting to
-    // replicas) cannot be 0, so the agent refuses the pair.
-    if (params['replicas'] === 0 && a.minReplicas === undefined) {
-      refuse(
-        componentId,
-        'replicas 0 scales the workload to zero, which autoscaling cannot do ' +
-          '(its minReplicas is at least 1): remove autoscaling, or set replicas ' +
-          'or autoscaling minReplicas',
-      );
-    }
-    if (!isWhole(a.maxReplicas, 1)) {
-      refuse(componentId, 'autoscaling needs a maxReplicas of at least 1');
-    }
-    if (
-      a.minReplicas !== undefined &&
-      (!isWhole(a.minReplicas, 1) ||
-        (a.minReplicas as number) > (a.maxReplicas as number))
-    ) {
-      refuse(
-        componentId,
-        'autoscaling minReplicas must be from 1 to maxReplicas',
-      );
-    }
-    if (
-      a.targetCpuUtilization !== undefined &&
-      !isWhole(a.targetCpuUtilization, 1)
-    ) {
-      refuse(
-        componentId,
-        'autoscaling targetCpuUtilization must be a whole percentage of at least 1',
-      );
-    }
-  }
-  if (
-    params['podDisruptionBudget'] !== undefined &&
-    !isWhole(asRecord(params['podDisruptionBudget']).minAvailable, 0)
-  ) {
-    refuse(
-      componentId,
-      'podDisruptionBudget minAvailable must be a whole number of at least 0',
-    );
-  }
-  for (const key of ['terminationGracePeriodSeconds', 'preStopSleepSeconds']) {
-    if (params[key] !== undefined && !isWhole(params[key], 0)) {
-      refuse(componentId, `${key} must be a whole number of at least 0`);
-    }
-  }
-  for (const key of ['maxSurge', 'maxUnavailable']) {
-    if (params[key] !== undefined && rolloutAmount(params[key]) === undefined) {
-      refuse(
-        componentId,
-        `${key} must be a whole number of at least 0 or a percentage from 0% to 100%`,
-      );
-    }
-  }
-  if (
-    rolloutAmount(params['maxSurge']) === 0 &&
-    rolloutAmount(params['maxUnavailable']) === 0
-  ) {
-    refuse(
-      componentId,
-      'maxSurge and maxUnavailable cannot both be 0: the rollout could never progress',
-    );
-  }
-  const grace = params['terminationGracePeriodSeconds'];
-  const preStop = params['preStopSleepSeconds'];
-  if (
-    typeof grace === 'number' &&
-    typeof preStop === 'number' &&
-    preStop >= grace
-  ) {
-    refuse(
-      componentId,
-      `preStopSleepSeconds ${preStop} must be shorter than terminationGracePeriodSeconds ${grace}, or the stop signal never arrives`,
-    );
-  }
-  for (const key of PROBES) {
-    if (params[key] === undefined) {
-      continue;
-    }
-    const probe = asRecord(params[key]);
-    if (typeof probe.path !== 'string' || !probe.path.startsWith('/')) {
-      refuse(componentId, `${key} needs a path starting with '/'`);
-    }
-    if (probe.port !== undefined && !isWhole(probe.port, 1, 65535)) {
-      refuse(componentId, `${key} port must be from 1 to 65535`);
-    }
-    for (const n of [
-      'initialDelaySeconds',
-      'periodSeconds',
-      'timeoutSeconds',
-      'failureThreshold',
-    ]) {
-      if (probe[n] !== undefined && !isWhole(probe[n], 0)) {
-        refuse(componentId, `${key} ${n} must be a whole number of at least 0`);
-      }
-    }
-  }
+  params[KEY.secretEnv] = {...secretEnv, ...Object.fromEntries(refs)};
 };
 
 /**
@@ -526,7 +241,7 @@ export const toKubernetesWorkloadParameters = (
     componentId,
     locked,
     {port: neutral.port},
-    'containerPort',
+    KEY.containerPort,
     v => v.port,
   );
   adopt(
@@ -538,7 +253,7 @@ export const toKubernetesWorkloadParameters = (
       memoryRequest: neutral.memoryRequest,
       resources: resources.requests,
     },
-    'resourceRequests',
+    KEY.resourceRequests,
     v =>
       compact({
         cpu: v.cpuRequest,
@@ -551,7 +266,7 @@ export const toKubernetesWorkloadParameters = (
     componentId,
     locked,
     {resources: resources.limits},
-    'resourceLimits',
+    KEY.resourceLimits,
     v => compact({...asRecord(v.resources)}),
   );
   adopt(
@@ -559,11 +274,11 @@ export const toKubernetesWorkloadParameters = (
     componentId,
     locked,
     {maxReplicas: neutral.maxReplicas},
-    'autoscaling',
+    KEY.autoscaling,
     v => ({maxReplicas: v.maxReplicas}),
   );
   // The agent reads the older `healthCheck` as both readiness and liveness.
-  for (const probe of ['readinessProbe', 'livenessProbe']) {
+  for (const probe of [KEY.readinessProbe, KEY.livenessProbe]) {
     adopt(
       params,
       componentId,
@@ -574,7 +289,5 @@ export const toKubernetesWorkloadParameters = (
     );
   }
   moveSecretRefsToSecretEnv(params, componentId);
-  ensureDeployable(params, componentId);
-  ensureGrantsDeployable(params, componentId);
   return params;
 };

@@ -22,17 +22,22 @@ import {Workload} from './components/custom_workloads';
 const environment = {};
 const boundedContextId = {id: 'security-templates'};
 
-function authorFractal() {
+// Ocelot reads none of the mesh guardrails (mTLS, authentication mode, tags),
+// so the Live Systems below that select it use a mesh without them.
+function authorFractal(meshGuardrails = true) {
+  const mesh = ServiceMesh({id: 'app-mesh'});
   return createFractal({
     id: 'standard-security',
     version: {major: 1, minor: 0, patch: 0},
     boundedContextId,
     blueprint: bp => {
-      const mesh = bp.add(
-        ServiceMesh({id: 'app-mesh'})
-          .withMtlsMode('strict')
-          .withAuthenticationMode('jwt')
-          .withTags({team: 'platform'}),
+      const meshNode = bp.add(
+        meshGuardrails
+          ? mesh
+              .withMtlsMode('strict')
+              .withAuthenticationMode('jwt')
+              .withTags({team: 'platform'})
+          : mesh,
       );
       const idp = bp.add(
         IdentityProvider({id: 'app-idp'})
@@ -40,7 +45,7 @@ function authorFractal() {
           .withMfaConfiguration('ON')
           .withSessionDuration(3600),
       );
-      return {mesh, idp};
+      return {mesh: meshNode, idp};
     },
     operations: s => ({
       // dev-open neutral param: userDirectoryName is NOT a locked guardrail.
@@ -50,6 +55,21 @@ function authorFractal() {
 }
 
 describe('Security domain', () => {
+  it('Ocelot refuses the mesh guardrails its agent cannot apply', () => {
+    expect(() =>
+      authorFractal().toLiveSystem({
+        name: 'acme',
+        environment,
+        select: {
+          'app-mesh': Ocelot({host: 'auth.example.com'}),
+          'app-idp': Cognito({}),
+        },
+      }),
+    ).toThrow(
+      "Offer Security.CaaS.Ocelot cannot honor the parameter 'authenticationMode' of 'app-mesh'",
+    );
+  });
+
   it('blueprint records guardrails (tags array) and locks them', () => {
     const mesh = authorFractal().blueprint.components.find(
       c => c.id === 'app-mesh',
@@ -77,7 +97,7 @@ describe('Security domain', () => {
   });
 
   it('LiveSystem: vendor-neutral mesh offer carries no provider; cloud IdP does', () => {
-    const ls = authorFractal()
+    const ls = authorFractal(false)
       .specialize()
       .withUserDirectory('acme')
       .toLiveSystem({
@@ -94,14 +114,14 @@ describe('Security domain', () => {
     expect(byId['app-mesh'].provider).toBeUndefined();
     expect(byId['app-idp'].type).toBe('Security.PaaS.AwsCognito');
     expect(byId['app-idp'].provider).toBe('AWS');
-    // guardrail flowed into the live component
-    expect(byId['app-mesh'].parameters.mtlsMode).toBe('strict');
+    // the IdP guardrails reach Cognito under its own keys
+    expect(byId['app-idp'].parameters.mfaConfiguration).toBe('ON');
     // dev-open op value flowed in
     expect(byId['app-idp'].parameters.userDirectoryName).toBe('acme');
   });
 
   it('future-proof: swapping the IdP offer needs no fractal change', () => {
-    const ls = authorFractal()
+    const ls = authorFractal(false)
       .specialize()
       .withUserDirectory('acme')
       .toLiveSystem({
@@ -133,7 +153,7 @@ describe('Security domain', () => {
   });
 
   it('Azure Entra External ID satisfies the same IdP blueprint (no fractal change)', () => {
-    const ls = authorFractal()
+    const ls = authorFractal(false)
       .specialize()
       .withUserDirectory('acme')
       .toLiveSystem({

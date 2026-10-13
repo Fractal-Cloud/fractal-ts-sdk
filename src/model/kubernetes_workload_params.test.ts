@@ -18,7 +18,7 @@ import type {WorkloadNode} from './components/custom_workloads';
 import {ContainerPlatform} from './components/network_and_compute';
 import {K8sWorkload} from './offers/custom_workloads';
 import {Eks} from './offers/network_and_compute';
-import {KUBERNETES_WORKLOAD_CONTRACT_PARAMS} from './offers/kubernetes_workload_contract';
+import {CustomWorkloads_CaaS_KubernetesWorkload} from './offers/generated/custom_workloads';
 import {secretRef} from './secret';
 
 const environment = {};
@@ -96,9 +96,11 @@ describe('Workload parameters on a Kubernetes workload', () => {
     });
   });
 
-  it('emits nothing the transcribed caas-k8s contract does not declare', () => {
+  it('emits nothing the published caas-k8s contract does not declare', () => {
     const web = emit(everySetter);
-    const declared = new Set<string>(KUBERNETES_WORKLOAD_CONTRACT_PARAMS);
+    const declared = new Set<string>(
+      Object.keys(CustomWorkloads_CaaS_KubernetesWorkload.params),
+    );
     expect(Object.keys(web.parameters).filter(k => !declared.has(k))).toEqual(
       [],
     );
@@ -177,12 +179,6 @@ describe('Workload parameters on a Kubernetes workload', () => {
     });
   });
 
-  it('refuses a raw value in secretEnv: only environment-secret references travel', () => {
-    expect(() => emit(w => w, {secretEnv: {DB_PASSWORD: 'hunter2'}})).toThrow(
-      /secretEnv 'DB_PASSWORD' on 'web' is not an environment-secret reference/,
-    );
-  });
-
   it('never echoes the raw secret value in the refusal', () => {
     try {
       emit(w => w, {secretEnv: {DB_PASSWORD: 'hunter2'}});
@@ -206,55 +202,21 @@ describe('Workload parameters on a Kubernetes workload', () => {
 
   it('refuses a name both in env (as a reference) and in secretEnv', () => {
     expect(() =>
-      emit(w => w, {env: {TOKEN: secretRef('t')}, secretEnv: {TOKEN: secretRef('u')}}),
+      emit(w => w, {
+        env: {TOKEN: secretRef('t')},
+        secretEnv: {TOKEN: secretRef('u')},
+      }),
     ).toThrow(/'TOKEN' on 'web' is in both env and secretEnv/);
   });
 
-  it.each([
-    [
-      'minReplicas above maxReplicas',
-      {autoscaling: {minReplicas: 5, maxReplicas: 2}},
-      /autoscaling/,
-    ],
-    [
-      'a CPU target of 0',
-      {autoscaling: {maxReplicas: 2, targetCpuUtilization: 0}},
-      /targetCpuUtilization/,
-    ],
-    [
-      'a negative grace period',
-      {terminationGracePeriodSeconds: -1},
-      /terminationGracePeriodSeconds/,
-    ],
-    [
-      'a preStop sleep not shorter than the grace period',
-      {terminationGracePeriodSeconds: 10, preStopSleepSeconds: 10},
-      /preStopSleepSeconds/,
-    ],
-    [
-      'a probe path without a leading slash',
-      {readinessProbe: {path: 'health'}},
-      /readinessProbe/,
-    ],
-    [
-      'maxSurge and maxUnavailable both 0',
-      {maxSurge: 0, maxUnavailable: 0},
-      /maxSurge/,
-    ],
-    [
-      'maxSurge and maxUnavailable both zero, one as a percentage',
-      {maxSurge: '0%', maxUnavailable: 0},
-      /maxSurge/,
-    ],
-    ['a rollout pace that is neither a count nor a percentage', {maxSurge: 'lots'}, /maxSurge/],
-    ['a percentage above 100', {maxUnavailable: '150%'}, /maxUnavailable/],
-  ])('refuses %s', (_why, set, reason) => {
-    expect(() => emit(w => w, set)).toThrow(reason);
-  });
-
   it('accepts the rollout pace as a percentage', () => {
-    const web = emit(w => w.withRollout({maxSurge: '25%', maxUnavailable: '0%'}));
-    expect(web.parameters).toMatchObject({maxSurge: '25%', maxUnavailable: '0%'});
+    const web = emit(w =>
+      w.withRollout({maxSurge: '25%', maxUnavailable: '0%'}),
+    );
+    expect(web.parameters).toMatchObject({
+      maxSurge: '25%',
+      maxUnavailable: '0%',
+    });
   });
 
   it('applies the same translation to a Workload added under a ContainerPlatform', () => {
@@ -296,53 +258,47 @@ describe('Workload parameters on a Kubernetes workload', () => {
     });
   });
 
-  it.each([
-    ['withAutoscaling', (w: WorkloadNode<'web'>) => w.withAutoscaling({maxReplicas: 5})],
-    ['withMaxReplicas', (w: WorkloadNode<'web'>) => w.withMaxReplicas(5)],
-  ])(
-    'refuses replicas 0 with autoscaling from %s and no minReplicas: an HPA cannot scale to zero',
-    (_name, author) => {
-      expect(() => emit(w => author(w.withReplicas(0)))).toThrow(
-        /replicas 0.*autoscaling/,
-      );
-    },
-  );
-
-  const sesIdentity = 'arn:aws:ses:eu-central-1:111122223333:identity/fractal.cloud';
+  const sesIdentity =
+    'arn:aws:ses:eu-central-1:111122223333:identity/fractal.cloud';
   const kmsKey =
     'arn:aws:kms:eu-central-1:111122223333:key/0123abcd-4567-89ef-0123-456789abcdef';
 
   it('emits ssmParameters and sesIdentityArns from the offer under the names the agent reads', () => {
-    const web = emit(w => w, {}, {
-      ssmParameters: {service: 'accounts', access: 'read-write', kmsKeyArn: kmsKey},
-      sesIdentityArns: [sesIdentity],
-    });
+    const web = emit(
+      w => w,
+      {},
+      {
+        ssmParameters: {
+          service: 'accounts',
+          access: 'read-write',
+          kmsKeyArn: kmsKey,
+        },
+        sesIdentityArns: [sesIdentity],
+      },
+    );
     expect(web.parameters).toMatchObject({
-      ssmParameters: {service: 'accounts', access: 'read-write', kmsKeyArn: kmsKey},
+      ssmParameters: {
+        service: 'accounts',
+        access: 'read-write',
+        kmsKeyArn: kmsKey,
+      },
       sesIdentityArns: [sesIdentity],
     });
-    const declared = new Set<string>(KUBERNETES_WORKLOAD_CONTRACT_PARAMS);
+    const declared = new Set<string>(
+      Object.keys(CustomWorkloads_CaaS_KubernetesWorkload.params),
+    );
     expect(Object.keys(web.parameters).filter(k => !declared.has(k))).toEqual(
       [],
     );
   });
 
   it('accepts ssmParameters without a kmsKeyArn (the AWS-managed aws/ssm key)', () => {
-    const web = emit(w => w, {ssmParameters: {service: 'accounts', access: 'read'}});
-    expect(web.parameters.ssmParameters).toEqual({service: 'accounts', access: 'read'});
-  });
-
-  it.each([
-    ['an ssmParameters service that is not one path segment', {ssmParameters: {service: 'a/b', access: 'read'}}, /ssmParameters.service/],
-    ['an ssmParameters service of ..', {ssmParameters: {service: '..', access: 'read'}}, /ssmParameters.service/],
-    ['an ssmParameters without a service', {ssmParameters: {access: 'read'}}, /ssmParameters.service/],
-    ['an ssmParameters access besides read and read-write', {ssmParameters: {service: 'accounts', access: 'write'}}, /ssmParameters.access/],
-    ['an ssmParameters kmsKeyArn that is an alias', {ssmParameters: {service: 'accounts', access: 'read', kmsKeyArn: 'arn:aws:kms:eu-central-1:111122223333:alias/aws/ssm'}}, /ssmParameters.kmsKeyArn/],
-    ['an ssmParameters that is not an object', {ssmParameters: 'accounts'}, /ssmParameters/],
-    ['a sesIdentityArns that is not a list', {sesIdentityArns: sesIdentity}, /sesIdentityArns/],
-    ['a wildcard SES identity', {sesIdentityArns: ['arn:aws:ses:eu-central-1:111122223333:identity/*']}, /sesIdentityArns/],
-    ['a SES ARN that is not an identity', {sesIdentityArns: ['arn:aws:ses:eu-central-1:111122223333:configuration-set/x']}, /sesIdentityArns/],
-  ])('refuses %s', (_why, set, reason) => {
-    expect(() => emit(w => w, set)).toThrow(reason);
+    const web = emit(w => w, {
+      ssmParameters: {service: 'accounts', access: 'read'},
+    });
+    expect(web.parameters.ssmParameters).toEqual({
+      service: 'accounts',
+      access: 'read',
+    });
   });
 });

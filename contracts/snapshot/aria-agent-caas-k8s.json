@@ -1,0 +1,884 @@
+{
+  "agentId": "aria-agent-caas-k8s",
+  "agentVersion": "v1.4.0",
+  "offers": [
+    {
+      "offerType": "APIManagement.CaaS.Ambassador",
+      "params": [
+        {
+          "default": "8.9.1",
+          "key": "chartVersion",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "key": "host",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "key": "namespace",
+          "required": false,
+          "type": "string"
+        }
+      ],
+      "provider": "CaaS",
+      "serviceTypes": [
+        "APIManagement.CaaS.Ambassador"
+      ]
+    },
+    {
+      "offerType": "APIManagement.CaaS.TraefikGateway",
+      "params": [
+        {
+          "default": "39.0.9",
+          "description": "traefik chart version (39.0.9 is Traefik v3.6.15)",
+          "key": "chartVersion",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": 75,
+          "description": "Idle timeout of the web entrypoint; must exceed the CloudFront keep-alive",
+          "key": "entryPointIdleTimeoutSeconds",
+          "required": false,
+          "type": "integer"
+        },
+        {
+          "description": "When set, a global ForwardAuth middleware to this URL authenticates every route",
+          "key": "forwardAuthAddress",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "description": "Comma-separated workloads whose own routes skip ForwardAuth (the auth server itself): a component id of this Live System, or <liveSystemId>/<componentId>. None by default. A path never exempts a route",
+          "key": "forwardAuthExemptComponentIds",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": true,
+          "key": "forwardAuthForwardBody",
+          "required": false,
+          "type": "boolean"
+        },
+        {
+          "default": 1048576,
+          "key": "forwardAuthMaxBodySize",
+          "required": false,
+          "type": "integer"
+        },
+        {
+          "default": "authorization,cookie,x-clientid,x-clientsecret,origin",
+          "key": "forwardAuthRequestHeaders",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "x-jwt",
+          "key": "forwardAuthResponseHeaders",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "Default host of every route, e.g. api.fractal.cloud",
+          "key": "host",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": true,
+          "description": "EKS: internal NLB (true) or internet-facing (false)",
+          "key": "internalLoadBalancer",
+          "required": false,
+          "type": "boolean"
+        },
+        {
+          "description": "Comma-separated CIDRs allowed to reach the load balancer (spec.loadBalancerSourceRanges)",
+          "key": "loadBalancerSourceRanges",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "traefik",
+          "key": "namespace",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "Expose web (80) and serve the routes on it. Default true without TLS (unchanged gateways), false with TLS",
+          "key": "plainHttp",
+          "required": false,
+          "type": "boolean"
+        },
+        {
+          "default": 2,
+          "key": "replicas",
+          "required": false,
+          "type": "integer"
+        },
+        {
+          "description": "EKS: ACM certificate for an NLB TLS listener on 443 forwarding to the web entrypoint. Not for a gateway behind CloudFront: an NLB with a TLS listener cannot be a CloudFront VPC origin. Excludes tlsSecretName / tlsClusterIssuer",
+          "key": "tlsCertificateArn",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "Traefik TLS: cert-manager ClusterIssuer (e.g. the Security.CaaS.CertManager offer's clusterIssuerName) the gateway requests its own Certificate for tlsHosts from",
+          "key": "tlsClusterIssuer",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "Comma-separated hosts the certificate covers (exact or *.one-label wildcards); default host. Must cover every viewer host CloudFront forwards: every route host is checked against it",
+          "key": "tlsHosts",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "Traefik TLS: kubernetes.io/tls Secret in the gateway namespace served on websecure (TCP 443 through the NLB). Default traefik-tls when tlsClusterIssuer is set; unset with no issuer = no TLS",
+          "key": "tlsSecretName",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "Chart values deep-merged over the agent's, for operators",
+          "key": "values",
+          "required": false,
+          "type": "object"
+        }
+      ],
+      "provider": "CaaS",
+      "serviceTypes": [
+        "APIManagement.CaaS.Traefik"
+      ]
+    },
+    {
+      "offerType": "BigData.CaaS.SparkCluster",
+      "params": [
+        {
+          "default": "1",
+          "key": "driverCores",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "1g",
+          "key": "driverMemory",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "1",
+          "key": "executorCores",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": 2,
+          "key": "executorInstances",
+          "required": false,
+          "type": "integer"
+        },
+        {
+          "default": "1g",
+          "key": "executorMemory",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "apache/spark:3.5.0",
+          "key": "image",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "key": "namespace",
+          "required": false,
+          "type": "string"
+        }
+      ],
+      "provider": "CaaS",
+      "serviceTypes": [
+        "BigData.CaaS.SparkCluster"
+      ]
+    },
+    {
+      "offerType": "BigData.CaaS.SparkJob",
+      "params": [
+        {
+          "default": "apache/spark:3.5.0",
+          "key": "image",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "jarUri",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "mainClass",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "key": "namespace",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "schedule",
+          "required": false,
+          "type": "string"
+        }
+      ],
+      "provider": "CaaS",
+      "serviceTypes": [
+        "BigData.CaaS.SparkJob"
+      ]
+    },
+    {
+      "offerType": "BigData.CaaS.SparkMlExperiment",
+      "params": [
+        {
+          "key": "artifactRoot",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "mlflow",
+          "key": "namespace",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "key": "trackingUri",
+          "required": false,
+          "type": "string"
+        }
+      ],
+      "provider": "CaaS",
+      "serviceTypes": [
+        "BigData.CaaS.MLflow"
+      ]
+    },
+    {
+      "offerType": "BigData.CaaS.SparkOperator",
+      "params": [
+        {
+          "default": "spark-operator",
+          "key": "namespace",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": true,
+          "key": "webhookEnabled",
+          "required": false,
+          "type": "boolean"
+        }
+      ],
+      "provider": "CaaS",
+      "serviceTypes": [
+        "BigData.CaaS.SparkOperator"
+      ]
+    },
+    {
+      "offerType": "BigData.CaaS.SparkUnityCatalog",
+      "params": [],
+      "provider": "CaaS",
+      "serviceTypes": [
+        "BigData.CaaS.UnityCatalog"
+      ]
+    },
+    {
+      "offerType": "CustomWorkloads.CaaS.KubernetesWorkload",
+      "params": [
+        {
+          "description": "{minReplicas, maxReplicas, targetCpuUtilization}: an HPA when maxReplicas > 0",
+          "key": "autoscaling",
+          "required": false,
+          "type": "object"
+        },
+        {
+          "default": "public.ecr.aws/docker/library/nginx:alpine",
+          "key": "containerImage",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": 80,
+          "key": "containerPort",
+          "required": false,
+          "type": "integer"
+        },
+        {
+          "default": "100m",
+          "key": "cpu",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "alias of resourceLimits.cpu",
+          "key": "cpuLimit",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "alias of resourceRequests.cpu",
+          "key": "cpuRequest",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "[{name, access}]: environment DNS zones the workload may read or write programmatically, with its own cloud identity, which the zone's agent grants access to",
+          "key": "dnsZones",
+          "required": false,
+          "type": "array"
+        },
+        {
+          "default": {},
+          "key": "env",
+          "required": false,
+          "type": "object"
+        },
+        {
+          "description": "alias: {path, port} for readiness and liveness",
+          "key": "healthCheck",
+          "required": false,
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "helmChart",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "helmRepo",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": {},
+          "key": "helmValues",
+          "required": false,
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "helmVersion",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "imagePullSecrets",
+          "required": false,
+          "type": "array"
+        },
+        {
+          "description": "{path, port, initialDelaySeconds, periodSeconds, timeoutSeconds, failureThreshold}",
+          "key": "livenessProbe",
+          "required": false,
+          "type": "object"
+        },
+        {
+          "key": "manifestUri",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "alias of autoscaling.maxReplicas",
+          "key": "maxReplicas",
+          "required": false,
+          "type": "integer"
+        },
+        {
+          "default": "1",
+          "key": "maxSurge",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "0",
+          "key": "maxUnavailable",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "128Mi",
+          "key": "memory",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "alias of resourceLimits.memory",
+          "key": "memoryLimit",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "alias of resourceRequests.memory",
+          "key": "memoryRequest",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "default",
+          "key": "namespace",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "key": "nodeSelector",
+          "required": false,
+          "type": "object"
+        },
+        {
+          "description": "{minAvailable}; default minAvailable 1 when more than one replica, 0 disables",
+          "key": "podDisruptionBudget",
+          "required": false,
+          "type": "object"
+        },
+        {
+          "default": 0,
+          "key": "preStopSleepSeconds",
+          "required": false,
+          "type": "integer"
+        },
+        {
+          "description": "{path, port, initialDelaySeconds, periodSeconds, timeoutSeconds, failureThreshold}",
+          "key": "readinessProbe",
+          "required": false,
+          "type": "object"
+        },
+        {
+          "default": 1,
+          "key": "replicas",
+          "required": false,
+          "type": "integer"
+        },
+        {
+          "default": {
+            "cpu": "500m",
+            "memory": "512Mi"
+          },
+          "key": "resourceLimits",
+          "required": false,
+          "type": "object"
+        },
+        {
+          "default": {
+            "cpu": "100m",
+            "memory": "128Mi"
+          },
+          "key": "resourceRequests",
+          "required": false,
+          "type": "object"
+        },
+        {
+          "description": "NAME -> {\"$envSecret\": \"<shortName>\"}",
+          "key": "secretEnv",
+          "required": false,
+          "type": "object"
+        },
+        {
+          "description": "SES identity ARNs (domains or addresses) the workload's role may send email as",
+          "key": "sesIdentityArns",
+          "required": false,
+          "type": "array"
+        },
+        {
+          "description": "{service, access: read | read-write, kmsKeyArn?}: the workload's role reads (and writes) Parameter Store under /fractal/<service>/; kmsKeyArn is the customer-managed key of its SecureStrings (none for the AWS-managed aws/ssm key)",
+          "key": "ssmParameters",
+          "required": false,
+          "type": "object"
+        },
+        {
+          "description": "{path, port, initialDelaySeconds, periodSeconds, timeoutSeconds, failureThreshold}",
+          "key": "startupProbe",
+          "required": false,
+          "type": "object"
+        },
+        {
+          "default": 30,
+          "key": "terminationGracePeriodSeconds",
+          "required": false,
+          "type": "integer"
+        },
+        {
+          "description": "zone spread; default on when more than one replica",
+          "key": "topologySpread",
+          "required": false,
+          "type": "boolean"
+        }
+      ],
+      "provider": "CaaS",
+      "serviceTypes": [
+        "NetworkAndCompute.CaaS.KubernetesWorkload"
+      ]
+    },
+    {
+      "offerType": "Messaging.CaaS.Kafka",
+      "params": [
+        {
+          "key": "clusterName",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "kafka",
+          "key": "namespace",
+          "required": false,
+          "type": "string"
+        }
+      ],
+      "provider": "CaaS",
+      "serviceTypes": [
+        "Messaging.CaaS.Kafka"
+      ]
+    },
+    {
+      "offerType": "Messaging.CaaS.KafkaTopic",
+      "params": [
+        {
+          "default": "kafka",
+          "key": "namespace",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": 1,
+          "key": "partitions",
+          "required": false,
+          "type": "integer"
+        },
+        {
+          "default": 1,
+          "key": "replicas",
+          "required": false,
+          "type": "integer"
+        }
+      ],
+      "provider": "CaaS",
+      "serviceTypes": [
+        "Messaging.CaaS.StreamProcessingEntity"
+      ]
+    },
+    {
+      "offerType": "Observability.CaaS.GrafanaAlloy",
+      "params": [
+        {
+          "description": "Loki push URL; unset = the pushUrl of the Observability.CaaS.GrafanaLoki component this one depends on",
+          "key": "lokiPushUrl",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "monitoring",
+          "key": "namespace",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "Chart values deep-merged over the agent's, for operators",
+          "key": "values",
+          "required": false,
+          "type": "object"
+        }
+      ],
+      "provider": "CaaS",
+      "serviceTypes": [
+        "Observability.CaaS.Alloy"
+      ]
+    },
+    {
+      "offerType": "Observability.CaaS.GrafanaLoki",
+      "params": [
+        {
+          "default": "monitoring",
+          "key": "namespace",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": 14,
+          "description": "Days logs are kept; the bucket's lifecycle should match",
+          "key": "retentionDays",
+          "required": false,
+          "type": "integer"
+        },
+        {
+          "description": "StorageClass of a volume for Loki's write-ahead log; unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else ephemeral",
+          "key": "storageClassName",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "Chart values deep-merged over the agent's, for operators",
+          "key": "values",
+          "required": false,
+          "type": "object"
+        }
+      ],
+      "provider": "CaaS",
+      "serviceTypes": [
+        "Observability.CaaS.Loki"
+      ]
+    },
+    {
+      "offerType": "Observability.CaaS.GrafanaTempo",
+      "params": [
+        {
+          "default": "monitoring",
+          "key": "namespace",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": 7,
+          "description": "Days traces are kept; the bucket's lifecycle should match",
+          "key": "retentionDays",
+          "required": false,
+          "type": "integer"
+        },
+        {
+          "description": "StorageClass of a volume for Tempo's write-ahead log; unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else ephemeral",
+          "key": "storageClassName",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "Chart values deep-merged over the agent's, for operators",
+          "key": "values",
+          "required": false,
+          "type": "object"
+        }
+      ],
+      "provider": "CaaS",
+      "serviceTypes": [
+        "Observability.CaaS.Tempo"
+      ]
+    },
+    {
+      "offerType": "Observability.CaaS.KubePrometheusStack",
+      "params": [
+        {
+          "description": "Ops-supplied PrometheusRule specs by name (chart additionalPrometheusRulesMap); none by default",
+          "key": "alertRules",
+          "required": false,
+          "type": "object"
+        },
+        {
+          "description": "Ops-supplied Alertmanager configuration (route, receivers, webhooks); the chart's default otherwise",
+          "key": "alertmanagerConfig",
+          "required": false,
+          "type": "object"
+        },
+        {
+          "description": "Grafana's Loki datasource; unset = the GrafanaLoki service in this namespace, none = no datasource",
+          "key": "lokiUrl",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "monitoring",
+          "key": "namespace",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": 50,
+          "description": "Size of Prometheus' volume, with storageClassName",
+          "key": "prometheusStorageGi",
+          "required": false,
+          "type": "integer"
+        },
+        {
+          "default": 15,
+          "description": "Days Prometheus keeps metrics",
+          "key": "retentionDays",
+          "required": false,
+          "type": "integer"
+        },
+        {
+          "description": "StorageClass of Prometheus' volume; unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else ephemeral",
+          "key": "storageClassName",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "Grafana's Tempo datasource; unset = the GrafanaTempo service in this namespace, none = no datasource",
+          "key": "tempoUrl",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "Chart values deep-merged over the agent's, for operators",
+          "key": "values",
+          "required": false,
+          "type": "object"
+        }
+      ],
+      "provider": "CaaS",
+      "serviceTypes": [
+        "Observability.CaaS.Prometheus"
+      ]
+    },
+    {
+      "offerType": "Observability.CaaS.SqsExporter",
+      "params": [
+        {
+          "description": "Exporter image with the exporter as its entrypoint; unset = on AWS the agent image in the management ECR pinned by digest, elsewhere this agent's own multi-arch release image",
+          "key": "image",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "Comma-separated Secrets in the namespace to pull the image with; the agent's own image is private",
+          "key": "imagePullSecrets",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": 30,
+          "key": "monitorIntervalSeconds",
+          "required": false,
+          "type": "integer"
+        },
+        {
+          "default": "monitoring",
+          "key": "namespace",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "Pod nodeSelector; none by default",
+          "key": "nodeSelector",
+          "required": false,
+          "type": "object"
+        },
+        {
+          "description": "Comma-separated queue URLs watched besides the linked Messaging.PaaS.AwsSqsQueue components",
+          "key": "queueUrls",
+          "required": false,
+          "type": "string"
+        }
+      ],
+      "provider": "CaaS",
+      "serviceTypes": [
+        "Observability.CaaS.PrometheusExporter"
+      ]
+    },
+    {
+      "offerType": "Security.CaaS.CertManager",
+      "params": [
+        {
+          "default": "production",
+          "description": "production, staging, or an https ACME directory URL",
+          "key": "acmeServer",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "letsencrypt",
+          "description": "Name of the ClusterIssuer, for a TraefikGateway's tlsClusterIssuer",
+          "key": "clusterIssuerName",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "ACME account email",
+          "key": "email",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "Route 53 hosted zone id the DNS-01 challenges are written to",
+          "key": "hostedZoneId",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "cert-manager",
+          "key": "namespace",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "ARN of the zone role cert-manager assumes (usually in the zone's account); its own Pod Identity role may do nothing else",
+          "key": "role",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "provider": "CaaS",
+      "serviceTypes": [
+        "Security.CaaS.CertManager"
+      ]
+    },
+    {
+      "offerType": "Storage.CaaS.MinioTenant",
+      "params": [
+        {
+          "key": "bucketName",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "minio",
+          "key": "namespace",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "requestAutoCert",
+          "required": false,
+          "type": "boolean"
+        },
+        {
+          "default": 4,
+          "key": "servers",
+          "required": false,
+          "type": "integer"
+        },
+        {
+          "key": "storageClass",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "key": "tenantName",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "10Gi",
+          "key": "volumeSize",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": 4,
+          "key": "volumesPerServer",
+          "required": false,
+          "type": "integer"
+        }
+      ],
+      "provider": "CaaS",
+      "serviceTypes": [
+        "Storage.CaaS.MinIO",
+        "BigData.CaaS.MinIO"
+      ]
+    }
+  ],
+  "schemaVersion": "1.0"
+}

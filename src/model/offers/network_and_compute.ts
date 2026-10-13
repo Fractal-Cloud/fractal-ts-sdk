@@ -11,12 +11,52 @@
  * Cluster-scoped offers (CaaS, self-hosted, vSphere/OpenShift) take their region
  * from the underlying cluster and therefore do NOT expose it.
  */
-import {defineOffer} from '../core';
 import {
-  AZURE_CONTAINER_APPS_ENVIRONMENT_OFFER_TYPE,
-  KUBERNETES_WORKLOAD_OFFER_TYPE,
-} from './offer_type_ids';
+  awsInstanceType,
+  azureVmSize,
+  gcpMachineType,
+  ociShape,
+} from './vm_sizes';
+import {toContractKey, unsupported} from './neutral_rules';
+import {
+  NetworkAndCompute_IaaS_AwsEc2Instance,
+  NetworkAndCompute_IaaS_AwsLb,
+  NetworkAndCompute_IaaS_AwsSecurityGroup,
+  NetworkAndCompute_IaaS_AwsSubnet,
+  NetworkAndCompute_IaaS_AwsVpc,
+  NetworkAndCompute_IaaS_AzureLb,
+  NetworkAndCompute_IaaS_AzureNsg,
+  NetworkAndCompute_IaaS_AzureSubnet,
+  NetworkAndCompute_IaaS_AzureVm,
+  NetworkAndCompute_IaaS_AzureVnet,
+  NetworkAndCompute_IaaS_GcpFirewall,
+  NetworkAndCompute_IaaS_GcpGlb,
+  NetworkAndCompute_IaaS_GcpSubnet,
+  NetworkAndCompute_IaaS_GcpVm,
+  NetworkAndCompute_IaaS_GcpVpc,
+  NetworkAndCompute_IaaS_OciInstance,
+  NetworkAndCompute_IaaS_OciSecurityList,
+  NetworkAndCompute_IaaS_OciSubnet,
+  NetworkAndCompute_IaaS_OciVcn,
+  NetworkAndCompute_PaaS_AwsEks,
+  NetworkAndCompute_PaaS_AzureAks,
+  NetworkAndCompute_PaaS_AzureContainerAppsEnvironment,
+  NetworkAndCompute_PaaS_GcpGke,
+  NetworkAndCompute_PaaS_ECS,
+} from './generated/network_and_compute';
+import type {ContractConfig} from './contract/contract_config';
+import {contractKey} from './contract/contract_key';
+import {defineOffer} from '../core';
+import {KUBERNETES_WORKLOAD_OFFER_TYPE} from './offer_type_ids';
 import {toKubernetesWorkloadParameters} from './kubernetes_workload_contract';
+import {toLbScheme} from './load_balancer_scheme_parameters';
+import {
+  composeVendorParameters,
+  dropParameter,
+  instantiateWithVendorParameters,
+  renameParameter,
+} from './vendor_parameters';
+import {toHetznerEgressRules} from './hetzner_firewall_rules';
 import type {
   InstantiationContext,
   LiveSystemComponent,
@@ -71,70 +111,85 @@ const containerPlatformInstantiate =
 // ── VirtualNetwork ───────────────────────────────────────────────────────────
 export const AwsVpc = defineOffer<
   'NetworkAndCompute.VirtualNetwork',
-  {region?: string}
+  ContractConfig<typeof NetworkAndCompute_IaaS_AwsVpc, 'cidrBlock'>
 >({
   satisfies: 'NetworkAndCompute.VirtualNetwork',
-  offerType: 'NetworkAndCompute.IaaS.AwsVpc',
+  contract: NetworkAndCompute_IaaS_AwsVpc,
   provider: 'AWS',
   deliveryModel: 'IaaS',
+  neutral: {
+    tags: unsupported('the agent applies no tags to it'),
+  },
 });
 export const AzureVnet = defineOffer<
   'NetworkAndCompute.VirtualNetwork',
-  {region?: string}
+  ContractConfig<typeof NetworkAndCompute_IaaS_AzureVnet, 'cidrBlock'>
 >({
   satisfies: 'NetworkAndCompute.VirtualNetwork',
-  offerType: 'NetworkAndCompute.IaaS.AzureVnet',
+  contract: NetworkAndCompute_IaaS_AzureVnet,
   provider: 'Azure',
   deliveryModel: 'IaaS',
+  neutral: {
+    tags: unsupported('the agent applies no tags to it'),
+  },
 });
 export const GcpVpc = defineOffer<
   'NetworkAndCompute.VirtualNetwork',
-  {region?: string}
+  ContractConfig<typeof NetworkAndCompute_IaaS_GcpVpc>
 >({
   satisfies: 'NetworkAndCompute.VirtualNetwork',
-  offerType: 'NetworkAndCompute.IaaS.GcpVpc',
+  contract: NetworkAndCompute_IaaS_GcpVpc,
   provider: 'GCP',
   deliveryModel: 'IaaS',
+  neutral: {
+    cidrBlock: unsupported(
+      'a custom-mode GCP VPC has no address range; its subnets carry it',
+    ),
+    tags: unsupported('the agent applies no tags to it'),
+  },
 });
 
 // ── Subnet ───────────────────────────────────────────────────────────────────
 export const AwsSubnet = defineOffer<
   'NetworkAndCompute.Subnet',
-  {
-    region?: string;
-    /**
-     * Availability Zone to place the subnet in (e.g. `eu-central-1b`). Omit to let
-     * the agent choose.
-     *
-     * Only matters when something placed in these subnets needs a known zone
-     * spread — an RDS DB subnet group must span at least two. Without it the
-     * agent's default placement (the environment spoke's per-AZ private subnets)
-     * is the one that guarantees the spread, so this is the knob for the operator
-     * who is overriding that deliberately.
-     */
-    availabilityZone?: string;
-  }
+  ContractConfig<
+    typeof NetworkAndCompute_IaaS_AwsSubnet,
+    'cidrBlock',
+    {
+      /**
+       * Availability Zone to place the subnet in (e.g. `eu-central-1b`). Omit to let
+       * the agent choose.
+       *
+       * Only matters when something placed in these subnets needs a known zone
+       * spread — an RDS DB subnet group must span at least two. Without it the
+       * agent's default placement (the environment spoke's per-AZ private subnets)
+       * is the one that guarantees the spread, so this is the knob for the operator
+       * who is overriding that deliberately.
+       */
+      availabilityZone?: string;
+    }
+  >
 >({
   satisfies: 'NetworkAndCompute.Subnet',
-  offerType: 'NetworkAndCompute.IaaS.AwsSubnet',
+  contract: NetworkAndCompute_IaaS_AwsSubnet,
   provider: 'AWS',
   deliveryModel: 'IaaS',
 });
 export const AzureSubnet = defineOffer<
   'NetworkAndCompute.Subnet',
-  {region?: string}
+  ContractConfig<typeof NetworkAndCompute_IaaS_AzureSubnet, 'cidrBlock'>
 >({
   satisfies: 'NetworkAndCompute.Subnet',
-  offerType: 'NetworkAndCompute.IaaS.AzureSubnet',
+  contract: NetworkAndCompute_IaaS_AzureSubnet,
   provider: 'Azure',
   deliveryModel: 'IaaS',
 });
 export const GcpSubnet = defineOffer<
   'NetworkAndCompute.Subnet',
-  {region?: string}
+  ContractConfig<typeof NetworkAndCompute_IaaS_GcpSubnet, 'cidrBlock'>
 >({
   satisfies: 'NetworkAndCompute.Subnet',
-  offerType: 'NetworkAndCompute.IaaS.GcpSubnet',
+  contract: NetworkAndCompute_IaaS_GcpSubnet,
   provider: 'GCP',
   deliveryModel: 'IaaS',
 });
@@ -142,28 +197,37 @@ export const GcpSubnet = defineOffer<
 // ── SecurityGroup ────────────────────────────────────────────────────────────
 export const AwsSecurityGroup = defineOffer<
   'NetworkAndCompute.SecurityGroup',
-  {region?: string}
+  ContractConfig<
+    typeof NetworkAndCompute_IaaS_AwsSecurityGroup,
+    'ingressRules' | 'egressRules'
+  >
 >({
   satisfies: 'NetworkAndCompute.SecurityGroup',
-  offerType: 'NetworkAndCompute.IaaS.AwsSecurityGroup',
+  contract: NetworkAndCompute_IaaS_AwsSecurityGroup,
   provider: 'AWS',
   deliveryModel: 'IaaS',
 });
 export const AzureNsg = defineOffer<
   'NetworkAndCompute.SecurityGroup',
-  {region?: string; resourceGroup: string}
+  ContractConfig<
+    typeof NetworkAndCompute_IaaS_AzureNsg,
+    'ingressRules' | 'egressRules'
+  >
 >({
   satisfies: 'NetworkAndCompute.SecurityGroup',
-  offerType: 'NetworkAndCompute.IaaS.AzureNsg',
+  contract: NetworkAndCompute_IaaS_AzureNsg,
   provider: 'Azure',
   deliveryModel: 'IaaS',
 });
 export const GcpFirewall = defineOffer<
   'NetworkAndCompute.SecurityGroup',
-  {region?: string}
+  ContractConfig<
+    typeof NetworkAndCompute_IaaS_GcpFirewall,
+    'ingressRules' | 'egressRules'
+  >
 >({
   satisfies: 'NetworkAndCompute.SecurityGroup',
-  offerType: 'NetworkAndCompute.IaaS.GcpFirewall',
+  contract: NetworkAndCompute_IaaS_GcpFirewall,
   provider: 'GCP',
   deliveryModel: 'IaaS',
 });
@@ -196,90 +260,114 @@ export interface VmIdentity {
 
 export const Ec2Instance = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {
-    region?: string;
-    amiId?: string;
-    instanceType: string;
-    userData?: string;
-    identity?: VmIdentity;
-    /**
-     * Give the instance an auto-assigned public IPv4 address. Defaults to `false`.
-     *
-     * The AWS agent forwards this to `associatePublicIpAddress` on the instance's
-     * primary network-interface spec, and reports the result in the `publicIp`
-     * output field. The address is assigned regardless of routing, so it is only
-     * reachable when the subnet the instance lands in routes to an internet
-     * gateway.
-     *
-     * The address is ephemeral. Attaching an existing Elastic IP is not
-     * expressible here, and the agent's EC2 create path has no code for it.
-     */
-    associatePublicIp?: boolean;
-  }
+  ContractConfig<
+    typeof NetworkAndCompute_IaaS_AwsEc2Instance,
+    // Filled by the neutral withPublicSSHKey.
+    'publicSSHKey',
+    {
+      identity?: VmIdentity;
+      /**
+       * Give the instance an auto-assigned public IPv4 address. Defaults to `false`.
+       *
+       * The AWS agent forwards this to `associatePublicIpAddress` on the instance's
+       * primary network-interface spec, and reports the result in the `publicIp`
+       * output field. The address is assigned regardless of routing, so it is only
+       * reachable when the subnet the instance lands in routes to an internet
+       * gateway.
+       *
+       * The address is ephemeral. Attaching an existing Elastic IP is not
+       * expressible here, and the agent's EC2 create path has no code for it.
+       */
+      associatePublicIp?: boolean;
+    }
+  >
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
-  offerType: 'NetworkAndCompute.IaaS.AwsEc2Instance',
+  contract: NetworkAndCompute_IaaS_AwsEc2Instance,
   provider: 'AWS',
   deliveryModel: 'IaaS',
+  neutral: {
+    osType: unsupported('the operating system follows amiId'),
+    size: toContractKey(
+      NetworkAndCompute_IaaS_AwsEc2Instance,
+      'instanceType',
+      awsInstanceType,
+    ),
+    tags: unsupported('the agent applies no tags to it'),
+  },
 });
 export const AzureVm = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {
-    region?: string;
-    vmSize: string;
-    userData?: string;
-    imageId?: string;
-    identity?: VmIdentity;
-    /**
-     * Give the VM a public IPv4 address. Defaults to `false`.
-     *
-     * The Azure agent creates a Public IP resource and attaches it to the VM's
-     * primary NIC, and reports the address in the `publicIp` output field.
-     *
-     * The address is dynamic and Azure-allocated. Attaching an existing static or
-     * reserved Public IP is not expressible here, and the agent's VM create path
-     * has no code for it.
-     */
-    associatePublicIp?: boolean;
-  }
+  ContractConfig<
+    typeof NetworkAndCompute_IaaS_AzureVm,
+    'publicSSHKey',
+    {
+      identity?: VmIdentity;
+      /**
+       * Give the VM a public IPv4 address. Defaults to `false`.
+       *
+       * The Azure agent creates a Public IP resource and attaches it to the VM's
+       * primary NIC, and reports the address in the `publicIp` output field.
+       *
+       * The address is dynamic and Azure-allocated. Attaching an existing static or
+       * reserved Public IP is not expressible here, and the agent's VM create path
+       * has no code for it.
+       */
+      associatePublicIp?: boolean;
+    }
+  >
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
-  offerType: 'NetworkAndCompute.IaaS.AzureVm',
+  contract: NetworkAndCompute_IaaS_AzureVm,
   provider: 'Azure',
   deliveryModel: 'IaaS',
+  neutral: {
+    osType: unsupported('the operating system follows imageId'),
+    size: toContractKey(NetworkAndCompute_IaaS_AzureVm, 'vmSize', azureVmSize),
+    tags: unsupported('the agent applies no tags to it'),
+  },
 });
 export const GcpVm = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {
-    region?: string;
-    machineType: string;
-    userData?: string;
-    imageLink?: string;
-    identity?: VmIdentity;
-    /**
-     * Give the VM an external IPv4 address. Defaults to `false`.
-     *
-     * An external address on GCP is not a field on the instance: it is an
-     * `AccessConfig` of type `ONE_TO_ONE_NAT` on the instance's primary network
-     * interface. The GCP agent adds one at create time when this is set, and
-     * reports the address in the `publicIp` output field.
-     *
-     * The address is ephemeral, and `networkTier` is left to the project default.
-     * Attaching a reserved (static) `Address` resource is not expressible here —
-     * it has its own lifecycle, region and quota — and the agent's create path has
-     * no code for it.
-     *
-     * Unlike a service account, an access config can be added to or removed from a
-     * running instance, so flipping this on an existing VM is honored on the next
-     * reconcile. Turning it off releases the ephemeral address permanently.
-     */
-    associatePublicIp?: boolean;
-  }
+  ContractConfig<
+    typeof NetworkAndCompute_IaaS_GcpVm,
+    'publicSSHKey',
+    {
+      identity?: VmIdentity;
+      /**
+       * Give the VM an external IPv4 address. Defaults to `false`.
+       *
+       * An external address on GCP is not a field on the instance: it is an
+       * `AccessConfig` of type `ONE_TO_ONE_NAT` on the instance's primary network
+       * interface. The GCP agent adds one at create time when this is set, and
+       * reports the address in the `publicIp` output field.
+       *
+       * The address is ephemeral, and `networkTier` is left to the project default.
+       * Attaching a reserved (static) `Address` resource is not expressible here —
+       * it has its own lifecycle, region and quota — and the agent's create path has
+       * no code for it.
+       *
+       * Unlike a service account, an access config can be added to or removed from a
+       * running instance, so flipping this on an existing VM is honored on the next
+       * reconcile. Turning it off releases the ephemeral address permanently.
+       */
+      associatePublicIp?: boolean;
+    }
+  >
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
-  offerType: 'NetworkAndCompute.IaaS.GcpVm',
+  contract: NetworkAndCompute_IaaS_GcpVm,
   provider: 'GCP',
   deliveryModel: 'IaaS',
+  neutral: {
+    osType: unsupported('the operating system follows imageLink'),
+    size: toContractKey(
+      NetworkAndCompute_IaaS_GcpVm,
+      'machineType',
+      gcpMachineType,
+    ),
+    tags: unsupported('the agent applies no tags to it'),
+  },
 });
 export const VsphereVm = defineOffer<
   'NetworkAndCompute.VirtualMachine',
@@ -300,86 +388,27 @@ export const OpenshiftVm = defineOffer<
   deliveryModel: 'CaaS',
 });
 
-// ── ContainerPlatform ────────────────────────────────────────────────────────
-const EKS_LOG_TYPES: readonly EksControlPlaneLogType[] = [
-  'api',
-  'audit',
-  'authenticator',
-  'controllerManager',
-  'scheduler',
-];
-const EKS_ARCHITECTURES = ['arm64', 'amd64'];
-const EKS_BUILT_IN_POOLS = ['system', 'general-purpose'];
-const DNS_1123_LABEL = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
-const EKS_CAPACITY_TYPES = ['on-demand', 'spot'];
-
-const refuseEks = (id: string, why: string): never => {
-  throw new Error(`Eks '${id}': ${why}.`);
-};
-
-const ensureValidNodePools = (
-  id: string,
-  pools: readonly EksAutoModeNodePool[],
-): void => {
-  const names = new Set<string>();
-  for (const pool of pools) {
-    if (pool.name.trim() === '') {
-      refuseEks(id, 'a node pool needs a name');
-    }
-    if (!DNS_1123_LABEL.test(pool.name)) {
-      refuseEks(
-        id,
-        `node pool name '${pool.name}' is not a DNS-1123 label (a-z, 0-9 and '-', at most 63)`,
-      );
-    }
-    if (EKS_BUILT_IN_POOLS.includes(pool.name)) {
-      refuseEks(
-        id,
-        `node pool name '${pool.name}' is reserved for an EKS Auto Mode built-in pool`,
-      );
-    }
-    if (names.has(pool.name)) {
-      refuseEks(id, `node pool name '${pool.name}' twice`);
-    }
-    names.add(pool.name);
-    const badArch = (pool.architectures ?? []).find(
-      a => !EKS_ARCHITECTURES.includes(a),
-    );
-    if (badArch !== undefined) {
-      refuseEks(
-        id,
-        `node pool '${pool.name}' architectures holds '${badArch}' (arm64 or amd64)`,
-      );
-    }
-    const badCapacity = (pool.capacityTypes ?? []).find(
-      c => !EKS_CAPACITY_TYPES.includes(c),
-    );
-    if (badCapacity !== undefined) {
-      refuseEks(
-        id,
-        `node pool '${pool.name}' capacityTypes holds '${badCapacity}' (on-demand or spot)`,
-      );
-    }
+type EksConfig = ContractConfig<
+  typeof NetworkAndCompute_PaaS_AwsEks,
+  // Filled from the neutral withKubernetesVersion / withNetworkPolicyProvider.
+  'kubernetesVersion' | 'networkPolicyProvider',
+  {
+    /**
+     * Custom EKS Auto Mode NodePools, e.g. Graviton on-demand
+     * `{name: 'graviton', architectures: ['arm64'], instanceFamilies: ['m7g'],
+     * capacityTypes: ['on-demand']}`. Replaces the neutral `withNodePools` value,
+     * so it is refused when that value is a locked guardrail.
+     */
+    nodePools?: readonly EksAutoModeNodePool[];
+    /**
+     * Opt-in control-plane logs, shipped to CloudWatch Logs. Absent (the default):
+     * a new cluster gets none and an existing cluster's logging is left as it is.
+     * A list is reconciled: the listed types on, every other one off, so `[]`
+     * turns logging off.
+     */
+    controlPlaneLogTypes?: readonly EksControlPlaneLogType[];
   }
-};
-
-type EksConfig = {
-  region?: string;
-  /**
-   * Custom EKS Auto Mode NodePools, e.g. Graviton on-demand
-   * `{name: 'graviton', architectures: ['arm64'], instanceFamilies: ['m7g'],
-   * capacityTypes: ['on-demand']}`. Replaces the neutral `withNodePools` value,
-   * so it is refused when that value is a locked guardrail.
-   */
-  nodePools?: readonly EksAutoModeNodePool[];
-  /**
-   * Opt-in control-plane logs, shipped to CloudWatch Logs. Absent (the default):
-   * a new cluster gets none and an existing cluster's logging is left as it is.
-   * A list is reconciled: the listed types on, every other one off, so `[]`
-   * turns logging off.
-   */
-  controlPlaneLogTypes?: readonly EksControlPlaneLogType[];
-};
+>;
 
 /**
  * Amazon EKS (Auto Mode). The Kubernetes version is the neutral
@@ -393,7 +422,7 @@ export const Eks = defineOffer<
   EksConfig
 >({
   satisfies: 'NetworkAndCompute.ContainerPlatform',
-  offerType: 'NetworkAndCompute.PaaS.AwsEks',
+  contract: NetworkAndCompute_PaaS_AwsEks,
   provider: 'AWS',
   deliveryModel: 'PaaS',
   instantiate: (ctx, config) => {
@@ -407,49 +436,77 @@ export const Eks = defineOffer<
           "'.withNodePools()' guardrail if the pools are the offer's to choose.",
       );
     }
-    return containerPlatformInstantiate('NetworkAndCompute.PaaS.AwsEks', 'AWS')(
-      ctx,
-      config,
-    );
-  },
-  validate: (self, _all, config) => {
-    ensureValidNodePools(self.id, config.nodePools ?? []);
-    const badLog = (config.controlPlaneLogTypes ?? []).find(
-      t => !EKS_LOG_TYPES.includes(t),
-    );
-    if (badLog !== undefined) {
-      refuseEks(
-        self.id,
-        `controlPlaneLogTypes holds '${badLog}' (one of ${EKS_LOG_TYPES.join(', ')})`,
-      );
-    }
+    return containerPlatformInstantiate(
+      NetworkAndCompute_PaaS_AwsEks.offerType,
+      'AWS',
+    )(ctx, config);
   },
 });
 export const Aks = defineOffer<
   'NetworkAndCompute.ContainerPlatform',
-  {region?: string}
+  ContractConfig<typeof NetworkAndCompute_PaaS_AzureAks, 'nodePools'>
 >({
   satisfies: 'NetworkAndCompute.ContainerPlatform',
-  offerType: 'NetworkAndCompute.PaaS.AzureAks',
+  contract: NetworkAndCompute_PaaS_AzureAks,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  neutral: {
+    kubernetesVersion: unsupported(
+      'the agent declares no Kubernetes version for AKS',
+    ),
+    networkPolicyProvider: unsupported(
+      'the agent declares no network policy provider for AKS',
+    ),
+  },
   instantiate: containerPlatformInstantiate(
-    'NetworkAndCompute.PaaS.AzureAks',
+    NetworkAndCompute_PaaS_AzureAks.offerType,
     'Azure',
   ),
 });
 export const Gke = defineOffer<
   'NetworkAndCompute.ContainerPlatform',
-  {region?: string}
+  ContractConfig<
+    typeof NetworkAndCompute_PaaS_GcpGke,
+    'kubernetesVersion' | 'networkPolicyProvider' | 'nodePools'
+  >
 >({
   satisfies: 'NetworkAndCompute.ContainerPlatform',
-  offerType: 'NetworkAndCompute.PaaS.GcpGke',
+  contract: NetworkAndCompute_PaaS_GcpGke,
   provider: 'GCP',
   deliveryModel: 'PaaS',
   instantiate: containerPlatformInstantiate(
-    'NetworkAndCompute.PaaS.GcpGke',
+    NetworkAndCompute_PaaS_GcpGke.offerType,
     'GCP',
   ),
+});
+
+/**
+ * An Amazon ECS cluster (`NetworkAndCompute.PaaS.ECS`), the platform an
+ * `EcsService` workload runs on: the AWS agent resolves the service's cluster
+ * from a dependency of this type. It is not a Kubernetes cluster, so the
+ * Kubernetes guardrails of `ContainerPlatform` are refused, and workloads added
+ * as its children are not emitted (select `EcsService` for a Workload that
+ * depends on it instead).
+ */
+export const EcsCluster = defineOffer<
+  'NetworkAndCompute.ContainerPlatform',
+  ContractConfig<typeof NetworkAndCompute_PaaS_ECS>
+>({
+  satisfies: 'NetworkAndCompute.ContainerPlatform',
+  contract: NetworkAndCompute_PaaS_ECS,
+  provider: 'AWS',
+  deliveryModel: 'PaaS',
+  neutral: {
+    kubernetesVersion: unsupported(
+      'an ECS cluster is not a Kubernetes cluster',
+    ),
+    networkPolicyProvider: unsupported(
+      'an ECS cluster is not a Kubernetes cluster',
+    ),
+    nodePools: unsupported(
+      'an ECS cluster runs Fargate tasks, not Kubernetes node pools',
+    ),
+  },
 });
 
 /**
@@ -472,8 +529,8 @@ export const Gke = defineOffer<
  * a failed deployment. `region` is a real parameter every Azure offer declares,
  * but this component never consults it, so setting it would deploy nothing.
  *
- * `resourceGroup` is deliberately ABSENT. The agent never reads a flat
- * `resourceGroup` key: it resolves the group from the `azureResourceGroup` map
+ * There is no `resourceGroup`: the agent resolves the group from the
+ * `azureResourceGroup` map
  * parameter (a map with a `name` key), falling back to the LiveSystem's group.
  * Offering the flat string here would provision into the LiveSystem's group while
  * the author read their own value back. The other two knobs are genuinely
@@ -488,16 +545,28 @@ export const Gke = defineOffer<
  */
 export const AzureContainerAppsEnvironment = defineOffer<
   'NetworkAndCompute.ContainerPlatform',
-  {
-    location: string;
-    logAnalyticsWorkspaceId?: string;
-    logAnalyticsSharedKey?: string;
-  }
+  ContractConfig<
+    typeof NetworkAndCompute_PaaS_AzureContainerAppsEnvironment,
+    never,
+    // Declared optional with default "", but the agent cannot work without it.
+    {location: string}
+  >
 >({
   satisfies: 'NetworkAndCompute.ContainerPlatform',
-  offerType: AZURE_CONTAINER_APPS_ENVIRONMENT_OFFER_TYPE,
+  contract: NetworkAndCompute_PaaS_AzureContainerAppsEnvironment,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  neutral: {
+    kubernetesVersion: unsupported(
+      'a Container Apps environment is not a Kubernetes cluster',
+    ),
+    networkPolicyProvider: unsupported(
+      'a Container Apps environment is not a Kubernetes cluster',
+    ),
+    nodePools: unsupported(
+      'a Container Apps environment is not a Kubernetes cluster',
+    ),
+  },
 });
 
 /**
@@ -519,107 +588,236 @@ export type AzureContainerAppsEnvironmentConfig = RequiresLocation<
   Parameters<typeof AzureContainerAppsEnvironment>[0]
 >;
 
+/**
+ * A load balancer is placed only in the subnets it declares: the agents refuse
+ * one without a Subnet dependency of their own cloud, and there is no fallback
+ * placement. Checked here, against the selected offers, because the blueprint
+ * cannot know which subnet offer its Subnet will get.
+ */
+const requireSubnetOf =
+  (subnetType: string) =>
+  (
+    self: {id: string; dependencies: readonly string[]},
+    all: readonly {id: string; type: string}[],
+  ): void => {
+    const subnets = self.dependencies.filter(
+      d => all.find(c => c.id === d)?.type === subnetType,
+    );
+    if (subnets.length === 0) {
+      throw new Error(
+        `LoadBalancer '${self.id}' has no ${subnetType} dependency: a load balancer is ` +
+          'placed only in the subnets it declares. Declare them with ' +
+          `LoadBalancer({subnets: [...]}) and select ${subnetType} for each.`,
+      );
+    }
+  };
+
 // ── LoadBalancer ─────────────────────────────────────────────────────────────
+// The neutral `withScheme` guardrail is emitted as `lbScheme`, the key every
+// LoadBalancer agent reads, spelled the way that agent expects.
 export const AwsLb = defineOffer<
   'NetworkAndCompute.LoadBalancer',
-  {region?: string}
+  ContractConfig<typeof NetworkAndCompute_IaaS_AwsLb, 'lbScheme'>
 >({
   satisfies: 'NetworkAndCompute.LoadBalancer',
-  offerType: 'NetworkAndCompute.IaaS.AwsLb',
+  contract: NetworkAndCompute_IaaS_AwsLb,
   provider: 'AWS',
   deliveryModel: 'IaaS',
+  validate: requireSubnetOf(NetworkAndCompute_IaaS_AwsSubnet.offerType),
+  instantiate: instantiateWithVendorParameters(
+    NetworkAndCompute_IaaS_AwsLb.offerType,
+    'AWS',
+    'IaaS',
+    toLbScheme(
+      contractKey(NetworkAndCompute_IaaS_AwsLb, 'lbScheme'),
+      scheme => scheme,
+    ),
+  ),
 });
 export const AzureLb = defineOffer<
   'NetworkAndCompute.LoadBalancer',
-  {region?: string}
+  ContractConfig<typeof NetworkAndCompute_IaaS_AzureLb, 'lbScheme'>
 >({
   satisfies: 'NetworkAndCompute.LoadBalancer',
-  offerType: 'NetworkAndCompute.IaaS.AzureLb',
+  contract: NetworkAndCompute_IaaS_AzureLb,
   provider: 'Azure',
   deliveryModel: 'IaaS',
+  // The Azure agent provisions a public frontend only for `internet-facing`.
+  validate: requireSubnetOf(NetworkAndCompute_IaaS_AzureSubnet.offerType),
+  instantiate: instantiateWithVendorParameters(
+    NetworkAndCompute_IaaS_AzureLb.offerType,
+    'Azure',
+    'IaaS',
+    toLbScheme(
+      contractKey(NetworkAndCompute_IaaS_AzureLb, 'lbScheme'),
+      scheme => scheme,
+    ),
+  ),
 });
 export const GcpGlb = defineOffer<
   'NetworkAndCompute.LoadBalancer',
-  {region?: string}
+  ContractConfig<typeof NetworkAndCompute_IaaS_GcpGlb, 'lbScheme'>
 >({
   satisfies: 'NetworkAndCompute.LoadBalancer',
-  offerType: 'NetworkAndCompute.IaaS.GcpGlb',
+  contract: NetworkAndCompute_IaaS_GcpGlb,
   provider: 'GCP',
   deliveryModel: 'IaaS',
+  // Passed straight to the forwarding rule's `loadBalancingScheme`.
+  validate: requireSubnetOf(NetworkAndCompute_IaaS_GcpSubnet.offerType),
+  instantiate: instantiateWithVendorParameters(
+    NetworkAndCompute_IaaS_GcpGlb.offerType,
+    'GCP',
+    'IaaS',
+    toLbScheme(
+      contractKey(NetworkAndCompute_IaaS_GcpGlb, 'lbScheme'),
+      scheme => (scheme === 'internal' ? 'INTERNAL' : 'EXTERNAL'),
+    ),
+  ),
 });
 
 // ── OCI ──────────────────────────────────────────────────────────────────────
 export const OciVcn = defineOffer<
   'NetworkAndCompute.VirtualNetwork',
-  {region?: string}
+  ContractConfig<typeof NetworkAndCompute_IaaS_OciVcn, 'cidrBlock'>
 >({
   satisfies: 'NetworkAndCompute.VirtualNetwork',
-  offerType: 'NetworkAndCompute.IaaS.OciVcn',
+  contract: NetworkAndCompute_IaaS_OciVcn,
   provider: 'OCI',
   deliveryModel: 'IaaS',
+  neutral: {
+    tags: unsupported('the agent applies no tags to it'),
+  },
 });
 export const OciSubnet = defineOffer<
   'NetworkAndCompute.Subnet',
-  {region?: string; availabilityDomain?: string}
+  ContractConfig<typeof NetworkAndCompute_IaaS_OciSubnet, 'cidrBlock'>
 >({
   satisfies: 'NetworkAndCompute.Subnet',
-  offerType: 'NetworkAndCompute.IaaS.OciSubnet',
+  contract: NetworkAndCompute_IaaS_OciSubnet,
   provider: 'OCI',
   deliveryModel: 'IaaS',
 });
 export const OciSecurityList = defineOffer<
   'NetworkAndCompute.SecurityGroup',
-  {region?: string; compartmentId: string}
+  ContractConfig<
+    typeof NetworkAndCompute_IaaS_OciSecurityList,
+    'ingressRules' | 'egressRules'
+  >
 >({
   satisfies: 'NetworkAndCompute.SecurityGroup',
-  offerType: 'NetworkAndCompute.IaaS.OciSecurityList',
+  contract: NetworkAndCompute_IaaS_OciSecurityList,
   provider: 'OCI',
   deliveryModel: 'IaaS',
 });
 export const OciInstance = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {
-    region?: string;
-    shape: string;
-    userData?: string;
-    imageId?: string;
-    identity?: VmIdentity;
-  }
+  ContractConfig<
+    typeof NetworkAndCompute_IaaS_OciInstance,
+    'keyName',
+    {
+      identity?: VmIdentity;
+    }
+  >
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
-  offerType: 'NetworkAndCompute.IaaS.OciInstance',
+  contract: NetworkAndCompute_IaaS_OciInstance,
   provider: 'OCI',
   deliveryModel: 'IaaS',
+  neutral: {
+    osType: unsupported('the operating system follows imageId'),
+    size: toContractKey(NetworkAndCompute_IaaS_OciInstance, 'shape', ociShape),
+    tags: unsupported('the agent applies no tags to it'),
+  },
+  // The OCI agent reads the authorized public key under `keyName` and writes it
+  // to the instance's `ssh_authorized_keys` metadata.
+  instantiate: instantiateWithVendorParameters(
+    NetworkAndCompute_IaaS_OciInstance.offerType,
+    'OCI',
+    'IaaS',
+    renameParameter(
+      'publicSSHKey',
+      contractKey(NetworkAndCompute_IaaS_OciInstance, 'keyName'),
+    ),
+  ),
 });
 
 // ── Hetzner ──────────────────────────────────────────────────────────────────
+// Emitted for aria-agent-hetzner. Hetzner networks and firewalls are global and a
+// subnet is placed by `networkZone`, so only the server has a location.
 export const HetznerNetwork = defineOffer<
   'NetworkAndCompute.VirtualNetwork',
-  {region?: string}
+  {
+    /**
+     * @deprecated Hetzner has no location for this resource, so `region` is not
+     * sent to the agent. Kept so existing callers still compile.
+     */
+    region?: string;
+  }
 >({
   satisfies: 'NetworkAndCompute.VirtualNetwork',
   offerType: 'NetworkAndCompute.IaaS.HetznerNetwork',
   provider: 'Hetzner',
   deliveryModel: 'IaaS',
+  // The agent reads the network range as `ipRange`.
+  instantiate: instantiateWithVendorParameters(
+    'NetworkAndCompute.IaaS.HetznerNetwork',
+    'Hetzner',
+    'IaaS',
+    composeVendorParameters(
+      renameParameter('cidrBlock', 'ipRange'),
+      dropParameter('region'),
+    ),
+  ),
 });
 export const HetznerSubnet = defineOffer<
   'NetworkAndCompute.Subnet',
-  {region?: string; networkZone?: string}
+  {
+    /**
+     * @deprecated Hetzner has no location for this resource, so `region` is not
+     * sent to the agent. Kept so existing callers still compile.
+     */
+    region?: string;
+    networkZone?: string;
+  }
 >({
   satisfies: 'NetworkAndCompute.Subnet',
   offerType: 'NetworkAndCompute.IaaS.HetznerSubnet',
   provider: 'Hetzner',
   deliveryModel: 'IaaS',
+  instantiate: instantiateWithVendorParameters(
+    'NetworkAndCompute.IaaS.HetznerSubnet',
+    'Hetzner',
+    'IaaS',
+    dropParameter('region'),
+  ),
 });
 export const HetznerFirewall = defineOffer<
   'NetworkAndCompute.SecurityGroup',
-  {region?: string}
+  {
+    /**
+     * @deprecated Hetzner has no location for this resource, so `region` is not
+     * sent to the agent. Kept so existing callers still compile.
+     */
+    region?: string;
+  }
 >({
   satisfies: 'NetworkAndCompute.SecurityGroup',
   offerType: 'NetworkAndCompute.IaaS.HetznerFirewall',
   provider: 'Hetzner',
   deliveryModel: 'IaaS',
+  instantiate: instantiateWithVendorParameters(
+    'NetworkAndCompute.IaaS.HetznerFirewall',
+    'Hetzner',
+    'IaaS',
+    composeVendorParameters(toHetznerEgressRules, dropParameter('region')),
+  ),
 });
+/**
+ * A Hetzner Cloud server, reconciled by aria-agent-hetzner as
+ * `NetworkAndCompute.IaaS.HetznerCloudServer`. `region` is the Hetzner location
+ * (`fsn1`, `nbg1`, `hel1`, `ash`, `hil`, `sin`) and is sent as `location`; unset,
+ * the agent's configured default location applies.
+ */
 export const HetznerServer = defineOffer<
   'NetworkAndCompute.VirtualMachine',
   {
@@ -639,9 +837,15 @@ export const HetznerServer = defineOffer<
   }
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
-  offerType: 'NetworkAndCompute.IaaS.HetznerServer',
+  offerType: 'NetworkAndCompute.IaaS.HetznerCloudServer',
   provider: 'Hetzner',
   deliveryModel: 'IaaS',
+  instantiate: instantiateWithVendorParameters(
+    'NetworkAndCompute.IaaS.HetznerCloudServer',
+    'Hetzner',
+    'IaaS',
+    renameParameter('region', 'location'),
+  ),
 });
 
 // ── VMware (vSphere) ─────────────────────────────────────────────────────────

@@ -35,6 +35,16 @@ export * from './client';
 // LiveSystem operation options + results (the operations live on the client).
 export type {DeployOptions, ComponentState, LiveSystemState} from './service';
 
+// Parameter validation by the control plane, before a deploy.
+export {LiveSystemValidationError} from './validation/live_system_validation_error';
+export type {ParameterValidationResult} from './validation/parameter_validation_result';
+export type {ComponentValidationResult} from './validation/component_validation_result';
+export type {ValidationFieldIssues} from './validation/validation_field_issues';
+export type {ValidationIssue} from './validation/validation_issue';
+export type {ValidationFix} from './validation/validation_fix';
+export type {ValidationSummary} from './validation/validation_summary';
+export type {ValidationContractRef} from './validation/validation_contract_ref';
+
 // Environment authoring (management + operational envs, cloud agents, secrets,
 // CI/CD profiles). Deploying them is `cloud.environments.deploy`.
 export * from './environment';
@@ -67,10 +77,22 @@ export * from './components/unmanaged';
 export * from './components/dns';
 export * from './components/dns_record_management_mode';
 
+// Offer parameter contracts: every offer config below is derived from the
+// contract its agent publishes (docs/offer-contracts.md).
+export type {OfferContract} from './offers/contract/offer_contract';
+export type {ContractParameter} from './offers/contract/contract_parameter';
+export type {ContractDeclaration} from './offers/contract/contract_declaration';
+export type {ContractValueType} from './offers/contract/contract_value_type';
+export type {ContractValue} from './offers/contract/contract_value';
+export type {ContractParameters} from './offers/contract/contract_parameters';
+export type {ContractConfig} from './offers/contract/contract_config';
+
 // Offer catalogue (concrete — vendor or vendor-neutral)
 export * from './offers/network_and_compute';
 export type {EksAutoModeNodePool} from './offers/eks_auto_mode_node_pool';
 export type {EksControlPlaneLogType} from './offers/eks_control_plane_log_type';
+export type {LoadBalancerScheme} from './components/load_balancer_scheme';
+export type {VmSize} from './components/vm_size';
 export * from './offers/storage';
 export type {AwsRdsStorageType} from './offers/aws_rds_storage_type';
 export type {AwsRdsDbmsConfig} from './offers/aws_rds_dbms_config';

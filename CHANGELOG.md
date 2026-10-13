@@ -11,8 +11,160 @@ of truth for what is on npm.
 
 ## Unreleased
 
-No change to the published code: the SDK built from this release behaves exactly as
-2.11.0. What changed is this file, as packaged with the release.
+### Added — the control plane validates a Live System before it is deployed
+
+`cloud.liveSystems.deploy` now asks the control plane (`POST /livesystems/validate`,
+or `/livesystems/{id}/validate` for an update) to check every component's parameters
+against the contract of its offer before submitting anything. A blocking issue refuses
+the deploy with a `LiveSystemValidationError` carrying the full
+`ParameterValidationResult` (issues per component and parameter, with fixes); in `wait`
+mode one `ERROR Live System validation failed  system=… errors=… warnings=…` line is
+logged, and each warning is logged as a `WARN` line. A control plane without validation
+(404) is reported with a `WARN` line and the deploy continues. New:
+`cloud.liveSystems.validate(ls)`, `DeployOptions.skipValidation`, and the result types
+(`ParameterValidationResult`, `ComponentValidationResult`, `ValidationIssue`, ...). A
+`400 OfferParametersInvalid` from the create or update is surfaced as the same error.
+
+### Changed — parameter checks are the control plane's, not the SDK's
+
+The SDK no longer re-implements the agents' parameter checks: the per-offer `validate`
+functions that mirrored them (CloudFront redirects, timeouts and WAF limits; Traefik
+gateway ForwardAuth and TLS settings; SNS, SQS and SES names and bounds; RDS, Eks,
+CertManager, Grafana, SqsExporter and DNS-zone values; the Kubernetes workload probe,
+rollout and grant checks) are removed. Those values are now checked by the control plane
+before deploy, against the agents' own contracts. `toLiveSystem()` stays offline. What
+remains in the SDK involves several components (a CloudFront origin and the
+certificate of the gateway behind it, gateway route coverage, a Container App's
+environment, a Service Bus tier against its topics, a Grafana backend's bucket link, a
+load balancer's subnets) or how the SDK encodes a value (an empty list sent as blank).
+
+### Breaking — a load balancer declares its subnets
+
+A load balancer is placed only in the subnets it declares (the agents refuse one
+without a Subnet dependency, fractal-cloud-agents #872), so `LoadBalancer` now takes
+them: `LoadBalancer({id: 'edge-lb', subnets: [subnet]})`, a compile error without
+them. `AwsLb`, `AzureLb` and `GcpGlb` refuse a Live System whose load balancer has no
+dependency on a subnet of their own cloud.
+
+### Changed — offer configs are generated from the agents' published contracts
+
+Every offer whose agent publishes a parameter contract is now defined from it: its
+offer type, its config keys, their types and which are required come from the
+contract (fractal-cloud-agents v8.25.2, aria-agent-caas-k8s v1.4.0, aria-agent-aruba
+v0.0.20), and every vendor key an offer writes from a neutral parameter (`lbScheme`,
+OCI `keyName`, the caas-k8s workload keys) is named through it, so a key an agent
+renames or drops is a compile error instead of a value nobody reads. See
+[`docs/offer-contracts.md`](docs/offer-contracts.md). Offers whose agent publishes no
+contract (Hetzner, OpenShift, vSphere, `Keycloak`) are unchanged.
+
+New public types: `OfferContract`, `ContractConfig`, `ContractParameters`,
+`ContractParameter`, `ContractValue`, `ContractValueType`, `ContractDeclaration`. An
+`Offer` carries its `contract`, and an offer constructor exposes `offerType`,
+`satisfies` and `contract`.
+
+**Breaking — config keys no agent read are removed.** A value set under them never
+took effect:
+
+- `AzureServiceBus`, `AzurePostgresDbms`, `AzureDatalake`: `resourceGroup`
+  (`AzureNsg` keeps it, now optional: its agent declares it).
+- `AzureApiManagement`: `sku`; the agent reads `skuName`. `publisherEmail` is now
+  optional, as the agent declares it.
+- `OciVcn`, `OciSubnet`, `OciSecurityList`, `OciInstance`: `region` (the OCI agent
+  reads no per-component region). `OciSubnet`:
+  `availabilityDomain` is now the agent's own key, `availabilityZone`.
+- `GcpPostgresDbms`: `tier`. `ArubaMySqlDbms`: `region`.
+- `TraefikGateway`: `forwardAuthExcludedPrefixes` (already refused at runtime).
+
+**Breaking — keys the agents require are required.** Each of these failed at
+reconcile when missing: `nodeTypeId` on `AwsDatabricksCluster`,
+`AzureDatabricksCluster` and `GcpDatabricksCluster`; `sparkOperatorName` on
+`CaaSSparkCluster` and `CaaSSparkJob`, and `mainApplicationFile` on `CaaSSparkJob`;
+`apiConfig` on `GcpApiGateway`; `clusterName` on `KafkaTopic`; `elasticInstances` and
+`storage` on `ObservabilityElastic`; `host` on `Ocelot`; `entryPoints` on `Traefik`.
+
+**Breaking — a neutral setter the selected offer's agent cannot honor is refused.**
+`toLiveSystem` used to send it under a key nobody reads; it now throws, naming the
+offer, the parameter, the component and why (e.g. `withTags` on `AwsVpc` or `AwsS3`,
+`withEgressRules` on every security group, `withRetentionDays` on Prometheus, workload
+settings `EcsService` and `CloudRun` have no key for, such as `withEnv`).
+A value the offer satisfies anyway is accepted and not sent (`withEncryption('at-rest')`
+and `withPublicAccess(false)` on S3, `withDeadLetterEnabled(true)` on SQS). This
+replaces the `scrapeInterval` / `samplingRate` refusal, whose message changes. The
+`AzureServiceBus` offer no longer sends the neutral `tier` it consumes.
+
+**Fixed — neutral setters that reached no agent now do**, under the agent's key:
+`withSize` (EC2 `instanceType`, Azure `vmSize`, GCP `machineType`, OCI `shape`; the
+first three are now optional in the configs), `withEngineVersion` on the RDS and Azure
+PostgreSQL DBMS (`version`), `withStorageGb` on RDS (`allocatedStorageGb`) and Cloud SQL
+MySQL (`instanceDataDiskSizeGb`), `withRetentionDays` on `AwsS3` / `AwsS3Datalake`
+(`lifecycleExpirationDays`), `withMemory` / `withTimeout` on `AwsLambda`,
+`withEnvironment` on `AzureFunction` (`appSettings`), replicas, autoscaling and CPU /
+memory requests on `AzureContainerApp`, partitions on `KafkaTopic`,
+retention on `AzureServiceBusTopic` (`defaultMessageTimeToLive`), `withCustomDomain` on
+`AwsCloudFront` (`aliases`), `Traefik` (`hostname`), `TraefikGateway` and `Ambassador`
+(`host`), and `cronSchedule` on `CaaSSparkJob` (`schedule`). An explicit vendor value
+wins over an open neutral one and is refused against a locked one.
+
+**Fixed — `EcsService` and `CloudRun` deploy.** They emitted placeholder types the agents
+provision nothing for. `CloudRun` now emits `NetworkAndCompute.CaaS.CloudRunService`, and
+`EcsService` an ECS task definition `<id>-task` plus the `NetworkAndCompute.CaaS.ECSService`
+that depends on it, with the Workload's image, port, CPU / memory requests and replicas
+translated into their keys. New `EcsCluster` offer (`NetworkAndCompute.PaaS.ECS`) for the
+`ContainerPlatform` an `EcsService` workload depends on.
+
+**Breaking — translated values must be values the agent accepts.** `withSize` takes
+`small` / `medium` / `large` / `xlarge` (new `VmSize`, mapped to each vendor's machine types)
+or that vendor's own type name, and refuses anything else; Kubernetes CPU / memory quantities
+are converted (Container Apps `0.5Gi`, ECS CPU units and MiB) and refused when they are not
+quantities; every translated value is checked against the contract's type, vocabulary and
+constraints.
+
+**Breaking — keys only some agents of a self-hosted CaaS offer read are not offered.** Any
+of them may reconcile the component, so such a key is neither a config key nor a translation
+target: `KafkaTopic` refuses `withMessageRetentionHours` (aria-agent-caas-k8s reads no
+retention), `CaaSSparkCluster` / `CaaSSparkJob` refuse `withSparkVersion` / `withMaxRetries`,
+and the Java-only sizing keys and `region` are no longer config keys of the CaaS offers.
+
+**Added — every other contract key is an optional config key**, e.g. `AwsLb.lbType`,
+the storage-account settings of `AzureBlob`, `AwsVpc.enableDnsHostnames`. Keys a
+neutral setter fills (`lbScheme`, `cidrBlock`, `ingressRules`, ...) are not offered
+as config, so a config value cannot bypass a locked guardrail.
+
+### Fixed — IaaS parameters now reach the agents under the keys they read
+
+- **`LoadBalancer.withScheme(...)` takes effect.** It was emitted as `scheme`, a key
+  no agent reads: the AWS, Azure and GCP agents read `lbScheme`, so every load
+  balancer got the agent default whatever the blueprint said (AWS and the SDK's
+  absent value: `internet-facing`; Azure: `internal`; GCP: `INTERNAL`). `AwsLb`,
+  `AzureLb` and `GcpGlb` now emit `lbScheme`, spelled for each agent: `internal` /
+  `internet-facing` on AWS and Azure, `INTERNAL` / `EXTERNAL` on GCP. An unset scheme
+  still emits nothing. A value other than `internal` or `internet-facing` (possible
+  through a dev-open `.set('scheme', ...)`) is now refused at `toLiveSystem`. The
+  blueprint keeps the neutral `scheme`. The type is exported as `LoadBalancerScheme`.
+
+  **Existing AWS load balancers:** a load balancer whose blueprint asked for
+  `internal` was created `internet-facing`. Its next reconcile now asks for
+  `internal`, and the AWS agent refuses a scheme change on an existing load balancer
+  ("scheme cannot be changed"). Drop `withScheme('internal')` to keep the running one,
+  or let the agent recreate it by replacing the component. Azure and GCP read the
+  scheme only when creating, so their existing load balancers are untouched.
+- **`OciSubnet`'s availability domain takes effect.** The OCI agent reads it as
+  `availabilityZone`, which is now the config key (`availabilityDomain` is removed,
+  see above).
+- **`VirtualMachine.withPublicSSHKey(...)` reaches OCI.** `OciInstance` now emits it as
+  `keyName`, which the OCI agent writes to the instance's `ssh_authorized_keys`.
+- **`HetznerServer` is reconciled.** It was emitted as
+  `NetworkAndCompute.IaaS.HetznerServer`, the type of the retired Java Hetzner agent;
+  `aria-agent-hetzner` reconciles `NetworkAndCompute.IaaS.HetznerCloudServer`, which
+  is what the offer now emits. Its `region` is sent as `location`, the key that agent
+  reads. No migration is needed: no running agent reconciled the old type, so no
+  server was ever created from it.
+- **Hetzner network and firewall parameters match the agent.** `HetznerNetwork` sends
+  the neutral `cidrBlock` as `ipRange` (it was ignored, and every network got
+  `10.0.0.0/16`). `HetznerFirewall` sends each egress rule's peer CIDR as `destCidr`;
+  the agent refused egress rules without one. `region` on `HetznerNetwork`,
+  `HetznerSubnet` and `HetznerFirewall` is deprecated and no longer sent: Hetzner has
+  no location for those resources (a subnet is placed by `networkZone`).
 
 ### Changed — the 2.10.0 and 2.11.0 notes, corrected
 
@@ -31,7 +183,7 @@ No change to the published code: the SDK built from this release behaves exactly
 
 ### Changed — dependencies
 
-- `@types/node` 26.6.5 (development only).
+- `@types/node` 26.6.5, `tsdown` 0.23.1 (development only).
 
 ## 2.11.0
 

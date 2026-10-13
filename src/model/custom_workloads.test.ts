@@ -17,11 +17,8 @@ import {Workload, Function} from './components/custom_workloads';
 import {EcsService, K8sWorkload, AwsLambda} from './offers/custom_workloads';
 import {ContainerPlatform} from './components/network_and_compute';
 import {Aks, Eks, Gke} from './offers/network_and_compute';
-import {
-  KUBERNETES_WORKLOAD_CONTRACT_PARAMS,
-  KUBERNETES_WORKLOAD_UNDECLARED_PARAMS,
-  withContractImageName,
-} from './offers/kubernetes_workload_contract';
+import {withContractImageName} from './offers/kubernetes_workload_contract';
+import {CustomWorkloads_CaaS_KubernetesWorkload} from './offers/generated/custom_workloads';
 
 const environment = {};
 const boundedContextId = {id: 'custom-workloads-templates'};
@@ -50,7 +47,7 @@ function authorFractal() {
 }
 
 const fullSelect = () => ({
-  web: EcsService({launchType: 'FARGATE'}),
+  web: EcsService({}),
   'ingest-fn': AwsLambda({roleArn: 'arn:x', handler: 'index.handler'}),
 });
 
@@ -71,23 +68,47 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
     expect(web.locked).toContain('healthCheck');
   });
 
-  it('builds a LiveSystem by per-component offer selection (AWS)', () => {
-    const ls = authorFractal()
-      .specialize()
-      .withImage('registry/app:1')
-      .withReplicas(6)
-      .toLiveSystem({name: 'acme-prod', environment, select: fullSelect()});
+  it('refuses on EcsService the workload guardrails ECS cannot honor', () => {
+    // The ECS service and task definition contracts declare no autoscaling and
+    // no health check, so the locked maxReplicas / healthCheck are refused.
+    expect(() =>
+      authorFractal()
+        .specialize()
+        .withImage('registry/app:1')
+        .withReplicas(6)
+        .toLiveSystem({name: 'acme-prod', environment, select: fullSelect()}),
+    ).toThrow(
+      "Offer NetworkAndCompute.CaaS.ECSService cannot honor the parameter 'maxReplicas' of 'web': the ECS task definition and service contracts declare no autoscaling",
+    );
+  });
 
-    const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
-
-    // Workload resolved to AWS ECS.
-    expect(byId['web'].type).toBe('CustomWorkloads.PaaS.AwsEcsService');
-    expect(byId['web'].provider).toBe('AWS');
-    // dev-open params flowed into the live component.
-    expect(byId['web'].parameters.image).toBe('registry/app:1');
-    expect(byId['web'].parameters.replicas).toBe(6);
-    // vendor config merged.
-    expect(byId['web'].parameters.launchType).toBe('FARGATE');
+  it('builds the Function on AWS Lambda with its runtime', () => {
+    const ls = createFractal({
+      id: 'functions',
+      version: {major: 1, minor: 0, patch: 0},
+      boundedContextId,
+      blueprint: bp => ({
+        fn: bp.add(
+          Function({id: 'ingest-fn'})
+            .withRuntime('nodejs20.x')
+            .withMemory(256)
+            .withTimeout(30),
+        ),
+      }),
+    }).toLiveSystem({
+      name: 'acme-prod',
+      environment,
+      select: {
+        'ingest-fn': AwsLambda({roleArn: 'arn:x', handler: 'index.handler'}),
+      },
+    });
+    const fn = ls.components.find(c => c.id === 'ingest-fn')!;
+    expect(fn.type).toBe('CustomWorkloads.FaaS.AwsLambda');
+    expect(fn.parameters).toMatchObject({
+      runtime: 'nodejs20.x',
+      memoryMb: 256,
+      timeoutSeconds: 30,
+    });
   });
 
   it('future-proof: a vendor-neutral CaaS offer leaves provider undefined', () => {
@@ -204,10 +225,9 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
         })
         .components.find(c => c.id === 'web')!;
 
-      const declared = new Set<string>([
-        ...KUBERNETES_WORKLOAD_CONTRACT_PARAMS,
-        ...KUBERNETES_WORKLOAD_UNDECLARED_PARAMS,
-      ]);
+      const declared = new Set<string>(
+        Object.keys(CustomWorkloads_CaaS_KubernetesWorkload.params),
+      );
       const undeclared = Object.keys(web.parameters)
         .filter(k => !declared.has(k))
         .sort();
@@ -278,10 +298,9 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
 
     it('emits no parameter the contract does not declare', () => {
       const child = childOf(Aks({}));
-      const declared = new Set<string>([
-        ...KUBERNETES_WORKLOAD_CONTRACT_PARAMS,
-        ...KUBERNETES_WORKLOAD_UNDECLARED_PARAMS,
-      ]);
+      const declared = new Set<string>(
+        Object.keys(CustomWorkloads_CaaS_KubernetesWorkload.params),
+      );
       expect(
         Object.keys(child.parameters).filter(k => !declared.has(k)),
       ).toEqual([]);

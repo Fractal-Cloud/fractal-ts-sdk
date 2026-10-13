@@ -1,0 +1,3952 @@
+{
+  "agentId": "fractal-cloud-agent-aws",
+  "agentVersion": "v8.25.2",
+  "offers": [
+    {
+      "aliasOfOfferType": null,
+      "offerType": "AI.SaaS.Unmanaged",
+      "params": [
+        {
+          "key": "secret",
+          "sensitive": true,
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "secretName",
+          "type": "string"
+        },
+        {
+          "key": "secretValue",
+          "sensitive": true,
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "APIManagement.CaaS.Traefik",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "key": "entryPoints",
+          "required": true,
+          "type": "array"
+        },
+        {
+          "key": "forwardAuthSecretId",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "hostname",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "loadbalancerIp",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "oidcClientId",
+          "type": "string"
+        },
+        {
+          "key": "oidcClientSecretId",
+          "type": "string"
+        },
+        {
+          "key": "oidcIssuerUrl",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": {},
+          "key": "securityHeadersSettings",
+          "type": "object"
+        },
+        {
+          "default": [],
+          "key": "tlsCertificates",
+          "type": "array"
+        },
+        {
+          "default": {},
+          "key": "tlsSettings",
+          "type": "object"
+        },
+        {
+          "default": {},
+          "key": "tracing",
+          "type": "object"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "APIManagement.PaaS.AwsCloudFront",
+      "params": [
+        {
+          "default": [],
+          "key": "aliases",
+          "type": "array"
+        },
+        {
+          "default": "Managed by Fractal Cloud",
+          "key": "comment",
+          "type": "string"
+        },
+        {
+          "key": "defaultRootObject",
+          "type": "string"
+        },
+        {
+          "key": "errorDocument",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "originDomain",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "originDomainName",
+          "type": "string"
+        },
+        {
+          "default": 60,
+          "key": "originKeepaliveTimeoutSeconds",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "originProtocol",
+          "type": "string"
+        },
+        {
+          "default": 60,
+          "key": "originReadTimeoutSeconds",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "redirectTo",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "key": "spaFallback",
+          "prefill": false,
+          "type": "boolean"
+        },
+        {
+          "default": true,
+          "key": "wafEnabled",
+          "type": "boolean"
+        },
+        {
+          "default": 2000,
+          "key": "wafRateLimitPer5Min",
+          "type": "integer"
+        }
+      ],
+      "provider": "AWS",
+      "serviceTypes": [
+        "APIManagement.PaaS.APIGateway"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "APIManagement.PaaS.CloudFront",
+      "params": [
+        {
+          "default": [],
+          "key": "aliases",
+          "type": "array"
+        },
+        {
+          "default": "Managed by Fractal Cloud",
+          "key": "comment",
+          "type": "string"
+        },
+        {
+          "key": "defaultRootObject",
+          "type": "string"
+        },
+        {
+          "key": "errorDocument",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "originDomain",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "originDomainName",
+          "type": "string"
+        },
+        {
+          "default": 60,
+          "key": "originKeepaliveTimeoutSeconds",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "originProtocol",
+          "type": "string"
+        },
+        {
+          "default": 60,
+          "key": "originReadTimeoutSeconds",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "redirectTo",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "key": "spaFallback",
+          "type": "boolean"
+        },
+        {
+          "default": true,
+          "key": "wafEnabled",
+          "type": "boolean"
+        },
+        {
+          "default": 2000,
+          "key": "wafRateLimitPer5Min",
+          "type": "integer"
+        }
+      ],
+      "provider": "AWS"
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "APIManagement.SaaS.Unmanaged",
+      "params": [
+        {
+          "key": "secret",
+          "sensitive": true,
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "secretName",
+          "type": "string"
+        },
+        {
+          "key": "secretValue",
+          "sensitive": true,
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.CaaS.MinioTenant",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": "2",
+          "key": "cpuLimit",
+          "type": "string"
+        },
+        {
+          "default": "500m",
+          "key": "cpuRequest",
+          "type": "string"
+        },
+        {
+          "default": "4Gi",
+          "key": "memoryLimit",
+          "type": "string"
+        },
+        {
+          "default": "1Gi",
+          "key": "memoryRequest",
+          "type": "string"
+        },
+        {
+          "default": "RELEASE.2025-03-12T18-04-18Z",
+          "key": "minioVersion",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": true,
+          "key": "requestAutoCert",
+          "type": "boolean"
+        },
+        {
+          "default": 4,
+          "key": "servers",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "storageClass",
+          "type": "string"
+        },
+        {
+          "default": "100Gi",
+          "key": "volumeSize",
+          "type": "string"
+        },
+        {
+          "default": 4,
+          "key": "volumesPerServer",
+          "type": "integer"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.CaaS.SparkCluster",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": "1",
+          "key": "driverCores",
+          "type": "string"
+        },
+        {
+          "default": "1g",
+          "key": "driverMemory",
+          "type": "string"
+        },
+        {
+          "default": "2",
+          "key": "executorCores",
+          "type": "string"
+        },
+        {
+          "default": 2,
+          "key": "executorInstances",
+          "type": "integer"
+        },
+        {
+          "default": "2g",
+          "key": "executorMemory",
+          "type": "string"
+        },
+        {
+          "default": "apache/spark:3.5.3",
+          "key": "image",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "key": "sparkOperatorName",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "3.5.3",
+          "key": "sparkVersion",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.CaaS.SparkJob",
+      "params": [
+        {
+          "default": [],
+          "key": "arguments",
+          "type": "array"
+        },
+        {
+          "default": "Forbid",
+          "key": "concurrencyPolicy",
+          "type": "string"
+        },
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": "1",
+          "key": "driverCores",
+          "type": "string"
+        },
+        {
+          "default": "1g",
+          "key": "driverMemory",
+          "type": "string"
+        },
+        {
+          "default": "2",
+          "key": "executorCores",
+          "type": "string"
+        },
+        {
+          "default": 2,
+          "key": "executorInstances",
+          "type": "integer"
+        },
+        {
+          "default": "2g",
+          "key": "executorMemory",
+          "type": "string"
+        },
+        {
+          "default": "apache/spark:3.5.3",
+          "key": "image",
+          "type": "string"
+        },
+        {
+          "key": "mainApplicationFile",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "mainClass",
+          "type": "string"
+        },
+        {
+          "default": 3,
+          "key": "maxRetries",
+          "type": "integer"
+        },
+        {
+          "default": "cluster",
+          "key": "mode",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "Never",
+          "key": "restartPolicy",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "schedule",
+          "type": "string"
+        },
+        {
+          "default": {},
+          "key": "sparkConf",
+          "type": "object"
+        },
+        {
+          "key": "sparkOperatorName",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "3.5.3",
+          "key": "sparkVersion",
+          "type": "string"
+        },
+        {
+          "default": "Java",
+          "key": "type",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.CaaS.SparkMlExperiment",
+      "params": [
+        {
+          "default": "/mlflow/artifacts",
+          "key": "artifactRoot",
+          "type": "string"
+        },
+        {
+          "default": "sqlite:///mlflow/mlflow.db",
+          "key": "backendStoreUri",
+          "type": "string"
+        },
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": "1",
+          "key": "cpuLimit",
+          "type": "string"
+        },
+        {
+          "default": "250m",
+          "key": "cpuRequest",
+          "type": "string"
+        },
+        {
+          "default": "1Gi",
+          "key": "memoryLimit",
+          "type": "string"
+        },
+        {
+          "default": "512Mi",
+          "key": "memoryRequest",
+          "type": "string"
+        },
+        {
+          "default": "2.21.3",
+          "key": "mlflowVersion",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": 2,
+          "key": "replicas",
+          "type": "integer"
+        },
+        {
+          "default": 5000,
+          "key": "servicePort",
+          "type": "integer"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.CaaS.SparkOperator",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": true,
+          "key": "enableMetrics",
+          "type": "boolean"
+        },
+        {
+          "default": true,
+          "key": "enableWebhook",
+          "type": "boolean"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "default": "2.5.0",
+          "key": "operatorVersion",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "3.5.3",
+          "key": "sparkVersion",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.CaaS.SparkUnityCatalog",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": "1",
+          "key": "cpuLimit",
+          "type": "string"
+        },
+        {
+          "default": "250m",
+          "key": "cpuRequest",
+          "type": "string"
+        },
+        {
+          "default": "1Gi",
+          "key": "memoryLimit",
+          "type": "string"
+        },
+        {
+          "default": "512Mi",
+          "key": "memoryRequest",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": 2,
+          "key": "replicas",
+          "type": "integer"
+        },
+        {
+          "default": "0.3.0",
+          "key": "unityCatalogVersion",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.PaaS.AwsDatabricks",
+      "params": [
+        {
+          "key": "accountId",
+          "type": "string"
+        },
+        {
+          "key": "credentialsId",
+          "prefill": "databricks-creds-id",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "networkId",
+          "type": "string"
+        },
+        {
+          "default": "premium",
+          "key": "pricingTier",
+          "type": "string",
+          "values": [
+            "standard",
+            "premium",
+            "enterprise"
+          ],
+          "valuesCaseInsensitive": true
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "key": "storageConfigurationId",
+          "prefill": "storage-config-id",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "serviceTypes": [
+        "BigData.PaaS.Databricks"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.PaaS.AwsDatabricksCluster",
+      "params": [
+        {
+          "default": 60,
+          "key": "autoTerminationMinutes",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "clusterName",
+          "type": "string"
+        },
+        {
+          "default": "SINGLE_USER",
+          "key": "dataSecurityMode",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "mavenLibraries",
+          "type": "array"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "maxWorkers",
+          "prefill": 8,
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "minWorkers",
+          "prefill": 1,
+          "type": "integer"
+        },
+        {
+          "key": "nodeTypeId",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "numWorkers",
+          "type": "integer"
+        },
+        {
+          "default": [],
+          "key": "pypiLibraries",
+          "type": "array"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "singleNode",
+          "type": "boolean"
+        },
+        {
+          "key": "singleUserName",
+          "type": "string"
+        },
+        {
+          "default": {},
+          "key": "sparkConf",
+          "type": "object"
+        },
+        {
+          "key": "sparkVersion",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "serviceTypes": [
+        "BigData.PaaS.DatabricksCluster"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.PaaS.AwsDatabricksJob",
+      "parameterRules": [
+        {
+          "cases": [
+            {
+              "id": "wheelExplicit",
+              "then": {
+                "required": [
+                  "artifactUri",
+                  "entryPoint"
+                ]
+              },
+              "when": {
+                "equals": "python_wheel",
+                "key": "artifactType"
+              }
+            },
+            {
+              "id": "wheelImplicit",
+              "then": {
+                "required": [
+                  "entryPoint"
+                ]
+              },
+              "when": {
+                "allOf": [
+                  {
+                    "key": "artifactType",
+                    "present": false
+                  },
+                  {
+                    "key": "artifactUri",
+                    "present": true
+                  }
+                ]
+              }
+            },
+            {
+              "id": "declaredTaskType",
+              "then": {
+                "restrict": [
+                  {
+                    "in": [
+                      "NOTEBOOK",
+                      "PYTHON",
+                      "SPARK_JAR"
+                    ],
+                    "key": "taskType"
+                  }
+                ],
+                "rules": [
+                  {
+                    "id": "notebookArtifact",
+                    "key": "notebookPath",
+                    "kind": "requiredIf",
+                    "when": {
+                      "equals": "NOTEBOOK",
+                      "key": "taskType"
+                    }
+                  },
+                  {
+                    "id": "pythonArtifact",
+                    "key": "pythonFile",
+                    "kind": "requiredIf",
+                    "message": "A PYTHON job needs the Python file it runs.",
+                    "when": {
+                      "equals": "PYTHON",
+                      "key": "taskType"
+                    }
+                  },
+                  {
+                    "id": "jarArtifact",
+                    "key": "mainClassName",
+                    "kind": "requiredIf",
+                    "when": {
+                      "equals": "SPARK_JAR",
+                      "key": "taskType"
+                    }
+                  }
+                ]
+              },
+              "when": {
+                "key": "taskType",
+                "present": true
+              }
+            }
+          ],
+          "id": "jobShape",
+          "kind": "branches",
+          "otherwise": {
+            "rules": [
+              {
+                "fix": "Set taskType (NOTEBOOK, PYTHON or SPARK_JAR) together with the artifact it runs, or set artifactUri and entryPoint for a Python wheel job.",
+                "id": "taskTypeOrSingleArtifact",
+                "keys": [
+                  "notebookPath",
+                  "pythonFile",
+                  "mainClassName"
+                ],
+                "kind": "exactlyOneOf",
+                "message": "The job does not say what to run."
+              }
+            ]
+          }
+        }
+      ],
+      "params": [
+        {
+          "default": "",
+          "key": "artifactType",
+          "type": "string",
+          "values": [
+            "python_wheel",
+            "notebook"
+          ],
+          "valuesLevel": "warn"
+        },
+        {
+          "default": "",
+          "key": "artifactUri",
+          "placeholderIsAbsent": true,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "cronSchedule",
+          "type": "string"
+        },
+        {
+          "description": "the function the wheel exposes",
+          "example": "main",
+          "key": "entryPoint",
+          "placeholderIsAbsent": true,
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "entryPointArgs",
+          "type": "array"
+        },
+        {
+          "deprecated": {
+            "level": "warn",
+            "note": "the job runs on the cluster it depends on, or on a cluster started for each run when it depends on none"
+          },
+          "key": "existingCluster",
+          "type": "boolean"
+        },
+        {
+          "default": "",
+          "description": "the URI of the JAR that holds the main class (SPARK_JAR)",
+          "key": "jarUri",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id"
+          },
+          "key": "jobName",
+          "type": "string"
+        },
+        {
+          "description": "the fully qualified main class of the JAR",
+          "example": "com.example.etl.Main",
+          "key": "mainClassName",
+          "placeholderIsAbsent": true,
+          "type": "string"
+        },
+        {
+          "constraints": {
+            "level": "warn",
+            "minimum": 0
+          },
+          "default": 0,
+          "key": "maxRetries",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "maxWorkers",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "minWorkers",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "discovered from the workspace when undeclared: the newest-generation, smallest general-purpose node type with at least 4 cores"
+          },
+          "key": "nodeTypeId",
+          "prefill": "i3.xlarge",
+          "type": "string"
+        },
+        {
+          "description": "the workspace path of the notebook the job runs",
+          "example": "/Shared/etl",
+          "key": "notebookPath",
+          "placeholderIsAbsent": true,
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "numWorkers",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id"
+          },
+          "key": "packageName",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "parameters",
+          "type": "array"
+        },
+        {
+          "description": "the path of the Python file the job runs",
+          "example": "/Workspace/jobs/etl.py",
+          "key": "pythonFile",
+          "placeholderIsAbsent": true,
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "singleNode",
+          "type": "boolean"
+        },
+        {
+          "default": "14.3.x-scala2.12",
+          "key": "sparkVersion",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "derived when exactly one of notebookPath, pythonFile, mainClassName is declared"
+          },
+          "description": "which artifact Databricks executes",
+          "key": "taskType",
+          "type": "string",
+          "values": [
+            "NOTEBOOK",
+            "PYTHON",
+            "SPARK_JAR"
+          ],
+          "valuesCaseInsensitive": true,
+          "valuesLevel": "warn"
+        }
+      ],
+      "provider": "AWS",
+      "serviceTypes": [
+        "BigData.PaaS.DatabricksJob"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.PaaS.AwsDatabricksMlflow",
+      "params": [
+        {
+          "default": "",
+          "key": "artifactLocation",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "experimentName",
+          "prefill": "/Shared/my-experiment",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "serviceTypes": [
+        "BigData.PaaS.DatabricksMlflowExperiment"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.PaaS.AwsS3Datalake",
+      "params": [
+        {
+          "default": "",
+          "key": "bucket",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "forceDestroy",
+          "type": "boolean"
+        },
+        {
+          "key": "lifecycleExpirationDays",
+          "type": "number"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "versioning",
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "key": "versioningEnabled",
+          "type": "boolean"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "type": "AWS::S3::Bucket"
+        }
+      ],
+      "serviceTypes": [
+        "BigData.PaaS.S3"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.PaaS.Databricks",
+      "params": [
+        {
+          "key": "accountId",
+          "type": "string"
+        },
+        {
+          "key": "credentialsId",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "networkId",
+          "type": "string"
+        },
+        {
+          "default": "premium",
+          "key": "pricingTier",
+          "type": "string",
+          "values": [
+            "standard",
+            "premium",
+            "enterprise"
+          ],
+          "valuesCaseInsensitive": true
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "key": "storageConfigurationId",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "provider": "AWS"
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.PaaS.DatabricksCluster",
+      "params": [
+        {
+          "default": 60,
+          "key": "autoTerminationMinutes",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "clusterName",
+          "type": "string"
+        },
+        {
+          "default": "SINGLE_USER",
+          "key": "dataSecurityMode",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "mavenLibraries",
+          "type": "array"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "maxWorkers",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "minWorkers",
+          "type": "integer"
+        },
+        {
+          "key": "nodeTypeId",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "numWorkers",
+          "type": "integer"
+        },
+        {
+          "default": [],
+          "key": "pypiLibraries",
+          "type": "array"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "singleNode",
+          "type": "boolean"
+        },
+        {
+          "key": "singleUserName",
+          "type": "string"
+        },
+        {
+          "default": {},
+          "key": "sparkConf",
+          "type": "object"
+        },
+        {
+          "key": "sparkVersion",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "provider": "AWS"
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.PaaS.DatabricksJob",
+      "parameterRules": [
+        {
+          "cases": [
+            {
+              "id": "wheelExplicit",
+              "then": {
+                "required": [
+                  "artifactUri",
+                  "entryPoint"
+                ]
+              },
+              "when": {
+                "equals": "python_wheel",
+                "key": "artifactType"
+              }
+            },
+            {
+              "id": "wheelImplicit",
+              "then": {
+                "required": [
+                  "entryPoint"
+                ]
+              },
+              "when": {
+                "allOf": [
+                  {
+                    "key": "artifactType",
+                    "present": false
+                  },
+                  {
+                    "key": "artifactUri",
+                    "present": true
+                  }
+                ]
+              }
+            },
+            {
+              "id": "declaredTaskType",
+              "then": {
+                "restrict": [
+                  {
+                    "in": [
+                      "NOTEBOOK",
+                      "PYTHON",
+                      "SPARK_JAR"
+                    ],
+                    "key": "taskType"
+                  }
+                ],
+                "rules": [
+                  {
+                    "id": "notebookArtifact",
+                    "key": "notebookPath",
+                    "kind": "requiredIf",
+                    "when": {
+                      "equals": "NOTEBOOK",
+                      "key": "taskType"
+                    }
+                  },
+                  {
+                    "id": "pythonArtifact",
+                    "key": "pythonFile",
+                    "kind": "requiredIf",
+                    "message": "A PYTHON job needs the Python file it runs.",
+                    "when": {
+                      "equals": "PYTHON",
+                      "key": "taskType"
+                    }
+                  },
+                  {
+                    "id": "jarArtifact",
+                    "key": "mainClassName",
+                    "kind": "requiredIf",
+                    "when": {
+                      "equals": "SPARK_JAR",
+                      "key": "taskType"
+                    }
+                  }
+                ]
+              },
+              "when": {
+                "key": "taskType",
+                "present": true
+              }
+            }
+          ],
+          "id": "jobShape",
+          "kind": "branches",
+          "otherwise": {
+            "rules": [
+              {
+                "fix": "Set taskType (NOTEBOOK, PYTHON or SPARK_JAR) together with the artifact it runs, or set artifactUri and entryPoint for a Python wheel job.",
+                "id": "taskTypeOrSingleArtifact",
+                "keys": [
+                  "notebookPath",
+                  "pythonFile",
+                  "mainClassName"
+                ],
+                "kind": "exactlyOneOf",
+                "message": "The job does not say what to run."
+              }
+            ]
+          }
+        }
+      ],
+      "params": [
+        {
+          "default": "",
+          "key": "artifactType",
+          "type": "string",
+          "values": [
+            "python_wheel",
+            "notebook"
+          ],
+          "valuesLevel": "warn"
+        },
+        {
+          "default": "",
+          "key": "artifactUri",
+          "placeholderIsAbsent": true,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "cronSchedule",
+          "type": "string"
+        },
+        {
+          "description": "the function the wheel exposes",
+          "example": "main",
+          "key": "entryPoint",
+          "placeholderIsAbsent": true,
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "entryPointArgs",
+          "type": "array"
+        },
+        {
+          "deprecated": {
+            "level": "warn",
+            "note": "the job runs on the cluster it depends on, or on a cluster started for each run when it depends on none"
+          },
+          "key": "existingCluster",
+          "type": "boolean"
+        },
+        {
+          "default": "",
+          "description": "the URI of the JAR that holds the main class (SPARK_JAR)",
+          "key": "jarUri",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id"
+          },
+          "key": "jobName",
+          "type": "string"
+        },
+        {
+          "description": "the fully qualified main class of the JAR",
+          "example": "com.example.etl.Main",
+          "key": "mainClassName",
+          "placeholderIsAbsent": true,
+          "type": "string"
+        },
+        {
+          "constraints": {
+            "level": "warn",
+            "minimum": 0
+          },
+          "default": 0,
+          "key": "maxRetries",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "maxWorkers",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "minWorkers",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "discovered from the workspace when undeclared: the newest-generation, smallest general-purpose node type with at least 4 cores"
+          },
+          "key": "nodeTypeId",
+          "type": "string"
+        },
+        {
+          "description": "the workspace path of the notebook the job runs",
+          "example": "/Shared/etl",
+          "key": "notebookPath",
+          "placeholderIsAbsent": true,
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only"
+          },
+          "key": "numWorkers",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id"
+          },
+          "key": "packageName",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "parameters",
+          "type": "array"
+        },
+        {
+          "description": "the path of the Python file the job runs",
+          "example": "/Workspace/jobs/etl.py",
+          "key": "pythonFile",
+          "placeholderIsAbsent": true,
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "singleNode",
+          "type": "boolean"
+        },
+        {
+          "default": "14.3.x-scala2.12",
+          "key": "sparkVersion",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "derived when exactly one of notebookPath, pythonFile, mainClassName is declared"
+          },
+          "description": "which artifact Databricks executes",
+          "key": "taskType",
+          "type": "string",
+          "values": [
+            "NOTEBOOK",
+            "PYTHON",
+            "SPARK_JAR"
+          ],
+          "valuesCaseInsensitive": true,
+          "valuesLevel": "warn"
+        }
+      ],
+      "provider": "AWS"
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.PaaS.DatabricksMlflowExperiment",
+      "params": [
+        {
+          "default": "",
+          "key": "artifactLocation",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "experimentName",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS"
+    },
+    {
+      "aliasOfOfferType": "BigData.PaaS.AwsS3Datalake",
+      "offerType": "BigData.PaaS.S3",
+      "params": [
+        {
+          "default": "",
+          "key": "bucket",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "forceDestroy",
+          "type": "boolean"
+        },
+        {
+          "key": "lifecycleExpirationDays",
+          "type": "number"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "versioning",
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "key": "versioningEnabled",
+          "type": "boolean"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "type": "AWS::S3::Bucket"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "BigData.SaaS.Unmanaged",
+      "params": [
+        {
+          "key": "secret",
+          "sensitive": true,
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "secretName",
+          "type": "string"
+        },
+        {
+          "key": "secretValue",
+          "sensitive": true,
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "CustomWorkloads.FaaS.AwsLambda",
+      "params": [
+        {
+          "key": "codeBase64",
+          "type": "string"
+        },
+        {
+          "default": {},
+          "key": "environment",
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "functionName",
+          "type": "string"
+        },
+        {
+          "key": "handler",
+          "type": "string"
+        },
+        {
+          "default": 128,
+          "key": "memoryMb",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "packageType",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "key": "roleArn",
+          "type": "string"
+        },
+        {
+          "default": "java21",
+          "key": "runtime",
+          "type": "string"
+        },
+        {
+          "key": "sourceArtifact",
+          "type": "string"
+        },
+        {
+          "default": 3,
+          "key": "timeoutSeconds",
+          "type": "integer"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "type": "AWS::Lambda::Function"
+        }
+      ],
+      "serviceTypes": [
+        "NetworkAndCompute.FaaS.Workload"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "CustomWorkloads.PaaS.AwsEcsService",
+      "params": [
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "CustomWorkloads.SaaS.Unmanaged",
+      "params": [
+        {
+          "key": "secret",
+          "sensitive": true,
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "secretName",
+          "type": "string"
+        },
+        {
+          "key": "secretValue",
+          "sensitive": true,
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Messaging.CaaS.Kafka",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": "8",
+          "key": "cpuLimit",
+          "type": "string"
+        },
+        {
+          "default": "4",
+          "key": "cpuRequest",
+          "type": "string"
+        },
+        {
+          "default": "4.2.0",
+          "key": "kafkaVersion",
+          "type": "string"
+        },
+        {
+          "default": "32Gi",
+          "key": "memoryLimit",
+          "type": "string"
+        },
+        {
+          "default": "16Gi",
+          "key": "memoryRequest",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": 5,
+          "key": "replicas",
+          "type": "integer"
+        },
+        {
+          "default": "1Ti",
+          "key": "storageSize",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Messaging.CaaS.KafkaTopic",
+      "params": [
+        {
+          "key": "clusterName",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "default": 50,
+          "key": "partitions",
+          "type": "integer"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": 2,
+          "key": "replicas",
+          "type": "integer"
+        },
+        {
+          "default": 172800000,
+          "key": "retentionMs",
+          "type": "integer"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Messaging.CaaS.KafkaUser",
+      "params": [
+        {
+          "default": [],
+          "key": "acls",
+          "type": "array"
+        },
+        {
+          "key": "clusterName",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Messaging.PaaS.AwsMessaging",
+      "params": [
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [],
+      "serviceTypes": [
+        "Messaging.PaaS.MessageBroker"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Messaging.PaaS.AwsSesIdentity",
+      "params": [
+        {
+          "default": "EN",
+          "key": "contactLanguage",
+          "type": "string"
+        },
+        {
+          "key": "domain",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "mailFromSubdomain",
+          "type": "string"
+        },
+        {
+          "default": "TRANSACTIONAL",
+          "key": "mailType",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "productionAccess",
+          "type": "boolean"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "useCaseDescription",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "websiteUrl",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "serviceTypes": [
+        "Messaging.PaaS.TransactionalEmail"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Messaging.PaaS.AwsSnsTopic",
+      "params": [
+        {
+          "default": "alias/aws/sns",
+          "key": "kmsMasterKeyId",
+          "type": "string"
+        },
+        {
+          "default": 262144,
+          "key": "maximumMessageSize",
+          "type": "integer"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "topicName",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "serviceTypes": [
+        "Messaging.PaaS.MessageBrokerEntity"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Messaging.PaaS.AwsSqsQueue",
+      "params": [
+        {
+          "default": 1209600,
+          "key": "dlqRetentionSeconds",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "filterEventNames",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "filterPolicy",
+          "type": "string"
+        },
+        {
+          "default": 5,
+          "key": "maxReceiveCount",
+          "type": "integer"
+        },
+        {
+          "default": 345600,
+          "key": "messageRetentionSeconds",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "queueName",
+          "type": "string"
+        },
+        {
+          "default": true,
+          "key": "rawMessageDelivery",
+          "type": "boolean"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": 60,
+          "key": "visibilityTimeoutSeconds",
+          "type": "integer"
+        }
+      ],
+      "provider": "AWS",
+      "serviceTypes": [
+        "Messaging.PaaS.MessageBrokerEntity"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Messaging.SaaS.Unmanaged",
+      "params": [
+        {
+          "key": "secret",
+          "sensitive": true,
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "secretName",
+          "type": "string"
+        },
+        {
+          "key": "secretValue",
+          "sensitive": true,
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.CaaS.ECSService",
+      "params": [
+        {
+          "default": false,
+          "key": "assignPublicIp",
+          "type": "boolean"
+        },
+        {
+          "default": 1,
+          "key": "desiredCount",
+          "type": "integer"
+        },
+        {
+          "default": "FARGATE",
+          "key": "launchType",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "serviceTypes": [
+        "NetworkAndCompute.CaaS.ECSWorkload"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.CaaS.ECSTaskDefinition",
+      "params": [
+        {
+          "key": "containerImage",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "containerName",
+          "type": "string"
+        },
+        {
+          "default": 8080,
+          "key": "containerPort",
+          "type": "integer"
+        },
+        {
+          "default": "256",
+          "key": "cpu",
+          "type": "string"
+        },
+        {
+          "description": "Environment variables of the container: name to a string, number or boolean, or to an environment-secret reference {\"$envSecret\": \"<shortName>\"}, which is passed as the cloud's secret reference and never as the raw value. Changing it rolls out a new revision.",
+          "key": "environment",
+          "type": "object"
+        },
+        {
+          "default": "",
+          "description": "Task execution role. Granted read on the secrets 'environment' references. When unset and secrets are referenced, an agent-owned role is created and used.",
+          "key": "executionRoleArn",
+          "type": "string"
+        },
+        {
+          "default": "512",
+          "key": "memory",
+          "type": "string"
+        },
+        {
+          "default": "awsvpc",
+          "key": "networkMode",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "taskRoleArn",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "serviceTypes": [
+        "NetworkAndCompute.CaaS.ECSWorkload"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.AwsEc2Instance",
+      "params": [
+        {
+          "default": "",
+          "description": "AMI id (ami-...). Leave empty to use the latest Amazon Linux 2023 AMI, resolved at create time.",
+          "key": "amiId",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "associatePublicIp",
+          "type": "boolean"
+        },
+        {
+          "default": "",
+          "key": "iamInstanceProfile",
+          "type": "string"
+        },
+        {
+          "key": "identity",
+          "prefill": {
+            "instanceProfile": ""
+          },
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "instanceType",
+          "prefill": "t3.medium",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "description": "Name of an existing EC2 key pair to launch with. Wins over publicSSHKey.",
+          "key": "keyName",
+          "type": "string"
+        },
+        {
+          "description": "OpenSSH public key (e.g. ssh-ed25519 AAAA...) to authorize on the instance. Imported as a key pair of this component, used at launch and deleted on teardown. Ignored when keyName is set. When neither is set, a new instance gets a generated ed25519 key pair whose private key is stored as an environment secret, named in the sshPrivateKeySecretName output. Changing it does not change a running instance's key.",
+          "key": "publicSSHKey",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "userData",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "type": "AWS::EC2::Instance"
+        }
+      ],
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.VirtualMachine"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.AwsLb",
+      "params": [
+        {
+          "description": "ELBv2 scheme. Unset: internet-facing on declared Subnet dependencies, internal without them. Fixed once the load balancer exists.",
+          "key": "lbScheme",
+          "type": "string",
+          "values": [
+            "internet-facing",
+            "internal"
+          ]
+        },
+        {
+          "default": "application",
+          "key": "lbType",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "type": "AWS::ElasticLoadBalancingV2::LoadBalancer"
+        }
+      ],
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.LoadBalancer"
+      ]
+    },
+    {
+      "aliasOfOfferType": "NetworkAndCompute.IaaS.AwsLb",
+      "offerType": "NetworkAndCompute.IaaS.AwsLoadBalancer",
+      "params": [
+        {
+          "description": "ELBv2 scheme. Unset: internet-facing on declared Subnet dependencies, internal without them. Fixed once the load balancer exists.",
+          "key": "lbScheme",
+          "type": "string",
+          "values": [
+            "internet-facing",
+            "internal"
+          ]
+        },
+        {
+          "default": "application",
+          "key": "lbType",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "type": "AWS::ElasticLoadBalancingV2::LoadBalancer"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.AwsSecurityGroup",
+      "params": [
+        {
+          "default": "",
+          "key": "description",
+          "type": "string"
+        },
+        {
+          "description": "Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On AWS declaring egress replaces the default allow-all egress rule of the group.",
+          "key": "egressRules",
+          "type": "array"
+        },
+        {
+          "default": [],
+          "key": "ingressRules",
+          "type": "array"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "type": "AWS::EC2::SecurityGroup"
+        }
+      ],
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.SecurityGroup"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.AwsSubnet",
+      "params": [
+        {
+          "default": "",
+          "key": "availabilityZone",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "cidrBlock",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "type": "AWS::EC2::Subnet"
+        }
+      ],
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.Subnet"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.AwsVpc",
+      "params": [
+        {
+          "description": "IPv4 address block of the VPC, e.g. 10.20.0.0/16.",
+          "key": "cidrBlock",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": true,
+          "key": "enableDnsHostnames",
+          "type": "boolean"
+        },
+        {
+          "default": true,
+          "key": "enableDnsSupport",
+          "type": "boolean"
+        },
+        {
+          "default": "",
+          "key": "instanceTenancy",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "type": "AWS::EC2::VPC"
+        }
+      ],
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.VirtualNetwork"
+      ]
+    },
+    {
+      "aliasOfOfferType": "NetworkAndCompute.IaaS.AwsEc2Instance",
+      "offerType": "NetworkAndCompute.IaaS.EC2",
+      "params": [
+        {
+          "default": "",
+          "description": "AMI id (ami-...). Leave empty to use the latest Amazon Linux 2023 AMI, resolved at create time.",
+          "key": "amiId",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "associatePublicIp",
+          "type": "boolean"
+        },
+        {
+          "default": "",
+          "key": "iamInstanceProfile",
+          "type": "string"
+        },
+        {
+          "key": "identity",
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "instanceType",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "description": "Name of an existing EC2 key pair to launch with. Wins over publicSSHKey.",
+          "key": "keyName",
+          "type": "string"
+        },
+        {
+          "description": "OpenSSH public key (e.g. ssh-ed25519 AAAA...) to authorize on the instance. Imported as a key pair of this component, used at launch and deleted on teardown. Ignored when keyName is set. When neither is set, a new instance gets a generated ed25519 key pair whose private key is stored as an environment secret, named in the sshPrivateKeySecretName output. Changing it does not change a running instance's key.",
+          "key": "publicSSHKey",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "userData",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "type": "AWS::EC2::Instance"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": "NetworkAndCompute.IaaS.AwsEc2Instance",
+      "offerType": "NetworkAndCompute.PaaS.AwsEc2Instance",
+      "params": [
+        {
+          "default": "",
+          "description": "AMI id (ami-...). Leave empty to use the latest Amazon Linux 2023 AMI, resolved at create time.",
+          "key": "amiId",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "associatePublicIp",
+          "type": "boolean"
+        },
+        {
+          "default": "",
+          "key": "iamInstanceProfile",
+          "type": "string"
+        },
+        {
+          "key": "identity",
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "instanceType",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "description": "Name of an existing EC2 key pair to launch with. Wins over publicSSHKey.",
+          "key": "keyName",
+          "type": "string"
+        },
+        {
+          "description": "OpenSSH public key (e.g. ssh-ed25519 AAAA...) to authorize on the instance. Imported as a key pair of this component, used at launch and deleted on teardown. Ignored when keyName is set. When neither is set, a new instance gets a generated ed25519 key pair whose private key is stored as an environment secret, named in the sshPrivateKeySecretName output. Changing it does not change a running instance's key.",
+          "key": "publicSSHKey",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "userData",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "type": "AWS::EC2::Instance"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.PaaS.AwsEks",
+      "params": [
+        {
+          "key": "addons",
+          "type": "array"
+        },
+        {
+          "key": "controlPlaneLogTypes",
+          "type": "array"
+        },
+        {
+          "key": "kubernetesVersion",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "networkPolicyProvider",
+          "type": "string"
+        },
+        {
+          "key": "nodePools",
+          "type": "array"
+        },
+        {
+          "default": 20,
+          "key": "podCidrPrefixLength",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "podIpRange",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "privateClusterDisabled",
+          "type": "boolean"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": 20,
+          "key": "serviceCidrPrefixLength",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "serviceIpRange",
+          "type": "string"
+        },
+        {
+          "default": true,
+          "key": "workloadIdentityEnabled",
+          "type": "boolean"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "type": "AWS::EKS::Cluster"
+        }
+      ],
+      "serviceTypes": [
+        "NetworkAndCompute.PaaS.Kubernetes"
+      ]
+    },
+    {
+      "aliasOfOfferType": "NetworkAndCompute.IaaS.AwsLb",
+      "offerType": "NetworkAndCompute.PaaS.AwsLb",
+      "params": [
+        {
+          "description": "ELBv2 scheme. Unset: internet-facing on declared Subnet dependencies, internal without them. Fixed once the load balancer exists.",
+          "key": "lbScheme",
+          "type": "string",
+          "values": [
+            "internet-facing",
+            "internal"
+          ]
+        },
+        {
+          "default": "application",
+          "key": "lbType",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "type": "AWS::ElasticLoadBalancingV2::LoadBalancer"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.PaaS.AwsRoute53HostedZone",
+      "params": [
+        {
+          "default": false,
+          "key": "adoptExisting",
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "key": "allowBulkDelete",
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "key": "allowSubdomainDelegation",
+          "type": "boolean"
+        },
+        {
+          "default": [
+            "A",
+            "AAAA",
+            "CAA",
+            "CNAME",
+            "MX",
+            "NS",
+            "PTR",
+            "SRV",
+            "TXT"
+          ],
+          "key": "allowedRecordTypes",
+          "type": "array"
+        },
+        {
+          "default": [],
+          "key": "caaIssuers",
+          "type": "array"
+        },
+        {
+          "default": "Managed by Fractal Cloud",
+          "key": "comment",
+          "type": "string"
+        },
+        {
+          "default": "disabled",
+          "key": "dnssec",
+          "type": "string"
+        },
+        {
+          "key": "dnssecEnabled",
+          "type": "boolean"
+        },
+        {
+          "key": "domainName",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "fullyManaged",
+          "type": "boolean"
+        },
+        {
+          "default": 604800,
+          "key": "maxTtl",
+          "type": "integer"
+        },
+        {
+          "default": 0,
+          "key": "minTtl",
+          "type": "integer"
+        },
+        {
+          "default": "authoritative",
+          "key": "recordManagement",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "records",
+          "type": "array"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "public",
+          "key": "visibility",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "serviceTypes": [
+        "NetworkAndCompute.PaaS.DnsZone"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.PaaS.ECS",
+      "params": [
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "serviceTypes": [
+        "NetworkAndCompute.PaaS.ContainerPlatform"
+      ]
+    },
+    {
+      "aliasOfOfferType": "NetworkAndCompute.PaaS.AwsEks",
+      "offerType": "NetworkAndCompute.PaaS.EKS",
+      "params": [
+        {
+          "key": "addons",
+          "type": "array"
+        },
+        {
+          "key": "controlPlaneLogTypes",
+          "type": "array"
+        },
+        {
+          "key": "kubernetesVersion",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "networkPolicyProvider",
+          "type": "string"
+        },
+        {
+          "key": "nodePools",
+          "type": "array"
+        },
+        {
+          "default": 20,
+          "key": "podCidrPrefixLength",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "podIpRange",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "privateClusterDisabled",
+          "type": "boolean"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": 20,
+          "key": "serviceCidrPrefixLength",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "serviceIpRange",
+          "type": "string"
+        },
+        {
+          "default": true,
+          "key": "workloadIdentityEnabled",
+          "type": "boolean"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "type": "AWS::EKS::Cluster"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": "NetworkAndCompute.PaaS.AwsEks",
+      "offerType": "NetworkAndCompute.PaaS.Kubernetes",
+      "params": [
+        {
+          "key": "addons",
+          "type": "array"
+        },
+        {
+          "key": "controlPlaneLogTypes",
+          "type": "array"
+        },
+        {
+          "key": "kubernetesVersion",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "networkPolicyProvider",
+          "type": "string"
+        },
+        {
+          "key": "nodePools",
+          "type": "array"
+        },
+        {
+          "default": 20,
+          "key": "podCidrPrefixLength",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "podIpRange",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "privateClusterDisabled",
+          "type": "boolean"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": 20,
+          "key": "serviceCidrPrefixLength",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "serviceIpRange",
+          "type": "string"
+        },
+        {
+          "default": true,
+          "key": "workloadIdentityEnabled",
+          "type": "boolean"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "type": "AWS::EKS::Cluster"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.SaaS.Unmanaged",
+      "params": [
+        {
+          "key": "secret",
+          "sensitive": true,
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "secretName",
+          "type": "string"
+        },
+        {
+          "key": "secretValue",
+          "sensitive": true,
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Observability.CaaS.Elastic",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": 8,
+          "key": "cpu",
+          "type": "integer"
+        },
+        {
+          "key": "elasticInstances",
+          "required": true,
+          "type": "integer"
+        },
+        {
+          "key": "elasticVersion",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "isApmRequired",
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "key": "isKibanaPubliclyExposed",
+          "type": "boolean"
+        },
+        {
+          "default": true,
+          "key": "isKibanaRequired",
+          "type": "boolean"
+        },
+        {
+          "default": 8,
+          "key": "memory",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": {},
+          "key": "secrets",
+          "type": "object"
+        },
+        {
+          "key": "storage",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "storageClassName",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Observability.CaaS.Jaeger",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "storageClassName",
+          "type": "string"
+        },
+        {
+          "default": {},
+          "key": "storageSettings",
+          "type": "object"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Observability.CaaS.Prometheus",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "grafanaConfigSecretId",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Observability.SaaS.Elastic",
+      "params": [
+        {
+          "key": "kibanaUri",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "operatorVersion",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "version",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Observability.SaaS.Jaeger",
+      "params": [
+        {
+          "key": "frontendUri",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "version",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Observability.SaaS.Prometheus",
+      "params": [
+        {
+          "key": "apiGatewayUrl",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "grafanaConfigSecretId",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Security.CaaS.Ocelot",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": 900,
+          "key": "cookieMaxAgeSec",
+          "type": "integer"
+        },
+        {
+          "default": [],
+          "key": "corsOrigins",
+          "type": "array"
+        },
+        {
+          "key": "host",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "default": "/*",
+          "key": "pathPrefix",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": [],
+          "key": "roles",
+          "type": "array"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Security.PaaS.AwsCognito",
+      "params": [
+        {
+          "default": "OFF",
+          "key": "mfaConfiguration",
+          "type": "string"
+        },
+        {
+          "default": {
+            "minLength": 8
+          },
+          "key": "passwordPolicy",
+          "type": "object"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": 3600,
+          "key": "sessionDuration",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "userDirectoryName",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "serviceTypes": [
+        "Security.PaaS.AwsCognito"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Security.SaaS.Unmanaged",
+      "params": [
+        {
+          "key": "secret",
+          "sensitive": true,
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "secretName",
+          "type": "string"
+        },
+        {
+          "key": "secretValue",
+          "sensitive": true,
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.CaaS.CnpgCluster",
+      "params": [
+        {
+          "default": false,
+          "key": "age",
+          "type": "boolean"
+        },
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": "1",
+          "key": "cpuLimit",
+          "type": "string"
+        },
+        {
+          "default": "500m",
+          "key": "cpuRequest",
+          "type": "string"
+        },
+        {
+          "default": "app",
+          "key": "database",
+          "type": "string"
+        },
+        {
+          "default": "app",
+          "key": "databaseOwner",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "enableSuperuserAccess",
+          "type": "boolean"
+        },
+        {
+          "default": 3,
+          "key": "instances",
+          "type": "integer"
+        },
+        {
+          "default": "1Gi",
+          "key": "memoryLimit",
+          "type": "string"
+        },
+        {
+          "default": "512Mi",
+          "key": "memoryRequest",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "default": "17.2",
+          "key": "postgresqlVersion",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "storageClass",
+          "type": "string"
+        },
+        {
+          "default": "10Gi",
+          "key": "storageSize",
+          "type": "string"
+        },
+        {
+          "key": "version",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.CaaS.CnpgDatabase",
+      "params": [
+        {
+          "key": "cnpgClusterName",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": "app",
+          "key": "databaseName",
+          "type": "string"
+        },
+        {
+          "default": "app",
+          "key": "databaseOwner",
+          "type": "string"
+        },
+        {
+          "default": "UTF8",
+          "key": "encoding",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "localeCType",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "localeCollate",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.CaaS.Elastic",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": 8,
+          "key": "cpu",
+          "type": "integer"
+        },
+        {
+          "key": "elasticInstances",
+          "required": true,
+          "type": "integer"
+        },
+        {
+          "key": "elasticVersion",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "isApmRequired",
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "key": "isKibanaPubliclyExposed",
+          "type": "boolean"
+        },
+        {
+          "default": true,
+          "key": "isKibanaRequired",
+          "type": "boolean"
+        },
+        {
+          "default": 8,
+          "key": "memory",
+          "type": "integer"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": {},
+          "key": "secrets",
+          "type": "object"
+        },
+        {
+          "key": "storage",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "storageClassName",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.CaaS.MinioTenant",
+      "params": [
+        {
+          "key": "containerPlatform",
+          "type": "string"
+        },
+        {
+          "default": "2",
+          "key": "cpuLimit",
+          "type": "string"
+        },
+        {
+          "default": "500m",
+          "key": "cpuRequest",
+          "type": "string"
+        },
+        {
+          "default": "4Gi",
+          "key": "memoryLimit",
+          "type": "string"
+        },
+        {
+          "default": "1Gi",
+          "key": "memoryRequest",
+          "type": "string"
+        },
+        {
+          "default": "RELEASE.2025-03-12T18-04-18Z",
+          "key": "minioVersion",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "defaults to the component id when absent"
+          },
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": true,
+          "key": "requestAutoCert",
+          "type": "boolean"
+        },
+        {
+          "default": 4,
+          "key": "servers",
+          "type": "integer"
+        },
+        {
+          "default": "",
+          "key": "storageClass",
+          "type": "string"
+        },
+        {
+          "default": "100Gi",
+          "key": "volumeSize",
+          "type": "string"
+        },
+        {
+          "default": 4,
+          "key": "volumesPerServer",
+          "type": "integer"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.PaaS.AwsRdsMySql",
+      "params": [
+        {
+          "default": "fractaladmin",
+          "key": "administratorLogin",
+          "type": "string"
+        },
+        {
+          "key": "allocatedStorageGb",
+          "type": "number"
+        },
+        {
+          "key": "backupRetentionDays",
+          "type": "number"
+        },
+        {
+          "key": "cloudwatchLogExports",
+          "type": "array"
+        },
+        {
+          "key": "deletionProtection",
+          "type": "boolean"
+        },
+        {
+          "key": "instanceClass",
+          "type": "string"
+        },
+        {
+          "key": "maxAcu",
+          "type": "number"
+        },
+        {
+          "key": "maxAllocatedStorageGb",
+          "type": "number"
+        },
+        {
+          "key": "minAcu",
+          "type": "number"
+        },
+        {
+          "default": "aurora-serverless",
+          "key": "mode",
+          "type": "string"
+        },
+        {
+          "key": "multiAz",
+          "type": "boolean"
+        },
+        {
+          "default": 3306,
+          "key": "port",
+          "type": "number"
+        },
+        {
+          "key": "readerCount",
+          "type": "number"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "key": "requireSecureTransport",
+          "type": "boolean"
+        },
+        {
+          "key": "storageType",
+          "type": "string"
+        },
+        {
+          "default": "8.4",
+          "key": "version",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "discriminator": {
+            "mode": "Equals",
+            "name": "engine",
+            "value": "mysql"
+          },
+          "type": "AWS::RDS::DBInstance"
+        }
+      ],
+      "serviceTypes": [
+        "Storage.PaaS.MySql"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.PaaS.AwsRdsMySqlDatabase",
+      "params": [
+        {
+          "key": "databaseName",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [],
+      "serviceTypes": [
+        "Storage.PaaS.MySqlDatabase"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.PaaS.AwsRdsPostgres",
+      "params": [
+        {
+          "default": "fractaladmin",
+          "key": "administratorLogin",
+          "type": "string"
+        },
+        {
+          "key": "allocatedStorageGb",
+          "type": "number"
+        },
+        {
+          "key": "backupRetentionDays",
+          "type": "number"
+        },
+        {
+          "key": "cloudwatchLogExports",
+          "type": "array"
+        },
+        {
+          "key": "deletionProtection",
+          "type": "boolean"
+        },
+        {
+          "key": "instanceClass",
+          "type": "string"
+        },
+        {
+          "key": "maxAcu",
+          "type": "number"
+        },
+        {
+          "key": "maxAllocatedStorageGb",
+          "type": "number"
+        },
+        {
+          "key": "minAcu",
+          "type": "number"
+        },
+        {
+          "default": "aurora-serverless",
+          "key": "mode",
+          "type": "string"
+        },
+        {
+          "key": "multiAz",
+          "type": "boolean"
+        },
+        {
+          "default": 5432,
+          "key": "port",
+          "type": "number"
+        },
+        {
+          "key": "readerCount",
+          "type": "number"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "key": "requireSecureTransport",
+          "type": "boolean"
+        },
+        {
+          "key": "storageType",
+          "type": "string"
+        },
+        {
+          "default": "16",
+          "key": "version",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "discriminator": {
+            "mode": "Equals",
+            "name": "engine",
+            "value": "postgres"
+          },
+          "type": "AWS::RDS::DBInstance"
+        }
+      ],
+      "serviceTypes": [
+        "Storage.PaaS.PostgreSql"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.PaaS.AwsRdsPostgresDatabase",
+      "params": [
+        {
+          "key": "databaseName",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "public",
+          "key": "schema",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [],
+      "serviceTypes": [
+        "Storage.PaaS.PostgreSqlDatabase"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.PaaS.AwsS3",
+      "params": [
+        {
+          "default": "",
+          "key": "bucket",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "forceDestroy",
+          "type": "boolean"
+        },
+        {
+          "key": "lifecycleExpirationDays",
+          "type": "number"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "versioning",
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "key": "versioningEnabled",
+          "type": "boolean"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "type": "AWS::S3::Bucket"
+        }
+      ],
+      "serviceTypes": [
+        "Storage.PaaS.FilesAndBlobs"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.PaaS.PostgreSqlDatabase",
+      "params": [
+        {
+          "key": "databaseName",
+          "type": "string"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": "public",
+          "key": "schema",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": "Storage.PaaS.AwsRdsPostgres",
+      "offerType": "Storage.PaaS.PostgreSqlDbms",
+      "params": [
+        {
+          "default": "fractaladmin",
+          "key": "administratorLogin",
+          "type": "string"
+        },
+        {
+          "key": "allocatedStorageGb",
+          "type": "number"
+        },
+        {
+          "key": "backupRetentionDays",
+          "type": "number"
+        },
+        {
+          "key": "cloudwatchLogExports",
+          "type": "array"
+        },
+        {
+          "key": "deletionProtection",
+          "type": "boolean"
+        },
+        {
+          "key": "instanceClass",
+          "type": "string"
+        },
+        {
+          "key": "maxAcu",
+          "type": "number"
+        },
+        {
+          "key": "maxAllocatedStorageGb",
+          "type": "number"
+        },
+        {
+          "key": "minAcu",
+          "type": "number"
+        },
+        {
+          "default": "aurora-serverless",
+          "key": "mode",
+          "type": "string"
+        },
+        {
+          "key": "multiAz",
+          "type": "boolean"
+        },
+        {
+          "default": 5432,
+          "key": "port",
+          "type": "number"
+        },
+        {
+          "key": "readerCount",
+          "type": "number"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "key": "requireSecureTransport",
+          "type": "boolean"
+        },
+        {
+          "key": "storageType",
+          "type": "string"
+        },
+        {
+          "default": "16",
+          "key": "version",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "discriminator": {
+            "mode": "Equals",
+            "name": "engine",
+            "value": "postgres"
+          },
+          "type": "AWS::RDS::DBInstance"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": "Storage.PaaS.AwsRdsPostgres",
+      "offerType": "Storage.PaaS.Rds",
+      "params": [
+        {
+          "default": "fractaladmin",
+          "key": "administratorLogin",
+          "type": "string"
+        },
+        {
+          "key": "allocatedStorageGb",
+          "type": "number"
+        },
+        {
+          "key": "backupRetentionDays",
+          "type": "number"
+        },
+        {
+          "key": "cloudwatchLogExports",
+          "type": "array"
+        },
+        {
+          "key": "deletionProtection",
+          "type": "boolean"
+        },
+        {
+          "key": "instanceClass",
+          "type": "string"
+        },
+        {
+          "key": "maxAcu",
+          "type": "number"
+        },
+        {
+          "key": "maxAllocatedStorageGb",
+          "type": "number"
+        },
+        {
+          "key": "minAcu",
+          "type": "number"
+        },
+        {
+          "default": "aurora-serverless",
+          "key": "mode",
+          "type": "string"
+        },
+        {
+          "key": "multiAz",
+          "type": "boolean"
+        },
+        {
+          "default": 5432,
+          "key": "port",
+          "type": "number"
+        },
+        {
+          "key": "readerCount",
+          "type": "number"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "key": "requireSecureTransport",
+          "type": "boolean"
+        },
+        {
+          "key": "storageType",
+          "type": "string"
+        },
+        {
+          "default": "16",
+          "key": "version",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "discriminator": {
+            "mode": "Equals",
+            "name": "engine",
+            "value": "postgres"
+          },
+          "type": "AWS::RDS::DBInstance"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": "Storage.PaaS.AwsS3",
+      "offerType": "Storage.PaaS.S3",
+      "params": [
+        {
+          "default": "",
+          "key": "bucket",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "forceDestroy",
+          "type": "boolean"
+        },
+        {
+          "key": "lifecycleExpirationDays",
+          "type": "number"
+        },
+        {
+          "key": "region",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "versioning",
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "key": "versioningEnabled",
+          "type": "boolean"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [
+        {
+          "type": "AWS::S3::Bucket"
+        }
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.SaaS.Unmanaged",
+      "params": [
+        {
+          "key": "secret",
+          "sensitive": true,
+          "type": "object"
+        },
+        {
+          "default": "",
+          "key": "secretName",
+          "type": "string"
+        },
+        {
+          "key": "secretValue",
+          "sensitive": true,
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": []
+    }
+  ],
+  "schemaVersion": "2.0"
+}

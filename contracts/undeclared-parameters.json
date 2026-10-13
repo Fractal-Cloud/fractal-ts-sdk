@@ -1,0 +1,4 @@
+{
+  "$comment": "Parameter keys an offer emits that the contract of the emitted offer type does not declare, each with the reason it is sent anyway. Every other neutral parameter is translated into a contract key or refused by the offer's `neutral` rules. Checked by src/model/offer_contracts.test.ts; see docs/offer-contracts.md.",
+  "offers": {}
+}

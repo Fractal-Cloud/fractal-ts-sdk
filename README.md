@@ -113,8 +113,8 @@ export const fractal = createFractal({
         .withIngressRules([{protocol: 'tcp', fromPort: 443, sourceCidr: '0.0.0.0/0'}])
         .dependsOn(network),
     );
-    const web = bp.add(VirtualMachine({id: 'web-server'}).withOsType('linux').dependsOn(subnet));
-    const api = bp.add(VirtualMachine({id: 'api-server'}).withOsType('linux').dependsOn(subnet));
+    const web = bp.add(VirtualMachine({id: 'web-server'}).dependsOn(subnet));
+    const api = bp.add(VirtualMachine({id: 'api-server'}).dependsOn(subnet));
     const cluster = bp.add(
       ContainerPlatform({id: 'app-cluster'}).withKubernetesVersion('1.29').dependsOn(subnet),
     );
@@ -172,6 +172,12 @@ const cloud = createFractalCloudClient({
 await cloud.blueprints.create(authorFractal());
 await cloud.liveSystems.deploy(liveSystem, {mode: 'wait'});
 ```
+
+Before submitting, `deploy` asks the control plane to validate every component's parameters
+against the contract of its offer: a blocking issue throws a `LiveSystemValidationError` carrying
+the issues (and in `wait` mode logs `ERROR Live System validation failed  system=… errors=…`),
+warnings are logged and the deploy continues. `cloud.liveSystems.validate(liveSystem)` returns the
+same result without deploying.
 
 ## The client
 
@@ -951,6 +957,8 @@ as a step-summary section.
 
 The blueprint references the **Component** in the left column; a Live System selects any **Offer** beneath it. Offers with no provider are vendor-neutral self-hosted (run on any cluster).
 
+An offer's config keys, their types and which are required are generated from the parameter contract its agent publishes, so they are exactly the keys the agent reads. A component's neutral setters reach the agent under its own keys (`withSize` becomes `instanceType` on `Ec2Instance`), and one the selected offer's agent cannot honor (`withTags` on `AwsVpc`) is refused by `toLiveSystem` rather than sent unread; see [`docs/offer-contracts.md`](docs/offer-contracts.md). The Hetzner, VMware and OpenShift offers, whose agents publish no contract yet, are hand-written.
+
 ### NetworkAndCompute
 
 | Component | AWS | Azure | GCP | OCI | Hetzner | VMware | RedHat (OpenShift) |
@@ -959,7 +967,7 @@ The blueprint references the **Component** in the left column; a Live System sel
 | `Subnet` | `AwsSubnet` | `AzureSubnet` | `GcpSubnet` | `OciSubnet` | `HetznerSubnet` | `VsphereVlan` | — |
 | `SecurityGroup` | `AwsSecurityGroup` | `AzureNsg` | `GcpFirewall` | `OciSecurityList` | `HetznerFirewall` | — | `OpenshiftSecurityGroup` |
 | `VirtualMachine` | `Ec2Instance` | `AzureVm` | `GcpVm` | `OciInstance` | `HetznerServer` | `VsphereVm` | `OpenshiftVm` |
-| `ContainerPlatform` | `Eks` | `Aks` | `Gke` | — | — | — | — |
+| `ContainerPlatform` | `Eks`, `EcsCluster` | `Aks`, `AzureContainerAppsEnvironment` | `Gke` | — | — | — | — |
 | `LoadBalancer` | `AwsLb` | `AzureLb` | `GcpGlb` | — | — | — | `OpenshiftService` |
 
 ### CustomWorkloads
@@ -1070,7 +1078,7 @@ to `Standard`** as of 2.4.5. Read this before upgrading across that version.
 > first deploy after upgrading therefore destroys it unless you pin the tier:
 >
 > ```ts
-> AzureServiceBus({resourceGroup: 'acme', skuTier: 'Basic'})
+> AzureServiceBus({skuTier: 'Basic'})
 > ```
 
 Why the default is `Standard`: a Basic namespace cannot host a topic at all (ARM

@@ -72,27 +72,6 @@ describe('AwsSesIdentity', () => {
     });
   });
 
-  it.each([
-    ['', 'empty'],
-    ['example', 'one label'],
-    ['-bad.example.com', 'a label starting with a hyphen'],
-    ['exa mple.com', 'a space'],
-    [`${'a'.repeat(64)}.com`, 'a label over 63 characters'],
-  ])('refuses the domain %j (%s)', domain => {
-    expect(() => build(AwsSesIdentity({domain}))).toThrow(
-      /AwsSesIdentity 'mail': domain/,
-    );
-  });
-
-  it.each([
-    ['bounce.mail', 'two labels'],
-    ['-bounce', 'a leading hyphen'],
-  ])('refuses the MAIL FROM subdomain %j (%s)', mailFromSubdomain => {
-    expect(() =>
-      build(AwsSesIdentity({domain: 'example.com', mailFromSubdomain})),
-    ).toThrow(/AwsSesIdentity 'mail': mailFromSubdomain/);
-  });
-
   // The agent normalizes (trim, lower case, no trailing dot) and reads a blank
   // value as unset, so the SDK accepts what the agent accepts.
   it('accepts a blank MAIL FROM subdomain as unset, as the agent does', () => {
@@ -112,13 +91,6 @@ describe('AwsSesIdentity', () => {
       ).not.toThrow();
     },
   );
-
-  it('refuses a MAIL FROM domain longer than a domain name may be', () => {
-    const domain = `${'a'.repeat(60)}.${'b'.repeat(60)}.${'c'.repeat(60)}.${'d'.repeat(60)}.com`;
-    expect(() =>
-      build(AwsSesIdentity({domain, mailFromSubdomain: 'bounce'})),
-    ).toThrow(/longer than a domain name/);
-  });
 
   it('cannot be selected for another component', () => {
     expect(() =>
@@ -173,38 +145,6 @@ describe('AwsSesIdentity production access', () => {
       domain: 'example.com',
       productionAccess: false,
     });
-  });
-
-  it.each([
-    ['websiteUrl', {websiteUrl: undefined}],
-    ['websiteUrl', {websiteUrl: '  '}],
-    ['useCaseDescription', {useCaseDescription: undefined}],
-    ['useCaseDescription', {useCaseDescription: ''}],
-  ])('refuses productionAccess without %s', (key, change) => {
-    expect(() => build(AwsSesIdentity({...request, ...change}))).toThrow(
-      new RegExp(`AwsSesIdentity 'mail': productionAccess needs ${key}`),
-    );
-  });
-
-  it('refuses a websiteUrl that is not an http(s) URL', () => {
-    expect(() =>
-      build(AwsSesIdentity({...request, websiteUrl: 'example.com'})),
-    ).toThrow(/AwsSesIdentity 'mail': websiteUrl/);
-  });
-
-  it('refuses a mailType or contactLanguage the agent does not know', () => {
-    expect(() =>
-      build(
-        // @ts-expect-error not a mail type
-        AwsSesIdentity({...request, mailType: 'BULK'}),
-      ),
-    ).toThrow(/AwsSesIdentity 'mail': mailType/);
-    expect(() =>
-      build(
-        // @ts-expect-error not a contact language
-        AwsSesIdentity({...request, contactLanguage: 'DE'}),
-      ),
-    ).toThrow(/AwsSesIdentity 'mail': contactLanguage/);
   });
 
   // Without productionAccess the agent reads none of the details: they are

@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "2.0",
+  "agentId": "fractal-cloud-agent-aws",
+  "agentVersion": "v1.2.3",
+  "offers": [
+    {
+      "offerType": "Messaging.CaaS.Kafka",
+      "provider": "AWS",
+      "serviceTypes": ["Messaging.CaaS.Kafka"],
+      "aliasOfOfferType": null,
+      "params": [
+        {"key": "region", "type": "string"},
+        {"key": "replicas", "type": "int", "default": 3},
+        {"key": "storageSize", "type": "string", "required": true, "description": "Broker volume size, e.g. 100Gi."}
+      ]
+    },
+    {
+      "offerType": "NetworkAndCompute.IaaS.AwsLb",
+      "provider": "AWS",
+      "serviceTypes": ["NetworkAndCompute.IaaS.LoadBalancer"],
+      "aliasOfOfferType": null,
+      "parameterRules": [{"id": "r1", "kind": "anyOf", "keys": ["lbScheme", "lbType"]}],
+      "params": [
+        {"key": "lbScheme", "type": "string", "values": ["internal", "internet-facing"], "default": "internal"},
+        {"key": "lbType", "type": "string", "values": ["application", "network"], "valuesLevel": "warn"},
+        {"key": "tags", "type": "map", "aliases": [{"key": "labels", "deprecated": true}]}
+      ]
+    }
+  ]
+}

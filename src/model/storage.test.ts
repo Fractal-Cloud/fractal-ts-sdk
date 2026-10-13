@@ -34,19 +34,15 @@ function authorFractal() {
     boundedContextId,
     blueprint: bp => {
       const uploads = bp.add(
-        ObjectStorage({id: 'uploads'})
-          .withEncryption('at-rest')
-          .withVersioningEnabled(true)
-          .withPublicAccess(false)
-          .withRetentionDays(90)
-          .withTags({team: 'platform'}),
+        // Only guardrails every object-storage offer selected below honors:
+        // the others are refused by the offers whose agent cannot apply them.
+        ObjectStorage({id: 'uploads'}).withPublicAccess(false),
       );
       const dbms = bp.add(
         RelationalDbms({id: 'app-dbms'})
           .withEngineVersion('16')
           .withBackupRetentionDays(30)
-          .withStorageGb(100)
-          .withHighAvailability('zone-redundant'),
+          .withStorageGb(100),
       );
       const appDb = bp.add(RelationalDatabase({id: 'app-db'}).dependsOn(dbms));
       return {uploads, dbms, appDb};
@@ -60,7 +56,7 @@ function authorFractal() {
 
 const fullSelect = () => ({
   uploads: AwsS3({region: 'us-east-1'}),
-  'app-dbms': AzurePostgresDbms({resourceGroup: 'rg'}),
+  'app-dbms': AzurePostgresDbms({}),
   'app-db': AzurePostgresDatabase({}),
 });
 
@@ -83,8 +79,13 @@ describe('Amazon RDS offers', () => {
     expect(byId['app-dbms'].provider).toBe('AWS');
     expect(byId['app-db'].type).toBe('Storage.PaaS.AwsRdsPostgresDatabase');
     expect(byId['app-db'].dependencies).toContain('app-dbms');
-    // Blueprint guardrails still reach the vendor component.
-    expect(byId['app-dbms'].parameters.backupRetentionDays).toBe(30);
+    // Blueprint guardrails reach the vendor component under its keys.
+    expect(byId['app-dbms'].parameters).toMatchObject({
+      backupRetentionDays: 30,
+      version: '16',
+      allocatedStorageGb: 100,
+    });
+    expect(byId['app-dbms'].parameters).not.toHaveProperty('engineVersion');
   });
 
   it('carries the mode selection through to the live component', () => {
@@ -96,7 +97,6 @@ describe('Amazon RDS offers', () => {
         'app-dbms': AwsRdsPostgresDbms({
           mode: 'provisioned-instance',
           instanceClass: 'db.m6g.large',
-          allocatedStorageGb: 50,
         }),
       },
     });
@@ -106,7 +106,8 @@ describe('Amazon RDS offers', () => {
     // Aurora cluster or a single provisioned instance.
     expect(dbms.parameters.mode).toBe('provisioned-instance');
     expect(dbms.parameters.instanceClass).toBe('db.m6g.large');
-    expect(dbms.parameters.allocatedStorageGb).toBe(50);
+    // from the blueprint's locked withStorageGb(100)
+    expect(dbms.parameters.allocatedStorageGb).toBe(100);
   });
 
   it('omits every unset knob so the agent applies its own defaults', () => {
@@ -138,10 +139,8 @@ describe('Storage domain on the locked Fractal model', () => {
     const uploads = authorFractal().blueprint.components.find(
       c => c.id === 'uploads',
     )!;
-    expect(uploads.parameters.encryption).toBe('at-rest');
-    expect(uploads.parameters.versioningEnabled).toBe(true);
-    expect(uploads.parameters.tags).toEqual({team: 'platform'});
-    expect(uploads.locked).toContain('encryption');
+    expect(uploads.parameters.publicAccess).toBe(false);
+    expect(uploads.locked).toContain('publicAccess');
 
     const dbms = authorFractal().blueprint.components.find(
       c => c.id === 'app-dbms',
@@ -161,9 +160,9 @@ describe('Storage domain on the locked Fractal model', () => {
     // ObjectStorage resolved to AWS S3.
     expect(byId['uploads'].type).toBe('Storage.PaaS.AwsS3');
     expect(byId['uploads'].provider).toBe('AWS');
-    // guardrail + vendor config both flowed into the live component.
-    expect(byId['uploads'].parameters.encryption).toBe('at-rest');
-    expect(byId['uploads'].parameters.region).toBe('us-east-1');
+    // vendor config flowed; the private-bucket guardrail is what S3 does
+    // anyway, so it is satisfied rather than sent.
+    expect(byId['uploads'].parameters).toEqual({region: 'us-east-1'});
 
     // Mixed vendor: Postgres on Azure alongside S3 on AWS.
     expect(byId['app-dbms'].type).toBe('Storage.PaaS.AzurePostgresDbms');
@@ -236,7 +235,7 @@ describe('Storage domain on the locked Fractal model', () => {
       .toLiveSystem({
         name: 'named-prod',
         environment,
-        select: {'app-dbms': AzurePostgresDbms({resourceGroup: 'rg'})},
+        select: {'app-dbms': AzurePostgresDbms({})},
       });
     const namedById = Object.fromEntries(
       namedLs.components.map(c => [c.id, c]),

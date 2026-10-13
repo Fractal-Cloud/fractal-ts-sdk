@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "1.0",
+  "agentId": "aria-agent-caas-k8s",
+  "agentVersion": "v0.9.0",
+  "offers": [
+    {
+      "offerType": "Messaging.CaaS.Kafka",
+      "provider": "CaaS",
+      "serviceTypes": ["Messaging.CaaS.Kafka", "Messaging.CaaS.Streaming"],
+      "params": [
+        {"key": "namespace", "type": "string", "default": "kafka"},
+        {"key": "replicas", "type": "number", "default": 1}
+      ]
+    }
+  ]
+}

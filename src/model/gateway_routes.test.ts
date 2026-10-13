@@ -200,34 +200,6 @@ describe('TraefikGateway offer (caas-k8s)', () => {
       },
     });
   });
-
-  it.each([
-    ['a host that is not a host name', {host: 'not a host'}, /host/],
-    ['zero replicas', {replicas: 0}, /replicas/],
-    [
-      'a non-ACM certificate',
-      {tlsCertificateArn: 'arn:aws:iam::1:server-certificate/x'},
-      /tlsCertificateArn/,
-    ],
-    [
-      'a zero idle timeout',
-      {entryPointIdleTimeoutSeconds: 0},
-      /entryPointIdleTimeoutSeconds/,
-    ],
-  ])('refuses %s', (_why, config, reason) => {
-    expect(() =>
-      createFractal({
-        id: 'platform-gateway',
-        version: {major: 1, minor: 0, patch: 0},
-        boundedContextId,
-        blueprint: bp => ({gateway: bp.add(ApiGateway({id: 'traefik'}))}),
-      }).toLiveSystem({
-        name: 'platform',
-        environment,
-        select: {traefik: TraefikGateway(config)},
-      }),
-    ).toThrow(reason);
-  });
 });
 
 describe('Traefik offer (Java agents)', () => {
@@ -387,44 +359,6 @@ describe('TraefikGateway ForwardAuth (ocelot)', () => {
       forwardAuthForwardBody: true,
       forwardAuthMaxBodySize: 1048576,
     });
-  });
-
-  it.each([
-    [
-      'an address that is not an http(s) URL',
-      {forwardAuthAddress: 'ocelot:8080'},
-      /forwardAuthAddress/,
-    ],
-    [
-      'ForwardAuth settings without an address',
-      {forwardAuthForwardBody: true},
-      /without forwardAuthAddress/,
-    ],
-    [
-      'an address carrying credentials, without echoing them',
-      {forwardAuthAddress: 'http://user:s3cret@ocelot/auth'},
-      /forwardAuthAddress is not an http\(s\) URL without credentials/,
-    ],
-    [
-      'a zero body size',
-      {forwardAuthAddress: 'http://a/b', forwardAuthMaxBodySize: 0},
-      /forwardAuthMaxBodySize/,
-    ],
-    [
-      'forwardAuthExcludedPrefixes, which the agent removed',
-      {
-        forwardAuthAddress: 'http://a/b',
-        forwardAuthExcludedPrefixes: ['/ocelot/'] as never,
-      },
-      /forwardAuthExcludedPrefixes was removed: the agent no longer reads it.*forwardAuthExemptComponentIds/,
-    ],
-    [
-      'a header name holding a comma',
-      {forwardAuthAddress: 'http://a/b', forwardAuthRequestHeaders: ['a,b']},
-      /forwardAuthRequestHeaders/,
-    ],
-  ])('refuses %s', (_why, config, reason) => {
-    expect(() => gatewayWith(config)).toThrow(reason);
   });
 });
 

@@ -17,6 +17,9 @@
  */
 
 import type {ComponentReference} from './component_reference';
+import type {OfferContract} from './offers/contract/offer_contract';
+import type {NeutralRule} from './neutral_rule';
+import {applyNeutralRules} from './apply_neutral_rules';
 import {isRouteSettings, mergeRouteSettings} from './route_link_merge';
 
 // ── Catalogue value types ────────────────────────────────────────────────────
@@ -105,6 +108,13 @@ export type Offer<C extends string = string, Cfg = unknown> = {
   readonly provider?: Provider; // absent for vendor-neutral self-hosted offers
   readonly deliveryModel: DeliveryModel;
   readonly config: Cfg; // VENDOR KNOBS live here, and only here
+  /**
+   * The parameter contract the offer's agent publishes, when one is published:
+   * the source of the offer type, its config keys and every vendor key it emits
+   * (see docs/offer-contracts.md). Absent only for offers whose agent publishes
+   * no contract yet.
+   */
+  readonly contract?: OfferContract;
   readonly instantiate: (ctx: InstantiationContext) => LiveSystemComponent[];
   /**
    * Optional cross-component invariant, run by `toLiveSystem` once EVERY component
@@ -119,13 +129,27 @@ export type Offer<C extends string = string, Cfg = unknown> = {
   ) => void;
 };
 
-/** Build an offer constructor (pure). Default instantiate merges neutral params + vendor config. */
-export const defineOffer =
-  <C extends string, Cfg>(spec: {
+/**
+ * Build an offer constructor (pure). Default instantiate merges neutral params +
+ * vendor config.
+ *
+ * An offer whose agent publishes a parameter contract names it as `contract`
+ * (a generated constant from `offers/generated/`) instead of spelling
+ * `offerType`: the type then comes from the contract, as do the config keys
+ * (`ContractConfig`). The constructor carries `offerType` and `contract`, so
+ * both can be read without choosing a config.
+ *
+ * `neutral` gives every neutral parameter of the satisfied component that the
+ * contract does not declare a rule: translate it to the contract keys the
+ * agent reads, or refuse it (`offers/neutral_rules.ts`). The rules run before
+ * `instantiate`, on the component's own parameters.
+ */
+export const defineOffer = <C extends string, Cfg>(
+  spec: {
     satisfies: C;
-    offerType: string;
     provider?: Provider;
     deliveryModel: DeliveryModel;
+    neutral?: Readonly<Record<string, NeutralRule>>;
     instantiate?: (
       ctx: InstantiationContext,
       config: Cfg,
@@ -135,24 +159,45 @@ export const defineOffer =
       all: readonly LiveSystemComponent[],
       config: Cfg,
     ) => void;
-  }) =>
-  (config: Cfg): Offer<C, Cfg> => ({
+  } & (
+    | {offerType: string; contract?: undefined}
+    | {contract: OfferContract; offerType?: undefined}
+  ),
+) => {
+  const offerType: string = spec.contract
+    ? spec.contract.offerType
+    : (spec.offerType as string);
+  const construct = (config: Cfg): Offer<C, Cfg> => ({
     satisfies: spec.satisfies,
-    offerType: spec.offerType,
+    offerType,
     provider: spec.provider,
     deliveryModel: spec.deliveryModel,
     config,
+    contract: spec.contract,
     validate: spec.validate
       ? (self, all) => spec.validate!(self, all, config)
       : undefined,
-    instantiate: ctx =>
-      spec.instantiate
+    instantiate: raw => {
+      const ctx: InstantiationContext = spec.neutral
+        ? {
+            ...raw,
+            parameters: applyNeutralRules({
+              offerType,
+              componentId: raw.id,
+              parameters: raw.parameters,
+              locked: raw.locked ?? [],
+              config,
+              rules: spec.neutral,
+            }),
+          }
+        : raw;
+      return spec.instantiate
         ? spec.instantiate(ctx, config)
         : [
             {
               id: ctx.id,
               displayName: ctx.displayName,
-              type: spec.offerType,
+              type: offerType,
               provider: spec.provider,
               deliveryModel: spec.deliveryModel,
               parameters: {
@@ -162,8 +207,16 @@ export const defineOffer =
               dependencies: ctx.dependencies,
               links: ctx.links,
             },
-          ],
+          ];
+    },
   });
+  return Object.assign(construct, {
+    offerType,
+    contract: spec.contract,
+    satisfies: spec.satisfies,
+    neutral: spec.neutral,
+  });
+};
 
 // ── Component node (immutable) ───────────────────────────────────────────────
 export type NodeState = {

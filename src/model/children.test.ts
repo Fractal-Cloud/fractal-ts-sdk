@@ -18,13 +18,20 @@ import {
 const environment = {name: 'dev'};
 const boundedContextId = {name: 'reusable-templates'};
 
-function authorFractal() {
+// Cloud SQL's contracts declare no engine version, so the GCP selections below
+// use a blueprint without that guardrail (`withEngineVersion` is refused there).
+function authorFractal(engineVersion: string | null = '16') {
+  const dbms = RelationalDbms({id: 'app-dbms'});
   return createFractal({
     id: 'db',
     version: {major: 1, minor: 0, patch: 0},
     boundedContextId,
     blueprint: bp => ({
-      dbms: bp.add(RelationalDbms({id: 'app-dbms'}).withEngineVersion('16')),
+      dbms: bp.add(
+        engineVersion === null
+          ? dbms
+          : dbms.withEngineVersion(engineVersion),
+      ),
     }),
     operations: s => ({
       // application-level: the app owns these databases (by name); charset is an
@@ -67,13 +74,13 @@ describe('option B — operations add first-class child components (family follo
   });
 
   it('swapping the DBMS offer swaps the database family (GCP)', () => {
-    const ls = authorFractal()
+    const ls = authorFractal(null)
       .specialize()
       .withDatabases(['orders'])
       .toLiveSystem({
         name: 'acme',
         environment,
-        select: {'app-dbms': GcpPostgresDbms({tier: 'db-custom-2-7680'})},
+        select: {'app-dbms': GcpPostgresDbms({})},
       });
     const orders = ls.components.find(c => c.id === 'orders')!;
     expect(orders.type).toBe('Storage.PaaS.GcpPostgresDatabase');
@@ -91,7 +98,7 @@ describe('option B — operations add first-class child components (family follo
    */
   it('GCP MySQL refuses a DBMS that has declared databases, naming them', () => {
     const build = () =>
-      authorFractal()
+      authorFractal(null)
         .specialize()
         .withDatabases(['orders'])
         .toLiveSystem({
@@ -110,7 +117,7 @@ describe('option B — operations add first-class child components (family follo
   });
 
   it('GCP MySQL emits the DBMS itself, with the keys the agent reads', () => {
-    const ls = authorFractal()
+    const ls = authorFractal(null)
       .specialize()
       .toLiveSystem({
         name: 'acme',
