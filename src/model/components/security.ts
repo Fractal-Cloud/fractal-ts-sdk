@@ -8,7 +8,14 @@
  * Each agnostic parameter is a typed `.withXxx()` guardrail setter (locks the
  * key at design time). Built exclusively on the LOCKED engine in ../core.
  */
-import {ComponentNode, NodeState, newNode, guardrail} from '../core';
+import {
+  ComponentNode,
+  NodeState,
+  newNode,
+  guardrail,
+  AnyNode,
+  addDependency,
+} from '../core';
 
 // ── Security.ServiceMesh ─────────────────────────────────────────────────────
 export type ServiceMeshNode<Id extends string = string> = ComponentNode<
@@ -18,6 +25,11 @@ export type ServiceMeshNode<Id extends string = string> = ComponentNode<
   withMtlsMode: (v: 'off' | 'permissive' | 'strict') => ServiceMeshNode<Id>;
   withAuthenticationMode: (v: string) => ServiceMeshNode<Id>;
   withTags: (v: Record<string, string>) => ServiceMeshNode<Id>;
+  /**
+   * Declare a structural dependency: e.g. the ContainerPlatform a self-hosted
+   * offer is installed on, which its agent requires.
+   */
+  dependsOn: (other: AnyNode) => ServiceMeshNode<Id>;
 };
 const serviceMeshNode = <Id extends string>(
   s: NodeState,
@@ -27,6 +39,7 @@ const serviceMeshNode = <Id extends string>(
   withAuthenticationMode: v =>
     serviceMeshNode<Id>(guardrail(s, 'authenticationMode', v)),
   withTags: v => serviceMeshNode<Id>(guardrail(s, 'tags', v)),
+  dependsOn: other => serviceMeshNode<Id>(addDependency(s, other.state.id)),
 });
 export const ServiceMesh = <const Id extends string>(cfg: {
   id: Id;
@@ -46,6 +59,11 @@ export type IdentityProviderNode<Id extends string = string> = ComponentNode<
   ) => IdentityProviderNode<Id>;
   withSessionDuration: (v: number) => IdentityProviderNode<Id>;
   withTags: (v: Record<string, string>) => IdentityProviderNode<Id>;
+  /**
+   * Declare a structural dependency: e.g. the ContainerPlatform a self-hosted
+   * offer is installed on, which its agent requires.
+   */
+  dependsOn: (other: AnyNode) => IdentityProviderNode<Id>;
 };
 const identityProviderNode = <Id extends string>(
   s: NodeState,
@@ -60,6 +78,8 @@ const identityProviderNode = <Id extends string>(
   withSessionDuration: v =>
     identityProviderNode<Id>(guardrail(s, 'sessionDuration', v)),
   withTags: v => identityProviderNode<Id>(guardrail(s, 'tags', v)),
+  dependsOn: other =>
+    identityProviderNode<Id>(addDependency(s, other.state.id)),
 });
 export const IdentityProvider = <const Id extends string>(cfg: {
   id: Id;

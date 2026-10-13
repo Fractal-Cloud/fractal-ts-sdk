@@ -266,11 +266,26 @@ export const guardrail = (
   parameters: {...s.parameters, [key]: value},
   locked: new Set([...s.locked, key]),
 });
-/** Authoring primitive: declare a structural dependency on another node. */
-export const addDependency = (s: NodeState, depId: string): NodeState => ({
-  ...s,
-  dependencies: [...s.dependencies, depId],
-});
+/**
+ * Authoring primitive: declare a structural dependency on another node.
+ *
+ * A dependency means "I cannot exist without this component": it orders
+ * reconciliation and carries no settings. Declaring the same dependency again
+ * is a no-op (the first position is kept), and a dependency on the node itself
+ * is rejected, since it is meaningless.
+ */
+export const addDependency = (s: NodeState, depId: string): NodeState => {
+  if (depId === s.id) {
+    throw new Error(
+      `Component '${s.id}' cannot depend on itself: a dependency names another ` +
+        'component this one cannot exist without.',
+    );
+  }
+  if (s.dependencies.includes(depId)) {
+    return s;
+  }
+  return {...s, dependencies: [...s.dependencies, depId]};
+};
 
 // ── Fractal state + transforms ───────────────────────────────────────────────
 /** A link authored in the blueprint: source component → target component + settings. */
