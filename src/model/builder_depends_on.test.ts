@@ -16,6 +16,7 @@ import {Logging, Monitoring, Tracing} from './components/observability';
 import {IdentityProvider, ServiceMesh} from './components/security';
 import {ObjectStorage, RelationalDbms} from './components/storage';
 import {ContainerPlatform} from './components/network_and_compute';
+import {AwsS3} from './offers/storage';
 
 const builders: Array<[string, (other: AnyNode) => AnyNode]> = [
   ['ApiGateway', c => ApiGateway({id: 'subject'}).dependsOn(c)],
@@ -67,5 +68,75 @@ describe('dependsOn on every builder', () => {
       .withStorageGb(20);
     expect(dbms.state.dependencies).toEqual(['cluster']);
     expect(dbms.state.parameters).toEqual({storageGb: 20});
+  });
+
+  it('ignores a repeated dependency, keeping the first position', () => {
+    const cluster = ContainerPlatform({id: 'cluster'});
+    const bucket = ObjectStorage({id: 'logs'});
+    const gateway = ApiGateway({id: 'gw'})
+      .dependsOn(cluster)
+      .dependsOn(bucket)
+      .dependsOn(cluster);
+    expect(gateway.state.dependencies).toEqual(['cluster', 'logs']);
+  });
+
+  it('rejects a dependency on itself, naming the component', () => {
+    const gateway = ApiGateway({id: 'gw'});
+    expect(() => gateway.dependsOn(gateway)).toThrow(
+      /'gw' cannot depend on itself/,
+    );
+  });
+
+  it('keeps two different dependencies in call order', () => {
+    const cluster = ContainerPlatform({id: 'cluster'});
+    const bucket = ObjectStorage({id: 'logs'});
+    const monitoring = Monitoring({id: 'mon'})
+      .dependsOn(bucket)
+      .dependsOn(cluster);
+    expect(monitoring.state.dependencies).toEqual(['logs', 'cluster']);
+  });
+
+  it('never creates a link', () => {
+    const fractal = createFractal({
+      id: 'depends-on-no-links',
+      version: {major: 1, minor: 0, patch: 0},
+      boundedContextId: {name: 'builders'},
+      blueprint: bp => {
+        const cluster = bp.add(ContainerPlatform({id: 'cluster'}));
+        return {
+          cluster,
+          gateway: bp.add(ApiGateway({id: 'gw'}).dependsOn(cluster)),
+        };
+      },
+    });
+    for (const component of fractal.blueprint.components) {
+      expect(component.links).toEqual([]);
+    }
+  });
+
+  it('carries the dependency through offer selection into the live component', () => {
+    const fractal = createFractal({
+      id: 'depends-on-live',
+      version: {major: 1, minor: 0, patch: 0},
+      boundedContextId: {name: 'builders'},
+      blueprint: bp => {
+        const archive = bp.add(ObjectStorage({id: 'archive'}));
+        return {
+          archive,
+          logs: bp.add(ObjectStorage({id: 'logs'}).dependsOn(archive)),
+        };
+      },
+    });
+    const ls = fractal.toLiveSystem({
+      name: 'depends-on-live',
+      environment: {name: 'dev'},
+      select: {
+        archive: AwsS3({region: 'us-east-1'}),
+        logs: AwsS3({region: 'us-east-1'}),
+      },
+    });
+    const logs = ls.components.find(c => c.id === 'logs')!;
+    expect(logs.dependencies).toEqual(['archive']);
+    expect(logs.links).toEqual([]);
   });
 });

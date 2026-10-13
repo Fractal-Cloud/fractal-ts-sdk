@@ -21,6 +21,11 @@ from TypeScript, and neither could the subnets an RDS DBMS is placed in. The age
 place these components through their dependencies, so they now get the dependency
 they need.
 
+`dependsOn` is ordering only: it carries no settings, and a runtime relationship
+belongs in `links`. On every builder, declaring the same dependency again is now a
+no-op instead of a duplicate entry, and a component that depends on itself is
+rejected with an error naming it.
+
 ### Added — the control plane validates a Live System before it is deployed
 
 `cloud.liveSystems.deploy` now asks the control plane (`POST /livesystems/validate`,
