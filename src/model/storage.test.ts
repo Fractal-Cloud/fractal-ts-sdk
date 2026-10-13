@@ -23,6 +23,8 @@ import {
   AzureBlob,
   MinIO,
 } from './offers/storage';
+import {ContainerPlatform} from './components/network_and_compute';
+import {Eks} from './offers/network_and_compute';
 
 const environment = {};
 const boundedContextId = {id: 'storage-templates'};
@@ -248,10 +250,24 @@ describe('Storage domain on the locked Fractal model', () => {
     // Spelled out on purpose: importing a constant would make this pass after
     // any rename. The literal is what pins the wire contract. `Storage.CaaS.MinIO`
     // is the catalogue service type, not an offer id — no handler is keyed on it.
-    const ls = authorFractal().toLiveSystem({
+    // MinIO is installed on the cluster it depends on.
+    const ls = createFractal({
+      id: 'minio-stack',
+      version: {major: 1, minor: 0, patch: 0},
+      boundedContextId,
+      blueprint: bp => {
+        const platform = bp.add(ContainerPlatform({id: 'platform'}));
+        const uploads = bp.add(
+          ObjectStorage({id: 'uploads'})
+            .withPublicAccess(false)
+            .dependsOn(platform),
+        );
+        return {platform, uploads};
+      },
+    }).toLiveSystem({
       name: 'acme-prod',
       environment,
-      select: {...fullSelect(), uploads: MinIO({storageClass: 'gp3'})},
+      select: {platform: Eks({}), uploads: MinIO({storageClass: 'gp3'})},
     });
     const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
     expect(byId['uploads'].type).toBe('Storage.CaaS.MinioTenant');

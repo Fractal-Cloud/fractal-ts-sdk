@@ -16,6 +16,7 @@ import {
 import {ContainerPlatform} from './components/network_and_compute';
 import {ObjectStorage} from './components/storage';
 import {AwsS3} from './offers/storage';
+import {Eks} from './offers/network_and_compute';
 import {
   Prometheus,
   Jaeger,
@@ -123,12 +124,23 @@ describe('Observability domain', () => {
       id: 'observability-stack',
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
-      blueprint: bp => ({
-        monitoring: bp.add(Monitoring({id: 'monitoring'})),
-        tracing: bp.add(Tracing({id: 'tracing'})),
-        logging: bp.add(Logging({id: 'logging'})),
-      }),
-    }).toLiveSystem({name: 'acme-obs', environment, select: fullSelect()});
+      // Each self-hosted backend is installed on the cluster it depends on.
+      blueprint: bp => {
+        const platform = bp.add(ContainerPlatform({id: 'platform'}));
+        return {
+          platform,
+          monitoring: bp.add(
+            Monitoring({id: 'monitoring'}).dependsOn(platform),
+          ),
+          tracing: bp.add(Tracing({id: 'tracing'}).dependsOn(platform)),
+          logging: bp.add(Logging({id: 'logging'}).dependsOn(platform)),
+        };
+      },
+    }).toLiveSystem({
+      name: 'acme-obs',
+      environment,
+      select: {...fullSelect(), platform: Eks({})},
+    });
 
     const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
     // offer types resolved
@@ -178,16 +190,20 @@ describe('Observability domain', () => {
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
       blueprint: bp => {
+        // Loki is installed on the EKS cluster it depends on; Alloy reaches
+        // that cluster through the Loki it ships to.
+        const platform = bp.add(ContainerPlatform({id: 'platform'}));
         const chunks = bp.add(ObjectStorage({id: 'chunks'}));
-        const logs = bp.add(Logging({id: 'logs'}));
+        const logs = bp.add(Logging({id: 'logs'}).dependsOn(platform));
         bp.link(logs, chunks, {access: 'read-write'});
         const shipper = bp.add(LogShipper({id: 'shipper'}).dependsOn(logs));
-        return {chunks, logs, shipper};
+        return {platform, chunks, logs, shipper};
       },
     }).toLiveSystem({
       name: 'acme-logs',
       environment,
       select: {
+        platform: Eks({}),
         chunks: AwsS3({}),
         logs: GrafanaLoki({}),
         shipper: GrafanaAlloy({}),

@@ -21,6 +21,7 @@ import type {OfferContract} from './offers/contract/offer_contract';
 import type {NeutralRule} from './neutral_rule';
 import {applyNeutralRules} from './apply_neutral_rules';
 import {isRouteSettings, mergeRouteSettings} from './route_link_merge';
+import {refuseCycles} from './live_system_cycles';
 
 // ── Catalogue value types ────────────────────────────────────────────────────
 // Vendors only. `CaaS`/`SaaS` are NOT vendors — they are delivery models below.
@@ -550,6 +551,7 @@ const toLiveSystem = (st: FractalState, args: ToLiveSystemArgs): LiveSystem => {
       pendingValidations.push([offer, emitted]);
     }
   }
+  refuseCycles(components);
   // Cross-component invariants run only once every component exists, so an offer
   // can refuse a Live System that is unbuildable as a whole even though its own
   // component is well-formed in isolation.

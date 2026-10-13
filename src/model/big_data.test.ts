@@ -29,38 +29,53 @@ import {
   AzureDatabricksJob,
   AzureDatabricksMlflow,
 } from './offers/big_data';
+import {ContainerPlatform} from './components/network_and_compute';
+import {Eks} from './offers/network_and_compute';
 
 const environment = {id: 'test-env'};
 const boundedContextId = {id: 'data-templates'};
 
 // ── Architect authors ONCE, vendor-agnostic, with guardrails. ─────────────────
-function authorFractal() {
+// `withWorkspace` adds the Databricks workspace the cluster, job and
+// experiment live in: the agents refuse each of them without one.
+function authorFractal(withWorkspace = false) {
   return createFractal({
     id: 'data-platform',
     version: {major: 1, minor: 0, patch: 0},
     boundedContextId,
     blueprint: bp => {
-      const cluster = bp.add(
-        ComputeCluster({id: 'cluster'})
-          .withSparkVersion('14.3.x-scala2.12')
-          .withMaxWorkers(10)
-          .withAutoTerminationMinutes(30),
+      const workspace = withWorkspace
+        ? bp.add(DistributedDataProcessing({id: 'workspace'}))
+        : undefined;
+      let cluster = ComputeCluster({id: 'cluster'})
+        .withSparkVersion('14.3.x-scala2.12')
+        .withMaxWorkers(10)
+        .withAutoTerminationMinutes(30);
+      if (workspace !== undefined) {
+        cluster = cluster.dependsOn(workspace);
+      }
+      bp.add(cluster);
+      let job = DataProcessingJob({id: 'etl-job'})
+        .withTaskType('python_wheel')
+        .withMaxRetries(3)
+        .dependsOn(cluster);
+      if (workspace !== undefined) {
+        job = job.dependsOn(workspace);
+      }
+      bp.add(job);
+      let experiment = MlExperiment({id: 'experiment'}).withExperimentName(
+        'fraud-model',
       );
-      const job = bp.add(
-        DataProcessingJob({id: 'etl-job'})
-          .withTaskType('python_wheel')
-          .withMaxRetries(3)
-          .dependsOn(cluster),
-      );
-      const experiment = bp.add(
-        MlExperiment({id: 'experiment'}).withExperimentName('fraud-model'),
-      );
+      if (workspace !== undefined) {
+        experiment = experiment.dependsOn(workspace);
+      }
+      bp.add(experiment);
       const lake = bp.add(
         Datalake({id: 'lake'})
           .withVersioningEnabled(true)
           .withRetentionDays(365),
       );
-      return {cluster, job, experiment, lake};
+      return {cluster, job, experiment, lake, ...(workspace ? {workspace} : {})};
     },
     operations: s => ({
       // dev-open: clusterName was NOT pre-locked, so devs may set it
@@ -109,11 +124,22 @@ describe('BigData domain — data-platform Fractal', () => {
   });
 
   it('builds a LiveSystem via offer selection; Databricks cluster type & provider; dev-open flows', () => {
-    const ls = authorFractal()
+    const ls = authorFractal(true)
       .specialize()
       .withClusterName('acme-etl-cluster')
       .withJobSchedule('0 2 * * *')
-      .toLiveSystem({name: 'acme-data', environment, select: fullSelect()});
+      .toLiveSystem({
+        name: 'acme-data',
+        environment,
+        select: {
+          ...fullSelect(),
+          workspace: AwsDatabricks({
+            pricingTier: 'premium',
+            credentialsId: 'cred-cfg-1',
+            storageConfigurationId: 'storage-cfg-1',
+          }),
+        } as unknown as ReturnType<typeof fullSelect>,
+      });
 
     const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
     // livesystem cluster offer type & provider
@@ -144,17 +170,25 @@ describe('BigData domain — data-platform Fractal', () => {
       blueprint: bp => {
         // No Spark version and no retry count either: only the Java agents
         // read them, and aria-agent-caas-k8s may be the one reconciling.
-        const cluster = bp.add(ComputeCluster({id: 'cluster'}));
+        // Spark on Kubernetes is installed on the cluster it depends on; the
+        // job reaches it through its Spark cluster.
+        const platform = bp.add(ContainerPlatform({id: 'platform'}));
+        const cluster = bp.add(
+          ComputeCluster({id: 'cluster'}).dependsOn(platform),
+        );
         const job = bp.add(
           DataProcessingJob({id: 'etl-job'}).dependsOn(cluster),
         );
-        const experiment = bp.add(MlExperiment({id: 'experiment'}));
-        return {cluster, job, experiment};
+        const experiment = bp.add(
+          MlExperiment({id: 'experiment'}).dependsOn(platform),
+        );
+        return {platform, cluster, job, experiment};
       },
     }).toLiveSystem({
       name: 'acme-data',
       environment,
       select: {
+        platform: Eks({}),
         cluster: CaaSSparkCluster({sparkOperatorName: 'spark-operator'}),
         'etl-job': CaaSSparkJob({
           sparkOperatorName: 'spark-operator',

@@ -64,6 +64,83 @@ import type {
 } from '../core';
 import type {EksAutoModeNodePool} from './eks_auto_mode_node_pool';
 import type {EksControlPlaneLogType} from './eks_control_plane_log_type';
+import type {ComponentValidator} from './component_validator';
+import {allOf, onlyFor, requireDependency} from './cross_component_rules';
+import {
+  gcpVmInSubnetRegion,
+  subnetRangeIsCarvable,
+} from './iaas_placement_rules';
+import {
+  computeLinksDeclarePorts,
+  loadBalancerListenerLinks,
+  requireMembers,
+} from './link_setting_rules';
+import {workloadLinkEnvIsUnambiguous} from './workload_link_env';
+
+// ── Placement: IaaS components are atoms ─────────────────────────────────────
+// Each is placed only by the dependencies it declares: a subnet in its network,
+// a VM in its subnet, a security group in its network. The agents refuse one
+// without them and never fall back to a network of their own choosing. The
+// blueprint cannot know which offer a slot will get, so the type is checked
+// here, against the selected offers.
+
+const AWS_VPC_TYPES = [NetworkAndCompute_IaaS_AwsVpc.offerType];
+const AZURE_VNET_TYPES = [
+  NetworkAndCompute_IaaS_AzureVnet.offerType,
+  'NetworkAndCompute.IaaS.AzureVirtualNetwork',
+  'NetworkAndCompute.IaaS.VNet',
+];
+const GCP_VPC_TYPES = [NetworkAndCompute_IaaS_GcpVpc.offerType];
+const OCI_VCN_TYPES = [NetworkAndCompute_IaaS_OciVcn.offerType];
+const HETZNER_NETWORK_TYPE = 'NetworkAndCompute.IaaS.HetznerNetwork';
+
+/** The VM, instance and ECS service types between which a link is a traffic rule. */
+const COMPUTE_TYPES: readonly string[] = [
+  NetworkAndCompute_IaaS_AwsEc2Instance.offerType,
+  NetworkAndCompute_IaaS_AzureVm.offerType,
+  NetworkAndCompute_IaaS_GcpVm.offerType,
+  NetworkAndCompute_IaaS_OciInstance.offerType,
+  'NetworkAndCompute.CaaS.ECSService',
+];
+/** Traffic links between compute components need `fromPort`. */
+export const computeTrafficLinks: ComponentValidator =
+  computeLinksDeclarePorts(COMPUTE_TYPES);
+
+/** A subnet belongs to a network of its own cloud, and its range must be carvable. */
+const subnetPlacement = (
+  networkTypes: readonly string[],
+  networkOffer: string,
+): ComponentValidator =>
+  allOf(
+    requireDependency({
+      types: networkTypes,
+      why: 'a subnet belongs to the network it declares, and no other is assumed',
+      remedy: `Make it depend on a VirtualNetwork component and select ${networkOffer} for it.`,
+    }),
+    subnetRangeIsCarvable(networkTypes),
+  );
+
+/** A security group belongs to a network of its own cloud. */
+const securityGroupPlacement = (
+  networkTypes: readonly string[],
+  networkOffer: string,
+): ComponentValidator =>
+  requireDependency({
+    types: networkTypes,
+    why: 'a security group is created in the network it declares, and no other is assumed',
+    remedy: `Make it depend on a VirtualNetwork component and select ${networkOffer} for it.`,
+  });
+
+/** A VM is placed in a subnet of its own cloud. */
+const vmPlacement = (subnetType: string, subnetOffer: string) =>
+  allOf(
+    requireDependency({
+      types: [subnetType],
+      why: 'a VM is placed only in the subnet it declares, and no other is assumed',
+      remedy: `Make it depend on a Subnet component and select ${subnetOffer} for it.`,
+    }),
+    computeTrafficLinks,
+  );
 
 /**
  * A ContainerPlatform offer emits itself PLUS one Workload live component per
@@ -174,6 +251,7 @@ export const AwsSubnet = defineOffer<
   contract: NetworkAndCompute_IaaS_AwsSubnet,
   provider: 'AWS',
   deliveryModel: 'IaaS',
+  validate: subnetPlacement(AWS_VPC_TYPES, 'AwsVpc'),
 });
 export const AzureSubnet = defineOffer<
   'NetworkAndCompute.Subnet',
@@ -183,6 +261,7 @@ export const AzureSubnet = defineOffer<
   contract: NetworkAndCompute_IaaS_AzureSubnet,
   provider: 'Azure',
   deliveryModel: 'IaaS',
+  validate: subnetPlacement(AZURE_VNET_TYPES, 'AzureVnet'),
 });
 export const GcpSubnet = defineOffer<
   'NetworkAndCompute.Subnet',
@@ -192,6 +271,7 @@ export const GcpSubnet = defineOffer<
   contract: NetworkAndCompute_IaaS_GcpSubnet,
   provider: 'GCP',
   deliveryModel: 'IaaS',
+  validate: subnetPlacement(GCP_VPC_TYPES, 'GcpVpc'),
 });
 
 // ── SecurityGroup ────────────────────────────────────────────────────────────
@@ -206,6 +286,7 @@ export const AwsSecurityGroup = defineOffer<
   contract: NetworkAndCompute_IaaS_AwsSecurityGroup,
   provider: 'AWS',
   deliveryModel: 'IaaS',
+  validate: securityGroupPlacement(AWS_VPC_TYPES, 'AwsVpc'),
 });
 export const AzureNsg = defineOffer<
   'NetworkAndCompute.SecurityGroup',
@@ -230,6 +311,11 @@ export const GcpFirewall = defineOffer<
   contract: NetworkAndCompute_IaaS_GcpFirewall,
   provider: 'GCP',
   deliveryModel: 'IaaS',
+  // A firewall applies to the instances linking to it (or carrying targetTags).
+  validate: allOf(
+    securityGroupPlacement(GCP_VPC_TYPES, 'GcpVpc'),
+    requireMembers('targetTags'),
+  ),
 });
 
 // ── VirtualMachine ───────────────────────────────────────────────────────────
@@ -286,6 +372,10 @@ export const Ec2Instance = defineOffer<
   contract: NetworkAndCompute_IaaS_AwsEc2Instance,
   provider: 'AWS',
   deliveryModel: 'IaaS',
+  validate: vmPlacement(
+    NetworkAndCompute_IaaS_AwsSubnet.offerType,
+    'AwsSubnet',
+  ),
   neutral: {
     osType: unsupported('the operating system follows amiId'),
     size: toContractKey(
@@ -321,6 +411,10 @@ export const AzureVm = defineOffer<
   contract: NetworkAndCompute_IaaS_AzureVm,
   provider: 'Azure',
   deliveryModel: 'IaaS',
+  validate: vmPlacement(
+    NetworkAndCompute_IaaS_AzureSubnet.offerType,
+    'AzureSubnet',
+  ),
   neutral: {
     osType: unsupported('the operating system follows imageId'),
     size: toContractKey(NetworkAndCompute_IaaS_AzureVm, 'vmSize', azureVmSize),
@@ -359,6 +453,10 @@ export const GcpVm = defineOffer<
   contract: NetworkAndCompute_IaaS_GcpVm,
   provider: 'GCP',
   deliveryModel: 'IaaS',
+  validate: allOf(
+    vmPlacement(NetworkAndCompute_IaaS_GcpSubnet.offerType, 'GcpSubnet'),
+    gcpVmInSubnetRegion(NetworkAndCompute_IaaS_GcpSubnet.offerType),
+  ),
   neutral: {
     osType: unsupported('the operating system follows imageLink'),
     size: toContractKey(
@@ -387,6 +485,15 @@ export const OpenshiftVm = defineOffer<
   provider: 'RedHat',
   deliveryModel: 'CaaS',
 });
+
+/**
+ * The workloads a cluster emits as its children are checked like a selected
+ * Kubernetes workload: their links must not bind one environment variable twice.
+ */
+const childWorkloads: ComponentValidator = onlyFor(
+  [KUBERNETES_WORKLOAD_OFFER_TYPE],
+  workloadLinkEnvIsUnambiguous,
+);
 
 type EksConfig = ContractConfig<
   typeof NetworkAndCompute_PaaS_AwsEks,
@@ -425,6 +532,7 @@ export const Eks = defineOffer<
   contract: NetworkAndCompute_PaaS_AwsEks,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  validate: childWorkloads,
   instantiate: (ctx, config) => {
     if (
       config.nodePools !== undefined &&
@@ -450,6 +558,7 @@ export const Aks = defineOffer<
   contract: NetworkAndCompute_PaaS_AzureAks,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  validate: childWorkloads,
   neutral: {
     kubernetesVersion: unsupported(
       'the agent declares no Kubernetes version for AKS',
@@ -474,6 +583,7 @@ export const Gke = defineOffer<
   contract: NetworkAndCompute_PaaS_GcpGke,
   provider: 'GCP',
   deliveryModel: 'PaaS',
+  validate: childWorkloads,
   instantiate: containerPlatformInstantiate(
     NetworkAndCompute_PaaS_GcpGke.offerType,
     'GCP',
@@ -623,7 +733,10 @@ export const AwsLb = defineOffer<
   contract: NetworkAndCompute_IaaS_AwsLb,
   provider: 'AWS',
   deliveryModel: 'IaaS',
-  validate: requireSubnetOf(NetworkAndCompute_IaaS_AwsSubnet.offerType),
+  validate: allOf(
+    requireSubnetOf(NetworkAndCompute_IaaS_AwsSubnet.offerType),
+    loadBalancerListenerLinks,
+  ),
   instantiate: instantiateWithVendorParameters(
     NetworkAndCompute_IaaS_AwsLb.offerType,
     'AWS',
@@ -696,6 +809,7 @@ export const OciSubnet = defineOffer<
   contract: NetworkAndCompute_IaaS_OciSubnet,
   provider: 'OCI',
   deliveryModel: 'IaaS',
+  validate: subnetPlacement(OCI_VCN_TYPES, 'OciVcn'),
 });
 export const OciSecurityList = defineOffer<
   'NetworkAndCompute.SecurityGroup',
@@ -708,6 +822,7 @@ export const OciSecurityList = defineOffer<
   contract: NetworkAndCompute_IaaS_OciSecurityList,
   provider: 'OCI',
   deliveryModel: 'IaaS',
+  validate: securityGroupPlacement(OCI_VCN_TYPES, 'OciVcn'),
 });
 export const OciInstance = defineOffer<
   'NetworkAndCompute.VirtualMachine',
@@ -723,6 +838,10 @@ export const OciInstance = defineOffer<
   contract: NetworkAndCompute_IaaS_OciInstance,
   provider: 'OCI',
   deliveryModel: 'IaaS',
+  validate: vmPlacement(
+    NetworkAndCompute_IaaS_OciSubnet.offerType,
+    'OciSubnet',
+  ),
   neutral: {
     osType: unsupported('the operating system follows imageId'),
     size: toContractKey(NetworkAndCompute_IaaS_OciInstance, 'shape', ociShape),
@@ -784,6 +903,12 @@ export const HetznerSubnet = defineOffer<
   offerType: 'NetworkAndCompute.IaaS.HetznerSubnet',
   provider: 'Hetzner',
   deliveryModel: 'IaaS',
+  validate: requireDependency({
+    types: [HETZNER_NETWORK_TYPE],
+    why: 'a Hetzner subnet is a range of the network it declares',
+    remedy:
+      'Make it depend on a VirtualNetwork component and select HetznerNetwork for it.',
+  }),
   instantiate: instantiateWithVendorParameters(
     'NetworkAndCompute.IaaS.HetznerSubnet',
     'Hetzner',
@@ -840,6 +965,19 @@ export const HetznerServer = defineOffer<
   offerType: 'NetworkAndCompute.IaaS.HetznerCloudServer',
   provider: 'Hetzner',
   deliveryModel: 'IaaS',
+  // Without a public interface the server's only interface is a private one,
+  // on a network it depends on directly (a subnet does not count).
+  validate: (self, all, config) => {
+    if (config.associatePublicIp === true) {
+      return;
+    }
+    requireDependency({
+      types: [HETZNER_NETWORK_TYPE],
+      why: 'without associatePublicIp the server has no network interface but a private one',
+      remedy:
+        'Make it depend on a VirtualNetwork component with HetznerNetwork selected, or set associatePublicIp: true.',
+    })(self, all);
+  },
   instantiate: instantiateWithVendorParameters(
     'NetworkAndCompute.IaaS.HetznerCloudServer',
     'Hetzner',
@@ -877,6 +1015,8 @@ export const OpenshiftSecurityGroup = defineOffer<
   offerType: 'NetworkAndCompute.CaaS.OpenshiftNetworkPolicy',
   provider: 'RedHat',
   deliveryModel: 'CaaS',
+  // The policy governs the pods of the workloads linking to it.
+  validate: requireMembers('podSelector'),
 });
 export const OpenshiftService = defineOffer<
   'NetworkAndCompute.LoadBalancer',

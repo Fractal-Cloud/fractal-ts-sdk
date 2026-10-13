@@ -18,6 +18,8 @@ import {
 } from './components/security';
 import {Ocelot, Cognito, Keycloak, EntraExternalId} from './offers/security';
 import {Workload} from './components/custom_workloads';
+import {ContainerPlatform} from './components/network_and_compute';
+import {Eks} from './offers/network_and_compute';
 
 const environment = {};
 const boundedContextId = {id: 'security-templates'};
@@ -31,13 +33,16 @@ function authorFractal(meshGuardrails = true) {
     version: {major: 1, minor: 0, patch: 0},
     boundedContextId,
     blueprint: bp => {
+      // A self-hosted mesh is installed on the cluster it depends on.
+      const platform = bp.add(ContainerPlatform({id: 'platform'}));
       const meshNode = bp.add(
-        meshGuardrails
+        (meshGuardrails
           ? mesh
               .withMtlsMode('strict')
               .withAuthenticationMode('jwt')
               .withTags({team: 'platform'})
-          : mesh,
+          : mesh
+        ).dependsOn(platform),
       );
       const idp = bp.add(
         IdentityProvider({id: 'app-idp'})
@@ -45,7 +50,7 @@ function authorFractal(meshGuardrails = true) {
           .withMfaConfiguration('ON')
           .withSessionDuration(3600),
       );
-      return {mesh: meshNode, idp};
+      return {platform, mesh: meshNode, idp};
     },
     operations: s => ({
       // dev-open neutral param: userDirectoryName is NOT a locked guardrail.
@@ -61,6 +66,7 @@ describe('Security domain', () => {
         name: 'acme',
         environment,
         select: {
+          platform: Eks({}),
           'app-mesh': Ocelot({host: 'auth.example.com'}),
           'app-idp': Cognito({}),
         },
@@ -104,6 +110,7 @@ describe('Security domain', () => {
         name: 'acme-security',
         environment,
         select: {
+          platform: Eks({}),
           'app-mesh': Ocelot({}),
           'app-idp': Cognito({}),
         },
@@ -128,6 +135,7 @@ describe('Security domain', () => {
         name: 'acme-security',
         environment,
         select: {
+          platform: Eks({}),
           'app-mesh': Ocelot({}),
           'app-idp': Keycloak({}),
         },
@@ -144,6 +152,7 @@ describe('Security domain', () => {
         name: 'x',
         environment,
         select: {
+          platform: Eks({}),
           // @ts-expect-error Cognito (IdentityProvider) cannot satisfy Security.ServiceMesh
           'app-mesh': Cognito({}),
           'app-idp': Cognito({}),
@@ -160,6 +169,7 @@ describe('Security domain', () => {
         name: 'acme-security',
         environment,
         select: {
+          platform: Eks({}),
           'app-mesh': Ocelot({}),
           'app-idp': EntraExternalId({
             tenantName: 'acmeexternal',

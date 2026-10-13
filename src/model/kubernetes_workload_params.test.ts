@@ -33,7 +33,13 @@ const emit = (
     id: 'k8s-params',
     version: {major: 1, minor: 0, patch: 0},
     boundedContextId,
-    blueprint: bp => ({web: bp.add(author(Workload({id: 'web'})))}),
+    blueprint: bp => {
+      const cluster = bp.add(ContainerPlatform({id: 'cluster'}));
+      return {
+        cluster,
+        web: bp.add(author(Workload({id: 'web'})).dependsOn(cluster)),
+      };
+    },
     operations: s => ({
       apply: () => (st: Parameters<ReturnType<typeof s.web.set>>[0]) =>
         Object.entries(set).reduce((acc, [k, v]) => s.web.set(k, v)(acc), st),
@@ -44,7 +50,10 @@ const emit = (
     .toLiveSystem({
       name: 'ls',
       environment,
-      select: {web: K8sWorkload({namespace: 'fractal', ...offer})},
+      select: {
+        cluster: Eks({}),
+        web: K8sWorkload({namespace: 'fractal', ...offer}),
+      },
     })
     .components.find(c => c.id === 'web')!;
 

@@ -20,6 +20,19 @@ import {
 import type {ContractConfig} from './contract/contract_config';
 import {defineOffer} from '../core';
 import type {InstantiationContext} from '../core';
+import type {ComponentValidator} from './component_validator';
+import {
+  allOf,
+  atMostOneDependency,
+  dependenciesOfType,
+  refuseComponent,
+  requireDependency,
+} from './cross_component_rules';
+import {onKubernetesCluster} from './kubernetes_placement';
+import {
+  queueLinksDeclareAccess,
+  topicLinksDeclarePublish,
+} from './link_setting_rules';
 
 // ── Broker offers (satisfy 'Messaging.Broker') ───────────────────────────────
 /** Service Bus namespace SKU. Basic namespaces support queues ONLY — they cannot
@@ -232,6 +245,7 @@ export const Kafka = defineOffer<
   satisfies: 'Messaging.Broker',
   contract: Messaging_CaaS_Kafka,
   deliveryModel: 'CaaS',
+  validate: onKubernetesCluster,
   neutral: {
     encryption: unsupported('the agent configures no encryption'),
     tier: unsupported('the agent has no tiers'),
@@ -247,6 +261,15 @@ export const AzureServiceBusTopic = defineOffer<
   contract: Messaging_PaaS_AzureServiceBusTopic,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  validate: requireDependency({
+    types: [
+      Messaging_PaaS_AzureServiceBus.offerType,
+      'Messaging.PaaS.ServiceBus',
+    ],
+    why: 'a topic is created in the Service Bus namespace it declares',
+    remedy:
+      'Make it depend on a Broker component and select AzureServiceBus for it.',
+  }),
   neutral: {
     deadLetterEnabled: unsupported('the agent has no dead-letter setting'),
     maxDeliveryAttempts: unsupported('the agent has no delivery-attempt limit'),
@@ -283,6 +306,15 @@ export const KafkaTopic = defineOffer<
   satisfies: 'Messaging.MessagingEntity',
   contract: Messaging_CaaS_KafkaTopic,
   deliveryModel: 'CaaS',
+  // The topic reaches its cluster through its Kafka.
+  validate: allOf(
+    requireDependency({
+      types: [Messaging_CaaS_Kafka.offerType],
+      why: 'a topic is created in the Kafka cluster it declares',
+      remedy: 'Make it depend on a Broker component and select Kafka for it.',
+    }),
+    onKubernetesCluster,
+  ),
   neutral: {
     deadLetterEnabled: unsupportedUnless(
       v => v === false,
@@ -298,6 +330,34 @@ export const KafkaTopic = defineOffer<
   },
 });
 const AWS_SQS_QUEUE_TYPE = Messaging_PaaS_AwsSqsQueue.offerType;
+
+/**
+ * A queue subscribes only to a topic of its own region (and account): the agent
+ * refuses one whose topic is elsewhere. Checked when both declare a region; a
+ * referenced topic's region is its own Live System's.
+ */
+const queueInTopicRegion: ComponentValidator = (self, all) => {
+  const region = self.parameters.region;
+  for (const topic of dependenciesOfType(self, all, [
+    Messaging_PaaS_AwsSnsTopic.offerType,
+  ])) {
+    const topicRegion = topic.parameters.region;
+    if (
+      typeof region === 'string' &&
+      typeof topicRegion === 'string' &&
+      region.trim() !== '' &&
+      topicRegion.trim() !== '' &&
+      region !== topicRegion
+    ) {
+      refuseComponent(
+        self,
+        `is in region ${region} but subscribes to topic '${topic.id}' in region ` +
+          `${topicRegion}: a queue subscribes only to a topic of its own region. Put both ` +
+          'in one region',
+      );
+    }
+  }
+};
 
 /**
  * A standard Amazon SNS topic: the events a Domain Service publishes. Other
@@ -329,6 +389,7 @@ export const AwsSnsTopic = defineOffer<
   contract: Messaging_PaaS_AwsSnsTopic,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  validate: topicLinksDeclarePublish,
   neutral: {
     deadLetterEnabled: unsupported('the agent has no dead-letter setting'),
     maxDeliveryAttempts: unsupported('the agent has no delivery-attempt limit'),
@@ -471,6 +532,14 @@ export const AwsSqsQueue = defineOffer<
   contract: Messaging_PaaS_AwsSqsQueue,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  validate: allOf(
+    atMostOneDependency({
+      types: [Messaging_PaaS_AwsSnsTopic.offerType],
+      why: 'a queue subscribes to at most one topic',
+    }),
+    queueInTopicRegion,
+    queueLinksDeclareAccess,
+  ),
   neutral: {
     deadLetterEnabled: unsupportedUnless(
       v => v === true,

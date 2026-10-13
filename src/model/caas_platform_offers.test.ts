@@ -27,6 +27,8 @@ import {
   Tracing,
 } from './components/observability';
 import {ObjectStorage} from './components/storage';
+import {ContainerPlatform} from './components/network_and_compute';
+import {Eks} from './offers/network_and_compute';
 import {AwsCloudFront, TraefikGateway} from './offers/api_management';
 import {AwsSqsQueue} from './offers/messaging';
 import {K8sWorkload} from './offers/custom_workloads';
@@ -52,6 +54,9 @@ const PLATFORM = {
   name: 'platform',
 };
 
+/** The EKS cluster every caas-k8s offer here is installed on. */
+const EKS = Eks({});
+
 const only = (
   components: readonly LiveSystemComponent[],
   id: string,
@@ -71,16 +76,20 @@ describe('CertManager', () => {
       id: 'platform-certificates',
       version,
       boundedContextId,
-      blueprint: bp => ({
-        certs: bp.add(CertificateManager({id: 'cert-manager'})),
-      }),
+      blueprint: bp => {
+        const eks = bp.add(ContainerPlatform({id: 'eks'}));
+        const certs = bp.add(
+          CertificateManager({id: 'cert-manager'}).dependsOn(eks),
+        );
+        return {eks, certs};
+      },
     });
   const certManager = (config: Parameters<typeof CertManager>[0]) =>
     only(
       fractal().toLiveSystem({
         name: 'platform',
         environment,
-        select: {'cert-manager': CertManager(config)},
+        select: {eks: EKS, 'cert-manager': CertManager(config)},
       }).components,
       'cert-manager',
     );
@@ -92,6 +101,7 @@ describe('CertManager', () => {
 
   it('is an abstract Security.CertificateManager in the blueprint', () => {
     expect(fractal().blueprint.components.map(c => c.component)).toEqual([
+      'NetworkAndCompute.ContainerPlatform',
       'Security.CertificateManager',
     ]);
   });
@@ -154,12 +164,15 @@ describe('SqsExporter', () => {
       version,
       boundedContextId,
       blueprint: bp => {
+        const eks = bp.add(ContainerPlatform({id: 'eks'}));
         const inbox = bp.add(MessagingEntity({id: 'inbox'}));
-        const exporter = bp.add(Monitoring({id: 'sqs-exporter'}));
+        const exporter = bp.add(
+          Monitoring({id: 'sqs-exporter'}).dependsOn(eks),
+        );
         if (linkQueue) {
-          bp.link(exporter, inbox);
+          bp.link(exporter, inbox, {access: 'subscribe'});
         }
-        return {inbox, exporter};
+        return {eks, inbox, exporter};
       },
     });
   const exporter = (
@@ -171,7 +184,7 @@ describe('SqsExporter', () => {
       fractal(linkQueue).toLiveSystem({
         name: 'platform',
         environment,
-        select: {inbox, 'sqs-exporter': SqsExporter(config)},
+        select: {eks: EKS, inbox, 'sqs-exporter': SqsExporter(config)},
       }).components,
       'sqs-exporter',
     );
@@ -183,7 +196,9 @@ describe('SqsExporter', () => {
       'CaaS',
       undefined,
     ]);
-    expect(c.links).toEqual([{componentId: 'inbox', settings: {}}]);
+    expect(c.links).toEqual([
+      {componentId: 'inbox', settings: {access: 'subscribe'}},
+    ]);
     expect(c.parameters).toEqual({});
   });
 
@@ -275,11 +290,15 @@ describe('TraefikGateway platform keys', () => {
         id: 'platform-gateway',
         version,
         boundedContextId,
-        blueprint: bp => ({traefik: bp.add(ApiGateway({id: 'traefik'}))}),
+        blueprint: bp => {
+          const eks = bp.add(ContainerPlatform({id: 'eks'}));
+          const traefik = bp.add(ApiGateway({id: 'traefik'}).dependsOn(eks));
+          return {eks, traefik};
+        },
       }).toLiveSystem({
         name: 'platform',
         environment,
-        select: {traefik: TraefikGateway(config)},
+        select: {eks: EKS, traefik: TraefikGateway(config)},
       }).components,
       'traefik',
     );
@@ -399,15 +418,17 @@ describe('TraefikGateway platform keys', () => {
         version,
         boundedContextId,
         blueprint: bp => {
-          const traefik = bp.add(ApiGateway({id: 'traefik'}));
+          const eks = bp.add(ContainerPlatform({id: 'eks'}));
+          const traefik = bp.add(ApiGateway({id: 'traefik'}).dependsOn(eks));
           const cdn = bp.add(ApiGateway({id: 'cdn'}));
           bp.link(cdn, traefik);
-          return {traefik, cdn};
+          return {eks, traefik, cdn};
         },
       }).toLiveSystem({
         name: 'platform',
         environment,
         select: {
+          eks: EKS,
           traefik: TraefikGateway({
             host: 'api.fractal.cloud',
             tlsClusterIssuer: 'letsencrypt',
@@ -448,24 +469,26 @@ describe('caas-k8s observability parameters and links', () => {
       version,
       boundedContextId,
       blueprint: bp => {
+        const eks = bp.add(ContainerPlatform({id: 'eks'}));
         const lokiChunks = bp.add(ObjectStorage({id: 'loki-chunks'}));
         const tempoTraces = bp.add(ObjectStorage({id: 'tempo-traces'}));
         const buckets: Record<string, ComponentNode> = {
           'loki-chunks': lokiChunks,
           'tempo-traces': tempoTraces,
         };
-        const metrics = Monitoring({id: 'prometheus'});
+        const metrics = Monitoring({id: 'prometheus'}).dependsOn(eks);
         const prometheus = bp.add(
           opts.retentionDays === undefined
             ? metrics
             : metrics.withRetentionDays(opts.retentionDays),
         );
-        const loki = bp.add(Logging({id: 'loki'}).withRetentionDays(14));
-        const tempo = bp.add(Tracing({id: 'tempo'}));
+        const loki = bp.add(
+          Logging({id: 'loki'}).withRetentionDays(14).dependsOn(eks),
+        );
+        const tempo = bp.add(Tracing({id: 'tempo'}).dependsOn(eks));
+        const shipper = LogShipper({id: 'alloy'}).dependsOn(eks);
         const alloy = bp.add(
-          opts.alloyDependsOnLoki === false
-            ? LogShipper({id: 'alloy'})
-            : LogShipper({id: 'alloy'}).dependsOn(loki),
+          opts.alloyDependsOnLoki === false ? shipper : shipper.dependsOn(loki),
         );
         for (const id of links.loki ?? []) {
           bp.link(loki, buckets[id], {access: opts.access ?? 'read-write'});
@@ -473,12 +496,13 @@ describe('caas-k8s observability parameters and links', () => {
         for (const id of links.tempo ?? []) {
           bp.link(tempo, buckets[id], {access: opts.access ?? 'read-write'});
         }
-        return {lokiChunks, tempoTraces, prometheus, loki, tempo, alloy};
+        return {eks, lokiChunks, tempoTraces, prometheus, loki, tempo, alloy};
       },
     }).toLiveSystem({
       name: 'platform',
       environment,
       select: {
+        eks: EKS,
         'loki-chunks': AwsS3({lifecycleExpirationDays: 14}),
         'tempo-traces': referenceTo(AwsS3, {
           liveSystemId: liveSystemIdOf(PLATFORM, 'buckets'),
@@ -566,7 +590,7 @@ describe('caas-k8s observability parameters and links', () => {
   });
 
   it('Alloy ships to the Loki it depends on, or to lokiPushUrl', () => {
-    expect(only(stack({}), 'alloy').dependencies).toEqual(['loki']);
+    expect(only(stack({}), 'alloy').dependencies).toEqual(['eks', 'loki']);
     expect(
       only(
         stack(
@@ -628,9 +652,11 @@ describe('scrapeInterval and samplingRate are refused, never pruned', () => {
       version,
       boundedContextId,
       blueprint: bp => {
-        const m = Monitoring({id: 'metrics'});
-        const t = Tracing({id: 'traces'});
+        const eks = bp.add(ContainerPlatform({id: 'eks'}));
+        const m = Monitoring({id: 'metrics'}).dependsOn(eks);
+        const t = Tracing({id: 'traces'}).dependsOn(eks);
         return {
+          eks,
           metrics: bp.add(
             scrape === undefined ? m : m.withScrapeInterval(scrape),
           ),
@@ -643,7 +669,12 @@ describe('scrapeInterval and samplingRate are refused, never pruned', () => {
     }).toLiveSystem({
       name: 'platform',
       environment,
-      select: {metrics: monitoring, traces: tracing, bucket: AwsS3({})},
+      select: {
+        eks: EKS,
+        metrics: monitoring,
+        traces: tracing,
+        bucket: AwsS3({}),
+      },
     });
 
   it.each([
@@ -735,9 +766,10 @@ describe('TLS gateway certificate coverage', () => {
       version,
       boundedContextId,
       blueprint: bp => {
-        const traefik = bp.add(ApiGateway({id: 'traefik'}));
+        const eks = bp.add(ContainerPlatform({id: 'eks'}));
+        const traefik = bp.add(ApiGateway({id: 'traefik'}).dependsOn(eks));
         const cdn = bp.add(ApiGateway({id: 'cdn'}));
-        const api = bp.add(Workload({id: 'orders'}));
+        const api = bp.add(Workload({id: 'orders'}).dependsOn(eks));
         bp.link(
           api,
           traefik,
@@ -750,12 +782,13 @@ describe('TLS gateway certificate coverage', () => {
           }),
         );
         bp.link(cdn, traefik);
-        return {traefik, cdn, api};
+        return {eks, traefik, cdn, api};
       },
     }).toLiveSystem({
       name: 'platform',
       environment,
       select: {
+        eks: EKS,
         traefik: TraefikGateway(gatewayConfig),
         cdn: AwsCloudFront(
           originProtocol === undefined ? {aliases} : {aliases, originProtocol},
@@ -795,15 +828,20 @@ describe('TLS gateway certificate coverage', () => {
         version,
         boundedContextId,
         blueprint: bp => {
-          const traefik = bp.add(ApiGateway({id: 'traefik'}));
-          const api = bp.add(Workload({id: 'orders'}));
+          const eks = bp.add(ContainerPlatform({id: 'eks'}));
+          const traefik = bp.add(ApiGateway({id: 'traefik'}).dependsOn(eks));
+          const api = bp.add(Workload({id: 'orders'}).dependsOn(eks));
           bp.link(api, traefik, {'routes.0.path': '/orders'});
-          return {traefik, api};
+          return {eks, traefik, api};
         },
       }).toLiveSystem({
         name: 'platform',
         environment,
-        select: {traefik: TraefikGateway(TLS), orders: K8sWorkload({})},
+        select: {
+          eks: EKS,
+          traefik: TraefikGateway(TLS),
+          orders: K8sWorkload({}),
+        },
       }),
     ).toThrow(
       /Route link from 'orders' to 'traefik': route setting "routes.0.path" is not one of prefix, rewritePath, host/,
@@ -861,19 +899,24 @@ describe('TLS gateway certificate coverage', () => {
         version,
         boundedContextId,
         blueprint: bp => {
-          const traefik = bp.add(ApiGateway({id: 'traefik'}));
-          const api = bp.add(Workload({id: 'orders'}));
+          const eks = bp.add(ContainerPlatform({id: 'eks'}));
+          const traefik = bp.add(ApiGateway({id: 'traefik'}).dependsOn(eks));
+          const api = bp.add(Workload({id: 'orders'}).dependsOn(eks));
           bp.link(api, traefik, {
             routes: [{prefix: '/orders', host: 'api.fractal.cloud'}],
             'routes.0.prefix': '/ignored',
             'routes.0.host': 'ignored.example.com',
           });
-          return {traefik, api};
+          return {eks, traefik, api};
         },
       }).toLiveSystem({
         name: 'platform',
         environment,
-        select: {traefik: TraefikGateway(TLS), orders: K8sWorkload({})},
+        select: {
+          eks: EKS,
+          traefik: TraefikGateway(TLS),
+          orders: K8sWorkload({}),
+        },
       }),
     ).not.toThrow();
   });
@@ -891,15 +934,17 @@ describe('CloudFront alias coverage edge cases', () => {
       boundedContextId,
       blueprint: bp => {
         // The distribution is validated before the gateway.
+        const eks = bp.add(ContainerPlatform({id: 'eks'}));
         const cdn = bp.add(ApiGateway({id: 'cdn'}));
-        const traefik = bp.add(ApiGateway({id: 'traefik'}));
+        const traefik = bp.add(ApiGateway({id: 'traefik'}).dependsOn(eks));
         bp.link(cdn, traefik);
-        return {cdn, traefik};
+        return {eks, cdn, traefik};
       },
     }).toLiveSystem({
       name: 'platform',
       environment,
       select: {
+        eks: EKS,
         cdn: AwsCloudFront({aliases}),
         traefik: TraefikGateway(gatewayConfig),
       },
@@ -931,15 +976,17 @@ describe('KubePrometheusStack route link to a TraefikGateway', () => {
       version,
       boundedContextId,
       blueprint: bp => {
-        const traefik = bp.add(ApiGateway({id: 'traefik'}));
-        const prometheus = bp.add(Monitoring({id: 'prometheus'}));
+        const eks = bp.add(ContainerPlatform({id: 'eks'}));
+        const traefik = bp.add(ApiGateway({id: 'traefik'}).dependsOn(eks));
+        const prometheus = bp.add(Monitoring({id: 'prometheus'}).dependsOn(eks));
         bp.link(prometheus, traefik, gatewayRouteSettings({routes: [route]}));
-        return {traefik, prometheus};
+        return {eks, traefik, prometheus};
       },
     }).toLiveSystem({
       name: 'platform',
       environment,
       select: {
+        eks: EKS,
         traefik: TraefikGateway({host: 'api.fractal.cloud'}),
         prometheus: KubePrometheusStack({}),
       },
@@ -975,16 +1022,18 @@ describe('KubePrometheusStack route link to a TraefikGateway', () => {
       version,
       boundedContextId,
       blueprint: bp => {
-        const traefik = bp.add(ApiGateway({id: 'traefik'}));
+        const eks = bp.add(ContainerPlatform({id: 'eks'}));
+        const traefik = bp.add(ApiGateway({id: 'traefik'}).dependsOn(eks));
         const bucket = bp.add(ObjectStorage({id: 'bucket'}));
-        const prometheus = bp.add(Monitoring({id: 'prometheus'}));
+        const prometheus = bp.add(Monitoring({id: 'prometheus'}).dependsOn(eks));
         bp.link(prometheus, target === 'traefik' ? traefik : bucket, settings);
-        return {traefik, bucket, prometheus};
+        return {eks, traefik, bucket, prometheus};
       },
     }).toLiveSystem({
       name: 'platform',
       environment,
       select: {
+        eks: EKS,
         traefik: gateway,
         bucket: AwsS3({}),
         prometheus: KubePrometheusStack({}),

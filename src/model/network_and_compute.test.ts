@@ -26,6 +26,11 @@ import {
   VsphereVm,
   GcpVm,
   AzureVm,
+  AzureVnet,
+  AzureSubnet,
+  AzureNsg,
+  GcpVpc,
+  GcpSubnet,
   HetznerServer,
 } from './offers/network_and_compute';
 
@@ -88,6 +93,43 @@ const fullSelect = () => ({
   'app-vm': Ec2Instance({amiId: 'ami-123', instanceType: 't3.medium'}),
   'app-cluster': Eks({}),
 });
+
+// A VM is placed only in a subnet of its own cloud, and that subnet in a network
+// of the same cloud: an Azure VM is selected with the Azure network offers.
+const azureNetwork = () => ({
+  'main-network': AzureVnet({}),
+  'app-subnet': AzureSubnet({}),
+  'app-sg': AzureNsg({}),
+});
+
+/**
+ * A GCP VM in a GCP subnet. The fractal above locks a network address range,
+ * which a custom-mode GCP VPC does not have, so GCP gets a network of its own.
+ */
+const gcpVmLiveSystem = (vm: ReturnType<typeof GcpVm>) =>
+  createFractal({
+    id: 'gcp-network',
+    version: {major: 1, minor: 0, patch: 0},
+    boundedContextId,
+    blueprint: bp => {
+      const network = bp.add(VirtualNetwork({id: 'main-network'}));
+      const subnet = bp.add(
+        Subnet({id: 'app-subnet'})
+          .withCidrBlock('10.0.1.0/24')
+          .dependsOn(network),
+      );
+      const appVm = bp.add(VirtualMachine({id: 'app-vm'}).dependsOn(subnet));
+      return {network, subnet, appVm};
+    },
+  }).toLiveSystem({
+    name: 'acme-net',
+    environment,
+    select: {
+      'main-network': GcpVpc({}),
+      'app-subnet': GcpSubnet({}),
+      'app-vm': vm,
+    },
+  });
 
 describe('NetworkAndCompute domain', () => {
   it('blueprint records guardrails and locks them', () => {
@@ -183,16 +225,7 @@ describe('NetworkAndCompute domain', () => {
   it('optional boot image flows through under the vendor image key', () => {
     const imageLink =
       'projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts';
-    const ls = authorFractal()
-      .specialize()
-      .toLiveSystem({
-        name: 'acme-net',
-        environment,
-        select: {
-          ...fullSelect(),
-          'app-vm': GcpVm({machineType: 'e2-medium', imageLink}),
-        },
-      });
+    const ls = gcpVmLiveSystem(GcpVm({machineType: 'e2-medium', imageLink}));
 
     const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
     // Property name IS the wire key: GcpVm emits `imageLink`, matching the agent param.
@@ -204,16 +237,7 @@ describe('NetworkAndCompute domain', () => {
       serviceAccount: 'eval@project.iam.gserviceaccount.com',
       scopes: ['https://www.googleapis.com/auth/cloud-platform'],
     };
-    const ls = authorFractal()
-      .specialize()
-      .toLiveSystem({
-        name: 'acme-net',
-        environment,
-        select: {
-          ...fullSelect(),
-          'app-vm': GcpVm({machineType: 'e2-medium', identity}),
-        },
-      });
+    const ls = gcpVmLiveSystem(GcpVm({machineType: 'e2-medium', identity}));
 
     const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
     // The whole identity object is forwarded intact under the uniform `identity` key.
@@ -234,20 +258,33 @@ describe('NetworkAndCompute domain', () => {
     // (AWS Ec2Config, Azure AzureVirtualMachineConfig, GCP GcpComputeInstanceConfig,
     // Hetzner PublicNet), and each publishes it in its param contract, so the key
     // survives to the agent.
-    for (const offer of [
-      Ec2Instance({instanceType: 't3.medium', associatePublicIp: true}),
-      AzureVm({vmSize: 'Standard_B1s', associatePublicIp: true}),
-      GcpVm({machineType: 'e2-medium', associatePublicIp: true}),
-      HetznerServer({serverType: 'cx22', associatePublicIp: true}),
-    ]) {
-      const ls = authorFractal()
+    const onFractal = (
+      offer:
+        | ReturnType<typeof Ec2Instance>
+        | ReturnType<typeof AzureVm>
+        | ReturnType<typeof HetznerServer>,
+      network: Partial<ReturnType<typeof fullSelect>> = {},
+    ) =>
+      authorFractal()
         .specialize()
         .toLiveSystem({
           name: 'acme-net',
           environment,
-          select: {...fullSelect(), 'app-vm': offer},
+          select: {...fullSelect(), ...network, 'app-vm': offer},
         });
-
+    for (const ls of [
+      onFractal(
+        Ec2Instance({instanceType: 't3.medium', associatePublicIp: true}),
+      ),
+      onFractal(
+        AzureVm({vmSize: 'Standard_B1s', associatePublicIp: true}),
+        azureNetwork() as unknown as Partial<ReturnType<typeof fullSelect>>,
+      ),
+      gcpVmLiveSystem(
+        GcpVm({machineType: 'e2-medium', associatePublicIp: true}),
+      ),
+      onFractal(HetznerServer({serverType: 'cx22', associatePublicIp: true})),
+    ]) {
       const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
       expect(byId['app-vm'].parameters.associatePublicIp).toBe(true);
     }
@@ -261,6 +298,7 @@ describe('NetworkAndCompute domain', () => {
         environment,
         select: {
           ...fullSelect(),
+          ...azureNetwork(),
           'app-vm': AzureVm({vmSize: 'Standard_B1s'}),
         },
       });
@@ -270,16 +308,7 @@ describe('NetworkAndCompute domain', () => {
   });
 
   it('GcpVm associatePublicIp is absent from parameters when omitted', () => {
-    const ls = authorFractal()
-      .specialize()
-      .toLiveSystem({
-        name: 'acme-net',
-        environment,
-        select: {
-          ...fullSelect(),
-          'app-vm': GcpVm({machineType: 'e2-medium'}),
-        },
-      });
+    const ls = gcpVmLiveSystem(GcpVm({machineType: 'e2-medium'}));
 
     const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
     expect(byId['app-vm'].parameters.associatePublicIp).toBeUndefined();

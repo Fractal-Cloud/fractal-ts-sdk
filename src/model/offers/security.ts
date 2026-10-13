@@ -15,6 +15,8 @@ import {
 import type {ContractConfig} from './contract/contract_config';
 import {defineOffer} from '../core';
 import type {CertManagerConfig} from './cert_manager_config';
+import {onEksCluster, onKubernetesCluster} from './kubernetes_placement';
+import {identityProviderLinksDeclareClient} from './link_setting_rules';
 
 // ── Security.ServiceMesh offers ──────────────────────────────────────────────
 // Vendor-neutral self-hosted — runs on any cluster, so no `provider`.
@@ -25,6 +27,7 @@ export const Ocelot = defineOffer<
   satisfies: 'Security.ServiceMesh',
   contract: Security_CaaS_Ocelot,
   deliveryModel: 'CaaS',
+  validate: onKubernetesCluster,
   neutral: {
     authenticationMode: unsupported(
       'the agent has no authentication mode setting',
@@ -49,6 +52,7 @@ export const Cognito = defineOffer<
   contract: Security_PaaS_AwsCognito,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  validate: identityProviderLinksDeclareClient,
   neutral: {
     tags: unsupported('the agent applies no tags to it'),
   },
@@ -79,6 +83,7 @@ export const EntraExternalId = defineOffer<
   contract: Security_PaaS_AzureEntraExternalId,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  validate: identityProviderLinksDeclareClient,
   neutral: {
     tags: unsupported('the agent applies no tags to it'),
   },
@@ -102,4 +107,7 @@ export const CertManager = defineOffer<
   satisfies: 'Security.CertificateManager',
   contract: Security_CaaS_CertManager,
   deliveryModel: 'CaaS',
+  validate: onEksCluster(
+    'it solves DNS-01 in Route 53 with a role granted through EKS Pod Identity',
+  ),
 });

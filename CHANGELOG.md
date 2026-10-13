@@ -38,6 +38,60 @@ certificate of the gateway behind it, gateway route coverage, a Container App's
 environment, a Service Bus tier against its topics, a Grafana backend's bucket link, a
 load balancer's subnets) or how the SDK encodes a value (an empty list sent as blank).
 
+### Breaking — `toLiveSystem()` refuses what the agents would fail on, across components
+
+`toLiveSystem()` now checks, offline, every rule an agent applies at reconcile time
+that involves more than one component, and refuses the Live System with an error
+naming the component, the problem and the remedy, instead of letting the component
+fail minutes into a deployment. A Live System that passes was never affected; one
+that is refused would have failed in the agent.
+
+- **Order:** dependencies and links must not form a cycle (two components linking to
+  each other is one): the agents refuse to reconcile a Live System that has no order.
+- **IaaS placement:** a subnet depends on a network of its own cloud (`AwsSubnet` →
+  `AwsVpc`, `AzureSubnet` → `AzureVnet`, `GcpSubnet` → `GcpVpc`, `OciSubnet` →
+  `OciVcn`, `HetznerSubnet` → `HetznerNetwork`), and one without a `cidrBlock` must be
+  carvable as a /24 from its network's block; `AwsSecurityGroup`, `GcpFirewall` and
+  `OciSecurityList` depend on their cloud's network; a VM depends on a subnet of its
+  cloud (`Ec2Instance`, `AzureVm`, `GcpVm`, `OciInstance`), a GCP VM's `region` and
+  `zone` match its subnet's, and a `HetznerServer` without `associatePublicIp` depends
+  on a `HetznerNetwork`. A `GcpFirewall` and an `OpenshiftSecurityGroup` need a member
+  (a component linking to it, or `targetTags` / `podSelector`).
+- **Platforms:** every offer installed on Kubernetes (`K8sWorkload`, `Traefik`,
+  `TraefikGateway`, `Ambassador`, `Ocelot`, `CertManager`, `Prometheus`, `Jaeger`,
+  `ObservabilityElastic`, the Grafana stack, `SqsExporter`, `Kafka`, `KafkaTopic`,
+  `MinIO`, the Spark offers) reaches exactly one Kubernetes cluster through its
+  dependencies; `CertManager`, `GrafanaLoki`, `GrafanaTempo` and `SqsExporter` need an
+  EKS one. An `EcsService` depends on an `EcsCluster` and an `AwsSubnet`.
+- **Parents:** a database depends on a DBMS of its engine and cloud (selected, or
+  emitted as a DBMS child); a Cloud SQL database depends on nothing else; two MySQL
+  databases on one DBMS may not differ only by case; the subnets an RDS DBMS declares
+  lie in one VPC and two Availability Zones; a Databricks cluster, job or MLflow
+  experiment depends on a workspace of its cloud; an `AzureServiceBusTopic` on an
+  `AzureServiceBus`, a `KafkaTopic` on a `Kafka`; an `AwsSqsQueue` subscribes to at
+  most one `AwsSnsTopic`, of its own region.
+- **Link settings, checked on the link's target:** a link to a relational database
+  declares `access` (or `accessMode` / `roleName`) with a known value; a link to a
+  bucket declares `access` (`read`, `write`, `read-write`); a workload's link to a
+  queue or SNS topic declares `access`, and never `subscribe` on a topic; a link to an
+  identity provider has a known `clientType`, and `redirectUris` for a browser client;
+  a traffic link between two VMs or ECS services has `fromPort`; a listener link to an
+  `AwsLb` has `listenerPort`, `listenerProtocol` and a `targetComponentId` the load
+  balancer links to; a Kubernetes workload's links do not bind one environment
+  variable twice, or one it sets in `env` / `secretEnv`; a workload's route link to a
+  `TraefikGateway` has routes the agent can serve (a host, from the route or the
+  gateway) that do not overlap another workload's.
+- **CloudFront:** a site with `aliases` has an origin (a linked bucket or gateway, or
+  `originDomain`).
+
+### Added — `dependsOn` on every component an offer may need to place
+
+`ApiGateway`, `CertificateManager`, `ServiceMesh`, `IdentityProvider`,
+`ObjectStorage`, `RelationalDbms`, `Broker`, `Monitoring`, `Tracing` and `Logging`
+gain `dependsOn(other)`. Without it the cluster a self-hosted gateway, issuer, broker
+or monitoring stack is installed on, or the subnets an RDS DBMS is placed in, could
+not be declared from TypeScript.
+
 ### Breaking — a load balancer declares its subnets
 
 A load balancer is placed only in the subnets it declares (the agents refuse one

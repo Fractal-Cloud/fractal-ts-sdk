@@ -14,8 +14,10 @@ import {createFractal} from './core';
 import {MessagingEntity} from './components/messaging';
 import type {MessagingEntityLink} from './components/messaging_entity_link';
 import {Workload} from './components/custom_workloads';
+import {ContainerPlatform} from './components/network_and_compute';
 import {AwsSnsTopic, AwsSqsQueue} from './offers/messaging';
 import {K8sWorkload} from './offers/custom_workloads';
+import {Eks} from './offers/network_and_compute';
 import {referenceTo} from './reference';
 
 const OWNER = '00000000-0000-0000-0000-0000000000bb';
@@ -36,14 +38,15 @@ const pubSub = () =>
       const events = bp.add(MessagingEntity({id: 'events'}));
       const upstream = bp.add(MessagingEntity({id: 'upstream'}));
       const inbox = bp.add(MessagingEntity({id: 'inbox'}).withTopic(upstream));
-      const service = bp.add(Workload({id: 'service'}));
+      const cluster = bp.add(ContainerPlatform({id: 'cluster'}));
+      const service = bp.add(Workload({id: 'service'}).dependsOn(cluster));
       bp.link(service, events, {
         access: 'publish',
       } satisfies MessagingEntityLink);
       bp.link(service, inbox, {
         access: 'subscribe',
       } satisfies MessagingEntityLink);
-      return {events, upstream, inbox, service};
+      return {events, upstream, inbox, cluster, service};
     },
   });
 
@@ -62,6 +65,7 @@ const build = (
         componentId: 'events',
       }),
       inbox: queue,
+      cluster: Eks({}),
       service: K8sWorkload({namespace: 'fractal'}),
     },
   });
@@ -78,6 +82,7 @@ describe('AwsSnsTopic', () => {
         }),
         upstream: AwsSnsTopic({}),
         inbox: AwsSqsQueue({}),
+        cluster: Eks({}),
         service: K8sWorkload({}),
       },
     });
@@ -213,6 +218,7 @@ describe('AwsSnsTopic maximumMessageSize', () => {
         events: AwsSnsTopic({maximumMessageSize}),
         upstream: AwsSnsTopic({}),
         inbox: AwsSqsQueue({}),
+        cluster: Eks({}),
         service: K8sWorkload({}),
       },
     });

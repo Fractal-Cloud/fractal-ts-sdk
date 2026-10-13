@@ -11,6 +11,8 @@ import {
   NetworkAndCompute_CaaS_CloudRunService,
   NetworkAndCompute_CaaS_ECSService,
   NetworkAndCompute_CaaS_ECSTaskDefinition,
+  NetworkAndCompute_IaaS_AwsSubnet,
+  NetworkAndCompute_PaaS_ECS,
 } from './generated/network_and_compute';
 import {
   cpuCores,
@@ -34,6 +36,10 @@ import {
 } from './offer_type_ids';
 import {toKubernetesWorkloadParameters} from './kubernetes_workload_contract';
 import type {WorkloadSsmParameters} from './workload_ssm_parameters';
+import {allOf, onlyFor, requireDependency} from './cross_component_rules';
+import {onKubernetesCluster} from './kubernetes_placement';
+import {workloadLinkEnvIsUnambiguous} from './workload_link_env';
+import {computeTrafficLinks} from './network_and_compute';
 
 const asRecord = (v: unknown): Record<string, unknown> =>
   typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {};
@@ -121,6 +127,26 @@ export const EcsService = defineOffer<
     terminationGracePeriodSeconds: unsupportedOnEcs('stop timeout'),
     topologySpread: unsupportedOnEcs('placement spread'),
   },
+  // The task definition is emitted beside the service and needs nothing else;
+  // the service runs on an ECS cluster, in a subnet, both of which it declares.
+  validate: onlyFor(
+    [NetworkAndCompute_CaaS_ECSService.offerType],
+    allOf(
+      requireDependency({
+        types: [NetworkAndCompute_PaaS_ECS.offerType],
+        why: 'an ECS service runs on the ECS cluster it declares',
+        remedy:
+          'Make the Workload depend on a ContainerPlatform component and select EcsCluster for it.',
+      }),
+      requireDependency({
+        types: [NetworkAndCompute_IaaS_AwsSubnet.offerType],
+        why: 'an ECS service places its tasks only in the subnet it declares',
+        remedy:
+          'Make the Workload depend on a Subnet component and select AwsSubnet for it.',
+      }),
+      computeTrafficLinks,
+    ),
+  ),
   instantiate: (ctx, config) => {
     const task = NetworkAndCompute_CaaS_ECSTaskDefinition;
     const service = NetworkAndCompute_CaaS_ECSService;
@@ -392,6 +418,7 @@ export const K8sWorkload = defineOffer<
   // value is pinned to the id the catalogue and the caas-k8s agent agree on.
   contract: CustomWorkloads_CaaS_KubernetesWorkload,
   deliveryModel: 'CaaS',
+  validate: allOf(onKubernetesCluster, workloadLinkEnvIsUnambiguous),
   instantiate: (ctx, cfg) => [
     {
       id: ctx.id,

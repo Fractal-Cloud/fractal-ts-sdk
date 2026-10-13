@@ -23,7 +23,8 @@ import {CustomWorkloads_CaaS_KubernetesWorkload} from './offers/generated/custom
 const environment = {};
 const boundedContextId = {id: 'custom-workloads-templates'};
 
-function authorFractal() {
+/** With `onCluster`, the web Workload depends on a ContainerPlatform (`cluster`). */
+function authorFractal(onCluster = false) {
   return createFractal({
     id: 'custom-workloads-stack',
     version: {major: 1, minor: 0, patch: 0},
@@ -36,7 +37,11 @@ function authorFractal() {
           .withHealthCheck({path: '/healthz', port: 8080}),
       );
       const fn = bp.add(Function({id: 'ingest-fn'}).withRuntime('nodejs20.x'));
-      return {web, fn};
+      if (!onCluster) {
+        return {web, fn};
+      }
+      const cluster = bp.add(ContainerPlatform({id: 'cluster'}));
+      return {web: web.dependsOn(cluster), fn, cluster};
     },
     operations: s => ({
       // dev-open params: image/replicas are NOT guardrails on web, so devs may set them.
@@ -112,7 +117,7 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
   });
 
   it('future-proof: a vendor-neutral CaaS offer leaves provider undefined', () => {
-    const ls = authorFractal()
+    const ls = authorFractal(true)
       .specialize()
       .withImage('registry/app:1')
       .withReplicas(6)
@@ -121,6 +126,7 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
         environment,
         select: {
           ...fullSelect(),
+          cluster: Eks({}),
           web: K8sWorkload({namespace: 'apps'}),
         },
       });
@@ -144,14 +150,18 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
    */
   describe('KubernetesWorkload emits the names its agent contract declares', () => {
     const k8sWeb = () =>
-      authorFractal()
+      authorFractal(true)
         .specialize()
         .withImage('registry/app:1')
         .withReplicas(6)
         .toLiveSystem({
           name: 'acme-prod',
           environment,
-          select: {...fullSelect(), web: K8sWorkload({namespace: 'apps'})},
+          select: {
+            ...fullSelect(),
+            cluster: Eks({}),
+            web: K8sWorkload({namespace: 'apps'}),
+          },
         })
         .components.find(c => c.id === 'web')!;
 
@@ -169,7 +179,13 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
         id: 'custom-workloads-stack',
         version: {major: 1, minor: 0, patch: 0},
         boundedContextId,
-        blueprint: bp => ({web: bp.add(Workload({id: 'web'}))}),
+        blueprint: bp => {
+          const cluster = bp.add(ContainerPlatform({id: 'cluster'}));
+          return {
+            cluster,
+            web: bp.add(Workload({id: 'web'}).dependsOn(cluster)),
+          };
+        },
         operations: s => ({
           withNeutralImage: (v: string) => s.web.set('image', v),
           withContractImage: (v: string) => s.web.set('containerImage', v),
@@ -181,7 +197,7 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
         .toLiveSystem({
           name: 'acme-prod',
           environment,
-          select: {web: K8sWorkload({namespace: 'apps'})},
+          select: {cluster: Eks({}), web: K8sWorkload({namespace: 'apps'})},
         })
         .components.find(c => c.id === 'web')!;
 
@@ -202,26 +218,31 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
         id: 'custom-workloads-stack',
         version: {major: 1, minor: 0, patch: 0},
         boundedContextId,
-        blueprint: bp => ({
-          web: bp.add(
-            Workload({id: 'web'})
-              .withImage('registry/app:1')
-              .withPort(8080)
-              .withReplicas(3)
-              .withEnv({LOG_LEVEL: 'info'})
-              .withCpuRequest('500m')
-              .withMemoryRequest('256Mi')
-              .withMaxReplicas(20)
-              .withHealthCheck({path: '/healthz', port: 8080}),
-          ),
-        }),
+        blueprint: bp => {
+          const cluster = bp.add(ContainerPlatform({id: 'cluster'}));
+          return {
+            cluster,
+            web: bp.add(
+              Workload({id: 'web'})
+                .dependsOn(cluster)
+                .withImage('registry/app:1')
+                .withPort(8080)
+                .withReplicas(3)
+                .withEnv({LOG_LEVEL: 'info'})
+                .withCpuRequest('500m')
+                .withMemoryRequest('256Mi')
+                .withMaxReplicas(20)
+                .withHealthCheck({path: '/healthz', port: 8080}),
+            ),
+          };
+        },
         operations: () => ({}),
       })
         .specialize()
         .toLiveSystem({
           name: 'acme-prod',
           environment,
-          select: {web: K8sWorkload({namespace: 'apps'})},
+          select: {cluster: Eks({}), web: K8sWorkload({namespace: 'apps'})},
         })
         .components.find(c => c.id === 'web')!;
 
@@ -320,8 +341,10 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
         version: {major: 1, minor: 0, patch: 0},
         boundedContextId,
         blueprint: bp => {
-          const base = Workload({id: 'web'});
+          const cluster = bp.add(ContainerPlatform({id: 'cluster'}));
+          const base = Workload({id: 'web'}).dependsOn(cluster);
           return {
+            cluster,
             web: bp.add(opts.lock ? base.withImage('architect/locked:1') : base),
           };
         },
@@ -336,7 +359,7 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
           .toLiveSystem({
             name: 'acme-prod',
             environment,
-            select: {web: K8sWorkload({namespace: 'apps'})},
+            select: {cluster: Eks({}), web: K8sWorkload({namespace: 'apps'})},
           })
           .components.find(c => c.id === 'web')!;
     };
@@ -384,7 +407,13 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
         id: 'guardrail-stack',
         version: {major: 1, minor: 0, patch: 0},
         boundedContextId,
-        blueprint: bp => ({web: bp.add(Workload({id: 'web'}))}),
+        blueprint: bp => {
+          const cluster = bp.add(ContainerPlatform({id: 'cluster'}));
+          return {
+            cluster,
+            web: bp.add(Workload({id: 'web'}).dependsOn(cluster)),
+          };
+        },
         operations: s => ({blank: () => s.web.set('containerImage', '   ')}),
       })
         .specialize()
@@ -392,7 +421,7 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
         .toLiveSystem({
           name: 'acme-prod',
           environment,
-          select: {web: K8sWorkload({namespace: 'apps'})},
+          select: {cluster: Eks({}), web: K8sWorkload({namespace: 'apps'})},
         })
         .components.find(c => c.id === 'web')!;
       // Absent, so the agent names the missing required parameter instead of

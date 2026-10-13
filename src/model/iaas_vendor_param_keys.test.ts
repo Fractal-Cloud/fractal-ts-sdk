@@ -21,8 +21,11 @@ import {
 import {
   AwsLb,
   AwsSubnet,
+  AwsVpc,
   AzureSubnet,
+  AzureVnet,
   GcpSubnet,
+  GcpVpc,
   AzureLb,
   GcpGlb,
   HetznerFirewall,
@@ -31,6 +34,7 @@ import {
   HetznerSubnet,
   OciInstance,
   OciSubnet,
+  OciVcn,
 } from './offers/network_and_compute';
 import type {LoadBalancerScheme} from './components/load_balancer_scheme';
 
@@ -43,10 +47,16 @@ const lbFractal = (scheme?: LoadBalancerScheme) =>
     version: {major: 1, minor: 0, patch: 0},
     boundedContextId,
     blueprint: bp => {
-      const subnet = bp.add(Subnet({id: 'edge-subnet'}));
+      // A subnet belongs to the network it declares.
+      const network = bp.add(VirtualNetwork({id: 'edge-network'}));
+      const subnet = bp.add(
+        Subnet({id: 'edge-subnet'})
+          .withCidrBlock('10.0.1.0/24')
+          .dependsOn(network),
+      );
       const base = LoadBalancer({id: 'edge-lb', subnets: [subnet]});
       const lb = bp.add(scheme === undefined ? base : base.withScheme(scheme));
-      return {subnet, lb};
+      return {network, subnet, lb};
     },
     operations: s => ({
       setScheme: (v: string) => s.lb.set('scheme', v),
@@ -60,6 +70,13 @@ const subnetFor = (offer: ReturnType<typeof AwsLb>) =>
       ? GcpSubnet({})
       : AwsSubnet({});
 
+const networkFor = (offer: ReturnType<typeof AwsLb>) =>
+  offer.provider === 'Azure'
+    ? AzureVnet({})
+    : offer.provider === 'GCP'
+      ? GcpVpc({})
+      : AwsVpc({});
+
 const lbParameters = (
   scheme: LoadBalancerScheme | undefined,
   offer: ReturnType<typeof AwsLb>,
@@ -69,7 +86,11 @@ const lbParameters = (
     .toLiveSystem({
       name: 'edge-ls',
       environment,
-      select: {'edge-lb': offer, 'edge-subnet': subnetFor(offer)},
+      select: {
+        'edge-lb': offer,
+        'edge-subnet': subnetFor(offer),
+        'edge-network': networkFor(offer),
+      },
     });
   return ls.components.find(c => c.id === 'edge-lb')!.parameters;
 };
@@ -91,7 +112,11 @@ describe('LoadBalancer subnets', () => {
       lbFractal().toLiveSystem({
         name: 'edge-ls',
         environment,
-        select: {'edge-lb': AwsLb({}), 'edge-subnet': GcpSubnet({})},
+        select: {
+          'edge-lb': AwsLb({}),
+          'edge-subnet': GcpSubnet({}),
+          'edge-network': GcpVpc({}),
+        },
       }),
     ).toThrow(
       "LoadBalancer 'edge-lb' has no NetworkAndCompute.IaaS.AwsSubnet dependency",
@@ -161,7 +186,11 @@ describe('LoadBalancer scheme reaches each vendor agent', () => {
       .toLiveSystem({
         name: 'edge-ls',
         environment,
-        select: {'edge-lb': GcpGlb({}), 'edge-subnet': GcpSubnet({})},
+        select: {
+          'edge-lb': GcpGlb({}),
+          'edge-subnet': GcpSubnet({}),
+          'edge-network': GcpVpc({}),
+        },
       });
     expect(
       ls.components.find(c => c.id === 'edge-lb')!.parameters.lbScheme,
@@ -176,7 +205,11 @@ describe('LoadBalancer scheme reaches each vendor agent', () => {
         .toLiveSystem({
           name: 'edge-ls',
           environment,
-          select: {'edge-lb': AwsLb({}), 'edge-subnet': AwsSubnet({})},
+          select: {
+            'edge-lb': AwsLb({}),
+            'edge-subnet': AwsSubnet({}),
+            'edge-network': AwsVpc({}),
+          },
         }),
     ).toThrow(/'edge-lb'.*'EXTERNAL'.*'internal' or 'internet-facing'/);
   });
@@ -197,13 +230,18 @@ describe('OCI offers emit the keys the OCI agent reads', () => {
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
       blueprint: bp => {
-        const subnet = bp.add(Subnet({id: 'app-subnet'}));
+        const vcn = bp.add(VirtualNetwork({id: 'app-vcn'}));
+        const subnet = bp.add(
+          Subnet({id: 'app-subnet'})
+            .withCidrBlock('10.0.1.0/24')
+            .dependsOn(vcn),
+        );
         const vm = bp.add(
           VirtualMachine({id: 'app-vm'})
             .withPublicSSHKey('ssh-ed25519 AAAAexample')
             .dependsOn(subnet),
         );
-        return {subnet, vm};
+        return {vcn, subnet, vm};
       },
       operations: () => ({}),
     });
@@ -216,6 +254,7 @@ describe('OCI offers emit the keys the OCI agent reads', () => {
           name: 'oci-ls',
           environment,
           select: {
+            'app-vcn': OciVcn({}),
             'app-subnet': OciSubnet(
               subnetAd === undefined ? {} : {availabilityZone: subnetAd},
             ),
@@ -270,7 +309,10 @@ describe('Hetzner offers emit the types and keys aria-agent-hetzner reads', () =
                 {protocol: 'tcp', fromPort: 443, sourceCidr: '0.0.0.0/0'},
               ]),
           );
-          const server = bp.add(VirtualMachine({id: 'vm'}).dependsOn(subnet));
+          // A private server's interface is on the network it depends on.
+          const server = bp.add(
+            VirtualMachine({id: 'vm'}).dependsOn(subnet).dependsOn(network),
+          );
           return {network, subnet, firewall, server};
         },
         operations: () => ({}),

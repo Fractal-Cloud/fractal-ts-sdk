@@ -8,6 +8,8 @@ import {describe, it, expect} from 'vitest';
 import {createFractal} from './core';
 import {ApiGateway, Route} from './components/api_management';
 import {AwsCloudFront, Ambassador} from './offers/api_management';
+import {ContainerPlatform} from './components/network_and_compute';
+import {Aks} from './offers/network_and_compute';
 
 const environment = {};
 const boundedContextId = {id: 'reusable-templates'};
@@ -63,15 +65,22 @@ describe('Locked Fractal model — APIManagement', () => {
       id: 'api-management-domain',
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
-      blueprint: bp => ({
-        gateway: bp.add(
-          ApiGateway({id: 'api-gateway'}).withCustomDomain('api.example.com'),
-        ),
-      }),
+      // Ambassador is installed on the cluster it depends on.
+      blueprint: bp => {
+        const platform = bp.add(ContainerPlatform({id: 'platform'}));
+        return {
+          platform,
+          gateway: bp.add(
+            ApiGateway({id: 'api-gateway'})
+              .withCustomDomain('api.example.com')
+              .dependsOn(platform),
+          ),
+        };
+      },
     }).toLiveSystem({
       name: 'acme-onprem',
       environment,
-      select: {'api-gateway': Ambassador({})},
+      select: {platform: Aks({}), 'api-gateway': Ambassador({})},
     });
 
     const gw = ls.components.find(c => c.id === 'api-gateway')!;

@@ -32,6 +32,64 @@ import type {
   Provider,
 } from '../core';
 import type {AwsRdsDbmsConfig} from './aws_rds_dbms_config';
+import type {ComponentValidator} from './component_validator';
+import {allOf, onlyFor} from './cross_component_rules';
+import {
+  databaseRules,
+  gcpDatabaseRules,
+  mysqlDatabaseNamesDistinct,
+  rdsDbmsSubnets,
+} from './database_rules';
+import {bucketLinksDeclareAccess} from './link_setting_rules';
+import {onKubernetesCluster} from './kubernetes_placement';
+
+// ── Cross-component rules ────────────────────────────────────────────────────
+// What a database needs from its Live System, checked on a selected database
+// and on every database a DBMS emits as its child.
+const AWS_RDS_POSTGRES_DBMS_TYPES = [
+  Storage_PaaS_AwsRdsPostgres.offerType,
+  'Storage.PaaS.PostgreSqlDbms',
+];
+const AWS_RDS_MYSQL_DBMS_TYPES = [Storage_PaaS_AwsRdsMySql.offerType];
+const AZURE_POSTGRES_DBMS_TYPES = [
+  Storage_PaaS_AzurePostgresDbms.offerType,
+  'Storage.PaaS.PostgreSqlDbms',
+];
+const GCP_POSTGRES_DBMS_TYPES = [
+  Storage_PaaS_GcpPostgresDbms.offerType,
+  'Storage.PaaS.PostgreSqlDbms',
+];
+const awsRdsPostgresDatabaseRules = databaseRules(
+  AWS_RDS_POSTGRES_DBMS_TYPES,
+  'AwsRdsPostgresDbms',
+);
+const awsRdsMySqlDatabaseRules = allOf(
+  databaseRules(AWS_RDS_MYSQL_DBMS_TYPES, 'AwsRdsMySqlDbms'),
+  mysqlDatabaseNamesDistinct(
+    Storage_PaaS_AwsRdsMySqlDatabase.offerType,
+    AWS_RDS_MYSQL_DBMS_TYPES,
+  ),
+);
+const azurePostgresDatabaseRules = databaseRules(
+  AZURE_POSTGRES_DBMS_TYPES,
+  'AzurePostgresDbms',
+);
+const gcpPostgresDatabaseRules = gcpDatabaseRules(GCP_POSTGRES_DBMS_TYPES);
+/** An RDS DBMS's declared subnets, and the rules of the databases it emits. */
+const rdsDbmsRules = (
+  dbmsType: string,
+  databaseType: string,
+  database: ComponentValidator,
+): ComponentValidator =>
+  allOf(
+    onlyFor(
+      [dbmsType],
+      rdsDbmsSubnets('NetworkAndCompute.IaaS.AwsSubnet', [
+        'NetworkAndCompute.IaaS.AwsVpc',
+      ]),
+    ),
+    onlyFor([databaseType], database),
+  );
 
 /**
  * A DBMS offer emits itself PLUS one Database live component per child the
@@ -108,6 +166,7 @@ export const AwsS3 = defineOffer<
   contract: Storage_PaaS_AwsS3,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  validate: bucketLinksDeclareAccess,
   neutral: {
     encryption: unsupportedUnless(
       v => v === 'at-rest',
@@ -148,6 +207,7 @@ export const AzureBlob = defineOffer<
   contract: Storage_PaaS_AzureBlob,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  validate: bucketLinksDeclareAccess,
   neutral: {
     retentionDays: unsupported('the agent sets no retention'),
     storageClass: unsupported('the tier is set by accessTier'),
@@ -166,6 +226,7 @@ export const GcsBucket = defineOffer<
   contract: Storage_PaaS_GcpGcsBucket,
   provider: 'GCP',
   deliveryModel: 'PaaS',
+  validate: bucketLinksDeclareAccess,
   neutral: {
     encryption: unsupportedUnless(
       v => v === 'at-rest',
@@ -190,6 +251,7 @@ export const MinIO = defineOffer<
   satisfies: 'Storage.ObjectStorage',
   contract: Storage_CaaS_MinioTenant,
   deliveryModel: 'CaaS',
+  validate: allOf(onKubernetesCluster, bucketLinksDeclareAccess),
   neutral: {
     encryption: unsupported('the agent configures no encryption'),
     publicAccess: unsupportedUnless(
@@ -214,6 +276,10 @@ export const AzurePostgresDbms = defineOffer<
   contract: Storage_PaaS_AzurePostgresDbms,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  validate: onlyFor(
+    [Storage_PaaS_AzurePostgresDatabase.offerType],
+    azurePostgresDatabaseRules,
+  ),
   neutral: {
     engineVersion: toContractKey(Storage_PaaS_AzurePostgresDbms, 'version'),
     highAvailability: unsupported(
@@ -235,6 +301,10 @@ export const GcpPostgresDbms = defineOffer<
   contract: Storage_PaaS_GcpPostgresDbms,
   provider: 'GCP',
   deliveryModel: 'PaaS',
+  validate: onlyFor(
+    [Storage_PaaS_GcpPostgresDatabase.offerType],
+    gcpPostgresDatabaseRules,
+  ),
   neutral: {
     backupRetentionDays: unsupported(
       'the agent declares no such setting for Cloud SQL for PostgreSQL',
@@ -359,6 +429,11 @@ export const AwsRdsPostgresDbms = defineOffer<
   contract: Storage_PaaS_AwsRdsPostgres,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  validate: rdsDbmsRules(
+    Storage_PaaS_AwsRdsPostgres.offerType,
+    Storage_PaaS_AwsRdsPostgresDatabase.offerType,
+    awsRdsPostgresDatabaseRules,
+  ),
   neutral: {
     engineVersion: toContractKey(Storage_PaaS_AwsRdsPostgres, 'version'),
     highAvailability: unsupported(
@@ -404,6 +479,11 @@ export const AwsRdsMySqlDbms = defineOffer<
   contract: Storage_PaaS_AwsRdsMySql,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  validate: rdsDbmsRules(
+    Storage_PaaS_AwsRdsMySql.offerType,
+    Storage_PaaS_AwsRdsMySqlDatabase.offerType,
+    awsRdsMySqlDatabaseRules,
+  ),
   neutral: {
     engineVersion: toContractKey(Storage_PaaS_AwsRdsMySql, 'version'),
     highAvailability: unsupported(
@@ -453,6 +533,7 @@ export const AzurePostgresDatabase = defineOffer<
   contract: Storage_PaaS_AzurePostgresDatabase,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  validate: azurePostgresDatabaseRules,
 });
 export const GcpPostgresDatabase = defineOffer<
   'Storage.RelationalDatabase',
@@ -465,6 +546,7 @@ export const GcpPostgresDatabase = defineOffer<
   contract: Storage_PaaS_GcpPostgresDatabase,
   provider: 'GCP',
   deliveryModel: 'PaaS',
+  validate: gcpPostgresDatabaseRules,
 });
 
 export const AwsRdsPostgresDatabase = defineOffer<
@@ -487,6 +569,7 @@ export const AwsRdsPostgresDatabase = defineOffer<
   contract: Storage_PaaS_AwsRdsPostgresDatabase,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  validate: awsRdsPostgresDatabaseRules,
   neutral: RDS_DATABASE_RULES,
 });
 
@@ -514,6 +597,7 @@ export const AwsRdsMySqlDatabase = defineOffer<
   contract: Storage_PaaS_AwsRdsMySqlDatabase,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  validate: awsRdsMySqlDatabaseRules,
   neutral: RDS_DATABASE_RULES,
 });
 

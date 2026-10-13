@@ -13,8 +13,10 @@ import {describe, it, expect} from 'vitest';
 import {createFractal} from './core';
 import {ApiGateway} from './components/api_management';
 import {ObjectStorage, type ObjectStorageLink} from './components/storage';
+import {ContainerPlatform} from './components/network_and_compute';
 import {AwsCloudFront, TraefikGateway} from './offers/api_management';
 import {AwsS3} from './offers/storage';
+import {Eks} from './offers/network_and_compute';
 import {liveSystemIdOf, referenceTo} from './reference';
 
 const environment = {};
@@ -304,11 +306,14 @@ describe('AwsCloudFront — static site from an S3 bucket', () => {
       boundedContextId,
       blueprint: bp => {
         const content = bp.add(ObjectStorage({id: 'content'}));
-        const traefik = bp.add(ApiGateway({id: 'traefik'}));
+        const cluster = bp.add(ContainerPlatform({id: 'cluster'}));
+        const traefik = bp.add(
+          ApiGateway({id: 'traefik'}).dependsOn(cluster),
+        );
         const cdn = bp.add(ApiGateway({id: 'cdn'}));
         bp.link(cdn, content, {access: 'read'});
         bp.link(cdn, traefik);
-        return {content, traefik, cdn};
+        return {content, cluster, traefik, cdn};
       },
     });
     expect(() =>
@@ -317,6 +322,7 @@ describe('AwsCloudFront — static site from an S3 bucket', () => {
         environment,
         select: {
           content: AwsS3({}),
+          cluster: Eks({}),
           traefik: TraefikGateway({}),
           cdn: AwsCloudFront({aliases: ['a.example.com']}),
         },
@@ -346,11 +352,14 @@ describe('AwsCloudFront — static site from an S3 bucket', () => {
         boundedContextId,
         blueprint: bp => {
           const content = bp.add(ObjectStorage({id: 'content'}));
-          const traefik = bp.add(ApiGateway({id: 'traefik'}));
+          const cluster = bp.add(ContainerPlatform({id: 'cluster'}));
+          const traefik = bp.add(
+            ApiGateway({id: 'traefik'}).dependsOn(cluster),
+          );
           const cdn = bp.add(ApiGateway({id: 'cdn'}));
           bp.link(cdn, content, {access: 'read'});
           bp.link(cdn, traefik);
-          return {content, traefik, cdn};
+          return {content, cluster, traefik, cdn};
         },
       });
       expect(() =>
@@ -359,6 +368,7 @@ describe('AwsCloudFront — static site from an S3 bucket', () => {
           environment,
           select: {
             content: AwsS3({}),
+            cluster: Eks({}),
             traefik: TraefikGateway(gateway),
             cdn: AwsCloudFront({aliases: ['a.example.com']}),
           },

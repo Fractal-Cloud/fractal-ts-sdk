@@ -27,6 +27,12 @@ import type {KubePrometheusStackConfig} from './kube_prometheus_stack_config';
 import {TRAEFIK_GATEWAY_OFFER_TYPE} from './offer_type_ids';
 import {parseRouteLink, routeRefusal} from './route_link_routes';
 import type {SqsExporterConfig} from './sqs_exporter_config';
+import {onEksCluster, onKubernetesCluster} from './kubernetes_placement';
+
+/** Loki and Tempo reach their S3 bucket through EKS Pod Identity. */
+const onS3Eks = onEksCluster(
+  'it reaches its S3 bucket with a role granted through EKS Pod Identity',
+);
 
 /** Throw the error every check here throws, naming the component. */
 const refuse = (id: string, why: string): never => {
@@ -41,6 +47,7 @@ export const Prometheus = defineOffer<
   satisfies: 'Observability.Monitoring',
   contract: Observability_CaaS_Prometheus,
   deliveryModel: 'CaaS',
+  validate: onKubernetesCluster,
   neutral: {
     retentionDays: unsupported('the agent sets no retention'),
     scrapeInterval: unsupported('the agent sets no scrape interval'),
@@ -55,6 +62,7 @@ export const Jaeger = defineOffer<
   satisfies: 'Observability.Tracing',
   contract: Observability_CaaS_Jaeger,
   deliveryModel: 'CaaS',
+  validate: onKubernetesCluster,
   neutral: {
     retentionDays: unsupported('the agent sets no retention'),
     samplingRate: unsupported(
@@ -75,6 +83,7 @@ export const ObservabilityElastic = defineOffer<
   satisfies: 'Observability.Logging',
   contract: Observability_CaaS_Elastic,
   deliveryModel: 'CaaS',
+  validate: onKubernetesCluster,
   neutral: {
     retentionDays: unsupported('the agent sets no retention'),
   },
@@ -205,7 +214,10 @@ export const KubePrometheusStack = defineOffer<
   neutral: {
     scrapeInterval: unsupported('the agent sets no scrape interval'),
   },
-  validate: (self, all) => ensureGrafanaRoutes(self, all),
+  validate: (self, all) => {
+    onKubernetesCluster(self, all);
+    ensureGrafanaRoutes(self, all);
+  },
 });
 
 /**
@@ -225,7 +237,10 @@ export const GrafanaLoki = defineOffer<
   satisfies: 'Observability.Logging',
   contract: Observability_CaaS_GrafanaLoki,
   deliveryModel: 'CaaS',
-  validate: ensureBackend,
+  validate: (self, all) => {
+    onS3Eks(self, all);
+    ensureBackend(self, all);
+  },
 });
 
 /**
@@ -244,6 +259,7 @@ export const GrafanaAlloy = defineOffer<
   contract: Observability_CaaS_GrafanaAlloy,
   deliveryModel: 'CaaS',
   validate: (self, all, config) => {
+    onKubernetesCluster(self, all);
     if (config.lokiPushUrl !== undefined) {
       return;
     }
@@ -281,7 +297,10 @@ export const GrafanaTempo = defineOffer<
       'sampling is decided by the instrumented applications',
     ),
   },
-  validate: ensureBackend,
+  validate: (self, all) => {
+    onS3Eks(self, all);
+    ensureBackend(self, all);
+  },
 });
 
 // ── caas-k8s Prometheus exporters ────────────────────────────────────────────
@@ -335,6 +354,9 @@ export const SqsExporter = defineOffer<
     ];
   },
   validate: (self, all, config) => {
+    onEksCluster(
+      'it reads the queues with a role granted through EKS Pod Identity',
+    )(self, all);
     // Lists travel comma-separated: an empty one is sent blank, which the agent
     // reads as unset.
     for (const key of ['queueUrls', 'imagePullSecrets'] as const) {

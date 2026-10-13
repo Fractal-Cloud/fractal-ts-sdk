@@ -29,6 +29,11 @@ export type ObjectStorageNode<Id extends string = string> = ComponentNode<
   withEncryption: (v: 'at-rest' | 'none') => ObjectStorageNode<Id>;
   withRetentionDays: (v: number) => ObjectStorageNode<Id>;
   withTags: (v: Record<string, string>) => ObjectStorageNode<Id>;
+  /**
+   * Declare a structural dependency: e.g. the ContainerPlatform a self-hosted
+   * offer is installed on, which its agent requires.
+   */
+  dependsOn: (other: AnyNode) => ObjectStorageNode<Id>;
 };
 const objectStorageNode = <Id extends string>(
   s: NodeState,
@@ -42,6 +47,7 @@ const objectStorageNode = <Id extends string>(
   withRetentionDays: v =>
     objectStorageNode<Id>(guardrail(s, 'retentionDays', v)),
   withTags: v => objectStorageNode<Id>(guardrail(s, 'tags', v)),
+  dependsOn: other => objectStorageNode<Id>(addDependency(s, other.state.id)),
 });
 export const ObjectStorage = <const Id extends string>(cfg: {
   id: Id;
@@ -79,6 +85,11 @@ export type RelationalDbmsNode<Id extends string = string> = ComponentNode<
   withStorageGb: (v: number) => RelationalDbmsNode<Id>;
   withBackupRetentionDays: (v: number) => RelationalDbmsNode<Id>;
   withHighAvailability: (v: string) => RelationalDbmsNode<Id>;
+  /**
+   * Declare a structural dependency: e.g. the ContainerPlatform a self-hosted
+   * offer is installed on, which its agent requires.
+   */
+  dependsOn: (other: AnyNode) => RelationalDbmsNode<Id>;
 };
 const relationalDbmsNode = <Id extends string>(
   s: NodeState,
@@ -92,6 +103,7 @@ const relationalDbmsNode = <Id extends string>(
     relationalDbmsNode<Id>(guardrail(s, 'backupRetentionDays', v)),
   withHighAvailability: v =>
     relationalDbmsNode<Id>(guardrail(s, 'highAvailability', v)),
+  dependsOn: other => relationalDbmsNode<Id>(addDependency(s, other.state.id)),
 });
 export const RelationalDbms = <const Id extends string>(cfg: {
   id: Id;

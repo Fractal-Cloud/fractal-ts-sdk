@@ -31,6 +31,11 @@ export type MonitoringNode<Id extends string = string> = ComponentNode<
    * platform drop it. Scrape intervals belong to the scraping offer's own config.
    */
   withScrapeInterval: (v: number) => MonitoringNode<Id>;
+  /**
+   * Declare a structural dependency: e.g. the ContainerPlatform a self-hosted
+   * offer is installed on, which its agent requires.
+   */
+  dependsOn: (other: AnyNode) => MonitoringNode<Id>;
 };
 const monitoringNode = <Id extends string>(
   s: NodeState,
@@ -39,6 +44,7 @@ const monitoringNode = <Id extends string>(
   withRetentionDays: v => monitoringNode<Id>(guardrail(s, 'retentionDays', v)),
   withScrapeInterval: v =>
     monitoringNode<Id>(guardrail(s, 'scrapeInterval', v)),
+  dependsOn: other => monitoringNode<Id>(addDependency(s, other.state.id)),
 });
 export const Monitoring = <const Id extends string>(cfg: {
   id: Id;
@@ -60,11 +66,17 @@ export type TracingNode<Id extends string = string> = ComponentNode<
    * platform drop it. Sampling is decided by the instrumented workloads.
    */
   withSamplingRate: (v: number) => TracingNode<Id>;
+  /**
+   * Declare a structural dependency: e.g. the ContainerPlatform a self-hosted
+   * offer is installed on, which its agent requires.
+   */
+  dependsOn: (other: AnyNode) => TracingNode<Id>;
 };
 const tracingNode = <Id extends string>(s: NodeState): TracingNode<Id> => ({
   state: s,
   withRetentionDays: v => tracingNode<Id>(guardrail(s, 'retentionDays', v)),
   withSamplingRate: v => tracingNode<Id>(guardrail(s, 'samplingRate', v)),
+  dependsOn: other => tracingNode<Id>(addDependency(s, other.state.id)),
 });
 export const Tracing = <const Id extends string>(cfg: {
   id: Id;
@@ -78,10 +90,16 @@ export type LoggingNode<Id extends string = string> = ComponentNode<
   'Observability.Logging'
 > & {
   withRetentionDays: (v: number) => LoggingNode<Id>;
+  /**
+   * Declare a structural dependency: e.g. the ContainerPlatform a self-hosted
+   * offer is installed on, which its agent requires.
+   */
+  dependsOn: (other: AnyNode) => LoggingNode<Id>;
 };
 const loggingNode = <Id extends string>(s: NodeState): LoggingNode<Id> => ({
   state: s,
   withRetentionDays: v => loggingNode<Id>(guardrail(s, 'retentionDays', v)),
+  dependsOn: other => loggingNode<Id>(addDependency(s, other.state.id)),
 });
 export const Logging = <const Id extends string>(cfg: {
   id: Id;

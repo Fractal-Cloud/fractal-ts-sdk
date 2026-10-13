@@ -13,9 +13,11 @@ import {describe, it, expect} from 'vitest';
 import {createFractal} from './core';
 import {ApiGateway} from './components/api_management';
 import {Workload} from './components/custom_workloads';
+import {ContainerPlatform} from './components/network_and_compute';
 import {gatewayRouteSettings} from './components/gateway_route_settings';
 import {AwsCloudFront, Traefik, TraefikGateway} from './offers/api_management';
 import {K8sWorkload} from './offers/custom_workloads';
+import {Eks} from './offers/network_and_compute';
 import {referenceTo} from './reference';
 
 const OWNER = '00000000-0000-0000-0000-0000000000cc';
@@ -124,7 +126,8 @@ describe('Workload → Traefik route link across Live Systems', () => {
       boundedContextId,
       blueprint: bp => {
         const gateway = bp.add(ApiGateway({id: 'gateway'}));
-        const service = bp.add(Workload({id: 'service'}));
+        const cluster = bp.add(ContainerPlatform({id: 'cluster'}));
+        const service = bp.add(Workload({id: 'service'}).dependsOn(cluster));
         bp.link(
           service,
           gateway,
@@ -133,7 +136,7 @@ describe('Workload → Traefik route link across Live Systems', () => {
             responseTimeoutMs: 60000,
           }),
         );
-        return {gateway, service};
+        return {gateway, cluster, service};
       },
     });
 
@@ -145,6 +148,10 @@ describe('Workload → Traefik route link across Live Systems', () => {
         gateway: referenceTo(TraefikGateway, {
           liveSystemId: `Organizational/${OWNER}/platform/shared-platform`,
           componentId: 'traefik',
+        }),
+        cluster: referenceTo(Eks, {
+          liveSystemId: `Organizational/${OWNER}/platform/shared-platform`,
+          componentId: 'eks',
         }),
         service: K8sWorkload({namespace: 'fractal'}),
       },
@@ -168,11 +175,16 @@ describe('TraefikGateway offer (caas-k8s)', () => {
       id: 'platform-gateway',
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
-      blueprint: bp => ({gateway: bp.add(ApiGateway({id: 'traefik'}))}),
+      blueprint: bp => {
+        const cluster = ContainerPlatform({id: 'cluster'});
+        const gateway = bp.add(ApiGateway({id: 'traefik'}).dependsOn(cluster));
+        return {gateway, cluster: bp.add(cluster)};
+      },
     }).toLiveSystem({
       name: 'platform',
       environment,
       select: {
+        cluster: Eks({}),
         traefik: TraefikGateway({
           namespace: 'traefik',
           replicas: 2,
@@ -208,11 +220,15 @@ describe('Traefik offer (Java agents)', () => {
       id: 'java-traefik',
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
-      blueprint: bp => ({gateway: bp.add(ApiGateway({id: 'traefik'}))}),
+      blueprint: bp => {
+        const cluster = ContainerPlatform({id: 'cluster'});
+        const gateway = bp.add(ApiGateway({id: 'traefik'}).dependsOn(cluster));
+        return {gateway, cluster: bp.add(cluster)};
+      },
     }).toLiveSystem({
       name: 'platform',
       environment,
-      select: {traefik: Traefik({namespace: 'ingress'})},
+      select: {cluster: Eks({}), traefik: Traefik({namespace: 'ingress'})},
     });
     expect(ls.components[0]).toMatchObject({
       type: 'APIManagement.CaaS.Traefik',
@@ -230,7 +246,8 @@ describe('repeated route declarations to one gateway', () => {
       boundedContextId,
       blueprint: bp => {
         const gateway = bp.add(ApiGateway({id: 'gateway'}));
-        const service = bp.add(Workload({id: 'service'}));
+        const cluster = bp.add(ContainerPlatform({id: 'cluster'}));
+        const service = bp.add(Workload({id: 'service'}).dependsOn(cluster));
         bp.link(
           service,
           gateway,
@@ -239,7 +256,7 @@ describe('repeated route declarations to one gateway', () => {
             retryAttempts: 2,
           }),
         );
-        return {gateway, service};
+        return {gateway, cluster, service};
       },
       operations: (s, ctx) => ({
         withRoute: (options: Parameters<typeof gatewayRouteSettings>[0]) =>
@@ -251,6 +268,7 @@ describe('repeated route declarations to one gateway', () => {
       liveSystemId: OWNER_LS,
       componentId: 'traefik',
     }),
+    cluster: referenceTo(Eks, {liveSystemId: OWNER_LS, componentId: 'eks'}),
     service: K8sWorkload({}),
   };
 
@@ -336,11 +354,15 @@ describe('TraefikGateway ForwardAuth (ocelot)', () => {
       id: 'platform-gateway',
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
-      blueprint: bp => ({gateway: bp.add(ApiGateway({id: 'traefik'}))}),
+      blueprint: bp => {
+        const cluster = ContainerPlatform({id: 'cluster'});
+        const gateway = bp.add(ApiGateway({id: 'traefik'}).dependsOn(cluster));
+        return {gateway, cluster: bp.add(cluster)};
+      },
     }).toLiveSystem({
       name: 'platform',
       environment,
-      select: {traefik: TraefikGateway(config)},
+      select: {cluster: Eks({}), traefik: TraefikGateway(config)},
     }).components[0];
 
   it('sends the ForwardAuth knobs, lists comma-separated', () => {
@@ -369,10 +391,11 @@ describe('TraefikGateway behind a CloudFront VPC origin', () => {
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
       blueprint: bp => {
-        const gateway = bp.add(ApiGateway({id: 'traefik'}));
+        const cluster = bp.add(ContainerPlatform({id: 'cluster'}));
+        const gateway = bp.add(ApiGateway({id: 'traefik'}).dependsOn(cluster));
         const cdn = bp.add(ApiGateway({id: 'cdn'}));
         bp.link(cdn, gateway);
-        return {gateway, cdn};
+        return {cluster, gateway, cdn};
       },
     });
     expect(() =>
@@ -380,6 +403,7 @@ describe('TraefikGateway behind a CloudFront VPC origin', () => {
         name: 'platform',
         environment,
         select: {
+          cluster: Eks({}),
           traefik: TraefikGateway({
             tlsCertificateArn:
               'arn:aws:acm:eu-central-1:123456789012:certificate/abc',

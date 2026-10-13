@@ -9,10 +9,14 @@
  */
 import {describe, it, expect} from 'vitest';
 import {createFractal} from './core';
-import {VirtualMachine} from './components/network_and_compute';
+import {
+  Subnet,
+  VirtualMachine,
+  VirtualNetwork,
+} from './components/network_and_compute';
 import {ObjectStorage, type ObjectStorageLink} from './components/storage';
 import {Unmanaged, type UnmanagedLink} from './components/unmanaged';
-import {GcpVm} from './offers/network_and_compute';
+import {GcpSubnet, GcpVm, GcpVpc} from './offers/network_and_compute';
 import {GcsBucket} from './offers/storage';
 import {UnmanagedAi} from './offers/unmanaged';
 import {secretRef} from './secret';
@@ -26,7 +30,14 @@ function authorFractal() {
     version: {major: 1, minor: 0, patch: 0},
     boundedContextId,
     blueprint: bp => {
-      const vm = bp.add(VirtualMachine({id: 'eval-box'}));
+      // The VM is placed in the subnet it declares.
+      const network = bp.add(VirtualNetwork({id: 'eval-network'}));
+      const subnet = bp.add(
+        Subnet({id: 'eval-subnet'})
+          .withCidrBlock('10.0.1.0/24')
+          .dependsOn(network),
+      );
+      const vm = bp.add(VirtualMachine({id: 'eval-box'}).dependsOn(subnet));
       const bucket = bp.add(ObjectStorage({id: 'results-bucket'}));
       const openai = bp.add(Unmanaged({id: 'openai'}));
 
@@ -34,7 +45,7 @@ function authorFractal() {
       bp.link(vm, bucket, {access: 'read-write'} satisfies ObjectStorageLink);
       bp.link(vm, openai, {envPrefix: 'OPENAI'} satisfies UnmanagedLink);
 
-      return {vm, bucket, openai};
+      return {network, subnet, vm, bucket, openai};
     },
   });
 }
@@ -55,6 +66,8 @@ describe('Unmanaged component + VM access/inject links', () => {
       name: 'acme',
       environment,
       select: {
+        'eval-network': GcpVpc({}),
+        'eval-subnet': GcpSubnet({}),
         'eval-box': GcpVm({machineType: 'a2-highgpu-1g'}),
         'results-bucket': GcsBucket({region: 'europe-west1'}),
         // Secret is referenced by short name — the raw key never travels.

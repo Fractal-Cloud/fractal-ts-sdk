@@ -105,12 +105,13 @@ describe('AwsCloudFront — edge in front of the platform gateway', () => {
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
       blueprint: bp => {
-        const gateway = bp.add(ApiGateway({id: 'traefik'}));
+        const cluster = bp.add(ContainerPlatform({id: 'cluster'}));
+        const gateway = bp.add(ApiGateway({id: 'traefik'}).dependsOn(cluster));
         const cdn = bp.add(ApiGateway({id: 'cdn'}));
         if (link) {
           bp.link(cdn, gateway);
         }
-        return {gateway, cdn};
+        return {cluster, gateway, cdn};
       },
     });
 
@@ -119,6 +120,7 @@ describe('AwsCloudFront — edge in front of the platform gateway', () => {
       name: 'platform',
       environment,
       select: {
+        cluster: Eks({}),
         traefik: TraefikGateway({
           internalLoadBalancer: true,
           host: 'api.fractal.cloud',
@@ -154,7 +156,8 @@ describe('AwsCloudFront — edge in front of the platform gateway', () => {
         name: 'platform',
         environment,
         select: {
-          traefik: Traefik({}),
+          cluster: Eks({}),
+        traefik: Traefik({}),
           cdn: AwsCloudFront({aliases: ['api.fractal.cloud']}),
         },
       }),
@@ -167,12 +170,13 @@ describe('AwsCloudFront — edge in front of the platform gateway', () => {
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
       blueprint: bp => {
-        const a = bp.add(ApiGateway({id: 'a'}));
-        const b = bp.add(ApiGateway({id: 'b'}));
+        const cluster = bp.add(ContainerPlatform({id: 'cluster'}));
+        const a = bp.add(ApiGateway({id: 'a'}).dependsOn(cluster));
+        const b = bp.add(ApiGateway({id: 'b'}).dependsOn(cluster));
         const cdn = bp.add(ApiGateway({id: 'cdn'}));
         bp.link(cdn, a);
         bp.link(cdn, b);
-        return {a, b, cdn};
+        return {cluster, a, b, cdn};
       },
     });
     expect(() =>
@@ -180,6 +184,7 @@ describe('AwsCloudFront — edge in front of the platform gateway', () => {
         name: 'platform',
         environment,
         select: {
+          cluster: Eks({}),
           a: TraefikGateway({}),
           b: TraefikGateway({}),
           cdn: AwsCloudFront({aliases: ['api.fractal.cloud']}),
@@ -193,6 +198,7 @@ describe('AwsCloudFront — edge in front of the platform gateway', () => {
       name: 'platform',
       environment,
       select: {
+        cluster: Eks({}),
         traefik: Traefik({}),
         cdn: AwsCloudFront({
           originDomain: 'origin.example.com',
@@ -226,7 +232,8 @@ describe('AwsCloudFront — edge in front of the platform gateway', () => {
         environment,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         select: {
-          traefik: TraefikGateway({}),
+          cluster: Eks({}),
+        traefik: TraefikGateway({}),
           cdn: AwsCloudFront(config as any),
         },
       }),
@@ -239,7 +246,8 @@ describe('AwsCloudFront — edge in front of the platform gateway', () => {
         name: 'platform',
         environment,
         select: {
-          traefik: Traefik({}),
+          cluster: Eks({}),
+        traefik: Traefik({}),
           cdn: AwsCloudFront({
             redirectTo: 'https://fractal.cloud',
             aliases: ['www.fractal.cloud'],

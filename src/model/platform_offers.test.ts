@@ -20,6 +20,8 @@ import {
   KubePrometheusStack,
 } from './offers/observability';
 import {AwsRdsPostgresDbms, AwsS3} from './offers/storage';
+import {ContainerPlatform} from './components/network_and_compute';
+import {Eks} from './offers/network_and_compute';
 
 const environment = {};
 const boundedContextId = {name: 'platform'};
@@ -93,13 +95,16 @@ describe('caas-k8s observability offers', () => {
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
       blueprint: bp => {
+        // Every caas-k8s offer is installed on the EKS cluster it depends on.
+        const platform = bp.add(ContainerPlatform({id: 'platform'}));
         const chunks = bp.add(ObjectStorage({id: 'chunks'}));
-        const metrics = bp.add(Monitoring({id: 'metrics'}));
-        const logs = bp.add(Logging({id: 'logs'}));
-        const traces = bp.add(Tracing({id: 'traces'}));
+        const metrics = bp.add(Monitoring({id: 'metrics'}).dependsOn(platform));
+        const logs = bp.add(Logging({id: 'logs'}).dependsOn(platform));
+        const traces = bp.add(Tracing({id: 'traces'}).dependsOn(platform));
         bp.link(logs, chunks, {access: 'read-write'});
         bp.link(traces, chunks, {access: 'read-write'});
         return {
+          platform,
           chunks,
           metrics,
           logs,
@@ -112,6 +117,7 @@ describe('caas-k8s observability offers', () => {
       name: 'platform',
       environment,
       select: {
+        platform: Eks({}),
         chunks: AwsS3({}),
         metrics: KubePrometheusStack({namespace: 'monitoring'}),
         logs: GrafanaLoki({namespace: 'monitoring'}),
@@ -122,6 +128,7 @@ describe('caas-k8s observability offers', () => {
     expect(
       ls.components.map(c => [c.id, c.type, c.deliveryModel, c.provider]),
     ).toEqual([
+      ['platform', 'NetworkAndCompute.PaaS.AwsEks', 'PaaS', 'AWS'],
       ['chunks', 'Storage.PaaS.AwsS3', 'PaaS', 'AWS'],
       ['metrics', 'Observability.CaaS.KubePrometheusStack', 'CaaS', undefined],
       ['logs', 'Observability.CaaS.GrafanaLoki', 'CaaS', undefined],

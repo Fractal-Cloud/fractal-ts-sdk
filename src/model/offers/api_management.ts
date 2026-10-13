@@ -21,6 +21,8 @@ import {certificateCovers, gatewayCertificateHosts} from './certificate_hosts';
 import {TRAEFIK_GATEWAY_OFFER_TYPE} from './offer_type_ids';
 import {parseRouteLink} from './route_link_routes';
 import type {TraefikGatewayConfig} from './traefik_gateway_config';
+import {onKubernetesCluster} from './kubernetes_placement';
+import {workloadRouteLinks} from './traefik_route_links';
 
 /** Throw the error every check here throws, naming the component. */
 const refuse = (id: string, why: string): never => {
@@ -295,6 +297,20 @@ export const AwsCloudFront = defineOffer<
         `Live component '${self.id}': a distribution serves redirectTo or an origin, not both.`,
       );
     }
+    const aliases = self.parameters.aliases;
+    if (
+      target === undefined &&
+      !vpcOrigin &&
+      !bucketOrigin &&
+      !customOrigin &&
+      Array.isArray(aliases) &&
+      aliases.length > 0
+    ) {
+      throw new Error(
+        `Live component '${self.id}': a site serving ${aliases.join(', ')} needs an origin: ` +
+          `link it to a ${TRAEFIK_GATEWAY_OFFER_TYPE} or an S3 bucket, or set originDomain.`,
+      );
+    }
     // CloudFront checks the origin certificate against the viewer host it
     // forwards, so over https every alias must be covered by a TLS gateway's
     // certificate, by the rule the gateway's agent applies to route hosts.
@@ -378,6 +394,7 @@ export const Ambassador = defineOffer<
   satisfies: 'APIManagement.ApiGateway',
   contract: APIManagement_CaaS_Ambassador,
   deliveryModel: 'CaaS',
+  validate: onKubernetesCluster,
   neutral: {
     cors: unsupported('the agent configures no CORS policy'),
     customDomain: toContractKey(APIManagement_CaaS_Ambassador, 'host'),
@@ -442,6 +459,7 @@ export const Traefik = defineOffer<
   satisfies: 'APIManagement.ApiGateway',
   contract: APIManagement_CaaS_Traefik,
   deliveryModel: 'CaaS',
+  validate: onKubernetesCluster,
   neutral: {
     cors: unsupported('the agent configures no CORS policy'),
     customDomain: toContractKey(APIManagement_CaaS_Traefik, 'hostname'),
@@ -524,6 +542,8 @@ export const TraefikGateway = defineOffer<
         );
       }
     }
+    onKubernetesCluster(self, all);
+    workloadRouteLinks(self, all);
     ensureRoutesCovered(self, all);
   },
 });

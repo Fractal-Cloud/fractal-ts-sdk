@@ -33,6 +33,23 @@ import {
 } from './generated/big_data';
 import type {ContractConfig} from './contract/contract_config';
 import {defineOffer} from '../core';
+import type {ComponentValidator} from './component_validator';
+import {requireDependency} from './cross_component_rules';
+import {onKubernetesCluster} from './kubernetes_placement';
+
+/**
+ * A Databricks cluster, job or MLflow experiment lives in the workspace it
+ * depends on: the agent refuses one without a workspace of its own cloud.
+ */
+const inWorkspace = (
+  workspaceType: string,
+  workspaceOffer: string,
+): ComponentValidator =>
+  requireDependency({
+    types: [workspaceType, 'BigData.PaaS.Databricks'],
+    why: 'it is created in the Databricks workspace it declares',
+    remedy: `Make it depend on a DistributedDataProcessing component and select ${workspaceOffer} for it.`,
+  });
 
 // ── ComputeCluster offers ────────────────────────────────────────────────────
 export const AwsDatabricksCluster = defineOffer<
@@ -51,6 +68,7 @@ export const AwsDatabricksCluster = defineOffer<
   contract: BigData_PaaS_AwsDatabricksCluster,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  validate: inWorkspace(BigData_PaaS_AwsDatabricks.offerType, 'AwsDatabricks'),
 });
 export const AzureDatabricksCluster = defineOffer<
   'BigData.ComputeCluster',
@@ -68,6 +86,10 @@ export const AzureDatabricksCluster = defineOffer<
   contract: BigData_PaaS_AzureDatabricksCluster,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  validate: inWorkspace(
+    BigData_PaaS_AzureDatabricks.offerType,
+    'AzureDatabricks',
+  ),
 });
 export const GcpDatabricksCluster = defineOffer<
   'BigData.ComputeCluster',
@@ -85,6 +107,7 @@ export const GcpDatabricksCluster = defineOffer<
   contract: BigData_PaaS_GcpDatabricksCluster,
   provider: 'GCP',
   deliveryModel: 'PaaS',
+  validate: inWorkspace(BigData_PaaS_GcpDatabricks.offerType, 'GcpDatabricks'),
 });
 // Symbol keeps the `CaaS` prefix (public API); the wire value is the
 // catalogue offer id the caas-k8s handler registry is keyed on.
@@ -95,6 +118,7 @@ export const CaaSSparkCluster = defineOffer<
   satisfies: 'BigData.ComputeCluster',
   contract: BigData_CaaS_SparkCluster,
   deliveryModel: 'CaaS',
+  validate: onKubernetesCluster,
   neutral: {
     // Read only by the Java agents' Spark offers: refused (with the agents
     // named) while aria-agent-caas-k8s, which may reconcile it, ignores it.
@@ -129,6 +153,7 @@ export const AwsDatabricksJob = defineOffer<
   contract: BigData_PaaS_AwsDatabricksJob,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  validate: inWorkspace(BigData_PaaS_AwsDatabricks.offerType, 'AwsDatabricks'),
 });
 export const AzureDatabricksJob = defineOffer<
   'BigData.DataProcessingJob',
@@ -141,6 +166,10 @@ export const AzureDatabricksJob = defineOffer<
   contract: BigData_PaaS_AzureDatabricksJob,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  validate: inWorkspace(
+    BigData_PaaS_AzureDatabricks.offerType,
+    'AzureDatabricks',
+  ),
 });
 export const GcpDatabricksJob = defineOffer<
   'BigData.DataProcessingJob',
@@ -153,6 +182,7 @@ export const GcpDatabricksJob = defineOffer<
   contract: BigData_PaaS_GcpDatabricksJob,
   provider: 'GCP',
   deliveryModel: 'PaaS',
+  validate: inWorkspace(BigData_PaaS_GcpDatabricks.offerType, 'GcpDatabricks'),
 });
 // Symbol vs wire value: see CaaSSparkCluster above.
 export const CaaSSparkJob = defineOffer<
@@ -162,6 +192,7 @@ export const CaaSSparkJob = defineOffer<
   satisfies: 'BigData.DataProcessingJob',
   contract: BigData_CaaS_SparkJob,
   deliveryModel: 'CaaS',
+  validate: onKubernetesCluster,
   neutral: {
     // Read only by the Java agents' Spark offers: refused (with the agents
     // named) while aria-agent-caas-k8s, which may reconcile it, ignores it.
@@ -183,6 +214,7 @@ export const AwsDatabricksMlflow = defineOffer<
   contract: BigData_PaaS_AwsDatabricksMlflow,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  validate: inWorkspace(BigData_PaaS_AwsDatabricks.offerType, 'AwsDatabricks'),
 });
 export const AzureDatabricksMlflow = defineOffer<
   'BigData.MlExperiment',
@@ -192,6 +224,10 @@ export const AzureDatabricksMlflow = defineOffer<
   contract: BigData_PaaS_AzureDatabricksMlflow,
   provider: 'Azure',
   deliveryModel: 'PaaS',
+  validate: inWorkspace(
+    BigData_PaaS_AzureDatabricks.offerType,
+    'AzureDatabricks',
+  ),
 });
 export const GcpDatabricksMlflow = defineOffer<
   'BigData.MlExperiment',
@@ -201,6 +237,7 @@ export const GcpDatabricksMlflow = defineOffer<
   contract: BigData_PaaS_GcpDatabricksMlflow,
   provider: 'GCP',
   deliveryModel: 'PaaS',
+  validate: inWorkspace(BigData_PaaS_GcpDatabricks.offerType, 'GcpDatabricks'),
 });
 // MLflow is published by the catalogue as `BigData.CaaS.SparkMlExperiment`
 // (displayName 'MLflow Experiment'); `BigData.CaaS.MLflow` is its service type.
@@ -211,6 +248,7 @@ export const CaaSMlflow = defineOffer<
   satisfies: 'BigData.MlExperiment',
   contract: BigData_CaaS_SparkMlExperiment,
   deliveryModel: 'CaaS',
+  validate: onKubernetesCluster,
   neutral: {
     experimentName: unsupported('the agent creates no named experiment'),
   },
