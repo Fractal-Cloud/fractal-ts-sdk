@@ -127,6 +127,31 @@ describe('a component asking for access to environment DNS zones', () => {
     });
   });
 
+  it('is refused as a K8sWorkload config key, naming withDnsZones', () => {
+    const build = () =>
+      createFractal({
+        id: 'app',
+        version,
+        boundedContextId,
+        blueprint: bp => ({
+          app: bp.add(Workload({id: 'app'}).withImage('registry/app:1')),
+        }),
+      }).toLiveSystem({
+        name: 'app',
+        environment,
+        select: {
+          // A JavaScript caller, unchecked by the compiler.
+          app: K8sWorkload({
+            dnsZones: [{name: 'example.com', access: {TXT: 'write'}}],
+          } as Parameters<typeof K8sWorkload>[0]),
+        },
+      });
+    expect(build).toThrow(
+      "Live component 'app': dnsZones is not a K8sWorkload config key: " +
+        "declare it on the Workload component, Workload({id: 'app'}).withDnsZones([...])",
+    );
+  });
+
   it('is refused by an offer whose agent takes no DNS zone access', () => {
     expect(() =>
       gatewaySystem(TXT_WRITE).toLiveSystem({

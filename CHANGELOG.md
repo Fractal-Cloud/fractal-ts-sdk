@@ -26,8 +26,10 @@ its records itself. `access` maps `'*'` or a record type (`A`, `AAAA`, `CAA`, `C
   primitive `openDefault` (the unlocked counterpart of `guardrail`).
 - A list the control plane could not read (two entries for one zone, a type such as
   `NS` that cannot be granted, an unknown level) is refused when it is set.
-- `TraefikGateway` and `K8sWorkload` send it (aria-agent-caas-k8s; `dnsZones` is no
-  longer a `K8sWorkload` config key, the component carries it). Every other offer of
+- `TraefikGateway` and `K8sWorkload` send it (aria-agent-caas-k8s). It is the
+  component's, not an offer config key: `K8sWorkload({dnsZones})` does not compile,
+  and a JavaScript caller passing it is refused when the Live System is built, naming
+  `withDnsZones`, instead of the key replacing the component's zones. Every other offer of
   these components refuses it, naming the offer: their agents take no DNS zone access.
   `AwsSesIdentity` refuses it until the AWS agent writes the SES records through a
   grant; it publishes them as output fields meanwhile.
