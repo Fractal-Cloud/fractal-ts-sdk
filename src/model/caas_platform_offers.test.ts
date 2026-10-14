@@ -582,13 +582,13 @@ describe('scrapeInterval and samplingRate are refused, never pruned', () => {
     ],
   ])('refuses scrapeInterval on %s', (_name, offer, type) => {
     expect(() => build(offer, Jaeger({}), 15)).toThrow(
-      `Offer ${type} cannot honor the parameter 'scrapeInterval' of 'metrics'`,
+      `Offer ${type}, selected for 'metrics', cannot honor withScrapeInterval ('scrapeInterval'), a guardrail locked in the Fractal`,
     );
   });
 
   it('refuses samplingRate on Jaeger', () => {
     expect(() => build(Prometheus({}), Jaeger({}), undefined, 0.1)).toThrow(
-      "Offer Observability.CaaS.Jaeger cannot honor the parameter 'samplingRate' of 'traces'",
+      "Offer Observability.CaaS.Jaeger, selected for 'traces', cannot honor withSamplingRate ('samplingRate'), a guardrail locked in the Fractal",
     );
   });
 
@@ -610,7 +610,7 @@ describe('scrapeInterval and samplingRate are refused, never pruned', () => {
         environment,
         select: {metrics: Prometheus({})},
       }),
-    ).toThrow("cannot honor the parameter 'scrapeInterval' of 'metrics'");
+    ).toThrow("selected for 'metrics', cannot honor withScrapeInterval ('scrapeInterval'), a guardrail locked in the Fractal");
   });
 
   it('builds without them', () => {
@@ -637,7 +637,7 @@ describe('samplingRate on GrafanaTempo', () => {
         select: {bucket: AwsS3({}), traces: GrafanaTempo({})},
       }),
     ).toThrow(
-      "Offer Observability.CaaS.GrafanaTempo cannot honor the parameter 'samplingRate' of 'traces'",
+      "Offer Observability.CaaS.GrafanaTempo, selected for 'traces', cannot honor withSamplingRate ('samplingRate'), a guardrail locked in the Fractal",
     );
   });
 });

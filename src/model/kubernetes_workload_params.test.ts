@@ -179,13 +179,23 @@ describe('Workload parameters on a Kubernetes workload', () => {
     });
   });
 
+  it('refuses a raw value in secretEnv: only environment-secret references travel', () => {
+    expect(() => emit(w => w, {secretEnv: {DB_PASSWORD: 'hunter2'}})).toThrow(
+      /secretEnv 'DB_PASSWORD' on 'web' is not an environment-secret reference/,
+    );
+  });
+
   it('never echoes the raw secret value in the refusal', () => {
-    try {
-      emit(w => w, {secretEnv: {DB_PASSWORD: 'hunter2'}});
-      expect.unreachable();
-    } catch (err) {
-      expect((err as Error).message).not.toContain('hunter2');
-    }
+    const refusal = (() => {
+      try {
+        emit(w => w, {secretEnv: {DB_PASSWORD: 'hunter2'}});
+      } catch (err) {
+        return (err as Error).message;
+      }
+      return undefined;
+    })();
+    expect(refusal).toMatch(/secretEnv 'DB_PASSWORD'/);
+    expect(refusal).not.toContain('hunter2');
   });
 
   it('moves an environment-secret reference in env to secretEnv, where the agent resolves it', () => {

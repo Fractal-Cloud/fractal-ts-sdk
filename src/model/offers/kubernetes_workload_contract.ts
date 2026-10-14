@@ -202,6 +202,27 @@ const moveSecretRefsToSecretEnv = (
 };
 
 /**
+ * Refuse a `secretEnv` value that is not an environment-secret reference, before
+ * it is stored on the Live System at all. The contract types `secretEnv` only as
+ * object, so nothing after the SDK can tell a reference from the secret itself.
+ */
+const ensureSecretEnvReferences = (
+  params: Record<string, unknown>,
+  componentId: string,
+): void => {
+  for (const [name, value] of Object.entries(asRecord(params[KEY.secretEnv]))) {
+    if (!isSecretRef(value)) {
+      // The value itself is never echoed: it is what must not be printed.
+      refuse(
+        componentId,
+        `secretEnv '${name}' on '${componentId}' is not an environment-secret ` +
+          "reference: pass secretRef('<shortName>'), never the secret itself",
+      );
+    }
+  }
+};
+
+/**
  * Translate a Workload's neutral parameters into the names the caas-k8s agent
  * reads, and refuse what it could not deploy. Applied on BOTH emit paths (the
  * selected `K8sWorkload` and a Workload child of a ContainerPlatform), exactly
@@ -289,5 +310,6 @@ export const toKubernetesWorkloadParameters = (
     );
   }
   moveSecretRefsToSecretEnv(params, componentId);
+  ensureSecretEnvReferences(params, componentId);
   return params;
 };

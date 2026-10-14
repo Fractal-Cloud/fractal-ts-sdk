@@ -160,7 +160,7 @@ describe('a component asking for access to environment DNS zones', () => {
         select: {gateway: AwsCloudFront({})},
       }),
     ).toThrow(
-      "Offer APIManagement.PaaS.AwsCloudFront cannot honor the parameter 'dnsZones' of 'gateway'",
+      "Offer APIManagement.PaaS.AwsCloudFront, selected for 'gateway', cannot honor withDnsZones ('dnsZones'), a parameter open in the Fractal",
     );
   });
 
@@ -186,7 +186,7 @@ describe('a component asking for access to environment DNS zones', () => {
         select: {mail: AwsSesIdentity({domain: 'example.com'})},
       }),
     ).toThrow(
-      "Offer Messaging.PaaS.AwsSesIdentity cannot honor the parameter 'dnsZones' of 'mail'",
+      "Offer Messaging.PaaS.AwsSesIdentity, selected for 'mail', cannot honor withDnsZones ('dnsZones'), a parameter open in the Fractal",
     );
   });
 

@@ -78,7 +78,7 @@ describe('CustomWorkloads domain on the locked Fractal model', () => {
         .withReplicas(6)
         .toLiveSystem({name: 'acme-prod', environment, select: fullSelect()}),
     ).toThrow(
-      "Offer NetworkAndCompute.CaaS.ECSService cannot honor the parameter 'maxReplicas' of 'web': the ECS task definition and service contracts declare no autoscaling",
+      "Offer NetworkAndCompute.CaaS.ECSService, selected for 'web', cannot honor withMaxReplicas ('maxReplicas'), a guardrail locked in the Fractal: the ECS task definition and service contracts declare no autoscaling",
     );
   });
 

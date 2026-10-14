@@ -1,5 +1,15 @@
 import type {NeutralRule} from './neutral_rule';
 
+/** Neutral parameters set by a setter not named after them. */
+const SETTERS: Readonly<Record<string, string>> = {
+  maxSurge: 'withRollout',
+  maxUnavailable: 'withRollout',
+};
+
+/** The component setter that sets the neutral parameter `key`. */
+export const neutralSetterName = (key: string): string =>
+  SETTERS[key] ?? `with${key.charAt(0).toUpperCase()}${key.slice(1)}`;
+
 /** Is a parameter supplied at all? */
 const isSet = (v: unknown): boolean => v !== undefined;
 
@@ -34,24 +44,36 @@ export const applyNeutralRules = (args: {
     if (rule.kind !== 'unsupported' && !isSet(value)) {
       continue;
     }
+    const setter = neutralSetterName(key);
+    const locked = args.locked.includes(key);
+    const refused = (why: string, fixes: readonly string[]): Error => {
+      const remove = locked
+        ? `remove ${setter} from '${args.componentId}' in the Fractal`
+        : `stop setting '${key}' on '${args.componentId}' (the Fractal or ` +
+          'the operation that sets it)';
+      return new Error(
+        `Offer ${args.offerType}, selected for '${args.componentId}', cannot ` +
+          `honor ${setter} ('${key}'), a ` +
+          `${locked ? 'guardrail locked' : 'parameter open'} in the Fractal: ` +
+          `${why.replace(/\.$/, '')}. Fix: ${[...fixes, `or ${remove}`].join(', ')}.`,
+      );
+    };
     if (rule.kind === 'unsupported') {
       if (rule.satisfiedBy?.(value)) {
         continue;
       }
-      throw new Error(
-        `Offer ${args.offerType} cannot honor the parameter '${key}' of ` +
-          `'${args.componentId}': ${rule.reason}. Remove it, or select an ` +
-          'offer whose agent supports it.',
-      );
+      throw refused(rule.reason, [
+        `select an offer for '${args.componentId}' whose agent supports ${setter}`,
+      ]);
     }
     let vendorValues: Readonly<Record<string, unknown>>;
     try {
       vendorValues = rule.apply(value);
     } catch (e) {
-      throw new Error(
-        `Offer ${args.offerType} cannot honor the parameter '${key}' of ` +
-          `'${args.componentId}': ${e instanceof Error ? e.message.replace(/\.$/, '') : String(e)}.`,
-      );
+      throw refused(e instanceof Error ? e.message : String(e), [
+        `give ${setter} a value ${args.offerType} accepts`,
+        `select an offer for '${args.componentId}' whose agent supports it`,
+      ]);
     }
     for (const [vendorKey, vendorValue] of Object.entries(vendorValues)) {
       if (!isSet(vendorValue) || translated.has(vendorKey)) {

@@ -54,7 +54,7 @@ describe('Locked Fractal model — APIManagement', () => {
           select: {'api-gateway': AwsCloudFront({region: 'us-east-1'})},
         }),
     ).toThrow(
-      "Offer APIManagement.PaaS.AwsCloudFront cannot honor the parameter 'httpsOnly' of 'api-gateway'",
+      "Offer APIManagement.PaaS.AwsCloudFront, selected for 'api-gateway', cannot honor withHttpsOnly ('httpsOnly'), a guardrail locked in the Fractal",
     );
   });
 
