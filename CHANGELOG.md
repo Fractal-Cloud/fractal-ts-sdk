@@ -67,8 +67,15 @@ zone of its host now counts as terminating TLS for the `AwsCloudFront` checks (a
 VPC origin, aliases covered by its hosts); the refusal for a gateway without TLS names
 `dnsZones` instead of `tlsClusterIssuer`.
 
-Needs the first aria-agent-caas-k8s release after v1.5.0; the offer configs are
-generated from its contract.
+`tlsHosts` without a certificate source (no `tlsSecretName`, no `tlsClusterIssuer`, and
+no `dnsZones` with TXT write on the zone of a host) is refused when the Live System is
+built, naming the gateway, as the agent refuses it rather than serve plain HTTP.
+
+While a gateway moves to its own issuer the agent warns `TlsServedFromRetiredIssuer`,
+`CertManagerAdoptionHeld` and, on delete, `CertManagerIdentityKept`; see the README.
+
+Needs aria-agent-caas-k8s v1.6.0 or later; the offer configs are generated from its
+contract.
 
 ### Added — `cloud.boundedContexts`
 
@@ -83,7 +90,7 @@ public types: `BoundedContext`, `BoundedContextId`, `BoundedContextOwner`,
 
 ### Removed (BREAKING) — `CertificateManager`, `CertManager`, `CertManagerConfig`
 
-The caas-k8s agent retired the offer `Security.CaaS.CertManager` and the component
+The caas-k8s agent (v1.6.0) retired the offer `Security.CaaS.CertManager` and the component
 `Security.CertificateManager`: cert-manager is now internal to `TraefikGateway` (see
 above), and the agent no longer declares either. The `CertificateManager` component
 factory, the `CertManager` offer and the `CertManagerConfig` type are removed.
@@ -91,7 +98,7 @@ factory, the `CertManager` offer and the `CertManagerConfig` type are removed.
 **Migrating.** Give the gateway's component `dnsZones` with TXT write on the zone of its
 hosts, allow it in the zone's `componentAccess` (in a `lax` zone), set `acmeEmail`, then
 remove the `CertificateManager` component from the Live System. Remove it only once the
-caas-k8s agent reconciling it is the release that retired the offer: that release
+caas-k8s agent reconciling it is v1.6.0 or later: that release
 reconciles a leftover component to nothing (`RetiredOffer`) and completes its deletion
 without touching the cluster, adopting its cert-manager; an older agent deleting it
 uninstalls cert-manager, and a gateway still serving a certificate from it loses
@@ -162,8 +169,8 @@ dependency on a subnet of their own cloud.
 
 Every offer whose agent publishes a parameter contract is now defined from it: its
 offer type, its config keys, their types and which are required come from the
-contract (fractal-cloud-agents v8.25.2, the first aria-agent-caas-k8s release after
-v1.5.0, aria-agent-aruba v0.0.20), and every vendor key an offer writes from a neutral parameter (`lbScheme`,
+contract (fractal-cloud-agents v8.25.2, aria-agent-caas-k8s v1.6.0,
+aria-agent-aruba v0.0.20), and every vendor key an offer writes from a neutral parameter (`lbScheme`,
 OCI `keyName`, the caas-k8s workload keys) is named through it, so a key an agent
 renames or drops is a compile error instead of a value nobody reads. See
 [`docs/offer-contracts.md`](docs/offer-contracts.md). Offers whose agent publishes no

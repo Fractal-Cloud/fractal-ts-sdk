@@ -1260,6 +1260,13 @@ its grant is in force, so dropping `tlsClusterIssuer` in the same change that ad
 `dnsZones` keeps TLS. The SDK still treats a gateway with `tlsClusterIssuer` and hosts
 as terminating TLS, as the agent does for that certificate.
 
+While a gateway moves to its own issuer, the agent reports these warnings on it:
+`TlsServedFromRetiredIssuer` (it still serves a Certificate of the retired issuer),
+`CertManagerAdoptionHeld` (it could issue, but other Certificates still use the retired
+issuer, so cert-manager's move is held) and, on delete, `CertManagerIdentityKept` (the
+cluster's shared cert-manager and its identity stay for other gateways, or the cluster
+is gone). A leftover `CertificateManager` component reports `RetiredOffer`.
+
 An empty list is refused for every list key: it would travel blank, which the agent
 reads as unset and replaces with its default. Path prefixes no longer exempt a workload route: the
 old default `/grafana/`, `/prometheus/`, `/alertmanager/` exemptions are gone, so
@@ -1272,7 +1279,9 @@ label), checked when the gateway is in the same Live System. An `AwsCloudFront`
 that reaches a same-Live-System gateway without TLS over `https` (its default) is
 refused: that load balancer has no listener on 443.
 
-Refused while building the Live System: `tlsHosts` or `plainHttp: false` without
+Refused while building the Live System: `tlsHosts` without a certificate source (no
+`tlsSecretName`, no `tlsClusterIssuer`, and no `dnsZones` with TXT write on the zone of
+a host: the agent refuses it rather than serve plain HTTP), `plainHttp: false` without
 TLS, `tlsCertificateArn` with Traefik TLS, TLS without `tlsHosts` or `host`, a
 malformed certificate host, a `host` the certificate does not cover, an invalid
 Kubernetes name, an exempt id that starts or ends with `/`, and a source range that
@@ -1423,7 +1432,9 @@ Workload({id: 'app'}).withDnsZones([
   `EcsService`). `AwsSesIdentity` refuses it until its agent writes the SES records
   through the grant; it publishes them as output fields meanwhile.
 - `K8sWorkload`: on EKS the workload reaches each grant through the AWS profile
-  `fractal-dns-<zone with '.' as '-'>` of an AWS config file the agent mounts
+  `fractal-dns-<zone with '-' as '--' and '.' as '-'>` (`my-app.example.com` is
+  `fractal-dns-my--app-example-com`, so distinct zones never share a profile) of an
+  AWS config file the agent mounts
   (`AWS_CONFIG_FILE`); on GKE and AKS its workload identity is granted directly.
 - Records a component wrote stay after its access is revoked: removing them is the
   component owner's job.

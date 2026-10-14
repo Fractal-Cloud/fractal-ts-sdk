@@ -302,6 +302,10 @@ describe('TraefikGateway platform keys', () => {
       },
       /tlsHosts is an empty list/,
     ],
+    [
+      {host: 'api.fractal.cloud', tlsHosts: ['api.fractal.cloud']},
+      /tlsHosts is set, but the gateway has no certificate: set tlsSecretName, or dnsZones with TXT write on the zone of its hosts/,
+    ],
   ])('refuses %o', (config, reason) => {
     expect(() =>
       gateway(config as Parameters<typeof TraefikGateway>[0]),

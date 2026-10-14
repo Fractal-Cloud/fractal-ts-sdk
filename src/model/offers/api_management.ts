@@ -538,6 +538,19 @@ export const TraefikGateway = defineOffer<
         );
       }
     }
+    // tlsHosts asks for TLS: the agent refuses it without a certificate source
+    // rather than serve plain HTTP (aria-agent-caas-k8s v1.6.0). The source is
+    // the component's dnsZones as sent; an Interface operation may change them.
+    if (
+      (config.tlsHosts?.length ?? 0) > 0 &&
+      gatewayCertificateHosts(self.parameters) === undefined
+    ) {
+      refuse(
+        self.id,
+        'tlsHosts is set, but the gateway has no certificate: set tlsSecretName, ' +
+          'or dnsZones with TXT write on the zone of its hosts',
+      );
+    }
     ensureRoutesCovered(self, all);
   },
 });

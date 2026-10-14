@@ -194,7 +194,7 @@ export const Storage_CaaS_MinioTenant = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v0.0.0-main-6bd0d73',
+      agentVersion: 'v1.6.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],

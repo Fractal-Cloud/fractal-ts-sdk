@@ -312,6 +312,23 @@ describe('TraefikGateway issuing its own certificate', () => {
     ).not.toThrow();
   });
 
+  it('refuses tlsHosts without TXT write on the zone of a host, as the agent does', () => {
+    expect(() =>
+      edge([{name: 'example.org', access: {TXT: 'write'}}], {
+        host: 'api.example.com',
+        tlsHosts: ['api.example.com'],
+      }),
+    ).toThrow(
+      "Live component 'traefik': tlsHosts is set, but the gateway has no certificate",
+    );
+    expect(() =>
+      edge([{name: 'example.com', access: {TXT: 'write'}}], {
+        host: 'api.example.com',
+        tlsHosts: ['api.example.com'],
+      }),
+    ).not.toThrow();
+  });
+
   it('serves an operator Secret instead of issuing, whatever its zones', () => {
     expect(() =>
       edge([{name: 'example.org', access: {'*': 'read'}}], {

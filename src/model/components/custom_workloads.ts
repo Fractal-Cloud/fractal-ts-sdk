@@ -64,8 +64,10 @@ export type WorkloadNode<Id extends string = string> = ComponentNode<
    * the zones depend on the environment, so an operation may change them.
    *
    * On Kubernetes (`K8sWorkload`) the workload reaches each AWS grant through
-   * the profile `fractal-dns-<zone with '.' as '-'>` of a mounted AWS config
-   * file; on GCP and Azure its workload identity is granted directly.
+   * the profile `fractal-dns-<zone with '-' as '--' and '.' as '-'>` of a
+   * mounted AWS config file (`my-app.example.com` is
+   * `fractal-dns-my--app-example-com`); on GCP and Azure its workload identity
+   * is granted directly.
    */
   withDnsZones: (zones: readonly DnsZoneAccessRequest[]) => WorkloadNode<Id>;
   dependsOn: (other: AnyNode) => WorkloadNode<Id>;

@@ -71,7 +71,7 @@ export const Observability_CaaS_GrafanaAlloy = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v0.0.0-main-6bd0d73',
+      agentVersion: 'v1.6.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -92,7 +92,7 @@ export const Observability_CaaS_GrafanaLoki = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v0.0.0-main-6bd0d73',
+      agentVersion: 'v1.6.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -115,7 +115,7 @@ export const Observability_CaaS_GrafanaTempo = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v0.0.0-main-6bd0d73',
+      agentVersion: 'v1.6.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -192,7 +192,7 @@ export const Observability_CaaS_KubePrometheusStack = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v0.0.0-main-6bd0d73',
+      agentVersion: 'v1.6.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -278,7 +278,7 @@ export const Observability_CaaS_SqsExporter = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v0.0.0-main-6bd0d73',
+      agentVersion: 'v1.6.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
