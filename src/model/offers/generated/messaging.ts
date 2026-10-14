@@ -9,8 +9,8 @@ export const Messaging_CaaS_Kafka = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.4.0',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v1.6.0',
+      contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
     },
@@ -159,8 +159,8 @@ export const Messaging_CaaS_KafkaTopic = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.4.0',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v1.6.0',
+      contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
     },

@@ -7,14 +7,12 @@
  */
 import {unsupported} from './neutral_rules';
 import {
-  Security_CaaS_CertManager,
   Security_CaaS_Ocelot,
   Security_PaaS_AwsCognito,
   Security_PaaS_AzureEntraExternalId,
 } from './generated/security';
 import type {ContractConfig} from './contract/contract_config';
 import {defineOffer} from '../core';
-import type {CertManagerConfig} from './cert_manager_config';
 
 // ── Security.ServiceMesh offers ──────────────────────────────────────────────
 // Vendor-neutral self-hosted — runs on any cluster, so no `provider`.
@@ -82,24 +80,4 @@ export const EntraExternalId = defineOffer<
   neutral: {
     tags: unsupported('the agent applies no tags to it'),
   },
-});
-
-/**
- * cert-manager on a Kubernetes cluster (EKS), installed and owned by the
- * caas-k8s agent (jetstack chart v1.21.2, pinned), with a Let's Encrypt
- * ClusterIssuer that solves DNS-01 in Route 53 by assuming `role`. Vendor-neutral
- * self-hosted, so no `provider`.
- *
- * Output fields: `namespace`, `releaseName`, `chartVersion`, `clusterIssuerName`,
- * `acmeServer` (the directory URL), `hostedZoneId`, `role`, `serviceAccountName`
- * (`cert-manager`), `podIdentityRoleArn`, `podIdentityAssociationId`,
- * `workloadRoleName`, `workloadRoleArn`, `workloadRoleDrift`.
- */
-export const CertManager = defineOffer<
-  'Security.CertificateManager',
-  CertManagerConfig
->({
-  satisfies: 'Security.CertificateManager',
-  contract: Security_CaaS_CertManager,
-  deliveryModel: 'CaaS',
 });

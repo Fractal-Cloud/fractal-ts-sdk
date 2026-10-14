@@ -32,6 +32,12 @@ export {FractalApiError, redactSecrets, REDACTED} from './api-error';
 // entities; deploying never publishes a blueprint as a side effect.
 export * from './client';
 
+// Bounded Contexts (the operations live on the client: cloud.boundedContexts).
+export type {BoundedContext} from './bounded_context/bounded_context';
+export type {BoundedContextId} from './bounded_context/bounded_context_id';
+export type {BoundedContextOwner} from './bounded_context/bounded_context_owner';
+export type {BoundedContextDefinition} from './bounded_context/bounded_context_definition';
+
 // LiveSystem operation options + results (the operations live on the client).
 export type {DeployOptions, ComponentState, LiveSystemState} from './service';
 
@@ -65,7 +71,6 @@ export type {GatewayRouteOptions} from './components/gateway_route_options';
 export * from './components/gateway_route_settings';
 export * from './components/observability';
 export * from './components/security';
-export * from './components/certificate_manager';
 export * from './components/custom_workloads';
 export type {ResourceQuantities} from './components/workload/resource_quantities';
 export type {WorkloadResources} from './components/workload/workload_resources';
@@ -76,6 +81,11 @@ export type {WorkloadRollout} from './components/workload/workload_rollout';
 export * from './components/unmanaged';
 export * from './components/dns';
 export * from './components/dns_record_management_mode';
+export type {DnsAccessLevel} from './components/dns_access_level';
+export type {DnsGrantableRecordType} from './components/dns_grantable_record_type';
+export type {DnsZoneAccess} from './components/dns_zone_access';
+export type {DnsZoneAccessRequest} from './components/dns_zone_access_request';
+export type {DnsZoneComponentAccess} from './components/dns_zone_component_access';
 
 // Offer parameter contracts: every offer config below is derived from the
 // contract its agent publishes (docs/offer-contracts.md).
@@ -106,7 +116,6 @@ export type {GrafanaObjectStorageBackendConfig} from './offers/grafana_object_st
 export type {GrafanaAlloyConfig} from './offers/grafana_alloy_config';
 export type {SqsExporterConfig} from './offers/sqs_exporter_config';
 export * from './offers/security';
-export type {CertManagerConfig} from './offers/cert_manager_config';
 export * from './offers/custom_workloads';
 export type {WorkloadSsmParameters} from './offers/workload_ssm_parameters';
 export * from './offers/unmanaged';

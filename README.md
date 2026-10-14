@@ -188,8 +188,35 @@ same result without deploying.
 | `cloud.blueprints` | `create(fractal)` |
 | `cloud.liveSystems` | `deploy(ls, opts?)`, `outputs(ls)`, `destroy(ls)` |
 | `cloud.environments` | `deploy(management, opts?)`, `list({type, ownerId})`, `get(id)` |
+| `cloud.boundedContexts` | `create(definition)`, `get(owner, shortName)`, `list(owner)`, `delete(owner, shortName)` |
 
 Pass `baseUrl` to target a non-production control plane.
+
+### Bounded Contexts
+
+Blueprints, Live Systems and environments belong to a Bounded Context. Create one
+before an environment refers to it:
+
+```ts
+const payments = await cloud.boundedContexts.create({
+  type: 'Organizational',
+  ownerId: organizationId, // the organization's GUID
+  shortName: 'payments',
+  displayName: 'Payments',
+  description: 'Everything that moves money',
+});
+mgmt.withResourceGroup(payments.qualifiedId); // 'Organizational/<org>/payments'
+```
+
+- `create` is an upsert: on a short name the owner already has, it updates the
+  display name, description and icon (omitted ones keep their stored values).
+- An owner is `{type: 'Organizational', ownerId}` or `{type: 'Personal'}`, the
+  caller's own (the account the client credentials belong to).
+- A new organizational short name is lower-case letters, digits and `-`, at most 30
+  characters: it becomes part of the id every Live System in it carries into its
+  cloud resources' tags. The control plane refuses any other.
+- `get` resolves to `null` when the owner has no Bounded Context by that name; `list`
+  returns the ones the caller may see.
 
 ### Retries through a brief control-plane outage
 
@@ -705,6 +732,36 @@ mgmt.withDnsZones([
 ]);
 ```
 
+#### Letting components write in a zone: `componentAccess`
+
+A component may ask for access to a zone (`withDnsZones` on `ApiGateway`, `Workload`
+and `EmailSender`, see [Component access to DNS zones](#component-access-to-dns-zones)).
+What it can be granted is capped by the zone's **ceiling**, `componentAccess`, a map
+from `'*'` (every grantable type) or a record type (`A`, `AAAA`, `CAA`, `CNAME`, `MX`,
+`PTR`, `SRV`, `TXT`) to `none`, `read` or `write`:
+
+```ts
+mgmt.withDnsZones([
+  {
+    name: 'example.com',
+    recordManagement: 'lax', // write is allocatable in a lax zone only
+    componentAccess: {'*': 'read', TXT: 'write', CNAME: 'write', MX: 'write'},
+  },
+]);
+```
+
+- Absent or empty, nothing is granted. A grant is the component's request cut down to
+  the ceiling, type by type; lowering the ceiling reduces existing grants.
+- Any access reads the whole zone (Route 53 and Cloud DNS cannot list record sets per
+  type), so read is allowed for every type at once (`'*': 'read'`). A per-type `read`
+  in a ceiling, an unknown type or level, or a ceiling that is not a map is refused
+  before anything is sent, as the control plane would refuse it.
+- Write is granted only in a `lax` zone (an `authoritative` zone allows read only) and
+  only on the zone's `allowedRecordTypes`. Anything else is inert and the control
+  plane warns.
+- Operational environments reach their management environment's zones too, so zone
+  names must be unique across a management environment and its operational ones.
+
 Nothing is written into the zone's DNS data to track which record sets Fractal Cloud
 defined (no marker TXT records): the agent remembers what it applied in control-plane
 state, the zone's `managedRecords` output (`"www.fractal.cloud. CNAME"` style entries, typed
@@ -1149,8 +1206,10 @@ comma-separated. Defaults are the agent's; the SDK sends only what you set.
 | `host` | string | none (default host of every route) |
 | `internalLoadBalancer` | boolean | `true` |
 | `tlsCertificateArn` | string | none (NLB TLS listener; not behind a CloudFront VPC origin, not with Traefik TLS) |
-| `tlsClusterIssuer` | string | none: cert-manager ClusterIssuer the gateway requests its Certificate `traefik-tls` from |
-| `tlsSecretName` | string | `traefik-tls` with `tlsClusterIssuer`, else none (set alone: an operator-provided certificate) |
+| `acmeEmail` | string | none: ACME account email of the gateway's own issuer |
+| `acmeServer` | `'production' \| 'staging' \| 'https://...'` | `production` |
+| `tlsSecretName` | string | none: an operator-provided certificate Secret; turns the gateway's own issuance off |
+| `tlsClusterIssuer` | string | **deprecated, ignored** by the agent (warning `TlsClusterIssuerIgnored`) |
 | `tlsHosts` | string[] | `[host]`: exact names or `*.one-label` wildcards; must cover `host`, every route host and every viewer host CloudFront forwards |
 | `plainHttp` | boolean | `true` without TLS, `false` with TLS (`false` without TLS is refused) |
 | `entryPointIdleTimeoutSeconds` | number | `75` |
@@ -1164,21 +1223,49 @@ comma-separated. Defaults are the agent's; the SDK sends only what you set.
 | `forwardAuthExcludedPrefixes` | — | **removed** from the agent; setting it is refused (a type error, and refused at runtime) |
 | `values` | object | none (chart values deep-merged over the agent's) |
 
-Traefik terminates TLS itself when `tlsSecretName` (explicit, or defaulted from
-`tlsClusterIssuer`) is set: TCP 443 passes through the NLB to `websecure`, which is
-what a CloudFront VPC origin can reach with `originProtocol: 'https'`. To move a
-gateway to TLS without downtime, enable it with `plainHttp: true`, switch CloudFront
-to `https`, then drop `plainHttp`.
+Traefik terminates TLS itself with an operator's Secret (`tlsSecretName`) or with a
+certificate the gateway issues itself: TCP 443 passes through the NLB to `websecure`,
+which is what a CloudFront VPC origin can reach with `originProtocol: 'https'`. To
+move a gateway to TLS without downtime, enable it with `plainHttp: true`, switch
+CloudFront to `https`, then drop `plainHttp`.
+
+**The gateway's own certificate.** The gateway issues one (ACME DNS-01) when it has
+TLS hosts (`tlsHosts`, or `host`), no `tlsSecretName`, and its component's `dnsZones`
+grant it TXT write on the zone of at least one host (the zone needs a `componentAccess`
+ceiling allowing it, and `recordManagement: 'lax'`). The agent runs one cert-manager
+per cluster, shared by its gateways, and solves the challenges with the gateway's own
+grant: no zone role is configured by hand, and there is no cert-manager offer any
+more. The certificate names the hosts a grant covers (the longest zone containing a
+host covers it; `*.a.b` needs `a.b`); the agent warns about each other host
+(`TlsHostNotCovered`), and the gateway stays in progress while a grant is pending.
 
 ```ts
+// blueprint
+const gateway = ApiGateway({id: 'gateway'}).withDnsZones([
+  {name: 'example.com', access: {TXT: 'write'}},
+]);
+// Live System
 TraefikGateway({
-  host: 'api.fractal.cloud',
-  tlsClusterIssuer: 'letsencrypt',        // a CertManager's clusterIssuerName
+  host: 'api.example.com',
+  acmeEmail: 'platform@example.com',
   plainHttp: true,                        // only while CloudFront still uses http
   forwardAuthAddress: 'http://ocelot.security.svc.cluster.local:8080/',
   forwardAuthExemptComponentIds: [`${liveSystemIdOf(platform, 'ocelot')}/ocelot`],
 });
 ```
+
+`tlsClusterIssuer` is deprecated: the agent ignores it, with a warning. A gateway that
+served TLS from it keeps serving that certificate, and moves it to its own issuer once
+its grant is in force, so dropping `tlsClusterIssuer` in the same change that adds
+`dnsZones` keeps TLS. The SDK still treats a gateway with `tlsClusterIssuer` and hosts
+as terminating TLS, as the agent does for that certificate.
+
+While a gateway moves to its own issuer, the agent reports these warnings on it:
+`TlsServedFromRetiredIssuer` (it still serves a Certificate of the retired issuer),
+`CertManagerAdoptionHeld` (it could issue, but other Certificates still use the retired
+issuer, so cert-manager's move is held) and, on delete, `CertManagerIdentityKept` (the
+cluster's shared cert-manager and its identity stay for other gateways, or the cluster
+is gone). A leftover `CertificateManager` component reports `RetiredOffer`.
 
 An empty list is refused for every list key: it would travel blank, which the agent
 reads as unset and replaces with its default. Path prefixes no longer exempt a workload route: the
@@ -1192,7 +1279,9 @@ label), checked when the gateway is in the same Live System. An `AwsCloudFront`
 that reaches a same-Live-System gateway without TLS over `https` (its default) is
 refused: that load balancer has no listener on 443.
 
-Refused while building the Live System: `tlsHosts` or `plainHttp: false` without
+Refused while building the Live System: `tlsHosts` without a certificate source (no
+`tlsSecretName`, no `tlsClusterIssuer`, and no `dnsZones` with TXT write on the zone of
+a host: the agent refuses it rather than serve plain HTTP), `plainHttp: false` without
 TLS, `tlsCertificateArn` with Traefik TLS, TLS without `tlsHosts` or `host`, a
 malformed certificate host, a `host` the certificate does not cover, an invalid
 Kubernetes name, an exempt id that starts or ends with `/`, and a source range that
@@ -1204,8 +1293,11 @@ Output fields: `namespace`, `serviceName`, `releaseName`, `host`, `entryPoint`
 (with ForwardAuth), `forwardAuthExemptComponents` (always, qualified), `tlsEnabled`
 and `plainHttpEnabled` (always), `tlsEntryPoint`, `tlsSecretName`, `tlsHosts`,
 `tlsCertificateExpiresAt` (with TLS), `tlsCertificateName` (when the gateway
-requested the Certificate). The gateway stays in progress until the served
-certificate covers every `tlsHosts` entry and has not expired.
+requested the Certificate), `certManagerRelease` and `clusterIssuerName` (when it
+issues its own), and the identity its DNS zone grants go to (`workloadRoleArn` on EKS,
+`workloadServiceAccount` on GKE, `workloadPrincipalId` and `workloadClientId` on
+AKS). The gateway stays in progress until the served certificate covers every
+certified host and has not expired.
 
 ### Observability (self-hosted, CaaS)
 
@@ -1296,7 +1388,7 @@ alert on dead letters with `KubePrometheusStack({alertRules})`.
 
 #### Pod Identity role outputs
 
-`K8sWorkload`, `CertManager`, `GrafanaLoki`, `GrafanaTempo` and `SqsExporter`
+`K8sWorkload`, `GrafanaLoki`, `GrafanaTempo` and `SqsExporter`
 publish, besides `podIdentityRoleArn` / `podIdentityAssociationId`, the output fields
 `workloadRoleName`, `workloadRoleArn` and `workloadRoleDrift` (`{"corrected": [...],
 "at": "<RFC 3339>"}`, the last trust-policy or permissions-boundary correction). Read
@@ -1308,35 +1400,44 @@ them from `liveSystems.state(...)` like any other output field.
 |---|---|---|
 | `ServiceMesh` | — | `Ocelot` |
 | `IdentityProvider` | `Cognito` | `Keycloak` |
-| `CertificateManager` | — | `CertManager` |
 
-#### `CertManager` (`Security.CaaS.CertManager`, caas-k8s agent)
+#### Certificates
 
-cert-manager v1.21.2 (pinned by the agent, not a parameter) on EKS, with a Let's
-Encrypt ClusterIssuer that solves DNS-01 in Route 53 by assuming a zone role. A
-`TraefikGateway` names its issuer in `tlsClusterIssuer`.
+There is no certificate-manager component any more: a `TraefikGateway` issues its own
+certificate through its DNS zone grant (see `TraefikGateway` above). The
+`CertificateManager` component and the `CertManager` offer were removed when the
+caas-k8s agent retired `Security.CaaS.CertManager`.
 
-| Key | Type | Default |
-|---|---|---|
-| `hostedZoneId` | string | required: Route 53 zone id (`Z...`) |
-| `role` | string | required: zone role ARN (`arn:aws:iam::<account>:role/...`) |
-| `email` | string | required: ACME account email |
-| `acmeServer` | `'production' \| 'staging' \| 'https://...'` | `production` |
-| `clusterIssuerName` | string | `letsencrypt` |
-| `namespace` | string | `cert-manager` |
+#### Component access to DNS zones
+
+`withDnsZones([{name, access}])` on `ApiGateway`, `Workload` and `EmailSender` asks
+for access to environment DNS zones. The control plane grants the component's own
+identity that access, cut down to each zone's `componentAccess` ceiling, in the copy
+of the zone hosted on the component's own cloud (EKS → Route 53, GKE → Cloud DNS,
+AKS → Azure DNS, a PaaS offer → its provider). The component writes its records
+itself; there is no list of records to declare.
 
 ```ts
-CertManager({
-  hostedZoneId: 'Z0123456789ABCDEFGHIJ',
-  role: 'arn:aws:iam::111122223333:role/fractal-acme-dns01',
-  email: 'platform@example.com',
-});
+Workload({id: 'app'}).withDnsZones([
+  {name: 'example.com', access: {'*': 'read', TXT: 'write'}},
+]);
 ```
 
-Output fields: `namespace`, `releaseName`, `chartVersion`, `clusterIssuerName`,
-`acmeServer` (the directory URL), `hostedZoneId`, `role`, `serviceAccountName`,
-`podIdentityRoleArn`, `podIdentityAssociationId`, plus the Pod Identity role outputs
-listed under Observability.
+- `access` maps `'*'` or a record type to `none`, `read` or `write`; a named type
+  overrides `'*'` (`{'*': 'write', MX: 'none'}`). A per-type `read` means whole-zone
+  read. One entry per zone; a malformed list is refused when it is set.
+- It is an **open default**, not a guardrail: the zones depend on the environment, so
+  an Interface operation may change them (`slot.set('dnsZones', [...])`).
+- Offers whose agent takes no DNS zone access refuse it (e.g. `AwsCloudFront`,
+  `EcsService`). `AwsSesIdentity` refuses it until its agent writes the SES records
+  through the grant; it publishes them as output fields meanwhile.
+- `K8sWorkload`: on EKS the workload reaches each grant through the AWS profile
+  `fractal-dns-<zone with '-' as '--' and '.' as '-'>` (`my-app.example.com` is
+  `fractal-dns-my--app-example-com`, so distinct zones never share a profile) of an
+  AWS config file the agent mounts
+  (`AWS_CONFIG_FILE`); on GKE and AKS its workload identity is granted directly.
+- Records a component wrote stay after its access is revoked: removing them is the
+  component owner's job.
 
 ### Unmanaged (external / SaaS)
 

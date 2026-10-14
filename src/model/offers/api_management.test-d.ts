@@ -25,7 +25,6 @@ AwsCloudFront({notFoundPage: '404.html'});
 TraefikGateway({});
 TraefikGateway({
   host: 'api.example.com',
-  tlsClusterIssuer: 'letsencrypt',
   tlsSecretName: 'traefik-tls',
   tlsHosts: ['api.example.com', '*.apps.example.com'],
   plainHttp: true,
@@ -47,3 +46,16 @@ TraefikGateway({forwardAuthExemptComponentIds: 'ocelot'});
 TraefikGateway({loadBalancerSourceRanges: '10.0.0.0/8'});
 // @ts-expect-error `forwardAuthExcludedPrefixes` was removed: a path never exempts a route.
 TraefikGateway({forwardAuthExcludedPrefixes: ['/ocelot/']});
+
+// ── TraefikGateway issuing its own certificate through its DNS zone grant ────
+TraefikGateway({host: 'api.example.com', acmeEmail: 'ops@example.com'});
+TraefikGateway({acmeServer: 'production'});
+TraefikGateway({acmeServer: 'staging'});
+// An ACME directory of another CA is an `https://` URL.
+TraefikGateway({acmeServer: 'https://acme.example.com/directory'});
+// @ts-expect-error an ACME directory over plain http is not accepted.
+TraefikGateway({acmeServer: 'http://acme.example.com/directory'});
+// @ts-expect-error the zones are the component's: `ApiGateway.withDnsZones`.
+TraefikGateway({dnsZones: [{name: 'example.com', access: {TXT: 'write'}}]});
+// `tlsClusterIssuer` still compiles (deprecated: the agent ignores it).
+TraefikGateway({tlsClusterIssuer: 'letsencrypt'});

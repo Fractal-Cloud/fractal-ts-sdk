@@ -15,8 +15,7 @@ import {
   OciSubnet,
   OciVcn,
 } from '../network_and_compute';
-import {AzureApiManagement} from '../api_management';
-import {CertManager} from '../security';
+import {AzureApiManagement, GcpApiGateway} from '../api_management';
 import {EcsService} from '../custom_workloads';
 
 // A translation names the agent's key through the contract: `lbScheme` is one…
@@ -50,13 +49,9 @@ EcsService({launchType: 'FARGATE'});
 EcsService({containerImage: 'registry/app:1'});
 
 // A key the contract requires is required.
-CertManager({
-  hostedZoneId: 'Z123',
-  role: 'arn:aws:iam::123456789012:role/dns',
-  email: 'ops@example.com',
-});
-// @ts-expect-error `role` is required by the caas-k8s contract.
-CertManager({hostedZoneId: 'Z123', email: 'ops@example.com'});
+GcpApiGateway({apiConfig: 'openapi: 3.0.0'});
+// @ts-expect-error `apiConfig` is required by the GCP agent's contract.
+GcpApiGateway({});
 
 /** An override may only re-type a key the contract declares. */
 export type LbConfigWithScheme = ContractConfig<

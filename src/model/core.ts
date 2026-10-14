@@ -267,6 +267,20 @@ export const guardrail = (
   locked: new Set([...s.locked, key]),
 });
 /**
+ * Authoring primitive: set a neutral param WITHOUT locking it — a design-time
+ * default an operation may still change (`slot.set`). For values that depend
+ * on where a Live System runs rather than on the design, such as the
+ * environment DNS zones a component asks access to.
+ */
+export const openDefault = (
+  s: NodeState,
+  key: string,
+  value: unknown,
+): NodeState => ({
+  ...s,
+  parameters: {...s.parameters, [key]: value},
+});
+/**
  * Authoring primitive: declare a structural dependency on another node.
  *
  * A dependency means "I cannot exist without this component": it orders

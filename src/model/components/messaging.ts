@@ -13,6 +13,8 @@ import {
   guardrail,
   addDependency,
 } from '../core';
+import type {DnsZoneAccessRequest} from './dns_zone_access_request';
+import {withDnsZonesParameter} from './dns_zones_parameter';
 
 // ── Broker ───────────────────────────────────────────────────────────────────
 export type BrokerNode<Id extends string = string> = ComponentNode<
@@ -87,10 +89,30 @@ export const MessagingEntity = <const Id extends string>(cfg: {
 export type EmailSenderNode<Id extends string = string> = ComponentNode<
   Id,
   'Messaging.EmailSender'
->;
+> & {
+  /**
+   * Ask for access to environment DNS zones, e.g. CNAME, MX and TXT write on
+   * the sending domain's zone, so the sender can write its own verification
+   * records. The control plane grants the sender's identity that access, cut
+   * down to each zone's `componentAccess` ceiling. An open default, not a
+   * guardrail: the zones depend on the environment, so an operation may change
+   * them.
+   *
+   * `AwsSesIdentity` refuses it until its agent writes the records through
+   * the grant; it publishes them as output fields instead.
+   */
+  withDnsZones: (zones: readonly DnsZoneAccessRequest[]) => EmailSenderNode<Id>;
+};
+const emailSenderNode = <Id extends string>(
+  s: NodeState,
+): EmailSenderNode<Id> => ({
+  state: s,
+  withDnsZones: zones => emailSenderNode<Id>(withDnsZonesParameter(s, zones)),
+});
 export const EmailSender = <const Id extends string>(cfg: {
   id: Id;
   displayName?: string;
-}): EmailSenderNode<Id> => ({
-  state: newNode(cfg.id, 'Messaging.EmailSender', cfg.displayName),
-});
+}): EmailSenderNode<Id> =>
+  emailSenderNode<Id>(
+    newNode(cfg.id, 'Messaging.EmailSender', cfg.displayName),
+  );

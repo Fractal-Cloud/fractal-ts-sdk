@@ -118,6 +118,7 @@ export const EcsService = defineOffer<
     nodeSelector: unsupportedOnEcs('node selector'),
     podDisruptionBudget: unsupportedOnEcs('disruption budget'),
     preStopSleepSeconds: unsupportedOnEcs('stop hook'),
+    dnsZones: unsupported('its agent takes no DNS zone access'),
     terminationGracePeriodSeconds: unsupportedOnEcs('stop timeout'),
     topologySpread: unsupportedOnEcs('placement spread'),
   },
@@ -214,6 +215,7 @@ export const CloudRun = defineOffer<
     preStopSleepSeconds: unsupportedOnCloudRun('stop hook'),
     terminationGracePeriodSeconds: unsupportedOnCloudRun('stop timeout'),
     topologySpread: unsupportedOnCloudRun('placement spread'),
+    dnsZones: unsupported('its agent takes no DNS zone access'),
   },
 });
 /**
@@ -255,6 +257,7 @@ export const AzureContainerApp = defineOffer<
       'cpu',
       cpuCores,
     ),
+    dnsZones: unsupported('its agent takes no DNS zone access'),
     env: unsupported('the agent declares no such Container App setting'),
     healthCheck: unsupported(
       'the agent declares no such Container App setting',
@@ -366,6 +369,7 @@ export const K8sWorkload = defineOffer<
     typeof CustomWorkloads_CaaS_KubernetesWorkload,
     | 'autoscaling'
     | 'cpuRequest'
+    | 'dnsZones'
     | 'env'
     | 'healthCheck'
     | 'livenessProbe'
@@ -392,24 +396,34 @@ export const K8sWorkload = defineOffer<
   // value is pinned to the id the catalogue and the caas-k8s agent agree on.
   contract: CustomWorkloads_CaaS_KubernetesWorkload,
   deliveryModel: 'CaaS',
-  instantiate: (ctx, cfg) => [
-    {
-      id: ctx.id,
-      displayName: ctx.displayName,
-      type: KUBERNETES_WORKLOAD_OFFER_TYPE,
-      // `provider` is deliberately absent: this offer is vendor-neutral. If one
-      // is ever added to the spec above it must be added here too — a custom
-      // `instantiate` does not inherit the default path's `provider`.
-      deliveryModel: 'CaaS',
-      parameters: toKubernetesWorkloadParameters(
-        {...ctx.parameters, ...cfg},
-        ctx.id,
-        ctx.locked ?? [],
-      ),
-      dependencies: ctx.dependencies,
-      links: ctx.links,
-    },
-  ],
+  instantiate: (ctx, cfg) => {
+    // The zones are the component's. A config key spread over its parameters
+    // would silently replace the zones the component asked for.
+    if ('dnsZones' in cfg) {
+      throw new Error(
+        `Live component '${ctx.id}': dnsZones is not a K8sWorkload config key: ` +
+          `declare it on the Workload component, Workload({id: '${ctx.id}'}).withDnsZones([...])`,
+      );
+    }
+    return [
+      {
+        id: ctx.id,
+        displayName: ctx.displayName,
+        type: KUBERNETES_WORKLOAD_OFFER_TYPE,
+        // `provider` is deliberately absent: this offer is vendor-neutral. If one
+        // is ever added to the spec above it must be added here too — a custom
+        // `instantiate` does not inherit the default path's `provider`.
+        deliveryModel: 'CaaS',
+        parameters: toKubernetesWorkloadParameters(
+          {...ctx.parameters, ...cfg},
+          ctx.id,
+          ctx.locked ?? [],
+        ),
+        dependencies: ctx.dependencies,
+        links: ctx.links,
+      },
+    ];
+  },
 });
 
 // ── Function offers ──────────────────────────────────────────────────────────

@@ -1,6 +1,5 @@
 /**
  * caas_platform_offers.test.ts — the caas-k8s platform offers:
- *   - `CertManager` (Security.CaaS.CertManager) on the new `CertificateManager` component;
  *   - `SqsExporter` (Observability.CaaS.SqsExporter) and its queue links;
  *   - the Traefik-terminated TLS and ForwardAuth exemption keys of `TraefikGateway`;
  *   - the parameters and links of the Grafana stack offers (kube-prometheus-stack,
@@ -18,7 +17,6 @@ import {
 import {ApiGateway} from './components/api_management';
 import {Workload} from './components/custom_workloads';
 import {gatewayRouteSettings} from './components/gateway_route_settings';
-import {CertificateManager} from './components/certificate_manager';
 import {MessagingEntity} from './components/messaging';
 import {
   Logging,
@@ -39,7 +37,6 @@ import {
   Prometheus,
   SqsExporter,
 } from './offers/observability';
-import {CertManager} from './offers/security';
 import {AwsS3} from './offers/storage';
 import {liveSystemIdOf, referenceTo} from './reference';
 
@@ -62,87 +59,6 @@ const only = (
   }
   return found;
 };
-
-// ── cert-manager ─────────────────────────────────────────────────────────────
-describe('CertManager', () => {
-  const ZONE_ROLE = 'arn:aws:iam::111122223333:role/fractal-acme-dns01';
-  const fractal = () =>
-    createFractal({
-      id: 'platform-certificates',
-      version,
-      boundedContextId,
-      blueprint: bp => ({
-        certs: bp.add(CertificateManager({id: 'cert-manager'})),
-      }),
-    });
-  const certManager = (config: Parameters<typeof CertManager>[0]) =>
-    only(
-      fractal().toLiveSystem({
-        name: 'platform',
-        environment,
-        select: {'cert-manager': CertManager(config)},
-      }).components,
-      'cert-manager',
-    );
-  const required = {
-    hostedZoneId: 'Z0123456789ABCDEFGHIJ',
-    role: ZONE_ROLE,
-    email: 'platform@fractal.cloud',
-  };
-
-  it('is an abstract Security.CertificateManager in the blueprint', () => {
-    expect(fractal().blueprint.components.map(c => c.component)).toEqual([
-      'Security.CertificateManager',
-    ]);
-  });
-
-  it('emits the caas-k8s offer with every key under its agent name', () => {
-    const c = certManager({
-      ...required,
-      acmeServer: 'staging',
-      clusterIssuerName: 'letsencrypt-staging',
-      namespace: 'cert-manager',
-    });
-    expect([c.type, c.deliveryModel, c.provider]).toEqual([
-      'Security.CaaS.CertManager',
-      'CaaS',
-      undefined,
-    ]);
-    expect(c.parameters).toEqual({
-      hostedZoneId: 'Z0123456789ABCDEFGHIJ',
-      role: ZONE_ROLE,
-      email: 'platform@fractal.cloud',
-      acmeServer: 'staging',
-      clusterIssuerName: 'letsencrypt-staging',
-      namespace: 'cert-manager',
-    });
-  });
-
-  it('sends only the required keys when the defaults are wanted', () => {
-    expect(certManager(required).parameters).toEqual(required);
-  });
-
-  it('accepts an https ACME directory URL', () => {
-    expect(
-      certManager({
-        ...required,
-        acmeServer: 'https://acme.zerossl.com/v2/DV90',
-      }).parameters.acmeServer,
-    ).toBe('https://acme.zerossl.com/v2/DV90');
-  });
-
-  it('reads the values as the agent does: trimmed, acmeServer in any case', () => {
-    expect(() =>
-      certManager({
-        hostedZoneId: ' Z0123456789ABCDEFGHIJ ',
-        role: ` ${ZONE_ROLE}`,
-        email: 'platform@fractal.cloud ',
-        acmeServer: 'Production' as 'production',
-        clusterIssuerName: ' letsencrypt ',
-      }),
-    ).not.toThrow();
-  });
-});
 
 // ── SQS exporter ─────────────────────────────────────────────────────────────
 describe('SqsExporter', () => {
@@ -385,6 +301,10 @@ describe('TraefikGateway platform keys', () => {
         tlsHosts: [],
       },
       /tlsHosts is an empty list/,
+    ],
+    [
+      {host: 'api.fractal.cloud', tlsHosts: ['api.fractal.cloud']},
+      /tlsHosts is set, but the gateway has no certificate: set tlsSecretName, or dnsZones with TXT write on the zone of its hosts/,
     ],
   ])('refuses %o', (config, reason) => {
     expect(() =>

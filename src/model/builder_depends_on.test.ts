@@ -10,7 +10,6 @@
 import {describe, it, expect} from 'vitest';
 import {createFractal, type AnyNode} from './core';
 import {ApiGateway} from './components/api_management';
-import {CertificateManager} from './components/certificate_manager';
 import {Broker} from './components/messaging';
 import {Logging, Monitoring, Tracing} from './components/observability';
 import {IdentityProvider, ServiceMesh} from './components/security';
@@ -20,7 +19,6 @@ import {AwsS3} from './offers/storage';
 
 const builders: Array<[string, (other: AnyNode) => AnyNode]> = [
   ['ApiGateway', c => ApiGateway({id: 'subject'}).dependsOn(c)],
-  ['CertificateManager', c => CertificateManager({id: 'subject'}).dependsOn(c)],
   ['ServiceMesh', c => ServiceMesh({id: 'subject'}).dependsOn(c)],
   ['IdentityProvider', c => IdentityProvider({id: 'subject'}).dependsOn(c)],
   ['ObjectStorage', c => ObjectStorage({id: 'subject'}).dependsOn(c)],
