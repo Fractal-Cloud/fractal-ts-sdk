@@ -159,27 +159,52 @@ The per-offer `validate` functions that re-implemented the agents' value checks 
 removed: a parameter's allowed values belong in the contract its agent publishes, not in
 a copy in the SDK. What the SDK no longer refuses at `toLiveSystem()`, and so now sends:
 
-- `AwsCloudFront`: alias host names (an alias that is not a host name, a wildcard alias,
-  an alias equal to the redirect target, aliases without a redirect), redirect and
-  origin timeouts, WAF rate limits, `defaultRootObject` / `errorDocument` / `spaFallback`
-  values.
-- `TraefikGateway`: ForwardAuth exemption ids, `tlsHosts` entries that are not host
-  names, `loadBalancerSourceRanges` entries that are not CIDRs.
-- `AwsSnsTopic` / `AwsSqsQueue`: topic and queue names, `maximumMessageSize` and
-  retention bounds, `filterEventNames` entries, `filterEventNames` together with
-  `filterPolicy`, a queue filtering a subscription while subscribing to no topic, a
-  queue depending on two topics or on a topic of another vendor (cross-component checks
-  the contracts' cross-field rules are to carry), and `dlqAlarm: true` (no contract key;
-  the agent ignores it).
-- `AwsSesIdentity`: `domain`, `mailFromSubdomain`, `websiteUrl`, `useCaseDescription`,
-  `mailType`, `contactLanguage` formats.
-- `AwsRdsPostgresDbms` / `AwsRdsMySqlDbms`: `storageType`, `administratorLogin` length,
-  `cloudwatchLogExports` entries, a non-boolean `requireSecureTransport`;
-  `lifecycleExpirationDays` on `AwsS3`.
-- `Eks`: `controlPlaneLogTypes`, node pool names, architectures and capacity types.
-- `Grafana`, `SqsExporter` (`queueUrls`, `imagePullSecrets`) and `AwsRoute53HostedZone` values set past the
-  setters' types (`recordManagement`, `allowBulkDelete`; the `DnsZone` setters and the
-  environment's `withDnsZones` still refuse them).
+- `AwsCloudFront`: `aliases` that are not host names; aliases with neither an origin nor `redirectTo`;
+  `redirectTo` that is not an `https://host[/path]` redirect target; `originDomain` /
+  `originDomainName` that are not host names; `originProtocol` other than `https` /
+  `http`; `wafRateLimitPer5Min` and the origin / redirect timeouts outside their
+  ranges; `defaultRootObject` / `errorDocument` that are not object keys; a non-boolean
+  `spaFallback`, and `spaFallback` together with `errorDocument`.
+- `TraefikGateway`: `namespace` that is not a Kubernetes namespace name;
+  `tlsSecretName` / `tlsClusterIssuer` that are not Kubernetes names; `tlsHosts`
+  entries that are not host names or one-label wildcards; a `host` not covered by
+  `tlsHosts`; TLS without hosts; `plainHttp: false` without TLS; `tlsCertificateArn`
+  together with Traefik TLS; a `tlsCertificateArn` that is not an ACM ARN; `host` that
+  is not a host name; `replicas` and `entryPointIdleTimeoutSeconds` below 1;
+  `loadBalancerSourceRanges` entries that are not CIDRs; ForwardAuth settings without
+  `forwardAuthAddress`, a `forwardAuthAddress` that is not an http(s) URL without
+  credentials, header lists holding non-header names, `forwardAuthExemptComponentIds`
+  entries that are not component ids, and `forwardAuthMaxBodySize` below 1.
+  (`tlsHosts` without a certificate source is still refused.)
+- `KubePrometheusStack`, `GrafanaLoki`, `GrafanaTempo`, `GrafanaAlloy`, `SqsExporter`:
+  `namespace` that is not a Kubernetes namespace name. `KubePrometheusStack`,
+  `GrafanaLoki`, `GrafanaTempo`: `storageClassName` that is not a Kubernetes name, and a
+  retention that is not a whole number of at least 1; `KubePrometheusStack`:
+  `prometheusStorageGi` below 1, and `lokiUrl` / `tempoUrl` that are neither `none` nor
+  an absolute http(s) URL. `GrafanaAlloy`: `lokiPushUrl` that is not an absolute
+  http(s) URL. `SqsExporter`: `imagePullSecrets` entries that are not Secret names,
+  `queueUrls` that are not SQS queue URLs, `monitorIntervalSeconds` below 1, and
+  `nodeSelector` values that are not strings.
+- `AwsSnsTopic`: `topicName` that is not an SNS name, `maximumMessageSize` outside
+  1024–1048576 bytes.
+- `AwsSqsQueue`: `queueName` that is not an SQS name; numeric settings outside their
+  ranges; `filterEventNames` entries; `filterEventNames` together with `filterPolicy`;
+  and the cross-component checks the contracts' cross-field rules are to carry: a queue
+  filtering a subscription while subscribing to no topic, a queue depending on two
+  topics, or on a topic that is not an `AwsSnsTopic`. `dlqAlarm: true` is no longer
+  refused (no contract key; the agent ignores it).
+- `AwsSesIdentity`: `domain` that is not a domain name, `mailFromSubdomain` that is not
+  one DNS label or makes the MAIL FROM domain too long, `productionAccess` without its
+  `websiteUrl` / `useCaseDescription`, a `websiteUrl` that is not an http(s) URL,
+  `mailType` other than `TRANSACTIONAL` / `MARKETING`, `contactLanguage` other than
+  `EN` / `JA`.
+- `AwsRdsPostgresDbms` / `AwsRdsMySqlDbms`: `storageType` RDS does not offer,
+  `administratorLogin` longer than the engine allows, `cloudwatchLogExports` entries, a
+  non-boolean `requireSecureTransport`. `AwsS3`: `lifecycleExpirationDays` below 1.
+- `Eks`: `controlPlaneLogTypes`, node pools without a name or with a name that is not a
+  DNS-1123 label, unknown architectures and capacity types.
+- `AwsRoute53HostedZone`: `recordManagement` and `allowBulkDelete` set past the setters'
+  types (the `DnsZone` setters and the environment's `withDnsZones` still refuse them).
 - `K8sWorkload`: the probe, rollout, autoscaling, disruption-budget, grace-period,
   `ssmParameters` and `sesIdentityArns` checks. A `secretEnv` value that is not a
   `secretRef(...)` reference is still refused, without echoing it: a raw secret must

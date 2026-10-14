@@ -185,6 +185,37 @@ describe('Workload parameters on a Kubernetes workload', () => {
     );
   });
 
+  it.each([
+    ['a string', 'DB_PASSWORD=hunter2'],
+    ['a list', ['hunter2']],
+    ['null', null],
+  ])(
+    'refuses a secretEnv that is %s, not a map of references, without echoing it',
+    (_what, secretEnv) => {
+      const refusal = (() => {
+        try {
+          emit(w => w, {secretEnv});
+        } catch (err) {
+          return (err as Error).message;
+        }
+        return undefined;
+      })();
+      expect(refusal).toMatch(
+        /secretEnv on 'web' must map variable names to environment-secret references/,
+      );
+      expect(refusal).not.toContain('hunter2');
+    },
+  );
+
+  it('refuses a secretEnv that is not a map even when env holds references to move into it', () => {
+    expect(() =>
+      emit(w => w, {
+        env: {TOKEN: secretRef('t')},
+        secretEnv: 'DB_PASSWORD=hunter2',
+      }),
+    ).toThrow(/secretEnv on 'web' must map variable names/);
+  });
+
   it('never echoes the raw secret value in the refusal', () => {
     const refusal = (() => {
       try {
