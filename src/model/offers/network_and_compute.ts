@@ -19,6 +19,9 @@ import {
 } from './vm_sizes';
 import {toContractKey, unsupported} from './neutral_rules';
 import {
+  NetworkAndCompute_CaaS_OpenshiftIpAddressPool,
+  NetworkAndCompute_CaaS_OpenshiftSecurityGroup,
+  NetworkAndCompute_CaaS_OpenshiftService,
   NetworkAndCompute_IaaS_AwsEc2Instance,
   NetworkAndCompute_IaaS_AwsLb,
   NetworkAndCompute_IaaS_AwsSecurityGroup,
@@ -38,6 +41,7 @@ import {
   NetworkAndCompute_IaaS_OciSecurityList,
   NetworkAndCompute_IaaS_OciSubnet,
   NetworkAndCompute_IaaS_OciVcn,
+  NetworkAndCompute_IaaS_OpenshiftVirtualMachine,
   NetworkAndCompute_PaaS_AwsEks,
   NetworkAndCompute_PaaS_AzureAks,
   NetworkAndCompute_PaaS_AzureContainerAppsEnvironment,
@@ -56,6 +60,7 @@ import {
   instantiateWithVendorParameters,
   renameParameter,
 } from './vendor_parameters';
+import type {VendorParameters} from './vendor_parameters';
 import {toHetznerEgressRules} from './hetzner_firewall_rules';
 import type {
   InstantiationContext,
@@ -378,14 +383,33 @@ export const VsphereVm = defineOffer<
   provider: 'VMware',
   deliveryModel: 'IaaS',
 });
+/**
+ * A KubeVirt virtual machine (OpenShift Virtualization). The agent refuses a
+ * VM without `name` and `image`, so both are required here although its
+ * contract leaves them optional.
+ */
 export const OpenshiftVm = defineOffer<
   'NetworkAndCompute.VirtualMachine',
-  {userData?: string}
+  ContractConfig<
+    typeof NetworkAndCompute_IaaS_OpenshiftVirtualMachine,
+    // Filled from the neutral withPublicSSHKey.
+    'sshPublicKey',
+    {name: string; image: string}
+  >
 >({
   satisfies: 'NetworkAndCompute.VirtualMachine',
-  offerType: 'NetworkAndCompute.CaaS.OpenshiftVm',
+  contract: NetworkAndCompute_IaaS_OpenshiftVirtualMachine,
   provider: 'RedHat',
-  deliveryModel: 'CaaS',
+  deliveryModel: 'IaaS',
+  neutral: {
+    publicSSHKey: toContractKey(
+      NetworkAndCompute_IaaS_OpenshiftVirtualMachine,
+      'sshPublicKey',
+    ),
+    osType: unsupported('the operating system follows image'),
+    size: unsupported('the VM is sized by cpuCores and memorySizeGi'),
+    tags: unsupported('the agent applies no tags to it'),
+  },
 });
 
 type EksConfig = ContractConfig<
@@ -869,21 +893,187 @@ export const VsphereVlan = defineOffer<
 });
 
 // ── OpenShift (RedHat, CaaS) ─────────────────────────────────────────────────
+/**
+ * A neutral rule list in aria-agent-openshift's shape: a JSON-encoded string
+ * (the contract types the rules as `string`). A neutral rule names its peer
+ * `sourceCidr` whichever direction it faces; the agent's egress rule names it
+ * `destCidr`.
+ */
+const toOpenshiftPolicyRules: VendorParameters = (_componentId, parameters) => {
+  const encode = (rules: unknown, peer: 'sourceCidr' | 'destCidr') =>
+    Array.isArray(rules)
+      ? JSON.stringify(
+          rules.map(rule => {
+            if (typeof rule !== 'object' || rule === null) {
+              return rule;
+            }
+            const {sourceCidr, ...rest} = rule as Record<string, unknown>;
+            return sourceCidr === undefined
+              ? rest
+              : {...rest, [peer]: sourceCidr};
+          }),
+        )
+      : rules;
+  return {
+    ...parameters,
+    ...('ingressRules' in parameters
+      ? {ingressRules: encode(parameters.ingressRules, 'sourceCidr')}
+      : {}),
+    ...('egressRules' in parameters
+      ? {egressRules: encode(parameters.egressRules, 'destCidr')}
+      : {}),
+  };
+};
+
+/** A Kubernetes NetworkPolicy. */
 export const OpenshiftSecurityGroup = defineOffer<
   'NetworkAndCompute.SecurityGroup',
-  {name?: string}
+  ContractConfig<
+    typeof NetworkAndCompute_CaaS_OpenshiftSecurityGroup,
+    // Filled from the neutral withIngressRules / withEgressRules.
+    'ingressRules' | 'egressRules'
+  >
 >({
   satisfies: 'NetworkAndCompute.SecurityGroup',
-  offerType: 'NetworkAndCompute.CaaS.OpenshiftNetworkPolicy',
+  contract: NetworkAndCompute_CaaS_OpenshiftSecurityGroup,
   provider: 'RedHat',
   deliveryModel: 'CaaS',
+  instantiate: instantiateWithVendorParameters(
+    NetworkAndCompute_CaaS_OpenshiftSecurityGroup.offerType,
+    'RedHat',
+    'CaaS',
+    toOpenshiftPolicyRules,
+  ),
 });
+
+/**
+ * A MetalLB `IPAddressPool` (with its `L2Advertisement` or
+ * `BGPAdvertisement`): the Subnet an `OpenshiftService` load balancer takes
+ * its address from. `addresses` are CIDRs (`10.0.0.0/28`) or ranges
+ * (`10.0.0.10-10.0.0.20`); the neutral `withCidrBlock` becomes the one CIDR of
+ * the pool. One of the two is needed.
+ */
+export const OpenshiftIpAddressPool = defineOffer<
+  'NetworkAndCompute.Subnet',
+  ContractConfig<
+    typeof NetworkAndCompute_CaaS_OpenshiftIpAddressPool,
+    never,
+    {addresses?: readonly string[]}
+  >
+>({
+  satisfies: 'NetworkAndCompute.Subnet',
+  contract: NetworkAndCompute_CaaS_OpenshiftIpAddressPool,
+  provider: 'RedHat',
+  deliveryModel: 'CaaS',
+  neutral: {
+    cidrBlock: toContractKey(
+      NetworkAndCompute_CaaS_OpenshiftIpAddressPool,
+      'addresses',
+      cidr => [cidr],
+    ),
+  },
+  validate: self => {
+    const addresses = self.parameters.addresses;
+    if (!Array.isArray(addresses) || addresses.length === 0) {
+      throw new Error(
+        `Subnet '${self.id}' (${NetworkAndCompute_CaaS_OpenshiftIpAddressPool.offerType}) ` +
+          'has no addresses: the load balancers using it take their address from them. ' +
+          "Set OpenshiftIpAddressPool({addresses: [...]}) or the Subnet's withCidrBlock.",
+      );
+    }
+  },
+});
+
+/**
+ * Only a `LoadBalancer` Service takes an address, and on OpenShift it takes it
+ * from exactly one MetalLB IP address pool: aria-agent-openshift refuses one
+ * without a pool, or with two, and reads no other subnet. A ClusterIP or
+ * NodePort Service (the agent's default is ClusterIP) resolves no pool, so a
+ * subnet it declares would do nothing and is refused.
+ */
+const requireOpenshiftServiceSubnets = (
+  self: {
+    id: string;
+    dependencies: readonly string[];
+    parameters: Readonly<Record<string, unknown>>;
+  },
+  all: readonly {id: string; type: string}[],
+): void => {
+  const poolType = NetworkAndCompute_CaaS_OpenshiftIpAddressPool.offerType;
+  // Every Subnet offer of the catalogue: a dependency of one of these types is
+  // a subnet the load balancer declares; any other is a dependsOn peer.
+  const subnetTypes = new Set(
+    [
+      AwsSubnet,
+      AzureSubnet,
+      GcpSubnet,
+      OciSubnet,
+      HetznerSubnet,
+      VsphereVlan,
+      OpenshiftIpAddressPool,
+    ].map(o => o.offerType),
+  );
+  const subnets = self.dependencies
+    .map(d => all.find(c => c.id === d))
+    .filter(
+      (c): c is {id: string; type: string} =>
+        c !== undefined && subnetTypes.has(c.type),
+    );
+  const serviceType = self.parameters.serviceType ?? 'ClusterIP';
+  if (serviceType !== 'LoadBalancer') {
+    if (subnets.length > 0) {
+      const [first] = subnets;
+      throw new Error(
+        `LoadBalancer '${self.id}' is a ${String(serviceType)} Service, which takes no ` +
+          `address from a subnet, but declares subnet '${first.id}' (${first.type}). ` +
+          'Fix: remove the subnet from LoadBalancer({subnets}), or select ' +
+          "OpenshiftService({serviceType: 'LoadBalancer'}).",
+      );
+    }
+    return;
+  }
+  const pools = subnets.filter(c => c.type === poolType);
+  if (pools.length === 0) {
+    throw new Error(
+      `LoadBalancer '${self.id}' has no ${poolType} dependency: a load balancer is ` +
+        'placed only in the subnets it declares. Declare it with ' +
+        `LoadBalancer({subnets: [...]}) and select ${poolType} for it.`,
+    );
+  }
+  if (pools.length > 1) {
+    throw new Error(
+      `LoadBalancer '${self.id}' depends on ${pools.length} ${poolType} components ` +
+        `(${pools.map(p => p.id).join(', ')}), but takes its address from exactly one: keep one.`,
+    );
+  }
+  const foreign = subnets.filter(c => c.type !== poolType);
+  if (foreign.length > 0) {
+    const [first] = foreign;
+    throw new Error(
+      `LoadBalancer '${self.id}' declares subnet '${first.id}' (${first.type}), which ` +
+        `aria-agent-openshift does not read: select ${poolType} for it.`,
+    );
+  }
+};
+
+/**
+ * A Kubernetes Service (ClusterIP, NodePort or LoadBalancer) and, with
+ * `createRoute`, an OpenShift Route. Only as a `LoadBalancer` does it take an
+ * address, from the one `OpenshiftIpAddressPool` it declares as its subnet; a
+ * ClusterIP or NodePort Service declares none.
+ */
 export const OpenshiftService = defineOffer<
   'NetworkAndCompute.LoadBalancer',
-  {}
+  ContractConfig<typeof NetworkAndCompute_CaaS_OpenshiftService>
 >({
   satisfies: 'NetworkAndCompute.LoadBalancer',
-  offerType: 'NetworkAndCompute.CaaS.OpenshiftService',
+  contract: NetworkAndCompute_CaaS_OpenshiftService,
   provider: 'RedHat',
   deliveryModel: 'CaaS',
+  neutral: {
+    scheme: unsupported(
+      'the address comes from the IP address pool the Service depends on',
+    ),
+  },
+  validate: requireOpenshiftServiceSubnets,
 });

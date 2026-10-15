@@ -84,6 +84,95 @@ export const NetworkAndCompute_CaaS_ECSTaskDefinition = {
   },
 } as const satisfies OfferContract;
 
+export const NetworkAndCompute_CaaS_OpenshiftIpAddressPool = {
+  offerType: 'NetworkAndCompute.CaaS.OpenshiftIpAddressPool',
+  serviceTypes: ['NetworkAndCompute.IaaS.Subnet'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-openshift',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'RedHat',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** the CIDRs (10.0.0.0/28) and ranges (10.0.0.10-10.0.0.20) load balancer addresses come from */
+    addresses: {type: 'array', required: true},
+    /** how MetalLB announces the addresses */
+    advertisement: {
+      type: 'string',
+      required: false,
+      default: 'L2',
+      values: ['L2', 'BGP'],
+    },
+    /** the node interfaces an L2 announcement uses (all when empty) */
+    interfaces: {type: 'array', required: false},
+    /** the name of the MetalLB IPAddressPool in metallb-system */
+    name: {type: 'string', required: true},
+    /** the node labels selecting the announcing nodes (all when empty) */
+    nodeSelector: {type: 'object', required: false},
+  },
+} as const satisfies OfferContract;
+
+export const NetworkAndCompute_CaaS_OpenshiftSecurityGroup = {
+  offerType: 'NetworkAndCompute.CaaS.OpenshiftSecurityGroup',
+  serviceTypes: ['NetworkAndCompute.CaaS.SecurityGroup'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-openshift',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'RedHat',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** JSON-encoded egress rules */
+    egressRules: {type: 'string', required: false},
+    /** JSON-encoded ingress rules */
+    ingressRules: {type: 'string', required: false},
+    /** Policy name */
+    name: {type: 'string', required: false},
+    /** JSON-encoded label selector (default: all pods) */
+    podSelector: {type: 'string', required: false},
+    /** Ingress, Egress, or Both */
+    policyType: {type: 'string', required: false, default: 'Ingress'},
+  },
+} as const satisfies OfferContract;
+
+export const NetworkAndCompute_CaaS_OpenshiftService = {
+  offerType: 'NetworkAndCompute.CaaS.OpenshiftService',
+  serviceTypes: ['NetworkAndCompute.CaaS.KubernetesService'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-openshift',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'RedHat',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** Create an OpenShift Route */
+    createRoute: {type: 'boolean', required: false, default: false},
+    /** Service name */
+    name: {type: 'string', required: false},
+    /** Service port */
+    port: {type: 'number', required: false},
+    /** Protocol (TCP/UDP) */
+    protocol: {type: 'string', required: false, default: 'TCP'},
+    /** Custom hostname for Route */
+    routeHostname: {type: 'string', required: false},
+    /** TLS termination: edge, passthrough, reencrypt */
+    routeTlsTermination: {type: 'string', required: false},
+    /** ClusterIP, NodePort, or LoadBalancer */
+    serviceType: {type: 'string', required: false, default: 'ClusterIP'},
+    /** Target container port */
+    targetPort: {type: 'number', required: false},
+  },
+} as const satisfies OfferContract;
+
 export const NetworkAndCompute_IaaS_ArubaCloudServer = {
   offerType: 'NetworkAndCompute.IaaS.ArubaCloudServer',
   serviceTypes: ['NetworkAndCompute.IaaS.VirtualMachine'],
@@ -1056,6 +1145,44 @@ export const NetworkAndCompute_IaaS_OciVcn = {
   ],
   params: {
     cidrBlock: {type: 'string', required: false, default: ''},
+  },
+} as const satisfies OfferContract;
+
+export const NetworkAndCompute_IaaS_OpenshiftVirtualMachine = {
+  offerType: 'NetworkAndCompute.IaaS.OpenshiftVirtualMachine',
+  serviceTypes: ['NetworkAndCompute.IaaS.VirtualMachine'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-openshift',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'RedHat',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** Number of CPU cores */
+    cpuCores: {type: 'number', required: false, default: 1},
+    /** Root disk size */
+    diskSizeGi: {type: 'string', required: false, default: '20Gi'},
+    /** Container disk image or DataVolume source URL */
+    image: {type: 'string', required: false},
+    /** Memory size */
+    memorySizeGi: {type: 'string', required: false, default: '2Gi'},
+    /** VM name */
+    name: {type: 'string', required: false},
+    /** Namespace */
+    namespace: {type: 'string', required: false, default: 'default'},
+    /** Additional network attachment (multus) */
+    networkName: {type: 'string', required: false},
+    /** Always, RerunOnFailure, Manual, Halted */
+    runStrategy: {type: 'string', required: false, default: 'Always'},
+    /** SSH public key to inject */
+    sshPublicKey: {type: 'string', required: false},
+    /** StorageClass for DataVolume */
+    storageClassName: {type: 'string', required: false},
+    /** Raw cloud-init user-data (startup script) */
+    userData: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
 

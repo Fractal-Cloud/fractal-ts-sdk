@@ -10,6 +10,7 @@ import {applyNeutralRules} from '../apply_neutral_rules';
 import {toContractKey, unsupported, unsupportedUnless} from './neutral_rules';
 import {
   Storage_CaaS_MinioTenant,
+  Storage_CaaS_OpenshiftPersistentVolume,
   Storage_PaaS_ArubaMySqlDbms,
   Storage_PaaS_AwsRdsMySql,
   Storage_PaaS_AwsRdsMySqlDatabase,
@@ -518,12 +519,34 @@ export const AwsRdsMySqlDatabase = defineOffer<
 });
 
 // ── OpenShift persistent storage (RedHat, CaaS) ──────────────────────────────
+/**
+ * A PersistentVolumeClaim (Trident NFS by default). The agent refuses a claim
+ * without `name` and `storageSize`, so both are required here although its
+ * contract leaves them optional.
+ */
 export const OpenshiftPersistentVolume = defineOffer<
   'Storage.ObjectStorage',
-  {storageSize?: string; storageClassName?: string}
+  ContractConfig<
+    typeof Storage_CaaS_OpenshiftPersistentVolume,
+    never,
+    {name: string; storageSize: string}
+  >
 >({
   satisfies: 'Storage.ObjectStorage',
-  offerType: 'Storage.CaaS.OpenshiftPersistentVolume',
+  contract: Storage_CaaS_OpenshiftPersistentVolume,
   provider: 'RedHat',
   deliveryModel: 'CaaS',
+  neutral: {
+    storageClass: unsupported(
+      "an object storage tier is not a Kubernetes StorageClass: set the claim's storageClassName",
+    ),
+    versioningEnabled: unsupported('a volume claim keeps no object versions'),
+    publicAccess: unsupportedUnless(
+      v => v === false,
+      'a volume claim is reachable only from the pods that mount it',
+    ),
+    encryption: unsupported('the agent sets no encryption on the claim'),
+    retentionDays: unsupported('a volume claim expires no data'),
+    tags: unsupported('the agent applies no tags to it'),
+  },
 });

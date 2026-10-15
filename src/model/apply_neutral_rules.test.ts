@@ -96,7 +96,11 @@ describe('applyNeutralRules refusals', () => {
       }
       let node: unknown;
       try {
-        node = (factory as (cfg: unknown) => unknown)({id: 'x', subnets: [{}]});
+        node = (factory as (cfg: unknown) => unknown)({
+          id: 'x',
+          // A LoadBalancer reads its subnets' ids.
+          subnets: [{state: {id: 'x-subnet'}}],
+        });
       } catch {
         continue;
       }

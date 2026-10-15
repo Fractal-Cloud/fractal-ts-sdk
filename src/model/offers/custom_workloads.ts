@@ -21,6 +21,7 @@ import {
 import {toContractKey, toContractKeys, unsupported} from './neutral_rules';
 import {
   CustomWorkloads_CaaS_KubernetesWorkload,
+  CustomWorkloads_CaaS_OpenshiftWorkload,
   CustomWorkloads_FaaS_AwsLambda,
   CustomWorkloads_FaaS_AzureFunction,
   CustomWorkloads_FaaS_GcpFunction,
@@ -331,14 +332,65 @@ export const AzureContainerApp = defineOffer<
     }
   },
 });
+const unsupportedOnOpenshift = (what: string) =>
+  unsupported(`aria-agent-openshift's workload contract declares no ${what}`);
+const limits = (v: unknown): Record<string, unknown> =>
+  asRecord(asRecord(v).limits);
+
+/**
+ * A Deployment or StatefulSet on OpenShift. The agent reads the container
+ * environment as one JSON-encoded string (`envVars`), and requests and limits
+ * as four quantities.
+ */
 export const OpenshiftWorkload = defineOffer<
   'CustomWorkloads.Workload',
-  {namespace?: string}
+  ContractConfig<
+    typeof CustomWorkloads_CaaS_OpenshiftWorkload,
+    // Filled by the Workload's neutral setters.
+    | 'image'
+    | 'port'
+    | 'replicas'
+    | 'cpuRequest'
+    | 'memoryRequest'
+    | 'cpuLimit'
+    | 'memoryLimit'
+    | 'envVars'
+  >
 >({
   satisfies: 'CustomWorkloads.Workload',
-  offerType: 'CustomWorkloads.CaaS.OpenshiftWorkload',
+  contract: CustomWorkloads_CaaS_OpenshiftWorkload,
   provider: 'RedHat',
   deliveryModel: 'CaaS',
+  neutral: {
+    env: toContractKey(CustomWorkloads_CaaS_OpenshiftWorkload, 'envVars', v =>
+      JSON.stringify(v),
+    ),
+    resources: toContractKeys(
+      CustomWorkloads_CaaS_OpenshiftWorkload,
+      ['cpuRequest', 'memoryRequest', 'cpuLimit', 'memoryLimit'],
+      v => ({
+        cpuRequest: requests(v).cpu,
+        memoryRequest: requests(v).memory,
+        cpuLimit: limits(v).cpu,
+        memoryLimit: limits(v).memory,
+      }),
+    ),
+    secretEnv: unsupportedOnOpenshift('secret references'),
+    maxReplicas: unsupportedOnOpenshift('autoscaling'),
+    autoscaling: unsupportedOnOpenshift('autoscaling'),
+    healthCheck: unsupportedOnOpenshift('health check'),
+    readinessProbe: unsupportedOnOpenshift('health check'),
+    livenessProbe: unsupportedOnOpenshift('health check'),
+    startupProbe: unsupportedOnOpenshift('health check'),
+    maxSurge: unsupportedOnOpenshift('deployment rollout setting'),
+    maxUnavailable: unsupportedOnOpenshift('deployment rollout setting'),
+    nodeSelector: unsupportedOnOpenshift('node selector'),
+    podDisruptionBudget: unsupportedOnOpenshift('disruption budget'),
+    preStopSleepSeconds: unsupportedOnOpenshift('stop hook'),
+    terminationGracePeriodSeconds: unsupportedOnOpenshift('stop timeout'),
+    topologySpread: unsupportedOnOpenshift('placement spread'),
+    dnsZones: unsupported('its agent takes no DNS zone access'),
+  },
 });
 /**
  * Vendor-neutral: runs on any Kubernetes cluster, so `provider` is omitted.

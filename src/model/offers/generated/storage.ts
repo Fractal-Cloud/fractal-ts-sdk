@@ -326,6 +326,30 @@ export const Storage_CaaS_MinioTenant = {
   },
 } as const satisfies OfferContract;
 
+export const Storage_CaaS_OpenshiftPersistentVolume = {
+  offerType: 'Storage.CaaS.OpenshiftPersistentVolume',
+  serviceTypes: ['Storage.CaaS.PersistentVolume'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-openshift',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'RedHat',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** ReadWriteOnce, ReadWriteMany, ReadOnlyMany */
+    accessMode: {type: 'string', required: false, default: 'ReadWriteOnce'},
+    /** PVC name */
+    name: {type: 'string', required: false},
+    /** StorageClass name */
+    storageClassName: {type: 'string', required: false, default: 'trident-nfs'},
+    /** Storage size (e.g. 10Gi) */
+    storageSize: {type: 'string', required: false},
+  },
+} as const satisfies OfferContract;
+
 export const Storage_IaaS_ArubaBlockStorage = {
   offerType: 'Storage.IaaS.ArubaBlockStorage',
   serviceTypes: ['Storage.IaaS.BlockVolume'],
