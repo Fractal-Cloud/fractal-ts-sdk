@@ -485,8 +485,8 @@ export const AwsSqsQueue = defineOffer<
     partitionCount: unsupported('SQS has no partitions'),
   },
   instantiate: (ctx, config) => {
-    // dlqAlarm false is what the agent does anyway (it creates no alarm), so it
-    // is dropped rather than sent; any other value is refused in validate.
+    // dlqAlarm is no key of the agent's contract (it creates no alarm). false is
+    // what the agent does anyway, so it is dropped rather than sent.
     const {filterEventNames, filterPolicy, ...rest} = config;
     const given = {...rest} as Record<string, unknown>;
     if (given['dlqAlarm'] === false) {

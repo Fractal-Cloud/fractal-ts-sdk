@@ -69,6 +69,12 @@ zone of its host now counts as terminating TLS for the `AwsCloudFront` checks (a
 VPC origin, aliases covered by its hosts); the refusal for a gateway without TLS names
 `dnsZones` instead of `tlsClusterIssuer`.
 
+A gateway whose only certificate source is `tlsClusterIssuer` still counts as terminating
+TLS, exactly as aria-agent-caas-k8s v1.6.0 reads it: the agent serves TLS from the
+certificate that issuer issued earlier and leaves it to that issuer to renew. It issues
+none itself from `tlsClusterIssuer`, so a **new** gateway with only `tlsClusterIssuer`
+serves TLS without a certificate: give a new gateway `dnsZones` or `tlsSecretName`.
+
 `tlsHosts` without a certificate source (no `tlsSecretName`, no `tlsClusterIssuer`, and
 no `dnsZones` with TXT write on the zone of a host) is refused when the Live System is
 built, naming the gateway, as the agent refuses it rather than serve plain HTTP.
@@ -90,12 +96,13 @@ icon?})` (an upsert), `get(owner, shortName)` (`null` when absent), `list(owner)
 public types: `BoundedContext`, `BoundedContextId`, `BoundedContextOwner`,
 `BoundedContextDefinition`.
 
-### Removed (BREAKING) — `CertificateManager`, `CertManager`, `CertManagerConfig`
+### Removed (BREAKING) — `CertificateManager`, `CertificateManagerNode`, `CertManager`, `CertManagerConfig`
 
 The caas-k8s agent (v1.6.0) retired the offer `Security.CaaS.CertManager` and the component
 `Security.CertificateManager`: cert-manager is now internal to `TraefikGateway` (see
 above), and the agent no longer declares either. The `CertificateManager` component
-factory, the `CertManager` offer and the `CertManagerConfig` type are removed.
+factory and its `CertificateManagerNode` type, the `CertManager` offer and the
+`CertManagerConfig` type are removed.
 
 **Migrating.** Give the gateway's component `dnsZones` with TXT write on the zone of its
 hosts, allow it in the zone's `componentAccess` (in a `lax` zone), set `acmeEmail`, then
@@ -146,18 +153,75 @@ logged, and each warning is logged as a `WARN` line. A control plane without val
 (`ParameterValidationResult`, `ComponentValidationResult`, `ValidationIssue`, ...). A
 `400 OfferParametersInvalid` from the create or update is surfaced as the same error.
 
-### Changed — parameter checks are the control plane's, not the SDK's
+### Changed (BREAKING) — the SDK no longer re-checks single parameter values
 
-The SDK no longer re-implements the agents' parameter checks: the per-offer `validate`
-functions that mirrored them (CloudFront redirects, timeouts and WAF limits; Traefik
-gateway ForwardAuth and TLS settings; SNS, SQS and SES names and bounds; RDS, Eks,
-Grafana, SqsExporter and DNS-zone values; the Kubernetes workload probe,
-rollout and grant checks) are removed. Those values are now checked by the control plane
-before deploy, against the agents' own contracts. `toLiveSystem()` stays offline. What
-remains in the SDK involves several components (a CloudFront origin and the
-certificate of the gateway behind it, gateway route coverage, a Container App's
-environment, a Service Bus tier against its topics, a Grafana backend's bucket link, a
-load balancer's subnets) or how the SDK encodes a value (an empty list sent as blank).
+The per-offer `validate` functions that re-implemented the agents' value checks are
+removed: a parameter's allowed values belong in the contract its agent publishes, not in
+a copy in the SDK. What the SDK no longer refuses at `toLiveSystem()`, and so now sends:
+
+- `AwsCloudFront`: `aliases` that are not host names; aliases with neither an origin nor `redirectTo`;
+  `redirectTo` that is not an `https://host[/path]` redirect target; `originDomain` /
+  `originDomainName` that are not host names; `originProtocol` other than `https` /
+  `http`; `wafRateLimitPer5Min` and the origin / redirect timeouts outside their
+  ranges; `defaultRootObject` / `errorDocument` that are not object keys; a non-boolean
+  `spaFallback`, and `spaFallback` together with `errorDocument`.
+- `TraefikGateway`: `namespace` that is not a Kubernetes namespace name;
+  `tlsSecretName` / `tlsClusterIssuer` that are not Kubernetes names; `tlsHosts`
+  entries that are not host names or one-label wildcards; a `host` not covered by
+  `tlsHosts`; TLS without hosts; `plainHttp: false` without TLS; `tlsCertificateArn`
+  together with Traefik TLS; a `tlsCertificateArn` that is not an ACM ARN; `host` that
+  is not a host name; `replicas` and `entryPointIdleTimeoutSeconds` below 1;
+  `loadBalancerSourceRanges` entries that are not CIDRs; ForwardAuth settings without
+  `forwardAuthAddress`, a `forwardAuthAddress` that is not an http(s) URL without
+  credentials, header lists holding non-header names, `forwardAuthExemptComponentIds`
+  entries that are not component ids, and `forwardAuthMaxBodySize` below 1.
+  (`tlsHosts` without a certificate source is still refused.)
+- `KubePrometheusStack`, `GrafanaLoki`, `GrafanaTempo`, `GrafanaAlloy`, `SqsExporter`:
+  `namespace` that is not a Kubernetes namespace name. `KubePrometheusStack`,
+  `GrafanaLoki`, `GrafanaTempo`: `storageClassName` that is not a Kubernetes name, and a
+  retention that is not a whole number of at least 1; `KubePrometheusStack`:
+  `prometheusStorageGi` below 1, and `lokiUrl` / `tempoUrl` that are neither `none` nor
+  an absolute http(s) URL. `GrafanaAlloy`: `lokiPushUrl` that is not an absolute
+  http(s) URL. `SqsExporter`: `imagePullSecrets` entries that are not Secret names,
+  `queueUrls` that are not SQS queue URLs, `monitorIntervalSeconds` below 1, and
+  `nodeSelector` values that are not strings.
+- `AwsSnsTopic`: `topicName` that is not an SNS name, `maximumMessageSize` outside
+  1024–1048576 bytes.
+- `AwsSqsQueue`: `queueName` that is not an SQS name; numeric settings outside their
+  ranges; `filterEventNames` entries; `filterEventNames` together with `filterPolicy`;
+  and the cross-component checks the contracts' cross-field rules are to carry: a queue
+  filtering a subscription while subscribing to no topic, a queue depending on two
+  topics, or on a topic that is not an `AwsSnsTopic`. `dlqAlarm: true` is no longer
+  refused (no contract key; the agent ignores it).
+- `AwsSesIdentity`: `domain` that is not a domain name, `mailFromSubdomain` that is not
+  one DNS label or makes the MAIL FROM domain too long, `productionAccess` without its
+  `websiteUrl` / `useCaseDescription`, a `websiteUrl` that is not an http(s) URL,
+  `mailType` other than `TRANSACTIONAL` / `MARKETING`, `contactLanguage` other than
+  `EN` / `JA`.
+- `AwsRdsPostgresDbms` / `AwsRdsMySqlDbms`: `storageType` RDS does not offer,
+  `administratorLogin` longer than the engine allows, `cloudwatchLogExports` entries, a
+  non-boolean `requireSecureTransport`. `AwsS3`: `lifecycleExpirationDays` below 1.
+- `Eks`: `controlPlaneLogTypes`, node pools without a name or with a name that is not a
+  DNS-1123 label, unknown architectures and capacity types.
+- `AwsRoute53HostedZone`: `recordManagement` and `allowBulkDelete` set past the setters'
+  types (the `DnsZone` setters and the environment's `withDnsZones` still refuse them).
+- `K8sWorkload`: the probe, rollout, autoscaling, disruption-budget, grace-period,
+  `ssmParameters` and `sesIdentityArns` checks. A `secretEnv` value that is not a
+  `secretRef(...)` reference is still refused, without echoing it: a raw secret must
+  not reach the Live System, and the contract cannot tell a reference from a secret yet.
+
+**Known gap: per-offer value checks moved to the agents' contracts; until the agents
+publish them, bad values are refused by the agent at deploy rather than by
+`toLiveSystem()`.** `cloud.liveSystems.deploy` asks the control plane to validate the
+Live System against the published contracts (see above), but the contracts carry almost
+no value constraints yet (0 of the 117 aria-agent-caas-k8s parameters, 2 of 593
+fractal-cloud-agent-aws parameters), and the control plane runs that check in `report`
+mode by default, which never refuses.
+
+What remains in the SDK involves several components or how the SDK encodes a value: a
+CloudFront origin and the certificate of the gateway behind it, gateway route coverage,
+a Container App's environment, a Service Bus tier against its topics, a Grafana
+backend's bucket link, a load balancer's subnets, an empty list sent as blank.
 
 ### Breaking — a load balancer declares its subnets
 
@@ -203,15 +267,92 @@ reconcile when missing: `nodeTypeId` on `AwsDatabricksCluster`,
 `apiConfig` on `GcpApiGateway`; `clusterName` on `KafkaTopic`; `elasticInstances` and
 `storage` on `ObservabilityElastic`; `host` on `Ocelot`; `entryPoints` on `Traefik`.
 
-**Breaking — a neutral setter the selected offer's agent cannot honor is refused.**
-`toLiveSystem` used to send it under a key nobody reads; it now throws, naming the
-offer, the parameter, the component and why (e.g. `withTags` on `AwsVpc` or `AwsS3`,
-`withEgressRules` on every security group, `withRetentionDays` on Prometheus, workload
-settings `EcsService` and `CloudRun` have no key for, such as `withEnv`).
+**Breaking — a guardrail the selected offer's agent cannot honor is refused.**
+`toLiveSystem` used to send it under a key nobody reads, so the Live System deployed
+without it; it now throws, by design rather than warning: a guardrail is the
+architect's requirement, and an offer that cannot meet it is the wrong offer. The
+refusal names the offer, the component, the setter and its parameter, whether it is a
+guardrail locked in the Fractal or a parameter left open, and why, and says how to fix
+it:
+
+    Offer APIManagement.PaaS.AwsCloudFront, selected for 'api-gateway', cannot honor
+    withHttpsOnly ('httpsOnly'), a guardrail locked in the Fractal: <why>. Fix: select
+    an offer for 'api-gateway' whose agent supports withHttpsOnly, or remove
+    withHttpsOnly from 'api-gateway' in the Fractal.
+
+A neutral value an offer cannot translate (e.g. `withSize('huge')`) is refused the same
+way, adding "give withSize a value <offer> accepts". `maxSurge` and `maxUnavailable` are
+named by their setter, `withRollout`. A Fractal that set any of these and
+selected one of these offers built in 2.12.0 and is refused from 2.13.0 on (neutral
+parameter names; the setter is `with<Name>`, e.g. `tags` is `withTags`, and
+`maxSurge` / `maxUnavailable` are `withRollout`):
+
+  - `AwsVpc`: `tags`
+  - `AzureVnet`: `tags`
+  - `GcpVpc`: `cidrBlock`, `tags`
+  - `Ec2Instance`: `osType`, `tags`
+  - `AzureVm`: `osType`, `tags`
+  - `GcpVm`: `osType`, `tags`
+  - `Aks`: `kubernetesVersion`, `networkPolicyProvider`
+  - `EcsCluster`: `kubernetesVersion`, `networkPolicyProvider`, `nodePools`
+  - `AzureContainerAppsEnvironment`: `kubernetesVersion`, `networkPolicyProvider`, `nodePools`
+  - `OciVcn`: `tags`
+  - `OciInstance`: `osType`, `tags`
+  - `AwsS3`: `storageClass`, `tags`
+  - `AzureBlob`: `retentionDays`, `storageClass`, `tags`, `versioningEnabled`
+  - `GcsBucket`: `retentionDays`, `tags`
+  - `MinIO`: `encryption`, `retentionDays`, `tags`, `versioningEnabled`
+  - `AzurePostgresDbms`: `highAvailability`, `sizeTier`
+  - `GcpPostgresDbms`: `backupRetentionDays`, `engineVersion`, `highAvailability`, `sizeTier`, `storageGb`
+  - `GcpMySqlDbms`: `backupRetentionDays`, `engineVersion`, `highAvailability`, `sizeTier`
+  - `AwsRdsPostgresDbms`: `highAvailability`, `sizeTier`
+  - `AwsRdsMySqlDbms`: `highAvailability`, `sizeTier`
+  - `ArubaMySqlDbms`: `backupRetentionDays`, `engineVersion`, `highAvailability`, `sizeTier`, `storageGb`
+  - `AwsRdsPostgresDatabase`: `charset`, `collation`
+  - `AwsRdsMySqlDatabase`: `charset`, `collation`
+  - `CaaSSparkCluster`: `autoTerminationMinutes`, `clusterName`, `dataSecurityMode`, `maxWorkers`, `minWorkers`
+  - `CaaSSparkJob`: `jobName`, `taskType`
+  - `CaaSMlflow`: `experimentName`
+  - `AzureDatalake`: `retentionDays`, `versioningEnabled`
+  - `GcpDatalake`: `retentionDays`
+  - `AwsDatabricks`: `workspaceName`
+  - `AzureDatabricks`: `workspaceName`
+  - `GcpDatabricks`: `workspaceName`
+  - `GcpPubSub`: `tier`
+  - `Kafka`: `encryption`, `tier`
+  - `AzureServiceBusTopic`: `deadLetterEnabled`, `maxDeliveryAttempts`, `partitionCount`
+  - `GcpPubSubTopic`: `deadLetterEnabled`, `maxDeliveryAttempts`, `messageRetentionHours`, `partitionCount`
+  - `KafkaTopic`: `maxDeliveryAttempts`
+  - `AwsSnsTopic`: `deadLetterEnabled`, `maxDeliveryAttempts`, `messageRetentionHours`, `partitionCount`
+  - `AwsSqsQueue`: `partitionCount`
+  - `AwsCloudFront`: `cors`, `httpsOnly`, `rateLimit`, `routes`
+  - `AzureApiManagement`: `cors`, `customDomain`, `httpsOnly`, `rateLimit`, `routes`
+  - `GcpApiGateway`: `cors`, `customDomain`, `httpsOnly`, `rateLimit`, `routes`
+  - `Ambassador`: `cors`, `httpsOnly`, `rateLimit`, `routes`
+  - `Traefik`: `cors`, `httpsOnly`, `rateLimit`, `routes`
+  - `TraefikGateway`: `cors`, `httpsOnly`, `rateLimit`, `routes`
+  - `Prometheus`: `retentionDays`, `scrapeInterval`
+  - `Jaeger`: `retentionDays`, `samplingRate`
+  - `ObservabilityElastic`: `retentionDays`
+  - `KubePrometheusStack`: `scrapeInterval`
+  - `GrafanaTempo`: `samplingRate`
+  - `SqsExporter`: `retentionDays`, `scrapeInterval`
+  - `Ocelot`: `authenticationMode`, `mtlsMode`, `tags`
+  - `Cognito`: `tags`
+  - `EntraExternalId`: `tags`
+  - `EcsService`: `autoscaling`, `maxReplicas`, `env`, `secretEnv`, `healthCheck`, `readinessProbe`, `livenessProbe`, `startupProbe`, `maxSurge`, `maxUnavailable`, `nodeSelector`, `podDisruptionBudget`, `preStopSleepSeconds`, `terminationGracePeriodSeconds`, `topologySpread`
+  - `CloudRun`: `env`, `secretEnv`, `healthCheck`, `readinessProbe`, `livenessProbe`, `startupProbe`, `maxSurge`, `maxUnavailable`, `nodeSelector`, `podDisruptionBudget`, `preStopSleepSeconds`, `terminationGracePeriodSeconds`, `topologySpread`
+  - `AzureContainerApp`: `env`, `healthCheck`, `livenessProbe`, `maxSurge`, `maxUnavailable`, `nodeSelector`, `podDisruptionBudget`, `preStopSleepSeconds`, `readinessProbe`, `secretEnv`, `startupProbe`, `terminationGracePeriodSeconds`, `topologySpread`
+  - `AwsLambda`: `concurrency`
+  - `AzureFunction`: `concurrency`, `memory`, `runtime`, `timeout`
+  - `GcpFunction`: `concurrency`, `environment`, `memory`, `timeout`
+  - `UnmanagedAi`: `tags`
+
 A value the offer satisfies anyway is accepted and not sent (`withEncryption('at-rest')`
-and `withPublicAccess(false)` on S3, `withDeadLetterEnabled(true)` on SQS). This
-replaces the `scrapeInterval` / `samplingRate` refusal, whose message changes. The
-`AzureServiceBus` offer no longer sends the neutral `tier` it consumes.
+on `AwsS3`, `GcsBucket` and `GcpPubSub`, `withPublicAccess(false)` on `AwsS3`, `GcsBucket`
+and `MinIO`, `withDeadLetterEnabled(true)` on `AwsSqsQueue` and `KafkaTopic`). This
+replaces the 2.12.0 `scrapeInterval` / `samplingRate` refusal, whose message changes.
+The `AzureServiceBus` offer no longer sends the neutral `tier` it consumes.
 
 **Fixed — neutral setters that reached no agent now do**, under the agent's key:
 `withSize` (EC2 `instanceType`, Azure `vmSize`, GCP `machineType`, OCI `shape`; the
@@ -232,6 +373,15 @@ provision nothing for. `CloudRun` now emits `NetworkAndCompute.CaaS.CloudRunServ
 that depends on it, with the Workload's image, port, CPU / memory requests and replicas
 translated into their keys. New `EcsCluster` offer (`NetworkAndCompute.PaaS.ECS`) for the
 `ContainerPlatform` an `EcsService` workload depends on.
+
+  **Existing Live Systems.** The old types (`CustomWorkloads.PaaS.AwsEcsService`,
+  `CustomWorkloads.PaaS.GcpCloudRun`) are phantoms of the AWS and GCP agents: still
+  registered, reading no parameters, provisioning nothing. A Live System deployed with
+  2.12.0 has no ECS service or Cloud Run service behind those components; deploying it
+  with 2.13.0 creates them, under the new types (and, for ECS, the `<id>-task` task
+  definition). Both agents reconcile the new types from fractal-cloud-agents v8.25.2 on;
+  deploy that release first. Workload settings these offers cannot honor are refused
+  (see above).
 
 **Breaking — translated values must be values the agent accepts.** `withSize` takes
 `small` / `medium` / `large` / `xlarge` (new `VmSize`, mapped to each vendor's machine types)

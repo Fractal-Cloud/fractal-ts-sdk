@@ -179,13 +179,54 @@ describe('Workload parameters on a Kubernetes workload', () => {
     });
   });
 
+  it('refuses a raw value in secretEnv: only environment-secret references travel', () => {
+    expect(() => emit(w => w, {secretEnv: {DB_PASSWORD: 'hunter2'}})).toThrow(
+      /secretEnv 'DB_PASSWORD' on 'web' is not an environment-secret reference/,
+    );
+  });
+
+  it.each([
+    ['a string', 'DB_PASSWORD=hunter2'],
+    ['a list', ['hunter2']],
+    ['null', null],
+  ])(
+    'refuses a secretEnv that is %s, not a map of references, without echoing it',
+    (_what, secretEnv) => {
+      const refusal = (() => {
+        try {
+          emit(w => w, {secretEnv});
+        } catch (err) {
+          return (err as Error).message;
+        }
+        return undefined;
+      })();
+      expect(refusal).toMatch(
+        /secretEnv on 'web' must map variable names to environment-secret references/,
+      );
+      expect(refusal).not.toContain('hunter2');
+    },
+  );
+
+  it('refuses a secretEnv that is not a map even when env holds references to move into it', () => {
+    expect(() =>
+      emit(w => w, {
+        env: {TOKEN: secretRef('t')},
+        secretEnv: 'DB_PASSWORD=hunter2',
+      }),
+    ).toThrow(/secretEnv on 'web' must map variable names/);
+  });
+
   it('never echoes the raw secret value in the refusal', () => {
-    try {
-      emit(w => w, {secretEnv: {DB_PASSWORD: 'hunter2'}});
-      expect.unreachable();
-    } catch (err) {
-      expect((err as Error).message).not.toContain('hunter2');
-    }
+    const refusal = (() => {
+      try {
+        emit(w => w, {secretEnv: {DB_PASSWORD: 'hunter2'}});
+      } catch (err) {
+        return (err as Error).message;
+      }
+      return undefined;
+    })();
+    expect(refusal).toMatch(/secretEnv 'DB_PASSWORD'/);
+    expect(refusal).not.toContain('hunter2');
   });
 
   it('moves an environment-secret reference in env to secretEnv, where the agent resolves it', () => {

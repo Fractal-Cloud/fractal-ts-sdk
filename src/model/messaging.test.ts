@@ -144,7 +144,7 @@ describe('Messaging domain — event-backbone', () => {
         .withOrdersPartitions(8)
         .toLiveSystem({name: 'acme-prod', environment, select: fullSelect()}),
     ).toThrow(
-      "Offer Messaging.PaaS.AzureServiceBusTopic cannot honor the parameter 'partitionCount' of 'orders-topic'",
+      "Offer Messaging.PaaS.AzureServiceBusTopic, selected for 'orders-topic', cannot honor withPartitionCount ('partitionCount'), a parameter open in the Fractal",
     );
   });
 

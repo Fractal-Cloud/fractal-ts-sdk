@@ -102,7 +102,7 @@ describe('Observability domain', () => {
         .withScrape(15)
         .toLiveSystem({name: 'acme-obs', environment, select: fullSelect()}),
     ).toThrow(
-      "Offer Observability.CaaS.Prometheus cannot honor the parameter 'scrapeInterval' of 'monitoring'",
+      "Offer Observability.CaaS.Prometheus, selected for 'monitoring', cannot honor withScrapeInterval ('scrapeInterval'), a parameter open in the Fractal",
     );
   });
 
@@ -114,7 +114,7 @@ describe('Observability domain', () => {
         select: fullSelect(),
       }),
     ).toThrow(
-      "Offer Observability.CaaS.Prometheus cannot honor the parameter 'retentionDays' of 'monitoring'",
+      "Offer Observability.CaaS.Prometheus, selected for 'monitoring', cannot honor withRetentionDays ('retentionDays'), a guardrail locked in the Fractal",
     );
   });
 

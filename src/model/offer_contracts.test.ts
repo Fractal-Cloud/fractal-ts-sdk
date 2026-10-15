@@ -48,6 +48,7 @@ import {secretRef} from './secret';
 import type {LiveSystemComponent, Offer} from './core';
 import type {OfferContract} from './offers/contract/offer_contract';
 import type {NeutralRule} from './neutral_rule';
+import {neutralSetterName} from './apply_neutral_rules';
 
 type OfferConstructor = ((config: never) => Offer) & {
   readonly offerType: string;
@@ -467,8 +468,18 @@ describe('offers and the contracts their agents publish', () => {
           const emittedKeys = run().flatMap(c => Object.keys(c.parameters));
           expect(emittedKeys, `${name} ${key}`).not.toContain(key);
         } else {
+          const quoted = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const setter = neutralSetterName(key);
           expect(run, `${name} ${key}`).toThrow(
-            `Offer ${offer.offerType} cannot honor the parameter '${key}' of 'probe': ${rule.reason}.`,
+            new RegExp(
+              quoted(
+                `Offer ${offer.offerType}, selected for 'probe', cannot honor ${setter} ('${key}'), a `,
+              ) +
+                '(guardrail locked|parameter open)' +
+                quoted(
+                  ` in the Fractal: ${rule.reason.replace(/\.$/, '')}. Fix: select an offer for 'probe' whose agent supports ${setter}, or `,
+                ),
+            ),
           );
         }
       }
@@ -496,7 +507,7 @@ describe('offers and the contracts their agents publish', () => {
     expect(() =>
       instantiateWith('KafkaTopic', kafka, {messageRetentionHours: 24}),
     ).toThrow(
-      "Offer Messaging.CaaS.KafkaTopic cannot honor the parameter 'messageRetentionHours' of 'probe': " +
+      "Offer Messaging.CaaS.KafkaTopic, selected for 'probe', cannot honor withMessageRetentionHours ('messageRetentionHours'), a guardrail locked in the Fractal: " +
         "'retentionMs' is read only by fractal-cloud-agent-aws, fractal-cloud-agent-azure, " +
         'fractal-cloud-agent-gcp, fractal-cloud-agent-oci; aria-agent-caas-k8s also reconciles ' +
         'Messaging.CaaS.KafkaTopic and ignores it.',
@@ -595,7 +606,7 @@ describe('offers and the contracts their agents publish', () => {
     const run = (name: string, parameters: Record<string, unknown>) =>
       instantiateWith(name, Object.fromEntries(OFFERS)[name], parameters);
     expect(() => run('Ec2Instance', {size: 'huge'})).toThrow(
-      "Offer NetworkAndCompute.IaaS.AwsEc2Instance cannot honor the parameter 'size' of 'probe': " +
+      "Offer NetworkAndCompute.IaaS.AwsEc2Instance, selected for 'probe', cannot honor withSize ('size'), a guardrail locked in the Fractal: " +
         'size "huge" is neither a neutral size (small, medium, large, xlarge) nor a AWS machine type such as t3.micro.',
     );
     expect(run('Ec2Instance', {size: 'c7g.large'})[0].parameters).toEqual({
@@ -656,7 +667,7 @@ describe('offers and the contracts their agents publish', () => {
           },
         ],
       }),
-    ).toThrow("cannot honor the parameter 'charset' of 'orders'");
+    ).toThrow("selected for 'orders', cannot honor withCharset ('charset'), a parameter open in the Fractal");
   });
 
   it('never emits a former drift', () => {

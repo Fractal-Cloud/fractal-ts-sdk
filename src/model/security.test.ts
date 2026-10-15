@@ -66,7 +66,7 @@ describe('Security domain', () => {
         },
       }),
     ).toThrow(
-      "Offer Security.CaaS.Ocelot cannot honor the parameter 'authenticationMode' of 'app-mesh'",
+      "Offer Security.CaaS.Ocelot, selected for 'app-mesh', cannot honor withAuthenticationMode ('authenticationMode'), a guardrail locked in the Fractal",
     );
   });
 
