@@ -151,6 +151,10 @@ public types: `BoundedContext`, `BoundedContextId`, `BoundedContextOwner`,
   dropped.
 - The contract generator refuses an offer whose declaring agents share no allowed value
   for a key, and keeps a key `sensitive` when any of them marks it so.
+- The Aruba contract is pinned to aria-agent-aruba v0.0.22, which marks
+  `ArubaObjectStorageAccount.password` and `ArubaVpnTunnel.presharedKey` `sensitive`.
+  It also declares `location` and `name` on `ArubaElasticIp` and `name` on
+  `ArubaSecurityGroup` (all optional).
 
 ### Removed (BREAKING) — `CertificateManager`, `CertificateManagerNode`, `CertManager`, `CertManagerConfig`
 

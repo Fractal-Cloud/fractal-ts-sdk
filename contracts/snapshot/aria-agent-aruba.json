@@ -1,513 +1,549 @@
 {
   "agentId": "aria-agent-aruba",
-  "agentVersion": "v0.0.20",
+  "agentVersion": "v0.0.22",
   "offers": [
     {
+      "aliasOfOfferType": null,
       "offerType": "APIManagement.CaaS.ArubaAPIGateway",
+      "parameterRules": [],
       "params": [],
       "provider": "Aruba",
+      "runtimeChecks": [],
       "serviceTypes": [
         "APIManagement.CaaS.APIGateway"
       ]
     },
     {
+      "aliasOfOfferType": null,
       "offerType": "BigData.PaaS.SparkPlatform",
+      "parameterRules": [],
       "params": [
         {
           "default": "spark-operator",
           "key": "namespace",
-          "required": false,
           "type": "string"
         },
         {
           "default": true,
           "key": "webhookEnabled",
-          "required": false,
           "type": "boolean"
         }
       ],
       "provider": "Aruba",
+      "runtimeChecks": [],
       "serviceTypes": [
         "BigData.PaaS.SparkPlatform"
       ]
     },
     {
+      "aliasOfOfferType": null,
       "offerType": "BigData.PaaS.SparkPlatformCluster",
+      "parameterRules": [],
       "params": [
         {
           "default": "1",
           "key": "driverCores",
-          "required": false,
           "type": "string"
         },
         {
           "default": "1g",
           "key": "driverMemory",
-          "required": false,
           "type": "string"
         },
         {
           "default": "1",
           "key": "executorCores",
-          "required": false,
           "type": "string"
         },
         {
           "default": 2,
           "key": "executorInstances",
-          "required": false,
           "type": "integer"
         },
         {
           "default": "1g",
           "key": "executorMemory",
-          "required": false,
           "type": "string"
         },
         {
           "default": "apache/spark:3.5.0",
           "key": "image",
-          "required": false,
           "type": "string"
         },
         {
           "default": "spark",
           "key": "namespace",
-          "required": false,
           "type": "string"
         }
       ],
       "provider": "Aruba",
+      "runtimeChecks": [],
       "serviceTypes": [
         "BigData.PaaS.SparkPlatformCluster"
       ]
     },
     {
+      "aliasOfOfferType": null,
       "offerType": "BigData.PaaS.SparkPlatformJob",
+      "parameterRules": [],
       "params": [
         {
           "default": "apache/spark:3.5.0",
           "key": "image",
-          "required": false,
           "type": "string"
         },
         {
           "default": "",
           "key": "jarUri",
-          "required": false,
           "type": "string"
         },
         {
           "default": "",
           "key": "mainClass",
-          "required": false,
           "type": "string"
         },
         {
           "default": "spark",
           "key": "namespace",
-          "required": false,
           "type": "string"
         },
         {
           "default": "",
           "key": "schedule",
-          "required": false,
           "type": "string"
         }
       ],
       "provider": "Aruba",
+      "runtimeChecks": [],
       "serviceTypes": [
         "BigData.PaaS.SparkPlatformJob"
       ]
     },
     {
+      "aliasOfOfferType": null,
       "offerType": "BigData.PaaS.SparkPlatformMlExperiment",
+      "parameterRules": [],
       "params": [
         {
           "key": "artifactRoot",
-          "required": false,
           "type": "string"
         },
         {
           "default": "mlflow",
           "key": "namespace",
-          "required": false,
           "type": "string"
         },
         {
           "key": "trackingUri",
-          "required": false,
           "type": "string"
         }
       ],
       "provider": "Aruba",
+      "runtimeChecks": [],
       "serviceTypes": [
         "BigData.PaaS.SparkPlatformMlExperiment"
       ]
     },
     {
+      "aliasOfOfferType": null,
       "offerType": "CustomWorkloads.CaaS.ArubaWorkload",
+      "parameterRules": [],
       "params": [],
       "provider": "Aruba",
+      "runtimeChecks": [],
       "serviceTypes": [
         "CustomWorkloads.CaaS.Workload"
       ]
     },
     {
+      "aliasOfOfferType": null,
       "offerType": "Messaging.PaaS.ManagedKafka",
+      "parameterRules": [],
       "params": [
         {
           "key": "clusterName",
-          "required": false,
           "type": "string"
         },
         {
           "default": "kafka",
           "key": "namespace",
-          "required": false,
           "type": "string"
         }
       ],
       "provider": "Aruba",
+      "runtimeChecks": [],
       "serviceTypes": [
         "Messaging.PaaS.StreamProcessing"
       ]
     },
     {
+      "aliasOfOfferType": null,
       "offerType": "Messaging.PaaS.ManagedKafkaTopic",
+      "parameterRules": [],
       "params": [
         {
           "default": "kafka",
           "key": "namespace",
-          "required": false,
           "type": "string"
         },
         {
           "default": 1,
           "key": "partitions",
-          "required": false,
           "type": "integer"
         },
         {
           "default": 1,
           "key": "replicas",
-          "required": false,
           "type": "integer"
         }
       ],
       "provider": "Aruba",
+      "runtimeChecks": [],
       "serviceTypes": [
         "Messaging.PaaS.StreamProcessingEntity"
       ]
     },
     {
+      "aliasOfOfferType": null,
       "offerType": "NetworkAndCompute.IaaS.ArubaCloudServer",
+      "parameterRules": [],
       "params": [
         {
           "key": "bootVolume",
-          "required": false,
           "type": "string"
         },
         {
           "key": "flavorName",
-          "required": false,
           "type": "string"
         },
         {
           "key": "userData",
-          "required": false,
           "type": "string"
         }
       ],
       "provider": "Aruba",
+      "runtimeChecks": [],
       "serviceTypes": [
         "NetworkAndCompute.IaaS.VirtualMachine"
       ]
     },
     {
+      "aliasOfOfferType": null,
       "offerType": "NetworkAndCompute.IaaS.ArubaElasticIp",
-      "params": [],
-      "provider": "Aruba",
-      "serviceTypes": [
-        "NetworkAndCompute.IaaS.ElasticIp"
-      ]
-    },
-    {
-      "offerType": "NetworkAndCompute.IaaS.ArubaSecurityGroup",
-      "params": [],
-      "provider": "Aruba",
-      "serviceTypes": [
-        "NetworkAndCompute.IaaS.SecurityGroup"
-      ]
-    },
-    {
-      "offerType": "NetworkAndCompute.IaaS.ArubaSshKeyPair",
-      "params": [
-        {
-          "key": "keyName",
-          "required": false,
-          "type": "string"
-        },
-        {
-          "key": "publicKey",
-          "required": false,
-          "type": "string"
-        }
-      ],
-      "provider": "Aruba",
-      "serviceTypes": [
-        "NetworkAndCompute.IaaS.SshKeyPair"
-      ]
-    },
-    {
-      "offerType": "NetworkAndCompute.IaaS.ArubaSubnet",
-      "params": [
-        {
-          "key": "cidrBlock",
-          "required": false,
-          "type": "string"
-        }
-      ],
-      "provider": "Aruba",
-      "serviceTypes": [
-        "NetworkAndCompute.IaaS.Subnet"
-      ]
-    },
-    {
-      "offerType": "NetworkAndCompute.IaaS.ArubaVpc",
+      "parameterRules": [],
       "params": [
         {
           "default": "ITBG-Bergamo",
           "description": "Aruba region",
           "key": "location",
-          "required": false,
+          "type": "string"
+        },
+        {
+          "description": "Elastic IP name (default: fct-<component id>)",
+          "key": "name",
+          "type": "string"
+        }
+      ],
+      "provider": "Aruba",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.ElasticIp"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.ArubaSecurityGroup",
+      "parameterRules": [],
+      "params": [
+        {
+          "description": "Security group name (default: fractal-mgd-<component id>)",
+          "key": "name",
+          "type": "string"
+        }
+      ],
+      "provider": "Aruba",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.SecurityGroup"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.ArubaSshKeyPair",
+      "parameterRules": [],
+      "params": [
+        {
+          "key": "keyName",
+          "type": "string"
+        },
+        {
+          "key": "publicKey",
+          "type": "string"
+        }
+      ],
+      "provider": "Aruba",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.SshKeyPair"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.ArubaSubnet",
+      "parameterRules": [],
+      "params": [
+        {
+          "key": "cidrBlock",
+          "type": "string"
+        }
+      ],
+      "provider": "Aruba",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.Subnet"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.ArubaVpc",
+      "parameterRules": [],
+      "params": [
+        {
+          "default": "ITBG-Bergamo",
+          "description": "Aruba region",
+          "key": "location",
           "type": "string"
         },
         {
           "description": "VPC name",
           "key": "name",
-          "required": false,
           "type": "string"
         }
       ],
       "provider": "Aruba",
+      "runtimeChecks": [],
       "serviceTypes": [
         "NetworkAndCompute.IaaS.VirtualNetwork"
       ]
     },
     {
+      "aliasOfOfferType": null,
       "offerType": "NetworkAndCompute.IaaS.ArubaVpcPeering",
+      "parameterRules": [],
       "params": [
         {
           "key": "peerVpcId",
-          "required": false,
           "type": "string"
         }
       ],
       "provider": "Aruba",
+      "runtimeChecks": [],
       "serviceTypes": [
         "NetworkAndCompute.IaaS.VpcPeering"
       ]
     },
     {
+      "aliasOfOfferType": null,
       "offerType": "NetworkAndCompute.IaaS.ArubaVpnTunnel",
+      "parameterRules": [],
       "params": [
         {
           "key": "peerPublicIp",
-          "required": false,
           "type": "string"
         },
         {
           "key": "presharedKey",
-          "required": false,
+          "sensitive": true,
           "type": "string"
         },
         {
           "key": "subnetCidr",
-          "required": false,
           "type": "string"
         }
       ],
       "provider": "Aruba",
+      "runtimeChecks": [],
       "serviceTypes": [
         "NetworkAndCompute.IaaS.VpnTunnel"
       ]
     },
     {
+      "aliasOfOfferType": null,
       "offerType": "NetworkAndCompute.PaaS.ArubaContainerRegistry",
+      "parameterRules": [],
       "params": [
         {
           "default": "Small",
           "key": "size",
-          "required": false,
           "type": "string"
         }
       ],
       "provider": "Aruba",
+      "runtimeChecks": [],
       "serviceTypes": [
         "NetworkAndCompute.PaaS.ContainerRegistry"
       ]
     },
     {
+      "aliasOfOfferType": null,
       "offerType": "NetworkAndCompute.PaaS.Kubernetes",
+      "parameterRules": [],
       "params": [
         {
           "default": true,
           "key": "ha",
-          "required": false,
           "type": "boolean"
         },
         {
           "key": "kubernetesVersion",
-          "required": false,
           "type": "string"
         },
         {
           "default": 3,
           "key": "nodePoolCount",
-          "required": false,
           "type": "integer"
         },
         {
           "key": "nodePoolFlavor",
-          "required": false,
           "type": "string"
         }
       ],
       "provider": "Aruba",
+      "runtimeChecks": [],
       "serviceTypes": [
         "NetworkAndCompute.PaaS.Kubernetes"
       ]
     },
     {
+      "aliasOfOfferType": null,
       "offerType": "Storage.IaaS.ArubaBlockStorage",
+      "parameterRules": [],
       "params": [
         {
           "key": "sizeGb",
-          "required": false,
           "type": "integer"
         },
         {
           "default": "Standard",
           "key": "type",
-          "required": false,
           "type": "string"
         }
       ],
       "provider": "Aruba",
+      "runtimeChecks": [],
       "serviceTypes": [
         "Storage.IaaS.BlockVolume"
       ]
     },
     {
+      "aliasOfOfferType": null,
       "offerType": "Storage.PaaS.ArubaMsSqlDbms",
+      "parameterRules": [],
       "params": [
         {
           "key": "flavorName",
-          "required": false,
           "type": "string"
         }
       ],
       "provider": "Aruba",
+      "runtimeChecks": [],
       "serviceTypes": [
         "Storage.PaaS.MsSql"
       ]
     },
     {
+      "aliasOfOfferType": null,
       "offerType": "Storage.PaaS.ArubaMySqlDbms",
+      "parameterRules": [],
       "params": [
         {
           "key": "flavorName",
-          "required": false,
           "type": "string"
         }
       ],
       "provider": "Aruba",
+      "runtimeChecks": [],
       "serviceTypes": [
         "Storage.PaaS.MySql"
       ]
     },
     {
+      "aliasOfOfferType": null,
       "offerType": "Storage.PaaS.ArubaObjectStorageAccount",
+      "parameterRules": [],
       "params": [
         {
           "key": "accountName",
-          "required": false,
           "type": "string"
         },
         {
           "key": "password",
           "required": true,
+          "sensitive": true,
           "type": "string"
         },
         {
           "default": "it",
           "key": "regionCode",
-          "required": false,
           "type": "string"
         }
       ],
       "provider": "Aruba",
+      "runtimeChecks": [],
       "serviceTypes": [
         "Storage.PaaS.FilesAndBlobs"
       ]
     },
     {
+      "aliasOfOfferType": null,
       "offerType": "Storage.PaaS.ManagedDatalake",
+      "parameterRules": [],
       "params": [
         {
           "key": "bucketName",
-          "required": false,
           "type": "string"
         },
         {
           "default": "minio",
           "key": "namespace",
-          "required": false,
           "type": "string"
         },
         {
           "default": false,
           "key": "requestAutoCert",
-          "required": false,
           "type": "boolean"
         },
         {
           "default": 4,
           "key": "servers",
-          "required": false,
           "type": "integer"
         },
         {
           "key": "storageClass",
-          "required": false,
           "type": "string"
         },
         {
           "key": "tenantName",
-          "required": false,
           "type": "string"
         },
         {
           "default": "10Gi",
           "key": "volumeSize",
-          "required": false,
           "type": "string"
         },
         {
           "default": 4,
           "key": "volumesPerServer",
-          "required": false,
           "type": "integer"
         }
       ],
       "provider": "Aruba",
+      "runtimeChecks": [],
       "serviceTypes": [
         "BigData.PaaS.ManagedDatalake",
         "Storage.CaaS.MinIO"
       ]
     }
   ],
-  "schemaVersion": "1.0"
+  "schemaVersion": "2.0"
 }

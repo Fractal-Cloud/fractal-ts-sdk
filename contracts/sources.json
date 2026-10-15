@@ -54,12 +54,12 @@
     {
       "agentId": "aria-agent-aruba",
       "repository": "Fractal-Cloud/aria-agent-aruba",
-      "tag": "v0.0.20",
+      "tag": "v0.0.22",
       "fetch": {
         "kind": "release-asset",
         "asset": "param-contract.json"
       },
-      "snapshotSha256": "ab18d07e10fcbfe338395f184c8450642aeacfd4fb7aef90c306bf64ba267fd3"
+      "snapshotSha256": "06fc5b8cad91fab16c4a654439e9b8e7030e10d4ebe7473031c9867a05986f5d"
     },
     {
       "agentId": "aria-agent-openshift",
