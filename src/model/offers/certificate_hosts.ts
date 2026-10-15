@@ -88,12 +88,15 @@ const zoneOf = (host: string, zones: readonly string[]): string | undefined =>
 /**
  * The hosts the certificate of an emitted `TraefikGateway` component covers, or
  * undefined when Traefik does not terminate TLS (or the component is a reference,
- * whose parameters are not known here). As the agent reads them: TLS is on when
- * `tlsSecretName` is set, when the ignored `tlsClusterIssuer` names the issuer of
- * a certificate the gateway already serves, or when the gateway issues its own:
- * its `dnsZones` ask for TXT write on the zone of one of its hosts. `tlsHosts`
- * defaults to `host`. Whether the grant is in force is known only at
- * reconciliation; until it is, the gateway is in progress.
+ * whose parameters are not known here). TLS is on when `tlsSecretName` is set, or
+ * when the gateway issues its own certificate: its `dnsZones` ask for TXT write
+ * on the zone of one of its hosts. `tlsHosts` defaults to `host`, as the agent
+ * reads them. The ignored `tlsClusterIssuer` is no certificate source: the agent
+ * requests nothing from it and only keeps serving a certificate that issuer
+ * already wrote, which a Live System being built cannot know of
+ * (`TraefikGateway` refuses it as the only source). Whether the grant is in
+ * force is known only at reconciliation; until it is, the gateway is in
+ * progress.
  */
 export const gatewayCertificateHosts = (
   parameters: Readonly<Record<string, unknown>>,
@@ -119,5 +122,5 @@ export const gatewayCertificateHosts = (
       const zone = zoneOf(h, names);
       return zones.some(z => z.name === zone && txtWrite(z.access));
     });
-  return secret || issuer || issues ? hosts : undefined;
+  return secret || issues ? hosts : undefined;
 };

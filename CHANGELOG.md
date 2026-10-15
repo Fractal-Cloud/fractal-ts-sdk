@@ -106,15 +106,18 @@ zone of its host now counts as terminating TLS for the `AwsCloudFront` checks (a
 VPC origin, aliases covered by its hosts); the refusal for a gateway without TLS names
 `dnsZones` instead of `tlsClusterIssuer`.
 
-A gateway whose only certificate source is `tlsClusterIssuer` still counts as terminating
-TLS, exactly as aria-agent-caas-k8s v1.6.0 reads it: the agent serves TLS from the
-certificate that issuer issued earlier and leaves it to that issuer to renew. It issues
-none itself from `tlsClusterIssuer`, so a **new** gateway with only `tlsClusterIssuer`
-serves TLS without a certificate: give a new gateway `dnsZones` or `tlsSecretName`.
+A gateway whose only certificate source is `tlsClusterIssuer` is **refused** when the
+Live System is built, naming the gateway and the fix: aria-agent-caas-k8s requests no
+certificate from it, so a new gateway would wait for a Secret nothing writes, and the
+SDK cannot know whether an earlier certificate exists. Give the gateway `dnsZones` with
+TXT write on the zone of its hosts (a certificate already served from the issuer is kept
+until the gateway's own is issued) or `tlsSecretName`, then drop `tlsClusterIssuer`;
+next to either it is accepted and ignored. It no longer counts as terminating TLS for
+the `AwsCloudFront` checks.
 
-`tlsHosts` without a certificate source (no `tlsSecretName`, no `tlsClusterIssuer`, and
-no `dnsZones` with TXT write on the zone of a host) is refused when the Live System is
-built, naming the gateway, as the agent refuses it rather than serve plain HTTP.
+`tlsHosts` without a certificate source (no `tlsSecretName`, and no `dnsZones` with TXT
+write on the zone of a host) is refused when the Live System is built, naming the
+gateway, as the agent refuses it rather than serve plain HTTP.
 
 While a gateway moves to its own issuer the agent warns `TlsServedFromRetiredIssuer`,
 `CertManagerAdoptionHeld` and, on delete, `CertManagerIdentityKept`; see the README.
@@ -132,6 +135,22 @@ icon?})` (an upsert), `get(owner, shortName)` (`null` when absent), `list(owner)
 (`Type/ownerId/shortName`), which an environment's `withResourceGroup` takes. New
 public types: `BoundedContext`, `BoundedContextId`, `BoundedContextOwner`,
 `BoundedContextDefinition`.
+
+### Fixed — refusals never echo a secret; reported validation errors are logged
+
+- A translated value the agent's contract would not take is refused naming the key and
+  what was expected. Its value is withheld by default: shown only when it is a number,
+  a boolean, or an identifier checked against the key's allowed values, and the
+  parameter is neither marked `sensitive` nor named like a secret (password, token,
+  pre-shared key, connection string, ...). Any other string, object or array may carry
+  a credential a contract does not mark (a connection string, user data, a URI with
+  user info).
+- `cloud.liveSystems.deploy` logs, in `wait` mode, every non-blocking issue the control
+  plane reports, an error it does not enforce as well as a warning
+  (`WARN Live System validation error (not enforced): ...`); before, such an error was
+  dropped.
+- The contract generator refuses an offer whose declaring agents share no allowed value
+  for a key, and keeps a key `sensitive` when any of them marks it so.
 
 ### Removed (BREAKING) — `CertificateManager`, `CertificateManagerNode`, `CertManager`, `CertManagerConfig`
 
@@ -153,13 +172,14 @@ operator to remove.
 
 **Why removed, not deprecated.** A deprecated builder would keep emitting a component
 no agent declares, which the agent reconciles to nothing; there is no behavior left to
-deprecate. The removal ships in the 2.13.0 minor, as the `LogShipper` break shipped in
-the 2.11.0 minor. It is a compile error only: deployed infrastructure changes when the
+deprecate. The removal ships in the 2.13.0 minor, by the maintainers' decision: no
+consumer uses these types, so it breaks no one (as the `LogShipper` break shipped in
+the 2.11.0 minor). It is a compile error only: deployed infrastructure changes when the
 component is removed from a Live System, in the order above.
 
 ### Changed — dependencies
 
-- `vitest` and `@vitest/coverage-v8` 5.0.4 (development only).
+- `vitest` and `@vitest/coverage-v8` 5.0.5 (development only).
 
 ### Added — `dependsOn` on every component an offer may need to place
 
@@ -225,11 +245,12 @@ a copy in the SDK. What the SDK no longer refuses at `toLiveSystem()`, and so no
 - `AwsSnsTopic`: `topicName` that is not an SNS name, `maximumMessageSize` outside
   1024–1048576 bytes.
 - `AwsSqsQueue`: `queueName` that is not an SQS name; numeric settings outside their
-  ranges; `filterEventNames` entries; `filterEventNames` together with `filterPolicy`;
-  and the cross-component checks the contracts' cross-field rules are to carry: a queue
-  filtering a subscription while subscribing to no topic, a queue depending on two
-  topics, or on a topic that is not an `AwsSnsTopic`. `dlqAlarm: true` is no longer
-  refused (no contract key; the agent ignores it).
+  ranges. Still refused when the Live System is built, as no contract can express them:
+  a filter event name that is blank or holds a comma (the list travels comma-joined),
+  `filterEventNames` together with `filterPolicy`, a queue filtering a subscription
+  while subscribing to no topic, a queue depending on two topics or on a topic that is
+  not an `AwsSnsTopic`, and `dlqAlarm: true` (no contract key: the agent creates no
+  alarm).
 - `AwsSesIdentity`: `domain` that is not a domain name, `mailFromSubdomain` that is not
   one DNS label or makes the MAIL FROM domain too long, `productionAccess` without its
   `websiteUrl` / `useCaseDescription`, a `websiteUrl` that is not an http(s) URL,

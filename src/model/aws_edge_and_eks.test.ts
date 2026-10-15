@@ -122,7 +122,7 @@ describe('AwsCloudFront — edge in front of the platform gateway', () => {
         traefik: TraefikGateway({
           internalLoadBalancer: true,
           host: 'api.fractal.cloud',
-          tlsClusterIssuer: 'letsencrypt',
+          tlsSecretName: 'api-tls',
         }),
         cdn: AwsCloudFront({
           aliases: ['api.fractal.cloud'],

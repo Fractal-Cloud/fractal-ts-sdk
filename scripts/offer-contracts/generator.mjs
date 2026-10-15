@@ -134,14 +134,24 @@ const mergeParameter = (offerType, key, current, next) => {
   // intersect; an agent that declares none accepts anything.
   if (current.values !== undefined && next.values !== undefined) {
     merged.values = current.values.filter(v => next.values.includes(v));
+    if (merged.values.length === 0) {
+      fail(
+        `${offerType}.${key} takes ${current.values.join(', ')} for ${current.agents.join(', ')} ` +
+          `and ${next.values.join(', ')} for ${next.agents.join(', ')}: no value satisfies every agent`,
+      );
+    }
   } else {
     merged.values = current.values ?? next.values;
   }
   if (merged.values === undefined) {
     delete merged.values;
   }
+  // A secret to one agent is a secret: never redacted less than any agent asks.
+  if (current.sensitive === true || next.sensitive === true) {
+    merged.sensitive = true;
+  }
   for (const member of PARAMETER_MEMBERS) {
-    if (['type', 'required', 'default', 'values'].includes(member)) {
+    if (['type', 'required', 'default', 'values', 'sensitive'].includes(member)) {
       continue;
     }
     if (merged[member] === undefined && next[member] !== undefined) {

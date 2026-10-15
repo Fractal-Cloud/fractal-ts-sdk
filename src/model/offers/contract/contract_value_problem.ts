@@ -66,6 +66,45 @@ const constraintProblem = (
 };
 
 /**
+ * Key names that hold a secret whatever the contract says: an agent may leave
+ * a password or pre-shared key unmarked. An extra guard on top of the default
+ * deny below.
+ */
+const SECRET_KEY =
+  /pass(word|phrase)?|secret|token|credential|private.?key|pre.?shared|psk|api.?key|access.?key|signing.?key|connection.?string/i;
+
+/** A vocabulary value: an identifier, with no room for a URL, user info or key. */
+const VOCABULARY_SHAPE = /^[A-Za-z0-9_.-]{1,64}$/;
+
+/**
+ * How a refusal shows the value. Default deny: only a number or a boolean, or
+ * an identifier-shaped string checked against a closed vocabulary, of a
+ * parameter neither marked `sensitive` nor named like a secret. Any other
+ * string, object or array may carry a credential the contract does not mark
+ * (a connection string, user data, a URI with user info), so it is withheld
+ * and the message says only what was expected.
+ */
+const shownValue = (
+  key: string,
+  param: ContractParameter,
+  value: unknown,
+): string => {
+  if (param.sensitive === true || SECRET_KEY.test(key)) {
+    return '(value withheld: secret)';
+  }
+  if (
+    typeof value === 'boolean' ||
+    (typeof value === 'number' && Number.isFinite(value)) ||
+    (typeof value === 'string' &&
+      param.values !== undefined &&
+      VOCABULARY_SHAPE.test(value.trim()))
+  ) {
+    return JSON.stringify(value);
+  }
+  return '(value withheld)';
+};
+
+/**
  * Why `value` is not one the contract accepts for `key`, or undefined when it
  * is. Checks what the contract carries: that every agent declaring the offer
  * reads the key, its type, its closed vocabulary and its value constraints
@@ -91,7 +130,7 @@ export const contractValueProblem = (
       `${contract.offerType} and ignore${others.length === 1 ? 's' : ''} it`
     );
   }
-  const shown = JSON.stringify(value);
+  const shown = shownValue(key, param, value);
   if (!TYPE_CHECKS[param.type](value)) {
     return `${shown} is not the ${param.type} '${key}' takes`;
   }

@@ -1259,8 +1259,10 @@ TraefikGateway({
 `tlsClusterIssuer` is deprecated: the agent ignores it, with a warning. A gateway that
 served TLS from it keeps serving that certificate, and moves it to its own issuer once
 its grant is in force, so dropping `tlsClusterIssuer` in the same change that adds
-`dnsZones` keeps TLS. The SDK still treats a gateway with `tlsClusterIssuer` and hosts
-as terminating TLS, as the agent does for that certificate.
+`dnsZones` keeps TLS. The agent requests no certificate from `tlsClusterIssuer`, so it is
+no certificate source: a gateway whose only source it is is refused when the Live
+System is built (set `dnsZones` with TXT write on the zone of its hosts, or
+`tlsSecretName`).
 
 While a gateway moves to its own issuer, the agent reports these warnings on it:
 `TlsServedFromRetiredIssuer` (it still serves a Certificate of the retired issuer),
@@ -1281,9 +1283,9 @@ label), checked when the gateway is in the same Live System. An `AwsCloudFront`
 that reaches a same-Live-System gateway without TLS over `https` (its default) is
 refused: that load balancer has no listener on 443.
 
-Refused while building the Live System: `tlsHosts` without a certificate source (no
-`tlsSecretName`, no `tlsClusterIssuer`, and no `dnsZones` with TXT write on the zone of
-a host: the agent refuses it rather than serve plain HTTP), `plainHttp: false` without
+Refused while building the Live System: `tlsClusterIssuer` as the only certificate
+source, `tlsHosts` without a certificate source (no `tlsSecretName`, and no `dnsZones`
+with TXT write on the zone of a host: the agent refuses it rather than serve plain HTTP), `plainHttp: false` without
 TLS, `tlsCertificateArn` with Traefik TLS, TLS without `tlsHosts` or `host`, a
 malformed certificate host, a `host` the certificate does not cover, an invalid
 Kubernetes name, an exempt id that starts or ends with `/`, and a source range that
