@@ -28,7 +28,7 @@ SHA-256. Nothing is fetched when the SDK is built, tested or installed.
 - **Canonical.** Every document is stored with its object keys sorted, so the digest does not
   depend on how a producer orders a map.
 
-Offers whose agent publishes no contract (Hetzner, OpenShift, vSphere, `Keycloak`) stay
+Offers whose agent publishes no contract (Hetzner, vSphere, `Keycloak`) stay
 hand-written until it does; the conformance test (section 3) then requires the move.
 
 ### Refreshing

@@ -40,6 +40,43 @@ Needs fractal-livesystems v2.37.0 and fractal-environments v3.38.0 or later; the
 zone's agent grants only with the `dnsZoneGrants` capability (fractal-cloud-agents
 with DNS zone grants).
 
+### Added — OpenShift offers from aria-agent-openshift's contract; `OpenshiftIpAddressPool`
+
+aria-agent-openshift v0.1.0 publishes its parameter contract; the OpenShift offers are
+generated from it (`contracts/snapshot/aria-agent-openshift.json`) like the cloud offers.
+
+- **New `OpenshiftIpAddressPool`** (Subnet, `NetworkAndCompute.CaaS.OpenshiftIpAddressPool`):
+  a MetalLB `IPAddressPool` and its `L2Advertisement` / `BGPAdvertisement`. Config `name`,
+  `addresses` (CIDRs or ranges), `advertisement`, `interfaces`, `nodeSelector`. The
+  Subnet's `withCidrBlock` becomes its one CIDR; a pool with no addresses is refused.
+- **An `OpenshiftService` of `serviceType: 'LoadBalancer'` takes its address from one
+  pool**, the `OpenshiftIpAddressPool` it declares as its subnet: `toLiveSystem` refuses
+  one without a pool, with two, or with a subnet of another offer (which the agent does
+  not read), like `AwsLb`/`AzureLb`/`GcpGlb`. A ClusterIP (the agent's default) or
+  NodePort Service, with or without a Route, takes no address: it needs no subnet, and
+  one it declares is refused, since the agent would not use it. Config is the agent's
+  (`serviceType`, `port`, `targetPort`, `protocol`, `createRoute`, `routeHostname`,
+  `routeTlsTermination`, `name`); `withScheme` is refused (the address comes from the pool).
+
+### Fixed (BREAKING for TypeScript callers) — OpenShift offer types the agent reconciles
+
+- `OpenshiftSecurityGroup` emitted `NetworkAndCompute.CaaS.OpenshiftNetworkPolicy` and
+  `OpenshiftVm` emitted `NetworkAndCompute.CaaS.OpenshiftVm`; no agent reconciles either.
+  They emit `NetworkAndCompute.CaaS.OpenshiftSecurityGroup` and
+  `NetworkAndCompute.IaaS.OpenshiftVirtualMachine` (delivery model `IaaS`).
+- Neutral setters reach the agent under its keys: security group rules as the JSON
+  strings it parses (egress peer as `destCidr`), `withEnv` as `envVars`, `withResources`
+  as `cpuRequest`/`memoryRequest`/`cpuLimit`/`memoryLimit`, `withPublicSSHKey` as
+  `sshPublicKey`. Those it cannot honor are refused, naming the offer: Workload
+  autoscaling, probes, rollout, disruption budget, node selector, stop hook and timeout,
+  topology spread, `withSecretEnv`, `withDnsZones`; VM `withOsType`, `withSize`,
+  `withTags`; ObjectStorage `withStorageClass` (a tier, not a Kubernetes
+  StorageClass), versioning, encryption, retention, tags and public access.
+- Config types follow the contract. `OpenshiftVm` requires `name` and `image`, and
+  `OpenshiftPersistentVolume` `name` and `storageSize`: the agent refuses either
+  without them although its contract marks them optional. `OpenshiftVm({userData})`
+  alone no longer compiles.
+
 ### Added — `componentAccess` on environment DNS zones
 
 An environment zone (`withDnsZones`) takes `componentAccess`, the ceiling on what its
@@ -227,9 +264,11 @@ backend's bucket link, a load balancer's subnets, an empty list sent as blank.
 
 A load balancer is placed only in the subnets it declares (the agents refuse one
 without a Subnet dependency, fractal-cloud-agents #872), so `LoadBalancer` now takes
-them: `LoadBalancer({id: 'edge-lb', subnets: [subnet]})`, a compile error without
-them. `AwsLb`, `AzureLb` and `GcpGlb` refuse a Live System whose load balancer has no
-dependency on a subnet of their own cloud.
+them: `LoadBalancer({id: 'edge-lb', subnets: [subnet]})`. `AwsLb`, `AzureLb` and
+`GcpGlb` refuse a Live System whose load balancer has no dependency on a subnet of
+their own cloud. Whether a load balancer needs a subnet depends on the offer selected
+for it, so `subnets` is optional on the component and the offer checks it: an OpenShift
+ClusterIP or NodePort Service takes no address and declares none.
 
 ### Changed — offer configs are generated from the agents' published contracts
 

@@ -102,6 +102,54 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
   },
 } as const satisfies OfferContract;
 
+export const CustomWorkloads_CaaS_OpenshiftWorkload = {
+  offerType: 'CustomWorkloads.CaaS.OpenshiftWorkload',
+  serviceTypes: ['CustomWorkloads.CaaS.KubernetesWorkload'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-openshift',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'RedHat',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** Container args override (JSON array) */
+    args: {type: 'string', required: false},
+    /** Container command override (JSON array) */
+    command: {type: 'string', required: false},
+    /** CPU limit per container */
+    cpuLimit: {type: 'string', required: false},
+    /** CPU request per container */
+    cpuRequest: {type: 'string', required: false},
+    /** JSON-encoded environment variables (name to value). `env` is accepted as an alias; `envVars` wins when both are set */
+    envVars: {type: 'string', required: false},
+    /** Container image */
+    image: {type: 'string', required: false},
+    /** Memory limit per container */
+    memoryLimit: {type: 'string', required: false},
+    /** Memory request per container */
+    memoryRequest: {type: 'string', required: false},
+    /** Workload name */
+    name: {type: 'string', required: false},
+    /** Kubernetes namespace (created if missing) */
+    namespace: {type: 'string', required: false, default: 'default'},
+    /** Primary container port */
+    port: {type: 'number', required: false},
+    /** Port protocol (TCP/UDP) */
+    protocol: {type: 'string', required: false, default: 'TCP'},
+    /** Replica count */
+    replicas: {type: 'number', required: false, default: 1},
+    /** Service account to use */
+    serviceAccountName: {type: 'string', required: false},
+    /** JSON-encoded volume mount specs */
+    volumeMounts: {type: 'string', required: false},
+    /** Deployment or StatefulSet */
+    workloadType: {type: 'string', required: false, default: 'Deployment'},
+  },
+} as const satisfies OfferContract;
+
 export const CustomWorkloads_FaaS_AwsLambda = {
   offerType: 'CustomWorkloads.FaaS.AwsLambda',
   serviceTypes: ['NetworkAndCompute.FaaS.Workload'],

@@ -1014,14 +1014,16 @@ as a step-summary section.
 
 The blueprint references the **Component** in the left column; a Live System selects any **Offer** beneath it. Offers with no provider are vendor-neutral self-hosted (run on any cluster).
 
-An offer's config keys, their types and which are required are generated from the parameter contract its agent publishes, so they are exactly the keys the agent reads. A component's neutral setters reach the agent under its own keys (`withSize` becomes `instanceType` on `Ec2Instance`), and one the selected offer's agent cannot honor (`withTags` on `AwsVpc`) is refused by `toLiveSystem` rather than sent unread; see [`docs/offer-contracts.md`](docs/offer-contracts.md). The Hetzner, VMware and OpenShift offers, whose agents publish no contract yet, are hand-written.
+An offer's config keys, their types and which are required are generated from the parameter contract its agent publishes, so they are exactly the keys the agent reads. A component's neutral setters reach the agent under its own keys (`withSize` becomes `instanceType` on `Ec2Instance`), and one the selected offer's agent cannot honor (`withTags` on `AwsVpc`) is refused by `toLiveSystem` rather than sent unread; see [`docs/offer-contracts.md`](docs/offer-contracts.md). The Hetzner and VMware offers, whose agents publish no contract yet, are hand-written.
+
+On OpenShift a `LoadBalancer`'s subnet is a MetalLB IP address pool: select `OpenshiftIpAddressPool` for it (`addresses`, or the Subnet's `withCidrBlock`), and an `OpenshiftService` of `serviceType: 'LoadBalancer'` takes its address from that one pool. A ClusterIP or NodePort `OpenshiftService` takes no address and declares no subnet.
 
 ### NetworkAndCompute
 
 | Component | AWS | Azure | GCP | OCI | Hetzner | VMware | RedHat (OpenShift) |
 |---|---|---|---|---|---|---|---|
 | `VirtualNetwork` | `AwsVpc` | `AzureVnet` | `GcpVpc` | `OciVcn` | `HetznerNetwork` | `VspherePortGroup` | — |
-| `Subnet` | `AwsSubnet` | `AzureSubnet` | `GcpSubnet` | `OciSubnet` | `HetznerSubnet` | `VsphereVlan` | — |
+| `Subnet` | `AwsSubnet` | `AzureSubnet` | `GcpSubnet` | `OciSubnet` | `HetznerSubnet` | `VsphereVlan` | `OpenshiftIpAddressPool` |
 | `SecurityGroup` | `AwsSecurityGroup` | `AzureNsg` | `GcpFirewall` | `OciSecurityList` | `HetznerFirewall` | — | `OpenshiftSecurityGroup` |
 | `VirtualMachine` | `Ec2Instance` | `AzureVm` | `GcpVm` | `OciInstance` | `HetznerServer` | `VsphereVm` | `OpenshiftVm` |
 | `ContainerPlatform` | `Eks`, `EcsCluster` | `Aks`, `AzureContainerAppsEnvironment` | `Gke` | — | — | — | — |

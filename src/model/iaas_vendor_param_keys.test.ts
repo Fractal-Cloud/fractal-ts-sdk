@@ -80,10 +80,29 @@ describe('LoadBalancer subnets', () => {
     expect(lb.dependencies).toEqual(['edge-subnet']);
   });
 
-  it('refuses a load balancer without subnets', () => {
-    expect(() => LoadBalancer({id: 'edge-lb', subnets: [] as never})).toThrow(
-      "LoadBalancer 'edge-lb' needs at least one subnet",
-    );
+  it('refuses a cloud load balancer without subnets when its offer is selected', () => {
+    const bare = createFractal({
+      id: 'edge',
+      version: {major: 1, minor: 0, patch: 0},
+      boundedContextId,
+      blueprint: bp => ({lb: bp.add(LoadBalancer({id: 'edge-lb'}))}),
+      operations: () => ({}),
+    });
+    for (const [offer, subnet] of [
+      [AwsLb({}), 'AwsSubnet'],
+      [AzureLb({}), 'AzureSubnet'],
+      [GcpGlb({}), 'GcpSubnet'],
+    ] as const) {
+      expect(() =>
+        bare.toLiveSystem({
+          name: 'edge-ls',
+          environment,
+          select: {'edge-lb': offer},
+        }),
+      ).toThrow(
+        `LoadBalancer 'edge-lb' has no NetworkAndCompute.IaaS.${subnet} dependency`,
+      );
+    }
   });
 
   it('refuses an AWS load balancer whose subnet is not an AWS subnet', () => {

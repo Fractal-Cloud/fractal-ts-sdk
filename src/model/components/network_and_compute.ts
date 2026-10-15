@@ -190,25 +190,21 @@ const loadBalancerNode = <Id extends string>(
   dependsOn: other => loadBalancerNode<Id>(addDependency(s, other.state.id)),
 });
 /**
- * A load balancer is placed only in the subnets it declares, so it takes at
- * least one: `LoadBalancer({id: 'edge-lb', subnets: [publicSubnet]})`. The
- * agents refuse a load balancer without a Subnet dependency, and there is no
- * fallback placement.
+ * A load balancer is placed only in the subnets it declares:
+ * `LoadBalancer({id: 'edge-lb', subnets: [publicSubnet]})`. Whether it needs
+ * any depends on the offer selected for it, so the offer checks them: the
+ * cloud load balancers (`AwsLb`, `AzureLb`, `GcpGlb`) and an `OpenshiftService`
+ * of type `LoadBalancer` refuse a Live System without one; an OpenShift
+ * ClusterIP or NodePort Service, which takes no address, refuses one.
  */
 export const LoadBalancer = <const Id extends string>(cfg: {
   id: Id;
   displayName?: string;
-  subnets: readonly [SubnetNode, ...SubnetNode[]];
-}): LoadBalancerNode<Id> => {
-  if ((cfg.subnets?.length ?? 0) === 0) {
-    throw new Error(
-      `LoadBalancer '${cfg.id}' needs at least one subnet: it is placed only in the subnets it declares.`,
-    );
-  }
-  return loadBalancerNode<Id>(
-    cfg.subnets.reduce(
+  subnets?: readonly SubnetNode[];
+}): LoadBalancerNode<Id> =>
+  loadBalancerNode<Id>(
+    (cfg.subnets ?? []).reduce(
       (state, subnet) => addDependency(state, subnet.state.id),
       newNode(cfg.id, 'NetworkAndCompute.LoadBalancer', cfg.displayName),
     ),
   );
-};

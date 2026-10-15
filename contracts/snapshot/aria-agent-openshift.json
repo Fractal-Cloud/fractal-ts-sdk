@@ -1,0 +1,346 @@
+{
+  "agentId": "aria-agent-openshift",
+  "agentVersion": "v0.1.0",
+  "offers": [
+    {
+      "aliasOfOfferType": null,
+      "offerType": "CustomWorkloads.CaaS.OpenshiftWorkload",
+      "parameterRules": [],
+      "params": [
+        {
+          "description": "Container args override (JSON array)",
+          "key": "args",
+          "type": "string"
+        },
+        {
+          "description": "Container command override (JSON array)",
+          "key": "command",
+          "type": "string"
+        },
+        {
+          "description": "CPU limit per container",
+          "key": "cpuLimit",
+          "type": "string"
+        },
+        {
+          "description": "CPU request per container",
+          "key": "cpuRequest",
+          "type": "string"
+        },
+        {
+          "description": "JSON-encoded environment variables (name to value). `env` is accepted as an alias; `envVars` wins when both are set",
+          "key": "envVars",
+          "type": "string"
+        },
+        {
+          "description": "Container image",
+          "key": "image",
+          "type": "string"
+        },
+        {
+          "description": "Memory limit per container",
+          "key": "memoryLimit",
+          "type": "string"
+        },
+        {
+          "description": "Memory request per container",
+          "key": "memoryRequest",
+          "type": "string"
+        },
+        {
+          "description": "Workload name",
+          "key": "name",
+          "type": "string"
+        },
+        {
+          "default": "default",
+          "description": "Kubernetes namespace (created if missing)",
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "description": "Primary container port",
+          "key": "port",
+          "type": "number"
+        },
+        {
+          "default": "TCP",
+          "description": "Port protocol (TCP/UDP)",
+          "key": "protocol",
+          "type": "string"
+        },
+        {
+          "default": 1,
+          "description": "Replica count",
+          "key": "replicas",
+          "type": "number"
+        },
+        {
+          "description": "Service account to use",
+          "key": "serviceAccountName",
+          "type": "string"
+        },
+        {
+          "description": "JSON-encoded volume mount specs",
+          "key": "volumeMounts",
+          "type": "string"
+        },
+        {
+          "default": "Deployment",
+          "description": "Deployment or StatefulSet",
+          "key": "workloadType",
+          "type": "string"
+        }
+      ],
+      "provider": "RedHat",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "CustomWorkloads.CaaS.KubernetesWorkload"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.CaaS.OpenshiftIpAddressPool",
+      "parameterRules": [],
+      "params": [
+        {
+          "description": "the CIDRs (10.0.0.0/28) and ranges (10.0.0.10-10.0.0.20) load balancer addresses come from",
+          "key": "addresses",
+          "required": true,
+          "type": "array"
+        },
+        {
+          "default": "L2",
+          "description": "how MetalLB announces the addresses",
+          "key": "advertisement",
+          "type": "string",
+          "values": [
+            "L2",
+            "BGP"
+          ]
+        },
+        {
+          "description": "the node interfaces an L2 announcement uses (all when empty)",
+          "key": "interfaces",
+          "type": "array"
+        },
+        {
+          "description": "the name of the MetalLB IPAddressPool in metallb-system",
+          "key": "name",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "the node labels selecting the announcing nodes (all when empty)",
+          "key": "nodeSelector",
+          "type": "object"
+        }
+      ],
+      "provider": "RedHat",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.Subnet"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.CaaS.OpenshiftSecurityGroup",
+      "parameterRules": [],
+      "params": [
+        {
+          "description": "JSON-encoded egress rules",
+          "key": "egressRules",
+          "type": "string"
+        },
+        {
+          "description": "JSON-encoded ingress rules",
+          "key": "ingressRules",
+          "type": "string"
+        },
+        {
+          "description": "Policy name",
+          "key": "name",
+          "type": "string"
+        },
+        {
+          "description": "JSON-encoded label selector (default: all pods)",
+          "key": "podSelector",
+          "type": "string"
+        },
+        {
+          "default": "Ingress",
+          "description": "Ingress, Egress, or Both",
+          "key": "policyType",
+          "type": "string"
+        }
+      ],
+      "provider": "RedHat",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "NetworkAndCompute.CaaS.SecurityGroup"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.CaaS.OpenshiftService",
+      "parameterRules": [],
+      "params": [
+        {
+          "default": false,
+          "description": "Create an OpenShift Route",
+          "key": "createRoute",
+          "type": "boolean"
+        },
+        {
+          "description": "Service name",
+          "key": "name",
+          "type": "string"
+        },
+        {
+          "description": "Service port",
+          "key": "port",
+          "type": "number"
+        },
+        {
+          "default": "TCP",
+          "description": "Protocol (TCP/UDP)",
+          "key": "protocol",
+          "type": "string"
+        },
+        {
+          "description": "Custom hostname for Route",
+          "key": "routeHostname",
+          "type": "string"
+        },
+        {
+          "description": "TLS termination: edge, passthrough, reencrypt",
+          "key": "routeTlsTermination",
+          "type": "string"
+        },
+        {
+          "default": "ClusterIP",
+          "description": "ClusterIP, NodePort, or LoadBalancer",
+          "key": "serviceType",
+          "type": "string"
+        },
+        {
+          "description": "Target container port",
+          "key": "targetPort",
+          "type": "number"
+        }
+      ],
+      "provider": "RedHat",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "NetworkAndCompute.CaaS.KubernetesService"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.OpenshiftVirtualMachine",
+      "parameterRules": [],
+      "params": [
+        {
+          "default": 1,
+          "description": "Number of CPU cores",
+          "key": "cpuCores",
+          "type": "number"
+        },
+        {
+          "default": "20Gi",
+          "description": "Root disk size",
+          "key": "diskSizeGi",
+          "type": "string"
+        },
+        {
+          "description": "Container disk image or DataVolume source URL",
+          "key": "image",
+          "type": "string"
+        },
+        {
+          "default": "2Gi",
+          "description": "Memory size",
+          "key": "memorySizeGi",
+          "type": "string"
+        },
+        {
+          "description": "VM name",
+          "key": "name",
+          "type": "string"
+        },
+        {
+          "default": "default",
+          "description": "Namespace",
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "description": "Additional network attachment (multus)",
+          "key": "networkName",
+          "type": "string"
+        },
+        {
+          "default": "Always",
+          "description": "Always, RerunOnFailure, Manual, Halted",
+          "key": "runStrategy",
+          "type": "string"
+        },
+        {
+          "description": "SSH public key to inject",
+          "key": "sshPublicKey",
+          "type": "string"
+        },
+        {
+          "description": "StorageClass for DataVolume",
+          "key": "storageClassName",
+          "type": "string"
+        },
+        {
+          "description": "Raw cloud-init user-data (startup script)",
+          "key": "userData",
+          "type": "string"
+        }
+      ],
+      "provider": "RedHat",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.VirtualMachine"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.CaaS.OpenshiftPersistentVolume",
+      "parameterRules": [],
+      "params": [
+        {
+          "default": "ReadWriteOnce",
+          "description": "ReadWriteOnce, ReadWriteMany, ReadOnlyMany",
+          "key": "accessMode",
+          "type": "string"
+        },
+        {
+          "description": "PVC name",
+          "key": "name",
+          "type": "string"
+        },
+        {
+          "default": "trident-nfs",
+          "description": "StorageClass name",
+          "key": "storageClassName",
+          "type": "string"
+        },
+        {
+          "description": "Storage size (e.g. 10Gi)",
+          "key": "storageSize",
+          "type": "string"
+        }
+      ],
+      "provider": "RedHat",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "Storage.CaaS.PersistentVolume"
+      ]
+    }
+  ],
+  "schemaVersion": "2.0"
+}

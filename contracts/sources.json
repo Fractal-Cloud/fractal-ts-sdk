@@ -60,16 +60,22 @@
         "asset": "param-contract.json"
       },
       "snapshotSha256": "ab18d07e10fcbfe338395f184c8450642aeacfd4fb7aef90c306bf64ba267fd3"
+    },
+    {
+      "agentId": "aria-agent-openshift",
+      "repository": "Fractal-Cloud/aria-agent-openshift",
+      "tag": "v0.1.0",
+      "fetch": {
+        "kind": "release-asset",
+        "asset": "param-contract.json"
+      },
+      "snapshotSha256": "5b097c1a3cb0c4988c0668f6233a08782eb713e48571be4fbde4e29c6800def5"
     }
   ],
   "unpublished": [
     {
       "repository": "Fractal-Cloud/aria-agent-hetzner",
       "reason": "No GitHub release has ever been cut, so its release workflow's param-contract.json asset does not exist."
-    },
-    {
-      "repository": "Fractal-Cloud/aria-agent-openshift",
-      "reason": "Releases attach no param-contract.json (no export-contract step)."
     },
     {
       "repository": "Fractal-Cloud/aria-agent-vmware",
