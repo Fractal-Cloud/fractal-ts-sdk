@@ -9,7 +9,7 @@ The version published for a release is the GitHub release tag: `release.yml` run
 `npm version <tag>` at publish time, so `package.json` on `main` is not the source
 of truth for what is on npm.
 
-## Unreleased
+## 2.13.0
 
 ### Removed — `ObservabilityElastic`
 
@@ -41,8 +41,6 @@ it; `toLiveSystem` refuses it otherwise, naming the remedy. The link's `indexPre
 defaults to `<id>-jaeger-`. The config keys `storageSettings` and `storageClassName` are
 removed (a JavaScript caller passing them is refused). Needs the revived Jaeger offer in
 fractal-cloud-agents and the OpenSearch offer in aria-agent-caas-k8s.
-
-## 2.13.0
 
 ### Added — components ask for access to environment DNS zones
 
