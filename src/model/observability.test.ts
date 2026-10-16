@@ -14,12 +14,12 @@ import {
   LogShipper,
 } from './components/observability';
 import {ContainerPlatform} from './components/network_and_compute';
-import {ObjectStorage} from './components/storage';
-import {AwsS3} from './offers/storage';
+import {ObjectStorage, Search} from './components/storage';
+import {searchLinkSettings} from './components/search_link_settings';
+import {AwsS3, StorageOpenSearch} from './offers/storage';
 import {
   Prometheus,
   Jaeger,
-  ObservabilityElastic,
   GrafanaAlloy,
   GrafanaLoki,
 } from './offers/observability';
@@ -46,7 +46,7 @@ function guardedFractal() {
   });
 }
 
-// Prometheus, Jaeger and Elastic read no retention and no sampling rate, so the
+// Prometheus and Jaeger read no retention and no sampling rate, so the
 // blueprint selected with them sets none (they are refused, see below).
 function authorFractal() {
   return createFractal({
@@ -69,7 +69,7 @@ function authorFractal() {
 const fullSelect = () => ({
   monitoring: Prometheus({}),
   tracing: Jaeger({}),
-  logging: ObservabilityElastic({}),
+  logging: GrafanaLoki({}),
 });
 
 describe('Observability domain', () => {
@@ -123,18 +123,28 @@ describe('Observability domain', () => {
       id: 'observability-stack',
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
-      blueprint: bp => ({
-        monitoring: bp.add(Monitoring({id: 'monitoring'})),
-        tracing: bp.add(Tracing({id: 'tracing'})),
-        logging: bp.add(Logging({id: 'logging'})),
-      }),
-    }).toLiveSystem({name: 'acme-obs', environment, select: fullSelect()});
+      blueprint: bp => {
+        const monitoring = bp.add(Monitoring({id: 'monitoring'}));
+        const search = bp.add(Search({id: 'search'}));
+        const tracing = bp.add(Tracing({id: 'tracing'}).dependsOn(search));
+        bp.link(tracing, search, searchLinkSettings({access: 'read-write'}));
+        return {monitoring, search, tracing};
+      },
+    }).toLiveSystem({
+      name: 'acme-obs',
+      environment,
+      select: {
+        monitoring: Prometheus({}),
+        search: StorageOpenSearch({}),
+        tracing: Jaeger({}),
+      },
+    });
 
     const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
     // offer types resolved
     expect(byId['monitoring'].type).toBe('Observability.CaaS.Prometheus');
     expect(byId['tracing'].type).toBe('Observability.CaaS.Jaeger');
-    expect(byId['logging'].type).toBe('Observability.CaaS.Elastic');
+    expect(byId['search'].type).toBe('Storage.CaaS.OpenSearch');
     // vendor-neutral — no provider on any CaaS offer
     expect(byId['monitoring'].provider).toBeUndefined();
     expect(byId['monitoring'].deliveryModel).toBe('CaaS');

@@ -14,6 +14,7 @@ import {
   AwsRdsMySqlDbms,
   AwsRdsPostgresDbms,
   GcpMySqlDbms,
+  StorageOpenSearch,
 } from './storage';
 
 /**
@@ -75,3 +76,22 @@ AwsRdsMySqlDbms({requireSecureTransport: false});
 AwsRdsPostgresDbms({requireSecureTransport: 'true'});
 // @ts-expect-error a string is not a boolean, on MySQL either.
 AwsRdsMySqlDbms({requireSecureTransport: 'false'});
+
+// ── StorageOpenSearch: every key optional, each with its own type ────────────
+StorageOpenSearch({});
+StorageOpenSearch({
+  namespace: 'opensearch',
+  replicas: 3,
+  storage: '100Gi',
+  storageClassName: 'fractal-gp3',
+  memory: '4Gi',
+  cpu: '1',
+  dashboards: true,
+  values: {},
+});
+// @ts-expect-error `replicas` is a number of nodes.
+StorageOpenSearch({replicas: '3'});
+// @ts-expect-error `dashboards` is a boolean.
+StorageOpenSearch({dashboards: 'true'});
+// @ts-expect-error there is no admin password key: the agent generates it.
+StorageOpenSearch({adminPassword: 'secret'});

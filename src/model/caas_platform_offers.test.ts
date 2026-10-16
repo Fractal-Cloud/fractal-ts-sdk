@@ -24,7 +24,8 @@ import {
   Monitoring,
   Tracing,
 } from './components/observability';
-import {ObjectStorage} from './components/storage';
+import {ObjectStorage, Search} from './components/storage';
+import {searchLinkSettings} from './components/search_link_settings';
 import {AwsCloudFront, TraefikGateway} from './offers/api_management';
 import {AwsSqsQueue} from './offers/messaging';
 import {K8sWorkload} from './offers/custom_workloads';
@@ -37,7 +38,7 @@ import {
   Prometheus,
   SqsExporter,
 } from './offers/observability';
-import {AwsS3} from './offers/storage';
+import {AwsS3, StorageOpenSearch} from './offers/storage';
 import {liveSystemIdOf, referenceTo} from './reference';
 
 const environment = {};
@@ -549,21 +550,30 @@ describe('scrapeInterval and samplingRate are refused, never pruned', () => {
       boundedContextId,
       blueprint: bp => {
         const m = Monitoring({id: 'metrics'});
-        const t = Tracing({id: 'traces'});
+        const search = bp.add(Search({id: 'search'}));
+        const t = Tracing({id: 'traces'}).dependsOn(search);
+        const traces = bp.add(
+          sampling === undefined ? t : t.withSamplingRate(sampling),
+        );
+        bp.link(traces, search, searchLinkSettings({access: 'read-write'}));
         return {
           metrics: bp.add(
             scrape === undefined ? m : m.withScrapeInterval(scrape),
           ),
-          traces: bp.add(
-            sampling === undefined ? t : t.withSamplingRate(sampling),
-          ),
+          traces,
+          search,
           bucket: bp.add(ObjectStorage({id: 'bucket'})),
         };
       },
     }).toLiveSystem({
       name: 'platform',
       environment,
-      select: {metrics: monitoring, traces: tracing, bucket: AwsS3({})},
+      select: {
+        metrics: monitoring,
+        traces: tracing,
+        search: StorageOpenSearch({}),
+        bucket: AwsS3({}),
+      },
     });
 
   it.each([

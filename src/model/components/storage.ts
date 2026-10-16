@@ -5,6 +5,7 @@
  *   - Storage.ObjectStorage
  *   - Storage.RelationalDbms
  *   - Storage.RelationalDatabase
+ *   - Storage.Search
  *
  * Each agnostic parameter is a typed `.withXxx()` guardrail setter (locks the
  * key at design time). Built exclusively on the LOCKED engine in ../core.
@@ -157,3 +158,30 @@ export const RelationalDatabase = <const Id extends string>(cfg: {
 export type RelationalDatabaseLink = {
   access: 'read-write' | 'read-only';
 };
+
+// ── Storage.Search ───────────────────────────────────────────────────────────
+/**
+ * A search and analytics engine: full-text search over indices (the catalogue
+ * component `Storage.CaaS.Search`). Consumers link to it with
+ * `searchLinkSettings({access, indexPrefix?})`; it carries no neutral
+ * parameters, since its size is the selected offer's.
+ */
+export type SearchNode<Id extends string = string> = ComponentNode<
+  Id,
+  'Storage.Search'
+> & {
+  /**
+   * Declare a structural dependency: e.g. the ContainerPlatform a self-hosted
+   * offer is installed on, which its agent requires.
+   */
+  dependsOn: (other: AnyNode) => SearchNode<Id>;
+};
+const searchNode = <Id extends string>(s: NodeState): SearchNode<Id> => ({
+  state: s,
+  dependsOn: other => searchNode<Id>(addDependency(s, other.state.id)),
+});
+export const Search = <const Id extends string>(cfg: {
+  id: Id;
+  displayName?: string;
+}): SearchNode<Id> =>
+  searchNode<Id>(newNode(cfg.id, 'Storage.Search', cfg.displayName));

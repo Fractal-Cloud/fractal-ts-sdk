@@ -108,6 +108,8 @@ const UNPUBLISHED: Readonly<Record<string, string>> = {
   VsphereVlan: 'aria-agent-vmware releases no contract',
   VsphereVm: 'aria-agent-vmware releases no contract',
   Keycloak: 'no agent declares Security.CaaS.Keycloak',
+  StorageOpenSearch:
+    'aria-agent-caas-k8s has not released Storage.CaaS.OpenSearch yet',
 };
 
 /** One argument per neutral setter, so every guardrail of a component is set. */

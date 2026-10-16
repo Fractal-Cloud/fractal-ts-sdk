@@ -62,6 +62,8 @@ export * from './ci';
 // Component catalogue (abstract — vendor-agnostic)
 export * from './components/network_and_compute';
 export * from './components/storage';
+export type {SearchLink} from './components/search_link';
+export * from './components/search_link_settings';
 export * from './components/big_data';
 export * from './components/messaging';
 export type {MessagingEntityLink} from './components/messaging_entity_link';
@@ -106,6 +108,7 @@ export type {VmSize} from './components/vm_size';
 export * from './offers/storage';
 export type {AwsRdsStorageType} from './offers/aws_rds_storage_type';
 export type {AwsRdsDbmsConfig} from './offers/aws_rds_dbms_config';
+export type {OpenSearchConfig} from './offers/open_search_config';
 export * from './offers/big_data';
 export * from './offers/messaging';
 export * from './offers/api_management';

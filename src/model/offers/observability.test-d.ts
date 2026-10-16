@@ -6,6 +6,7 @@ import {
   GrafanaAlloy,
   GrafanaLoki,
   GrafanaTempo,
+  Jaeger,
   KubePrometheusStack,
   SqsExporter,
 } from './observability';
@@ -90,3 +91,11 @@ export const alloyIsALogShipper: Offer<'Observability.LogShipper'> =
 export const alloyIsNotLogging: Offer<'Observability.Logging'> = GrafanaAlloy(
   {},
 );
+
+// ── Jaeger: its traces are in the OpenSearch it links to ─────────────────────
+Jaeger({});
+Jaeger({namespace: 'tracing'});
+// @ts-expect-error `storageSettings` is gone: link Jaeger to a StorageOpenSearch.
+Jaeger({storageSettings: {}});
+// @ts-expect-error `storageClassName` is gone: OpenSearch holds the volumes.
+Jaeger({storageClassName: 'gp3'});

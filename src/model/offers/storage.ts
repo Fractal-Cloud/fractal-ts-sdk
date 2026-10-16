@@ -33,6 +33,9 @@ import type {
   Provider,
 } from '../core';
 import type {AwsRdsDbmsConfig} from './aws_rds_dbms_config';
+import type {OpenSearchConfig} from './open_search_config';
+import {OPEN_SEARCH_OFFER_TYPE} from './offer_type_ids';
+import {searchLinkRefusal} from '../components/search_link_refusal';
 
 /**
  * A DBMS offer emits itself PLUS one Database live component per child the
@@ -548,5 +551,57 @@ export const OpenshiftPersistentVolume = defineOffer<
     encryption: unsupported('the agent sets no encryption on the claim'),
     retentionDays: unsupported('a volume claim expires no data'),
     tags: unsupported('the agent applies no tags to it'),
+  },
+});
+
+// ── Storage.Search offers ────────────────────────────────────────────────────
+// Vendor-neutral self-hosted (caas-k8s, Helm), so no `provider`. The service it
+// sits under, `Storage.CaaS.OpenSearch`, is declared by the BFF catalogue.
+
+/**
+ * OpenSearch on Kubernetes (opensearch-project chart, security plugin on): the
+ * agent generates the admin password and a private CA with node and HTTP
+ * certificates, kept in Secrets in the release namespace. Optionally OpenSearch
+ * Dashboards (`dashboards: true`). It depends on the container platform it is
+ * installed on.
+ *
+ * Consumers link to it with `searchLinkSettings({access, indexPrefix?})`; this
+ * component's agent makes each one its own user and role and puts the
+ * credentials in a Secret in the consumer's namespace.
+ *
+ * Output fields: `namespace`, `releaseName`, `chartVersion`, `version`,
+ * `serviceName`, `host`, `port` (`9200`), `url` (`https://<host>:9200`),
+ * `adminSecretName` (key `password`), `caSecretName` (key `ca.crt`),
+ * `dashboardsUrl` (with `dashboards: true`), and per consumer
+ * `linkedCredentials.<consumer>.host|port|url|username|passwordSecretRef|secretNamespace|indexPrefix|access|authMode`.
+ */
+export const StorageOpenSearch = defineOffer<
+  'Storage.Search',
+  OpenSearchConfig
+>({
+  satisfies: 'Storage.Search',
+  offerType: OPEN_SEARCH_OFFER_TYPE,
+  deliveryModel: 'CaaS',
+  validate: (self, all, config) => {
+    const refuse = (why: string): never => {
+      throw new Error(`Live component '${self.id}': ${why}.`);
+    };
+    if (
+      config.replicas !== undefined &&
+      (!Number.isInteger(config.replicas) || config.replicas < 1)
+    ) {
+      refuse(`replicas ${config.replicas} is not a whole number of at least 1`);
+    }
+    for (const consumer of all) {
+      for (const link of consumer.links) {
+        if (link.componentId !== self.id) {
+          continue;
+        }
+        const refusal = searchLinkRefusal(link.settings);
+        if (refusal !== undefined) {
+          refuse(`the link from '${consumer.id}' is refused: ${refusal}`);
+        }
+      }
+    }
   },
 });

@@ -40,3 +40,10 @@ export const AZURE_CONTAINER_APPS_ENVIRONMENT_OFFER_TYPE =
  */
 export const TRAEFIK_GATEWAY_OFFER_TYPE =
   APIManagement_CaaS_TraefikGateway.offerType;
+
+/**
+ * The caas-k8s OpenSearch offer. Two offer modules name it: the offer lives in
+ * `storage.ts`, and `Jaeger` (`observability.ts`) requires a link to one. Spelled
+ * here by hand until aria-agent-caas-k8s publishes it in its contract.
+ */
+export const OPEN_SEARCH_OFFER_TYPE = 'Storage.CaaS.OpenSearch';
