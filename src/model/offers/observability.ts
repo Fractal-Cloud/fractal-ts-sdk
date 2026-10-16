@@ -3,14 +3,13 @@
  *
  * Concrete implementations declaring which abstract Observability Component each
  * satisfies. Vendor knobs live in each offer's config only. These are all
- * vendor-neutral self-hosted CaaS offers (Prometheus/Jaeger/Elastic on any
- * cluster), so they omit `provider`.
+ * vendor-neutral self-hosted CaaS offers (Prometheus, Jaeger, the Grafana stack
+ * on any cluster), so they omit `provider`.
  */
 import {unsupported} from './neutral_rules';
 import {Messaging_PaaS_AwsSqsQueue} from './generated/messaging';
 import {Storage_PaaS_AwsS3, Storage_PaaS_S3} from './generated/storage';
 import {
-  Observability_CaaS_Elastic,
   Observability_CaaS_GrafanaAlloy,
   Observability_CaaS_GrafanaLoki,
   Observability_CaaS_GrafanaTempo,
@@ -24,7 +23,11 @@ import {defineOffer, type LiveSystemComponent} from '../core';
 import type {GrafanaAlloyConfig} from './grafana_alloy_config';
 import type {GrafanaObjectStorageBackendConfig} from './grafana_object_storage_backend_config';
 import type {KubePrometheusStackConfig} from './kube_prometheus_stack_config';
-import {TRAEFIK_GATEWAY_OFFER_TYPE} from './offer_type_ids';
+import {
+  OPEN_SEARCH_OFFER_TYPE,
+  TRAEFIK_GATEWAY_OFFER_TYPE,
+} from './offer_type_ids';
+import {searchLinkRefusal} from '../components/search_link_refusal';
 import {parseRouteLink, routeRefusal} from './route_link_routes';
 import type {SqsExporterConfig} from './sqs_exporter_config';
 
@@ -48,9 +51,30 @@ export const Prometheus = defineOffer<
 });
 
 // ── Observability.Tracing offers ─────────────────────────────────────────────
+/** The keys Jaeger kept its private datastore in; its traces are in OpenSearch now. */
+const JAEGER_RETIRED_KEYS = ['storageSettings', 'storageClassName'] as const;
+
+/** Is this link the one Jaeger keeps its traces through (it carries access)? */
+const carriesAccess = (settings: Readonly<Record<string, unknown>>): boolean =>
+  settings.access !== undefined || settings.accessMode !== undefined;
+
+/**
+ * Jaeger v2 (Java agents), keeping its traces in OpenSearch: it links to exactly
+ * one `StorageOpenSearch` component (or a reference to one) with
+ * `searchLinkSettings({access: 'read-write'})`, and depends on it. That link's
+ * `indexPrefix` defaults to `<id>-jaeger-`. The OpenSearch component makes
+ * Jaeger its own user and puts the credentials in a Secret in Jaeger's
+ * namespace.
+ *
+ * Output fields: `frontendUri`, `version`, `namespace`, `serviceName`,
+ * `otlpGrpcEndpoint`, `otlpHttpEndpoint`, `collectorEndpoint`.
+ */
 export const Jaeger = defineOffer<
   'Observability.Tracing',
-  ContractConfig<typeof Observability_CaaS_Jaeger>
+  ContractConfig<
+    typeof Observability_CaaS_Jaeger,
+    (typeof JAEGER_RETIRED_KEYS)[number]
+  >
 >({
   satisfies: 'Observability.Tracing',
   contract: Observability_CaaS_Jaeger,
@@ -61,22 +85,82 @@ export const Jaeger = defineOffer<
       'sampling is decided by the instrumented applications',
     ),
   },
-});
-
-// ── Observability.Logging offers ─────────────────────────────────────────────
-export const ObservabilityElastic = defineOffer<
-  'Observability.Logging',
-  ContractConfig<
-    typeof Observability_CaaS_Elastic,
-    never,
-    {elasticVersion?: string}
-  >
->({
-  satisfies: 'Observability.Logging',
-  contract: Observability_CaaS_Elastic,
-  deliveryModel: 'CaaS',
-  neutral: {
-    retentionDays: unsupported('the agent sets no retention'),
+  instantiate: (ctx, config) => [
+    {
+      id: ctx.id,
+      displayName: ctx.displayName,
+      type: Observability_CaaS_Jaeger.offerType,
+      deliveryModel: 'CaaS',
+      parameters: {...ctx.parameters, ...config},
+      dependencies: ctx.dependencies,
+      // The OpenSearch link is the one to a dependency that carries access.
+      links: ctx.links.map(link =>
+        ctx.dependencies.includes(link.componentId) &&
+        carriesAccess(link.settings) &&
+        link.settings.indexPrefix === undefined
+          ? {
+              ...link,
+              settings: {...link.settings, indexPrefix: `${ctx.id}-jaeger-`},
+            }
+          : link,
+      ),
+    },
+  ],
+  validate: (self, all, config) => {
+    for (const key of JAEGER_RETIRED_KEYS) {
+      if ((config as Record<string, unknown>)[key] !== undefined) {
+        refuse(
+          self.id,
+          `${key} is no longer read: Jaeger keeps its traces in the OpenSearch ` +
+            "component it links to with searchLinkSettings({access: 'read-write'})",
+        );
+      }
+    }
+    const searchLinks = self.links.filter(l =>
+      all.some(
+        c => c.id === l.componentId && c.type === OPEN_SEARCH_OFFER_TYPE,
+      ),
+    );
+    if (searchLinks.length === 0) {
+      throw new Error(
+        `Live component '${self.id}' keeps its traces in OpenSearch: link it to a ` +
+          `${OPEN_SEARCH_OFFER_TYPE} component with searchLinkSettings({access: ` +
+          "'read-write'}) and make it depend on that component.",
+      );
+    }
+    if (searchLinks.length > 1) {
+      refuse(
+        self.id,
+        `it links to ${searchLinks.length} OpenSearch components; link exactly one`,
+      );
+    }
+    const [link] = searchLinks;
+    const refusal = searchLinkRefusal(link.settings);
+    if (refusal !== undefined) {
+      refuse(
+        self.id,
+        `the link to OpenSearch '${link.componentId}' is refused: ${refusal}`,
+      );
+    }
+    const access =
+      link.settings.access ??
+      (link.settings.accessMode === 'readWrite'
+        ? 'read-write'
+        : link.settings.accessMode);
+    if (access !== 'read-write') {
+      refuse(
+        self.id,
+        `the link to OpenSearch '${link.componentId}' needs access read-write, ` +
+          `got '${String(access)}'`,
+      );
+    }
+    if (!self.dependencies.includes(link.componentId)) {
+      refuse(
+        self.id,
+        `it links to OpenSearch '${link.componentId}' but does not depend on it: ` +
+          'add .dependsOn(...) on that component, so Jaeger waits for it',
+      );
+    }
   },
 });
 

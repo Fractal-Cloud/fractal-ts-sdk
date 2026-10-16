@@ -9,6 +9,39 @@ The version published for a release is the GitHub release tag: `release.yml` run
 `npm version <tag>` at publish time, so `package.json` on `main` is not the source
 of truth for what is on npm.
 
+## Unreleased
+
+### Removed — `ObservabilityElastic`
+
+The Elastic stack is no longer offered: the agents retired `Observability.CaaS.Elastic`
+(fractal-cloud-agents #947), so `ObservabilityElastic` is removed with no deprecation
+window. Select `GrafanaLoki` for `Logging`. Deployed Elastic resources are left running,
+unmanaged.
+
+### Added — `Search` component and `StorageOpenSearch`
+
+- **New component `Search`** (`Storage.Search`, the catalogue's `Storage.CaaS.Search`),
+  with no neutral parameters.
+- **New offer `StorageOpenSearch`** (`Storage.CaaS.OpenSearch`, aria-agent-caas-k8s):
+  OpenSearch on Kubernetes with the security plugin on. Config `namespace`, `replicas`,
+  `storage`, `storageClassName`, `memory`, `cpu`, `dashboards`, `values`, all optional.
+  Hand-written until the agent publishes it in its contract.
+- **New link helper `searchLinkSettings({access, indexPrefix?})`** and type `SearchLink`
+  for a consumer → search link: `access` is `read`, `write` or `read-write` (required);
+  `indexPrefix` defaults to `<consumerId>-`. `toLiveSystem` refuses a link to a
+  `StorageOpenSearch` the agent would refuse: no `access`, an unknown one, or a blank,
+  wildcard or upper-case prefix. The catalogue spelling `accessMode` is accepted.
+- New public type `OpenSearchConfig`.
+
+### Breaking — `Jaeger` keeps its traces in OpenSearch
+
+`Jaeger` no longer has a datastore of its own. It must link to exactly one
+`StorageOpenSearch` (or a reference to one) with `access: 'read-write'` and depend on
+it; `toLiveSystem` refuses it otherwise, naming the remedy. The link's `indexPrefix`
+defaults to `<id>-jaeger-`. The config keys `storageSettings` and `storageClassName` are
+removed (a JavaScript caller passing them is refused). Needs the revived Jaeger offer in
+fractal-cloud-agents and the OpenSearch offer in aria-agent-caas-k8s.
+
 ## 2.13.0
 
 ### Added — components ask for access to environment DNS zones

@@ -1043,6 +1043,7 @@ On OpenShift a `LoadBalancer`'s subnet is a MetalLB IP address pool: select `Ope
 | `ObjectStorage` | `AwsS3` | `AzureBlob` | `GcsBucket` | — | `OpenshiftPersistentVolume` | `MinIO` |
 | `RelationalDbms` | `AwsRdsPostgresDbms` · `AwsRdsMySqlDbms` | `AzurePostgresDbms` | `GcpPostgresDbms` | `ArubaMySqlDbms` | — | — |
 | `RelationalDatabase` | `AwsRdsPostgresDatabase` · `AwsRdsMySqlDatabase` | `AzurePostgresDatabase` | `GcpPostgresDatabase` | — | — | — |
+| `Search` | — | — | — | — | — | `StorageOpenSearch` |
 
 > `RelationalDatabase` components added under a DBMS via an operation are emitted by the **DBMS's own offer** in its vendor family — selecting `AzurePostgresDbms` makes its databases `AzurePostgresDatabase`. They are not independently offer-selected.
 
@@ -1067,6 +1068,36 @@ it; set the TLS parameter there. Anything other than a boolean is refused while 
 Live System is built.
 
 > Requires fractal-cloud-agents v8.22.1 deployed.
+
+#### `StorageOpenSearch` (`Storage.CaaS.OpenSearch`, caas-k8s agent)
+
+OpenSearch installed by Helm on the cluster it depends on, with the security plugin
+on: the agent generates the admin password and a private CA, kept in Secrets in the
+release namespace (no demo certificates, no default password). Every key is optional:
+
+| Key | Type | Default |
+|---|---|---|
+| `namespace` | string | `opensearch` |
+| `replicas` | number | `3` |
+| `storage` | string | `100Gi` (per node) |
+| `storageClassName` | string | resolved as for `GrafanaLoki` |
+| `memory` / `cpu` | string | chart default |
+| `dashboards` | boolean | `false`: install OpenSearch Dashboards |
+| `values` | object | chart values deep-merged over the agent's |
+
+A consumer (a `K8sWorkload`, `Jaeger`, ...) links to it with `searchLinkSettings`:
+
+```ts
+bp.link(orders, search, searchLinkSettings({access: 'read-write', indexPrefix: 'orders-'}));
+```
+
+`access` (`read`, `write`, `read-write`) is required; `indexPrefix` defaults to
+`<consumerId>-` and takes lower-case letters, digits and `-_.` only. The OpenSearch
+component does the link work: it makes the consumer its own user, with a role on
+`<indexPrefix>*` only, and puts the password and the CA (keys `password`, `ca.crt`) in
+a Secret in the consumer's namespace. A `K8sWorkload` receives `SEARCH_URL`,
+`SEARCH_USERNAME`, `SEARCH_PASSWORD_REF`, `SEARCH_INDEX_PREFIX` and `SEARCH_CA_REF`. The
+target may be a reference to another Live System's OpenSearch.
 
 ### Messaging
 
@@ -1313,7 +1344,7 @@ refuses a Live System that sets them instead of letting the platform drop them.
 |---|---|
 | `Monitoring` | `Prometheus` · `KubePrometheusStack` · `SqsExporter` |
 | `Tracing` | `Jaeger` · `GrafanaTempo` |
-| `Logging` | `ObservabilityElastic` · `GrafanaLoki` |
+| `Logging` | `GrafanaLoki` |
 | `LogShipper` | `GrafanaAlloy` |
 
 `LogShipper` (`Observability.LogShipper`) collects the logs of the container platform
@@ -1333,6 +1364,19 @@ Alternatively, the shipper may also `dependsOn(logs)`, the `Logging` component t
 Live-System-level dependency which the web editor cannot express: the catalogue
 models `LogShipper` with the container platform as its only dependency, so the
 component renders outside its platform group in the web canvas.
+
+#### `Jaeger` (`Observability.CaaS.Jaeger`, cloud agents)
+
+Jaeger v2 keeps its traces in OpenSearch. Link it to exactly one `StorageOpenSearch`
+component (or a reference to one) with `access: 'read-write'`, and make it depend on
+that component; the link's `indexPrefix` defaults to `<id>-jaeger-`. Its only key is
+`namespace`.
+
+```ts
+const search = bp.add(Search({id: 'search'}).dependsOn(platform));
+const traces = bp.add(Tracing({id: 'traces'}).dependsOn(platform).dependsOn(search));
+bp.link(traces, search, searchLinkSettings({access: 'read-write'}));
+```
 
 #### The caas-k8s Grafana stack
 
