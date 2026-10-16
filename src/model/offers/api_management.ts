@@ -538,6 +538,24 @@ export const TraefikGateway = defineOffer<
         );
       }
     }
+    // aria-agent-caas-k8s (v1.6.0 and later) ignores tlsClusterIssuer: it requests no
+    // certificate from it, and only keeps serving one that issuer already wrote
+    // until the gateway issues its own. As the only source it would leave a new
+    // gateway waiting for a Secret nothing writes.
+    if (
+      typeof self.parameters.tlsClusterIssuer === 'string' &&
+      self.parameters.tlsClusterIssuer.trim() !== '' &&
+      gatewayCertificateHosts(self.parameters) === undefined
+    ) {
+      refuse(
+        self.id,
+        'tlsClusterIssuer is ignored by aria-agent-caas-k8s, which requests no certificate ' +
+          'from it, so this gateway has no certificate source. Fix: give the gateway ' +
+          'withDnsZones with TXT write on the zone of its hosts (it issues its own ' +
+          'certificate; one already served from the issuer is kept until then), or set ' +
+          'tlsSecretName; then remove tlsClusterIssuer',
+      );
+    }
     // tlsHosts asks for TLS: the agent refuses it without a certificate source
     // rather than serve plain HTTP (aria-agent-caas-k8s v1.6.0). The source is
     // the component's dnsZones as sent; an Interface operation may change them.

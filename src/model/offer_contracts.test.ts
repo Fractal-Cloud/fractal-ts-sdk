@@ -621,7 +621,7 @@ describe('offers and the contracts their agents publish', () => {
       cpu: 1,
     });
     expect(() => run('AwsLambda', {memory: '512'})).toThrow(
-      `"512" is not the integer 'memoryMb' takes`,
+      `(value withheld) is not the integer 'memoryMb' takes`,
     );
   });
 

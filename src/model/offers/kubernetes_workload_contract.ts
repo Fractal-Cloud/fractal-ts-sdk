@@ -256,6 +256,16 @@ const ensureSecretEnvReferences = (
  * terminationGracePeriodSeconds, preStopSleepSeconds, the probes,
  * topologySpread, nodeSelector, env, secretEnv, ssmParameters,
  * sesIdentityArns) already carries its canonical name.
+ *
+ * Their values are not re-checked here: aria-agent-caas-k8s (v1.6.0 and later)
+ * refuses the component, naming the parameter, for autoscaling.maxReplicas below
+ * minReplicas, a targetCpuUtilization that is not a percentage, replicas 0 with
+ * autoscaling, maxSurge and maxUnavailable both 0, preStopSleepSeconds not
+ * shorter than terminationGracePeriodSeconds and a probe path that is not
+ * absolute (`internal/workload/spec.go`), and for an ssmParameters service,
+ * access or kmsKeyArn or a sesIdentityArns entry it cannot use
+ * (`internal/workload/param_grants.go`). The agent's contract does not carry
+ * these rules yet, so the control plane cannot refuse them before deploy.
  */
 export const toKubernetesWorkloadParameters = (
   input: Record<string, unknown>,

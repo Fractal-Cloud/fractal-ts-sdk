@@ -277,9 +277,12 @@ const enforceValidation = (
         })),
       ),
     ),
-  ].filter(w => !w.issue.blocking && w.issue.severity === 'warn');
+  ].filter(w => !w.issue.blocking);
+  // A non-blocking issue is reported, never dropped: a warning, or an error the
+  // control plane does not enforce (report mode).
   for (const {issue, component, field} of warnings) {
-    log(quiet, 'WARN', `Live System validation warning: ${issue.message}`, {
+    const kind = issue.severity === 'warn' ? 'warning' : 'error (not enforced)';
+    log(quiet, 'WARN', `Live System validation ${kind}: ${issue.message}`, {
       system,
       ...(component === '' ? {} : {component}),
       ...(field === '' ? {} : {field}),

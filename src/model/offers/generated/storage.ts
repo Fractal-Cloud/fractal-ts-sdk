@@ -356,8 +356,8 @@ export const Storage_IaaS_ArubaBlockStorage = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },
@@ -374,8 +374,8 @@ export const Storage_PaaS_ArubaMsSqlDbms = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },
@@ -391,8 +391,8 @@ export const Storage_PaaS_ArubaMySqlDbms = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },
@@ -408,15 +408,15 @@ export const Storage_PaaS_ArubaObjectStorageAccount = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },
   ],
   params: {
     accountName: {type: 'string', required: false},
-    password: {type: 'string', required: true},
+    password: {type: 'string', required: true, sensitive: true},
     regionCode: {type: 'string', required: false, default: 'it'},
   },
 } as const satisfies OfferContract;
@@ -1217,8 +1217,8 @@ export const Storage_PaaS_ManagedDatalake = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },

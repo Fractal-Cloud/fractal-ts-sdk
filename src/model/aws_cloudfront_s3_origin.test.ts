@@ -334,7 +334,7 @@ describe('AwsCloudFront — static site from an S3 bucket', () => {
     ],
     [
       'Traefik TLS whose certificate does not cover the alias',
-      {host: 'api.example.com', tlsClusterIssuer: 'letsencrypt'},
+      {host: 'api.example.com', tlsSecretName: 'api-tls'},
     ],
     ['no TLS at all', {host: 'api.example.com'}],
   ])(

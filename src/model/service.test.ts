@@ -374,6 +374,37 @@ describe('liveSystems.deploy()', () => {
     log.mockRestore();
   });
 
+  it('logs an error the control plane reports but does not enforce, and deploys', async () => {
+    const reported = {
+      ...issue('error', 'bucket is not a bucket name.'),
+      blocking: false,
+      code: 'pattern',
+    };
+    h.state.queue = [
+      {status: 404},
+      result([reported]),
+      {status: 201},
+      {status: 200, body: {status: 'Active'}},
+      {status: 200, body: {status: 'Active', components: []}},
+    ];
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await cloud.liveSystems.deploy(liveSystem(), {
+      mode: 'wait',
+      pollIntervalMs: 1,
+      timeoutMs: 5000,
+    });
+    const lines = log.mock.calls.map(c => String(c[0]));
+    expect(
+      lines.some(
+        l =>
+          l.includes(
+            'WARN  Live System validation error (not enforced): bucket is not a bucket name.  system=',
+          ) && l.endsWith('component=uploads field=/bucket code=pattern'),
+      ),
+    ).toBe(true);
+    log.mockRestore();
+  });
+
   it('refuses silently in fire-and-forget, and logs nothing', async () => {
     h.state.queue = [
       {status: 404},
