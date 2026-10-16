@@ -149,6 +149,56 @@ describe('generator', () => {
     expect(offer.params.get('k').values).toEqual(['q']);
   });
 
+  const twoAgents = (
+    first: Record<string, unknown>,
+    second: Record<string, unknown>,
+  ) => {
+    const a = {
+      schemaVersion: '2.0',
+      agentId: 'a',
+      agentVersion: 'v1',
+      offers: [
+        {
+          offerType: 'X.CaaS.Y',
+          provider: 'CaaS',
+          params: [{key: 'k', type: 'string', ...first}],
+        },
+      ],
+    };
+    const b = {
+      ...a,
+      agentId: 'b',
+      offers: [
+        {
+          offerType: 'X.CaaS.Y',
+          provider: 'CaaS',
+          params: [{key: 'k', type: 'string', ...second}],
+        },
+      ],
+    };
+    return [a, b];
+  };
+
+  it('refuses agents whose vocabularies share no value', () => {
+    expect(() =>
+      buildModel(twoAgents({values: ['p', 'q']}, {values: ['r', 's']})),
+    ).toThrow(
+      "X.CaaS.Y.k takes p, q for a and r, s for b: no value satisfies every agent",
+    );
+  });
+
+  it('keeps a key sensitive when any agent marks it so', () => {
+    for (const [first, second] of [
+      [{sensitive: false}, {sensitive: true}],
+      [{sensitive: true}, {sensitive: false}],
+      [{}, {sensitive: true}],
+      [{sensitive: true}, {}],
+    ]) {
+      const [offer] = buildModel(twoAgents(first, second));
+      expect(offer.params.get('k').sensitive).toBe(true);
+    }
+  });
+
   it('refuses agents that disagree on what a key is', () => {
     const go = fixture('go-agent');
     go.offers[0].params.push({key: 'storageSize', type: 'integer'});
@@ -275,22 +325,22 @@ describe('contract values', () => {
 
   it.each([
     ['name', 'ab', undefined],
-    ['name', 'A1', `'name' "A1" does not match [a-z]+`],
-    ['name', 'a', `'name' "a" is shorter than 2`],
-    ['name', 'abcde', `'name' "abcde" is longer than 4`],
+    ['name', 'A1', `'name' (value withheld) does not match [a-z]+`],
+    ['name', 'a', `'name' (value withheld) is shorter than 2`],
+    ['name', 'abcde', `'name' (value withheld) is longer than 4`],
     ['soft', 'A1', undefined],
     ['tier', 'premium', undefined],
     ['tier', 'Gold', `"Gold" is not one of Basic, Premium for 'tier'`],
     ['zones', ['1', '2'], undefined],
-    ['zones', ['3'], `["3"] is not one of 1, 2 for 'zones'`],
+    ['zones', ['3'], `(value withheld) is not one of 1, 2 for 'zones'`],
     ['label', 'y', undefined],
     ['count', 2, undefined],
     ['count', 2.5, `2.5 is not the integer 'count' takes`],
     ['count', 0, `'count' 0 is below 1`],
     ['count', 4, `'count' 4 is above 3`],
-    ['ratio', 'x', `"x" is not the number 'ratio' takes`],
-    ['on', 'true', `"true" is not the boolean 'on' takes`],
-    ['spec', [], `[] is not the object 'spec' takes`],
+    ['ratio', 'x', `(value withheld) is not the number 'ratio' takes`],
+    ['on', 'true', `(value withheld) is not the boolean 'on' takes`],
+    ['spec', [], `(value withheld) is not the object 'spec' takes`],
     ['missing', 1, `X.CaaS.Y declares no 'missing'`],
   ])('%s = %j', (key, value, problem) => {
     expect(contractValueProblem(contract, key, value)).toBe(problem);

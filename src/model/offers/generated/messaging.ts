@@ -566,8 +566,8 @@ export const Messaging_PaaS_ManagedKafka = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },
@@ -584,8 +584,8 @@ export const Messaging_PaaS_ManagedKafkaTopic = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },

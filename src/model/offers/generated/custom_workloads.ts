@@ -9,8 +9,8 @@ export const CustomWorkloads_CaaS_ArubaWorkload = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },

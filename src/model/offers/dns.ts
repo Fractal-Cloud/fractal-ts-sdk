@@ -15,6 +15,18 @@ import {defineOffer} from '../core';
  * us-east-1. `adoptExisting` claims an untagged zone of the same
  * name instead of only reporting it.
  */
+/*
+ * The zone's guardrails are set through `DnsZone`'s setters, which refuse an
+ * `allowBulkDelete` that is not a boolean and a `recordManagement` other than
+ * `authoritative` or `lax`, and are omitted from this offer's config. A value
+ * that bypasses them (a raw operation `set`, a cast) is checked downstream:
+ * `allowBulkDelete` is typed `boolean` in the agent's contract (the control
+ * plane refuses another type before deploy), and the agent refuses an unknown
+ * `recordManagement`. Only `additive` it reads, and holds the zone: no record
+ * set is created, changed or deleted until it declares `authoritative` or
+ * `lax`. Declaring the vocabulary in the agent's contract would refuse it
+ * before deploy.
+ */
 export const AwsRoute53HostedZone = defineOffer<
   'NetworkAndCompute.DnsZone',
   ContractConfig<

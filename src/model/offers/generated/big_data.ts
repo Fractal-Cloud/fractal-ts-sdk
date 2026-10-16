@@ -2235,8 +2235,8 @@ export const BigData_PaaS_SparkPlatform = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },
@@ -2253,8 +2253,8 @@ export const BigData_PaaS_SparkPlatformCluster = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },
@@ -2276,8 +2276,8 @@ export const BigData_PaaS_SparkPlatformJob = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },
@@ -2297,8 +2297,8 @@ export const BigData_PaaS_SparkPlatformMlExperiment = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },

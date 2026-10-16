@@ -298,6 +298,7 @@ export const KafkaTopic = defineOffer<
   },
 });
 const AWS_SQS_QUEUE_TYPE = Messaging_PaaS_AwsSqsQueue.offerType;
+const AWS_SNS_TOPIC_TYPE = Messaging_PaaS_AwsSnsTopic.offerType;
 
 /**
  * A standard Amazon SNS topic: the events a Domain Service publishes. Other
@@ -486,7 +487,8 @@ export const AwsSqsQueue = defineOffer<
   },
   instantiate: (ctx, config) => {
     // dlqAlarm is no key of the agent's contract (it creates no alarm). false is
-    // what the agent does anyway, so it is dropped rather than sent.
+    // what the agent does anyway, so it is dropped rather than sent; any other
+    // value is refused in validate.
     const {filterEventNames, filterPolicy, ...rest} = config;
     const given = {...rest} as Record<string, unknown>;
     if (given['dlqAlarm'] === false) {
@@ -518,5 +520,58 @@ export const AwsSqsQueue = defineOffer<
         links: ctx.links,
       },
     ];
+  },
+  // What the contract cannot express: the queue's dependency structure, how the
+  // filters combine with it, the encoding of the comma-joined event names, and a
+  // value no contract key carries. Parameter values are the control plane's.
+  validate: (self, all, config) => {
+    if (
+      self.parameters['dlqAlarm'] !== undefined &&
+      self.parameters['dlqAlarm'] !== false
+    ) {
+      throw new Error(
+        `AwsSqsQueue '${self.id}': dlqAlarm cannot be honored, the agent creates no CloudWatch alarm. ` +
+          'Fix: remove dlqAlarm, and alert on the dead-letter queue depth in Prometheus / Grafana.',
+      );
+    }
+    const messagingDependencies = all.filter(
+      c => self.dependencies.includes(c.id) && c.type.startsWith('Messaging.'),
+    );
+    const foreign = messagingDependencies.find(
+      c => c.type !== AWS_SNS_TOPIC_TYPE,
+    );
+    if (foreign) {
+      throw new Error(
+        `AwsSqsQueue '${self.id}' can subscribe only to an AwsSnsTopic, but '${foreign.id}' ` +
+          `is a ${foreign.type}.`,
+      );
+    }
+    if (messagingDependencies.length > 1) {
+      throw new Error(
+        `AwsSqsQueue '${self.id}' subscribes to at most one AwsSnsTopic, but depends on ` +
+          `[${messagingDependencies.map(c => c.id).join(', ')}]. Give each subscription its own queue.`,
+      );
+    }
+    const names = config.filterEventNames ?? [];
+    if (names.length > 0 && config.filterPolicy !== undefined) {
+      throw new Error(
+        `AwsSqsQueue '${self.id}': set either filterEventNames or filterPolicy, not both.`,
+      );
+    }
+    const badName = names.find(n => n.trim() === '' || n.includes(','));
+    if (badName !== undefined) {
+      throw new Error(
+        `AwsSqsQueue '${self.id}': filterEventNames holds '${badName}', which is blank or holds a comma.`,
+      );
+    }
+    if (
+      (names.length > 0 || config.filterPolicy !== undefined) &&
+      messagingDependencies.length === 0
+    ) {
+      throw new Error(
+        `AwsSqsQueue '${self.id}': a filter filters a subscription, but '${self.id}' subscribes ` +
+          'to no topic. Subscribe it with withTopic(topic).',
+      );
+    }
   },
 });

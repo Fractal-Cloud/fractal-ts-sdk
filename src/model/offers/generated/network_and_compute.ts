@@ -179,8 +179,8 @@ export const NetworkAndCompute_IaaS_ArubaCloudServer = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },
@@ -198,13 +198,18 @@ export const NetworkAndCompute_IaaS_ArubaElasticIp = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },
   ],
-  params: {},
+  params: {
+    /** Aruba region */
+    location: {type: 'string', required: false, default: 'ITBG-Bergamo'},
+    /** Elastic IP name (default: fct-<component id>) */
+    name: {type: 'string', required: false},
+  },
 } as const satisfies OfferContract;
 
 export const NetworkAndCompute_IaaS_ArubaSecurityGroup = {
@@ -213,13 +218,16 @@ export const NetworkAndCompute_IaaS_ArubaSecurityGroup = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },
   ],
-  params: {},
+  params: {
+    /** Security group name (default: fractal-mgd-<component id>) */
+    name: {type: 'string', required: false},
+  },
 } as const satisfies OfferContract;
 
 export const NetworkAndCompute_IaaS_ArubaSshKeyPair = {
@@ -228,8 +236,8 @@ export const NetworkAndCompute_IaaS_ArubaSshKeyPair = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },
@@ -246,8 +254,8 @@ export const NetworkAndCompute_IaaS_ArubaSubnet = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },
@@ -263,8 +271,8 @@ export const NetworkAndCompute_IaaS_ArubaVpc = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },
@@ -283,8 +291,8 @@ export const NetworkAndCompute_IaaS_ArubaVpcPeering = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },
@@ -300,15 +308,15 @@ export const NetworkAndCompute_IaaS_ArubaVpnTunnel = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },
   ],
   params: {
     peerPublicIp: {type: 'string', required: false},
-    presharedKey: {type: 'string', required: false},
+    presharedKey: {type: 'string', required: false, sensitive: true},
     subnetCidr: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1313,8 +1321,8 @@ export const NetworkAndCompute_PaaS_ArubaContainerRegistry = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },
@@ -1886,8 +1894,8 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.20',
-      contractSchemaVersion: '1.0',
+      agentVersion: 'v0.0.22',
+      contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },

@@ -201,17 +201,74 @@ describe('TraefikGateway platform keys', () => {
       'traefik',
     );
 
-  it('terminates TLS with a cert-manager certificate and keeps port 80 while migrating', () => {
-    expect(
+  // aria-agent-caas-k8s (v1.6.0 and later) ignores tlsClusterIssuer: it only keeps serving
+  // a certificate that issuer already wrote, and requests none. A gateway whose
+  // only certificate source it is would wait for a Secret nothing writes.
+  it.each([
+    ['host', {host: 'api.fractal.cloud', tlsClusterIssuer: 'letsencrypt'}],
+    [
+      'tlsHosts',
+      {
+        host: 'api.fractal.cloud',
+        tlsClusterIssuer: 'letsencrypt',
+        tlsHosts: ['api.fractal.cloud'],
+      },
+    ],
+  ])('refuses tlsClusterIssuer as the only certificate source (%s)', (_, config) => {
+    expect(() => gateway(config)).toThrow(
+      "Live component 'traefik': tlsClusterIssuer is ignored by aria-agent-caas-k8s, " +
+        'which requests no certificate from it, so this gateway has no certificate source. ' +
+        'Fix: give the gateway withDnsZones with TXT write on the zone of its hosts (it ' +
+        'issues its own certificate; one already served from the issuer is kept until then), ' +
+        'or set tlsSecretName; then remove tlsClusterIssuer.',
+    );
+  });
+
+  it('accepts tlsClusterIssuer next to the certificate source that replaces it', () => {
+    const migrating = createFractal({
+      id: 'platform-gateway',
+      version,
+      boundedContextId,
+      blueprint: bp => ({
+        traefik: bp.add(
+          ApiGateway({id: 'traefik'}).withDnsZones([
+            {name: 'fractal.cloud', access: {TXT: 'write'}},
+          ]),
+        ),
+      }),
+    });
+    expect(() =>
+      migrating.toLiveSystem({
+        name: 'platform',
+        environment,
+        select: {
+          traefik: TraefikGateway({
+            host: 'api.fractal.cloud',
+            tlsClusterIssuer: 'letsencrypt',
+          }),
+        },
+      }),
+    ).not.toThrow();
+    expect(() =>
       gateway({
         host: 'api.fractal.cloud',
         tlsClusterIssuer: 'letsencrypt',
+        tlsSecretName: 'api-tls',
+      }),
+    ).not.toThrow();
+  });
+
+  it('terminates TLS with an operator certificate and keeps port 80 while migrating', () => {
+    expect(
+      gateway({
+        host: 'api.fractal.cloud',
+        tlsSecretName: 'api-tls',
         tlsHosts: ['api.fractal.cloud', '*.api.fractal.cloud'],
         plainHttp: true,
       }).parameters,
     ).toEqual({
       host: 'api.fractal.cloud',
-      tlsClusterIssuer: 'letsencrypt',
+      tlsSecretName: 'api-tls',
       tlsHosts: 'api.fractal.cloud,*.api.fractal.cloud',
       plainHttp: true,
     });
@@ -227,7 +284,7 @@ describe('TraefikGateway platform keys', () => {
     expect(() =>
       gateway({
         host: 'api.fractal.cloud',
-        tlsClusterIssuer: 'letsencrypt',
+        tlsSecretName: 'api-tls',
         tlsHosts: ['*.fractal.cloud'],
       }),
     ).not.toThrow();
@@ -298,7 +355,7 @@ describe('TraefikGateway platform keys', () => {
     [
       {
         host: 'api.fractal.cloud',
-        tlsClusterIssuer: 'letsencrypt',
+        tlsSecretName: 'api-tls',
         tlsHosts: [],
       },
       /tlsHosts is an empty list/,
@@ -331,7 +388,7 @@ describe('TraefikGateway platform keys', () => {
         select: {
           traefik: TraefikGateway({
             host: 'api.fractal.cloud',
-            tlsClusterIssuer: 'letsencrypt',
+            tlsSecretName: 'api-tls',
           }),
           cdn: AwsCloudFront({
             aliases: ['api.fractal.cloud'],
@@ -695,7 +752,7 @@ describe('TLS gateway certificate coverage', () => {
     });
   const TLS = {
     host: 'api.fractal.cloud',
-    tlsClusterIssuer: 'letsencrypt',
+    tlsSecretName: 'api-tls',
     tlsHosts: ['api.fractal.cloud', '*.apps.fractal.cloud'],
   };
 
@@ -836,7 +893,7 @@ describe('CloudFront alias coverage edge cases', () => {
     });
   const TLS = {
     host: 'api.fractal.cloud',
-    tlsClusterIssuer: 'letsencrypt',
+    tlsSecretName: 'api-tls',
     tlsHosts: ['api.fractal.cloud', '*.apps.fractal.cloud'],
   };
 
@@ -975,7 +1032,7 @@ describe('KubePrometheusStack route link to a TraefikGateway', () => {
         },
         TraefikGateway({
           host: 'api.fractal.cloud',
-          tlsClusterIssuer: 'letsencrypt',
+          tlsSecretName: 'api-tls',
         }),
       ),
     ).toThrow(

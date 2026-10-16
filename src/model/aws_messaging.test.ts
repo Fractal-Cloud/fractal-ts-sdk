@@ -153,6 +153,95 @@ describe('AwsSqsQueue', () => {
     expect(inbox.parameters).not.toHaveProperty('dlqAlarm');
   });
 
+  it('refuses dlqAlarm true: the agent creates no alarm', () => {
+    expect(() =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      build(AwsSqsQueue({dlqAlarm: true} as any)),
+    ).toThrow(
+      "AwsSqsQueue 'inbox': dlqAlarm cannot be honored, the agent creates no CloudWatch alarm. " +
+        'Fix: remove dlqAlarm, and alert on the dead-letter queue depth in Prometheus / Grafana.',
+    );
+  });
+
+  it('refuses filterEventNames together with filterPolicy', () => {
+    expect(() =>
+      build(AwsSqsQueue({filterEventNames: ['A'], filterPolicy: {x: ['y']}})),
+    ).toThrow(
+      "AwsSqsQueue 'inbox': set either filterEventNames or filterPolicy, not both.",
+    );
+  });
+
+  it.each([[''], ['  '], ['A,B']])(
+    'refuses the filter event name %j, which the comma-separated list cannot carry',
+    name => {
+      expect(() =>
+        build(AwsSqsQueue({filterEventNames: ['Ok', name]})),
+      ).toThrow(
+        `AwsSqsQueue 'inbox': filterEventNames holds '${name}', which is blank or holds a comma.`,
+      );
+    },
+  );
+
+  const queueOf = (topics: number) =>
+    createFractal({
+      id: 'subs',
+      version: {major: 1, minor: 0, patch: 0},
+      boundedContextId,
+      blueprint: bp => {
+        const a = bp.add(MessagingEntity({id: 'a'}));
+        const b = bp.add(MessagingEntity({id: 'b'}));
+        const base = MessagingEntity({id: 'q'});
+        const q = bp.add(
+          topics === 0
+            ? base
+            : topics === 1
+              ? base.withTopic(a)
+              : base.withTopic(a).withTopic(b),
+        );
+        return {a, b, q};
+      },
+    });
+
+  it('refuses a filter on a queue that subscribes to no topic', () => {
+    expect(() =>
+      queueOf(0).toLiveSystem({
+        name: 'subs',
+        environment,
+        select: {
+          a: AwsSnsTopic({}),
+          b: AwsSnsTopic({}),
+          q: AwsSqsQueue({filterEventNames: ['A']}),
+        },
+      }),
+    ).toThrow(
+      "AwsSqsQueue 'q': a filter filters a subscription, but 'q' subscribes to no topic. Subscribe it with withTopic(topic).",
+    );
+  });
+
+  it('refuses a queue subscribed to two topics', () => {
+    expect(() =>
+      queueOf(2).toLiveSystem({
+        name: 'subs',
+        environment,
+        select: {a: AwsSnsTopic({}), b: AwsSnsTopic({}), q: AwsSqsQueue({})},
+      }),
+    ).toThrow(
+      "AwsSqsQueue 'q' subscribes to at most one AwsSnsTopic, but depends on [a, b]. Give each subscription its own queue.",
+    );
+  });
+
+  it('refuses a queue subscribed to something that is not an SNS topic', () => {
+    expect(() =>
+      queueOf(1).toLiveSystem({
+        name: 'subs',
+        environment,
+        select: {a: AwsSqsQueue({}), b: AwsSnsTopic({}), q: AwsSqsQueue({})},
+      }),
+    ).toThrow(
+      "AwsSqsQueue 'q' can subscribe only to an AwsSnsTopic, but 'a' is a Messaging.PaaS.AwsSqsQueue.",
+    );
+  });
+
   it('maps the neutral retention and delivery-attempt guardrails onto the queue', () => {
     const inbox = createFractal({
       id: 'neutral-queue',
