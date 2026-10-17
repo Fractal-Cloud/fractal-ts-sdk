@@ -115,7 +115,8 @@ consumer is known to use the removed APIs). Each item links to its section below
   `errorDocument`); `TraefikGateway` namespace, ForwardAuth settings, header names,
   exempt ids, body size, source ranges, host, replicas, idle timeout, ACM ARN, TLS
   Secret name and hosts, `host` coverage, `plainHttp: false` without TLS, an NLB TLS
-  listener with Traefik TLS, and the removed `forwardAuthExcludedPrefixes`; `Eks` node
+  listener with Traefik TLS, `acmeEmail` and `acmeServer` (the retired `CertManager`'s
+  rules, now the gateway's), and the removed `forwardAuthExcludedPrefixes`; `Eks` node
   pools (names, the reserved `system` / `general-purpose`, repeats, architectures,
   capacity types) and control-plane log types; `KubePrometheusStack`, `GrafanaLoki`,
   `GrafanaTempo`, `GrafanaAlloy` and `SqsExporter` namespaces, storage classes,

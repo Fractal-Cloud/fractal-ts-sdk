@@ -221,6 +221,14 @@ describe('TraefikGateway', () => {
       },
       "tlsCertificateArn and Traefik TLS (tlsSecretName, or the gateway's own certificate) both need port 443: choose one",
     ],
+    [
+      {acmeEmail: 'ops at example.com'},
+      "acmeEmail 'ops at example.com' is not an email address",
+    ],
+    [
+      {acmeServer: 'http://acme.example.com/dir'},
+      "acmeServer 'http://acme.example.com/dir' is neither production, staging nor an https ACME directory URL",
+    ],
   ])('refuses %o', (config, why) => {
     expect(() => gateway(config)).toThrow(`Live component 'traefik': ${why}.`);
   });

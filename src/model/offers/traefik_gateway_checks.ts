@@ -14,6 +14,7 @@ import {
 } from './certificate_hosts';
 import {
   ensureNamespace,
+  hasMalformedEscape,
   isCidr,
   isWholeAtLeastOne,
   refuseCaas,
@@ -27,6 +28,20 @@ const HOST_NAME =
   /^(?=.{1,253}$)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/i;
 const ACM_CERTIFICATE_ARN =
   /^arn:aws[a-z-]*:acm:[a-z0-9-]+:\d{12}:certificate\/[A-Za-z0-9-]+$/;
+
+/** One dot-separated atom of an address, as Go's `net/mail` reads one. */
+const ATOM = '[^\\s@<>()[\\]\\\\,;:".]+';
+/**
+ * A bare address `net/mail` reads back unchanged, which the agent requires of
+ * `acmeEmail` (`certmanager.ClusterIssuer.Validate`).
+ */
+const EMAIL = new RegExp(`^${ATOM}(\\.${ATOM})*@${ATOM}(\\.${ATOM})*$`);
+
+/** `acmeServer` as `certmanager.ACMEServerURL` reads it. */
+const isAcmeServer = (value: string): boolean =>
+  ['', 'production', 'staging'].includes(value.trim().toLowerCase()) ||
+  (/^https:\/\/[^\s/?#]+([/?#]\S*)?$/i.test(value.trim()) &&
+    !hasMalformedEscape(value));
 
 const trimmed = (value: unknown): string =>
   typeof value === 'string' ? value.trim() : '';
@@ -189,6 +204,20 @@ export const ensureTraefikGatewayParameters = (
     refuseCaas(
       id,
       `tlsCertificateArn '${config.tlsCertificateArn}' is not an ACM certificate ARN`,
+    );
+  }
+  const email: unknown = config.acmeEmail;
+  if (typeof email === 'string' && email !== '' && !EMAIL.test(email.trim())) {
+    refuseCaas(id, `acmeEmail '${email}' is not an email address`);
+  }
+  const server: unknown = config.acmeServer;
+  if (
+    server !== undefined &&
+    !(typeof server === 'string' && isAcmeServer(server))
+  ) {
+    refuseCaas(
+      id,
+      `acmeServer '${String(server)}' is neither production, staging nor an https ACME directory URL`,
     );
   }
   ensureTls(self, config);
