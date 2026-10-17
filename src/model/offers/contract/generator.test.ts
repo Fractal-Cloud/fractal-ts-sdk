@@ -24,7 +24,12 @@ import {contractKeys} from './contract_keys';
 import {contractValueProblem} from './contract_value_problem';
 import type {OfferContract} from './offer_contract';
 import {toContractKeys} from '../neutral_rules';
-import {NetworkAndCompute_IaaS_AwsLb} from '../generated/network_and_compute';
+import {
+  NetworkAndCompute_IaaS_AwsLb,
+  NetworkAndCompute_PaaS_GcpGke,
+  NetworkAndCompute_PaaS_Kubernetes,
+} from '../generated/network_and_compute';
+import {CustomWorkloads_FaaS_AzureFunction} from '../generated/custom_workloads';
 
 const fixture = (name: string) =>
   JSON.parse(
@@ -107,11 +112,8 @@ describe('generator', () => {
       required: false,
       agents: ['aria-agent-caas-k8s', 'fractal-cloud-agent-aws'],
     });
-    // Required by one agent, not read by the other: whichever agent reconciles
-    // the component, a key is required only when that agent requires it, so the
-    // merged contract does not require it of everyone, and records who does.
-    expect(params.storageSize.required).toBe(false);
-    expect(params.storageSize.requiredBy).toEqual(['fractal-cloud-agent-aws']);
+    // required by one agent is required for the component.
+    expect(params.storageSize.required).toBe(true);
     expect(params.storageSize.agents).toEqual(['fractal-cloud-agent-aws']);
     expect(params.namespace.default).toBe('kafka');
   });
@@ -182,61 +184,28 @@ describe('generator', () => {
     return [a, b];
   };
 
-  it('requires a key only when every agent declaring the offer requires it', () => {
-    for (const [first, second, required, requiredBy] of [
-      [{required: true}, {required: true}, true, undefined],
-      [{required: true}, {required: false}, false, ['a']],
-      [{required: false}, {required: true}, false, ['b']],
-      [{}, {required: true}, false, ['b']],
-      [{}, {}, false, undefined],
+  it('requires a key when any agent declaring the offer requires it, in any order', () => {
+    for (const [first, second, required] of [
+      [{required: true}, {required: true}, true],
+      [{required: true}, {required: false}, true],
+      [{}, {required: true}, true],
+      [{}, {}, false],
     ] as const) {
-      // whatever order the agents come in
       for (const projections of [
         twoAgents(first, second),
         twoAgents(first, second).reverse(),
       ]) {
         const [offer] = buildModel(projections);
         expect(offer.params.get('k').required).toBe(required);
-        expect(offer.params.get('k').requiredBy).toEqual(requiredBy);
       }
     }
-  });
-
-  it('does not require a key that another agent declaring the offer does not read', () => {
-    const [a, b] = twoAgents({required: true}, {});
-    const notK = {
-      ...b,
-      offers: [{...b.offers[0], params: [{key: 'other', type: 'string'}]}],
-    };
-    for (const projections of [
-      [a, notK],
-      [notK, a],
-    ]) {
-      const [offer] = buildModel(projections);
-      expect(offer.params.get('k')).toMatchObject({
-        required: false,
-        requiredBy: ['a'],
-        agents: ['a'],
-      });
-    }
-    // Declared by one agent only, it stays as that agent says.
-    const [single] = buildModel([a]);
-    expect(single.params.get('k').required).toBe(true);
-    expect(single.params.get('k').requiredBy).toBeUndefined();
-  });
-
-  it('renders requiredBy next to agents', async () => {
-    const files = await generate([fixture('java-agent'), fixture('go-agent')]);
-    expect(files.get('messaging.ts')).toMatch(
-      /storageSize: \{\s*type: 'string',\s*required: false,\s*agents: \['fractal-cloud-agent-aws'\],\s*requiredBy: \['fractal-cloud-agent-aws'\],\s*\}/,
-    );
   });
 
   it('refuses agents whose vocabularies share no value', () => {
     expect(() =>
       buildModel(twoAgents({values: ['p', 'q']}, {values: ['r', 's']})),
     ).toThrow(
-      "X.CaaS.Y.k takes p, q for a and r, s for b: no value satisfies every agent",
+      'X.CaaS.Y.k takes p, q for a and r, s for b: no value satisfies every agent',
     );
   });
 
@@ -250,6 +219,100 @@ describe('generator', () => {
       const [offer] = buildModel(twoAgents(first, second));
       expect(offer.params.get('k').sensitive).toBe(true);
     }
+  });
+
+  it('keeps the strictest reading of every other member', () => {
+    const merged = (
+      first: Record<string, unknown>,
+      second: Record<string, unknown>,
+    ) => {
+      const [offer] = buildModel(twoAgents(first, second));
+      return offer.params.get('k');
+    };
+    const values = {values: ['p', 'q']};
+    // An agent that refuses other values outranks one that only warns.
+    expect(
+      merged({...values, valuesLevel: 'warn'}, values).valuesLevel,
+    ).toBeUndefined();
+    expect(
+      merged({...values, valuesLevel: 'warn'}, {...values, valuesLevel: 'warn'})
+        .valuesLevel,
+    ).toBe('warn');
+    // An agent that compares case-sensitively outranks one that folds case.
+    expect(
+      merged({...values, valuesCaseInsensitive: true}, values)
+        .valuesCaseInsensitive,
+    ).toBeUndefined();
+    // An older key only one agent still reads is not offered.
+    expect(
+      merged(
+        {aliases: [{key: 'old'}, {key: 'older'}]},
+        {aliases: [{key: 'old'}]},
+      ).aliases,
+    ).toEqual([{key: 'old'}]);
+    expect(merged({aliases: [{key: 'old'}]}, {}).aliases).toBeUndefined();
+    // What one agent works out when the key is absent, another may not.
+    expect(merged({derived: {note: 'x'}}, {}).derived).toBeUndefined();
+    expect(
+      merged({derived: {note: 'x'}}, {derived: {note: 'x'}}).derived,
+    ).toEqual({note: 'x'});
+    // Deprecated to one agent is deprecated.
+    expect(merged({}, {deprecated: {since: 'v2'}}).deprecated).toEqual({
+      since: 'v2',
+    });
+    // One agent's constraint binds the value; two different ones are reported.
+    expect(merged({}, {constraints: {maxLength: 5}}).constraints).toEqual({
+      maxLength: 5,
+    });
+    expect(() =>
+      merged({constraints: {maxLength: 5}}, {constraints: {maxLength: 9}}),
+    ).toThrow(
+      'X.CaaS.Y.k is constrained {"maxLength":5} for a and {"maxLength":9} for b',
+    );
+  });
+
+  it('marks a key named like a secret value sensitive whatever the agent says', () => {
+    const one = (key: string, type = 'string') => {
+      const [offer] = buildModel([
+        {
+          schemaVersion: '2.0',
+          agentId: 'a',
+          agentVersion: 'v1',
+          offers: [
+            {offerType: 'X.PaaS.Y', provider: 'Azure', params: [{key, type}]},
+          ],
+        },
+      ]);
+      return offer.params.get(key).sensitive;
+    };
+    for (const key of [
+      'storageAccountConnectionString',
+      'adminPassword',
+      'privateSshKeyPassphrase',
+      'presharedKey',
+      'privateKey',
+      'clientSecret',
+      'secretValue',
+      'apiToken',
+      'apiKey',
+      'accessKey',
+    ]) {
+      expect(one(key), key).toBe(true);
+    }
+    // A secret's name, id or reference is not a secret; nor is a policy or a flag.
+    for (const key of [
+      'secretName',
+      'oidcClientSecretId',
+      'workloadSecretPasswordKey',
+      'tlsSecretName',
+      'imagePullSecrets',
+      'passwordPolicy',
+      'createPostgresCredentials',
+      'tokenTtlSeconds',
+    ]) {
+      expect(one(key), key).toBeUndefined();
+    }
+    expect(one('adminPassword', 'boolean')).toBeUndefined();
   });
 
   it('refuses agents that disagree on what a key is', () => {
@@ -272,9 +335,7 @@ describe('generator', () => {
     );
     const badType = fixture('go-agent');
     badType.offers[0].params[0].type = 'text';
-    expect(() => buildModel([badType])).toThrow(
-      /not a contract value type/,
-    );
+    expect(() => buildModel([badType])).toThrow(/not a contract value type/);
     const badOffer = fixture('go-agent');
     badOffer.offers[0].offerType = 'Kafka';
     expect(() => buildModel([badOffer])).toThrow(/is not an offer type/);
@@ -398,6 +459,42 @@ describe('the committed contracts', () => {
       'fractal-cloud-agent-aws',
     );
   });
+
+  // The GCP snapshot carries GKE three times: the canonical
+  // `NetworkAndCompute.PaaS.GcpGke` and two aliases of it, `GKE` and
+  // `Kubernetes` (`aliasOfOfferType: GcpGke`). One agent declaring one offer
+  // type twice is refused by `buildModel`, so no declaration can overwrite another.
+  it('declare each offer type once per agent; GcpGke keeps its service type', () => {
+    for (const p of readSnapshot('.') as {
+      agentId: string;
+      offers: {offerType: string}[];
+    }[]) {
+      const types = p.offers.map(o => o.offerType);
+      expect(types.length, p.agentId).toBe(new Set(types).size);
+    }
+    expect(NetworkAndCompute_PaaS_GcpGke.serviceTypes).toEqual([
+      'NetworkAndCompute.PaaS.Kubernetes',
+    ]);
+    expect(NetworkAndCompute_PaaS_GcpGke.declaredBy).toHaveLength(1);
+    expect(
+      NetworkAndCompute_PaaS_Kubernetes.declaredBy.find(
+        d => d.agentId === 'fractal-cloud-agent-gcp',
+      ),
+    ).toMatchObject({aliasOf: 'NetworkAndCompute.PaaS.GcpGke'});
+  });
+
+  // fractal-cloud-agent-azure v8.25.2 does not mark it sensitive; the SDK does.
+  it('treat the Azure Function storage connection string as a secret', () => {
+    const key = 'storageAccountConnectionString';
+    expect(CustomWorkloads_FaaS_AzureFunction.params[key].sensitive).toBe(true);
+    const problem = contractValueProblem(
+      CustomWorkloads_FaaS_AzureFunction,
+      key,
+      42,
+    );
+    expect(problem).toContain('(value withheld: secret)');
+    expect(problem).not.toContain('42');
+  });
 });
 
 describe('contract keys', () => {
@@ -409,9 +506,13 @@ describe('contract keys', () => {
   });
 
   it('refuses a translation that writes a key it did not name', () => {
-    const rule = toContractKeys(NetworkAndCompute_IaaS_AwsLb, ['lbType'], () => ({
-      lbScheme: 'internal',
-    }));
+    const rule = toContractKeys(
+      NetworkAndCompute_IaaS_AwsLb,
+      ['lbType'],
+      () => ({
+        lbScheme: 'internal',
+      }),
+    );
     expect(() =>
       rule.kind === 'translate' ? rule.apply('x') : undefined,
     ).toThrow(
@@ -447,11 +548,29 @@ describe('contract values', () => {
         required: false,
         constraints: {pattern: '[a-z]+', minLength: 2, maxLength: 4},
       },
-      soft: {type: 'string', required: false, constraints: {pattern: '[a-z]+', level: 'warn'}},
-      tier: {type: 'string', required: false, values: ['Basic', 'Premium'], valuesCaseInsensitive: true},
+      soft: {
+        type: 'string',
+        required: false,
+        constraints: {pattern: '[a-z]+', level: 'warn'},
+      },
+      tier: {
+        type: 'string',
+        required: false,
+        values: ['Basic', 'Premium'],
+        valuesCaseInsensitive: true,
+      },
       zones: {type: 'array', required: false, values: ['1', '2']},
-      label: {type: 'string', required: false, values: ['x'], valuesLevel: 'warn'},
-      count: {type: 'integer', required: false, constraints: {minimum: 1, maximum: 3}},
+      label: {
+        type: 'string',
+        required: false,
+        values: ['x'],
+        valuesLevel: 'warn',
+      },
+      count: {
+        type: 'integer',
+        required: false,
+        constraints: {minimum: 1, maximum: 3},
+      },
       ratio: {type: 'number', required: false},
       on: {type: 'boolean', required: false},
       spec: {type: 'object', required: false},

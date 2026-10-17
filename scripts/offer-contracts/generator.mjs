@@ -8,8 +8,7 @@
  * per infrastructure domain, exporting one `as const` contract per offer type.
  * An offer type several agents declare (the self-hosted CaaS offers) is merged
  * into one contract, because the SDK emits ONE component for it and any of
- * those agents may be the one that reconciles it: a key is required only when
- * every one of them requires it.
+ * those agents may be the one that reconciles it.
  */
 import {createHash} from 'node:crypto';
 
@@ -36,6 +35,16 @@ const VALUE_TYPES = new Set([
   'array',
   'object',
 ]);
+
+/**
+ * A key named for a secret VALUE (not a secret's name, id or reference) is
+ * generated `sensitive` whatever its agent says: an agent may leave one
+ * unmarked (fractal-cloud-agent-azure v8.25.2,
+ * `CustomWorkloads.FaaS.AzureFunction.storageAccountConnectionString`). It then
+ * takes a `secretRef(...)` and its value is never shown in a refusal.
+ */
+const SECRET_VALUE_KEY =
+  /(password|passphrase|pre.?shared.?key|private.?key|secret|secret.?value|token|api.?key|access.?key|signing.?key|connection.?string)$/i;
 
 /** Older type spellings, normalized to the contract vocabulary. */
 const TYPE_SPELLINGS = {map: 'object', list: 'array', int: 'integer'};
@@ -104,11 +113,26 @@ const toParameter = (param, where) => {
       out[member] = value;
     }
   }
+  if (
+    out.sensitive !== true &&
+    (out.type === 'string' || out.type === 'object') &&
+    SECRET_VALUE_KEY.test(String(param.key))
+  ) {
+    out.sensitive = true;
+  }
   return out;
 };
 
 const sameJson = (a, b) =>
   JSON.stringify(sortKeys(a)) === JSON.stringify(sortKeys(b));
+
+const setOrDelete = (target, member, value) => {
+  if (value === undefined) {
+    delete target[member];
+  } else {
+    target[member] = value;
+  }
+};
 
 /**
  * Two agents declaring one key must agree on what it is. `integer` and `number`
@@ -127,9 +151,7 @@ const mergeParameter = (offerType, key, current, next) => {
     }
     merged.type = 'number';
   }
-  // Settled once every agent is read (buildModel): required only when every
-  // agent declaring the offer requires it.
-  merged.requiredBy = [...current.requiredBy, ...next.requiredBy];
+  merged.required = current.required || next.required;
   if (!sameJson(current.default, next.default)) {
     delete merged.default;
   }
@@ -149,18 +171,64 @@ const mergeParameter = (offerType, key, current, next) => {
   if (merged.values === undefined) {
     delete merged.values;
   }
+  // How the vocabulary is compared is up to the agents that declare one: other
+  // values are only warned about, or case is folded, when every one of them says so.
+  const voters = [current, next].filter(p => p.values !== undefined);
+  setOrDelete(
+    merged,
+    'valuesLevel',
+    voters.length > 0 && voters.every(p => p.valuesLevel === 'warn')
+      ? 'warn'
+      : undefined,
+  );
+  setOrDelete(
+    merged,
+    'valuesCaseInsensitive',
+    voters.length > 0 && voters.every(p => p.valuesCaseInsensitive === true)
+      ? true
+      : undefined,
+  );
   // A secret to one agent is a secret: never redacted less than any agent asks.
   if (current.sensitive === true || next.sensitive === true) {
     merged.sensitive = true;
   }
-  for (const member of PARAMETER_MEMBERS) {
-    if (['type', 'required', 'default', 'values', 'sensitive'].includes(member)) {
-      continue;
-    }
-    if (merged[member] === undefined && next[member] !== undefined) {
-      merged[member] = next[member];
-    }
+  // An older key only some agents still read is not offered, like a key only
+  // some agents read; deprecated to one of them, it is deprecated.
+  setOrDelete(
+    merged,
+    'aliases',
+    current.aliases !== undefined && next.aliases !== undefined
+      ? current.aliases
+          .filter(a => next.aliases.some(b => b.key === a.key))
+          .map(a => {
+            const b = next.aliases.find(x => x.key === a.key);
+            return a.deprecated === true || b.deprecated === true
+              ? {...a, deprecated: true}
+              : a;
+          })
+      : undefined,
+  );
+  setOrDelete(merged, 'deprecated', current.deprecated ?? next.deprecated);
+  // What an agent works out when the key is absent holds only when all do.
+  setOrDelete(
+    merged,
+    'derived',
+    sameJson(current.derived, next.derived) ? current.derived : undefined,
+  );
+  // One agent's constraints bind the value; two different sets are reported,
+  // as no generic rule can say which value satisfies both.
+  if (
+    current.constraints !== undefined &&
+    next.constraints !== undefined &&
+    !sameJson(current.constraints, next.constraints)
+  ) {
+    fail(
+      `${offerType}.${key} is constrained ${JSON.stringify(sortKeys(current.constraints))} ` +
+        `for ${current.agents.join(', ')} and ${JSON.stringify(sortKeys(next.constraints))} ` +
+        `for ${next.agents.join(', ')}`,
+    );
   }
+  setOrDelete(merged, 'constraints', current.constraints ?? next.constraints);
   merged.description = current.description ?? next.description;
   merged.agents = [...current.agents, ...next.agents];
   return merged;
@@ -238,12 +306,10 @@ export const buildModel = (projections, keyAliases = []) => {
       }
       for (const param of offer.params ?? []) {
         const where = `${projection.agentId} ${offerType}.${param.key}`;
-        const parameter = toParameter(param, where);
         const next = {
-          ...parameter,
+          ...toParameter(param, where),
           description: param.description,
           agents: [projection.agentId],
-          requiredBy: parameter.required ? [projection.agentId] : [],
         };
         const current = entry.params.get(param.key);
         entry.params.set(
@@ -257,21 +323,6 @@ export const buildModel = (projections, keyAliases = []) => {
     }
   }
   applyKeyAliases(offers, keyAliases);
-  // Any of the agents declaring an offer may be the one that reconciles the
-  // component, so a key is required only when every one of them requires it
-  // (an agent that does not declare the key does not). When only some do, the
-  // key is optional and `requiredBy` names them.
-  for (const entry of offers.values()) {
-    for (const param of entry.params.values()) {
-      const requiredBy = [...new Set(param.requiredBy)].sort();
-      param.required = requiredBy.length === entry.declaredBy.length;
-      if (param.required || requiredBy.length === 0) {
-        delete param.requiredBy;
-      } else {
-        param.requiredBy = requiredBy;
-      }
-    }
-  }
   return [...offers.values()].sort((a, b) =>
     a.offerType.localeCompare(b.offerType),
   );
@@ -297,17 +348,13 @@ const docComment = (text, indent) => {
 
 const renderParameter = (key, param, allAgents) => {
   const indent = '    ';
-  const {description, agents, requiredBy, ...members} = param;
+  const {description, agents, ...members} = param;
   const parts = Object.entries(members).map(
     ([member, value]) => `${member}: ${literal(value)}`,
   );
   // Recorded only when not every declaring agent reads the key.
   if (agents.length !== allAgents.length) {
     parts.push(`agents: ${literal(agents)}`);
-  }
-  // Recorded only when some, not all, declaring agents require the key.
-  if (requiredBy !== undefined) {
-    parts.push(`requiredBy: ${literal(requiredBy)}`);
   }
   const doc = description ? docComment(description, indent) : '';
   return `${doc}${indent}${literal(key)}: {${parts.join(', ')}},\n`;

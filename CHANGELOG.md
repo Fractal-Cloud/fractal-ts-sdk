@@ -40,14 +40,6 @@ of truth for what is on npm.
     `AwsSqsQueue`: `visibilityTimeoutSeconds` (0–43200), `messageRetentionSeconds` and
     `dlqRetentionSeconds` (60–1209600) and `maxReceiveCount` (1–1000) outside the
     agent's ranges, a mapped guardrail included.
-- **A key only some agents of a shared offer require is optional.** The contract
-  generator required a key of an offer several agents declare when any of them
-  required it; it is now required only when every one of them does, and otherwise
-  optional, still offered, with `requiredBy` naming the agents that need it.
-  `CaaSSparkCluster` / `CaaSSparkJob` `sparkOperatorName`, `CaaSSparkJob`
-  `mainApplicationFile` and `KafkaTopic` `clusterName`, which only the Java agents
-  require, are no longer required by the type, since aria-agent-caas-k8s may reconcile
-  the offer instead.
 - **A key an agent declares twice is one key with a deprecated alias.** The Azure
   agent declares the misspelling `diableLocalAuth` next to `disableLocalAuth`
   (`Messaging.PaaS.EventHubNamespace`), and the AWS agent `versioningEnabled` next to
@@ -68,7 +60,7 @@ unmanaged.
 
 ### Added — `Search` component and `StorageOpenSearch`
 
-- **New component `Search`** (`Storage.Search`, the catalogue's `Storage.CaaS.Search`),
+- **New component `Search`** (`Storage.Search`, the catalog's `Storage.CaaS.Search`),
   with no neutral parameters.
 - **New offer `StorageOpenSearch`** (`Storage.CaaS.OpenSearch`, aria-agent-caas-k8s):
   OpenSearch on Kubernetes with the security plugin on. Config `namespace`, `replicas`,
@@ -78,7 +70,7 @@ unmanaged.
   for a consumer → search link: `access` is `read`, `write` or `read-write` (required);
   `indexPrefix` defaults to `<consumerId>-`. `toLiveSystem` refuses a link to a
   `StorageOpenSearch` the agent would refuse: no `access`, an unknown one, or a blank,
-  wildcard or upper-case prefix. The catalogue spelling `accessMode` is accepted.
+  wildcard or upper-case prefix. The catalog spelling `accessMode` is accepted.
 - New public type `OpenSearchConfig`.
 
 ### Breaking — `Jaeger` keeps its traces in OpenSearch
@@ -218,18 +210,36 @@ public types: `BoundedContext`, `BoundedContextId`, `BoundedContextOwner`,
 ### Fixed — refusals never echo a secret; reported validation errors are logged
 
 - A translated value the agent's contract would not take is refused naming the key and
-  what was expected. Its value is withheld by default: shown only when it is a number,
-  a boolean, or an identifier checked against the key's allowed values, and the
-  parameter is neither marked `sensitive` nor named like a secret (password, token,
-  pre-shared key, connection string, ...). Any other string, object or array may carry
-  a credential a contract does not mark (a connection string, user data, a URI with
-  user info).
+  what was expected. Its value is withheld by default. It is shown only when all of
+  these hold: it is a number, a boolean, or an identifier checked against the key's
+  allowed values; the parameter is not marked `sensitive`; and the key is not named
+  like a secret (password, token, pre-shared key, connection string, ...). Every other
+  string, object or array is withheld whatever its key, since it may carry a
+  credential a contract does not mark (a connection string, user data, a URI with
+  user info). No string outside a closed vocabulary is ever shown.
+- A key named for a secret value (`...Password`, `...Passphrase`, `...Secret`,
+  `...Token`, `...ApiKey`, `...AccessKey`, `...PrivateKey`, `...PresharedKey`,
+  `...ConnectionString`) is generated `sensitive` even when its agent does not mark
+  it, so it takes a `secretRef(...)` and is never shown. The one key this changes is
+  `AzureFunction`'s `storageAccountConnectionString` (it embeds the storage account
+  key), which fractal-cloud-agent-azure v8.25.2 leaves unmarked: pass it as
+  `secretRef('<shortName>')`. A secret's name or id (`secretName`, `...SecretId`) is
+  not a secret and is unchanged.
+- Two route declarations to one gateway whose link settings contradict are refused
+  showing a timeout, retry count or port, and withholding any other setting (a link
+  setting may carry a token); before, both values were printed.
 - `cloud.liveSystems.deploy` logs, in `wait` mode, every non-blocking issue the control
   plane reports, an error it does not enforce as well as a warning
   (`WARN Live System validation error (not enforced): ...`); before, such an error was
-  dropped.
+  dropped. The line carries the control plane's message, which renders no parameter
+  value except one of the key's declared allowed values of a key that is not
+  `sensitive` (aria-spec, contract `SPEC.md` section 16), never the value sent.
 - The contract generator refuses an offer whose declaring agents share no allowed value
-  for a key, and keeps a key `sensitive` when any of them marks it so.
+  for a key, and keeps a key `sensitive` when any of them marks it so. Every other
+  member of a key several agents declare keeps its strictest reading instead of the
+  first agent's: allowed values only warn or fold case when every agent declaring them
+  says so; an older key (`aliases`) is kept only when every agent reads it; `derived`
+  only when all agree; and two different `constraints` are refused, naming the agents.
 - The Aruba contract is pinned to aria-agent-aruba v0.0.22, which marks
   `ArubaObjectStorageAccount.password` and `ArubaVpnTunnel.presharedKey` `sensitive`.
   It also declares `location` and `name` on `ArubaElasticIp` and `name` on
@@ -255,7 +265,8 @@ operator to remove.
 
 **Why removed, not deprecated.** A deprecated builder would keep emitting a component
 no agent declares, which the agent reconciles to nothing; there is no behavior left to
-deprecate. The removal ships in the 2.13.0 minor, by the maintainers' decision: no
+deprecate. The removal ships in the 2.13.0 minor, with no shim, by the maintainers'
+decision ("nobody is using those. remove and keep minor"): no
 consumer uses these types, so it breaks no one (as the `LogShipper` break shipped in
 the 2.11.0 minor). It is a compile error only: deployed infrastructure changes when the
 component is removed from a Live System, in the order above.
@@ -342,7 +353,11 @@ a copy in the SDK. What the SDK no longer refuses at `toLiveSystem()`, and so no
 - `Eks`: `controlPlaneLogTypes`, node pools without a name or with a name that is not a
   DNS-1123 label, unknown architectures and capacity types.
 - `K8sWorkload`: the probe, rollout, autoscaling, disruption-budget, grace-period,
-  `ssmParameters` and `sesIdentityArns` checks. A `secretEnv` value that is not a
+  `ssmParameters` and `sesIdentityArns` checks. aria-agent-caas-k8s refuses each of
+  them, naming the parameter, from v1.3.0 on (`internal/workload/spec.go`,
+  `param_grants.go`), the first release that reads these keys at all (v1.2.x reads none
+  of them), so no agent takes them unchecked; this SDK needs v1.6.0 or later anyway.
+  A `secretEnv` value that is not a
   `secretRef(...)` reference is still refused, without echoing it: a raw secret must
   not reach the Live System, and the contract cannot tell a reference from a secret yet.
 
@@ -505,7 +520,8 @@ retention on `AzureServiceBusTopic` (`defaultMessageTimeToLive`), `withCustomDom
 (`host`), and `cronSchedule` on `CaaSSparkJob` (`schedule`). An explicit vendor value
 wins over an open neutral one and is refused against a locked one.
 
-**Fixed — `EcsService` and `CloudRun` deploy.** They emitted placeholder types the agents
+**Fixed (BREAKING for existing Live Systems: new offer types, delivery model `CaaS`) —
+`EcsService` and `CloudRun` deploy.** They emitted placeholder types the agents
 provision nothing for. `CloudRun` now emits `NetworkAndCompute.CaaS.CloudRunService`, and
 `EcsService` an ECS task definition `<id>-task` plus the `NetworkAndCompute.CaaS.ECSService`
 that depends on it, with the Workload's image, port, CPU / memory requests and replicas
@@ -514,7 +530,10 @@ translated into their keys. New `EcsCluster` offer (`NetworkAndCompute.PaaS.ECS`
 
   **Existing Live Systems.** The old types (`CustomWorkloads.PaaS.AwsEcsService`,
   `CustomWorkloads.PaaS.GcpCloudRun`) are phantoms of the AWS and GCP agents: still
-  registered, reading no parameters, provisioning nothing. A Live System deployed with
+  registered, reading no parameters, provisioning nothing (their v8.25.2 contracts
+  declare no provider resources, and fractal-cloud-agents'
+  `docs/offer-parameter-contracts.md` lists both as "phantom, no parameters"). A Live
+  System deployed with
   2.12.0 has no ECS service or Cloud Run service behind those components; deploying it
   with 2.13.0 creates them, under the new types (and, for ECS, the `<id>-task` task
   definition). Both agents reconcile the new types from fractal-cloud-agents v8.25.2 on;
@@ -567,11 +586,17 @@ as config, so a config value cannot bypass a locked guardrail.
   `aria-agent-hetzner` reconciles `NetworkAndCompute.IaaS.HetznerCloudServer`, which
   is what the offer now emits. Its `region` is sent as `location`, the key that agent
   reads. No migration is needed: no running agent reconciled the old type, so no
-  server was ever created from it.
+  server was ever created from it. Evidence: aria-agent-hetzner declares
+  `OfferHetznerCloudServer = "NetworkAndCompute.IaaS.HetznerCloudServer"` and its
+  `location` key (`internal/reconciler/handlers/cloud_server.go:13` and `:40` in v0.2.0,
+  the same in v0.1.0, its only other release); neither release declares
+  `NetworkAndCompute.IaaS.HetznerServer`. Tested in `iaas_vendor_param_keys.test.ts`.
 - **Hetzner network and firewall parameters match the agent.** `HetznerNetwork` sends
   the neutral `cidrBlock` as `ipRange` (it was ignored, and every network got
   `10.0.0.0/16`). `HetznerFirewall` sends each egress rule's peer CIDR as `destCidr`;
-  the agent refused egress rules without one. `region` on `HetznerNetwork`,
+  the agent refused egress rules without one ("destCidr is required",
+  `firewall_rules.go:106` in v0.2.0), so no firewall with egress rules was ever created
+  from the old key and none changes shape. `region` on `HetznerNetwork`,
   `HetznerSubnet` and `HetznerFirewall` is deprecated and no longer sent: Hetzner has
   no location for those resources (a subnet is placed by `networkZone`).
 

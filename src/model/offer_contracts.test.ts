@@ -300,10 +300,7 @@ const NEUTRAL = new Map<string, ProbedNode['state']>(
 const declaredKeys = (contract: OfferContract): Set<string> =>
   new Set([
     ...Object.entries(contract.params)
-      .filter(
-        ([, p]) =>
-          p.agents === undefined || p.required || p.requiredBy !== undefined,
-      )
+      .filter(([, p]) => p.agents === undefined || p.required)
       .map(([k]) => k),
     ...Object.values(contract.params).flatMap(p =>
       (p.aliases ?? []).map(a => a.key),

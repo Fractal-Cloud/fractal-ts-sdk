@@ -299,11 +299,7 @@ export const Storage_CaaS_MinioTenant = {
         'fractal-cloud-agent-oci',
       ],
     },
-    namespace: {
-      type: 'string',
-      required: false,
-      derived: {note: 'defaults to the component id when absent'},
-    },
+    namespace: {type: 'string', required: false},
     region: {
       type: 'string',
       required: false,
@@ -1483,11 +1479,7 @@ export const Storage_PaaS_PostgreSqlDbms = {
       required: false,
       agents: ['fractal-cloud-agent-aws'],
     },
-    region: {
-      type: 'string',
-      required: false,
-      derived: {note: "defaults to the environment's region when absent"},
-    },
+    region: {type: 'string', required: false},
     replicationRole: {
       type: 'string',
       required: false,
