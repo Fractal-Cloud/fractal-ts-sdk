@@ -5,6 +5,7 @@
  * Component each satisfies. Vendor knobs live in each offer's config only.
  * Vendor-neutral self-hosted offers (e.g. MinIO on any cluster) omit `provider`.
  */
+import {validateAwsRdsDbms} from './aws_rds_dbms_validation';
 import type {NeutralRule} from '../neutral_rule';
 import {applyNeutralRules} from '../apply_neutral_rules';
 import {toContractKey, unsupported, unsupportedUnless} from './neutral_rules';
@@ -391,7 +392,8 @@ export const AwsRdsPostgresDbms = defineOffer<
     'AWS',
     Storage_PaaS_AwsRdsPostgresDatabase.offerType,
     RDS_DATABASE_RULES,
-  ),
+  ), // The agent's limit for this engine (RdsEngine.maxMasterUserNameLength).
+  validate: self => validateAwsRdsDbms('AwsRdsPostgresDbms', self, 63),
 });
 
 /**
@@ -436,7 +438,8 @@ export const AwsRdsMySqlDbms = defineOffer<
     'AWS',
     Storage_PaaS_AwsRdsMySqlDatabase.offerType,
     RDS_DATABASE_RULES,
-  ),
+  ), // The agent's limit for this engine (RdsEngine.maxMasterUserNameLength).
+  validate: self => validateAwsRdsDbms('AwsRdsMySqlDbms', self, 16),
 });
 export const ArubaMySqlDbms = defineOffer<
   'Storage.RelationalDbms',

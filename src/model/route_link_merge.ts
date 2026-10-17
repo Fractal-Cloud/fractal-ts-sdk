@@ -73,7 +73,7 @@ export const mergeRouteSettings = (
     if (ROUTE_KEY.test(key)) {
       continue;
     }
-    if (!(key in merged)) {
+    if (!Object.hasOwn(merged, key)) {
       throw new Error(
         `Routes from '${sourceId}' to '${targetId}' are one link: ${key} would also ` +
           'apply to the routes declared before, which did not set it. Declare it on ' +

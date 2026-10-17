@@ -188,7 +188,7 @@ const moveSecretRefsToSecretEnv = (
     ...asRecord(params[KEY.secretEnv]),
   };
   for (const [name] of refs) {
-    if (name in secretEnv) {
+    if (Object.hasOwn(secretEnv, name)) {
       refuse(
         componentId,
         `'${name}' on '${componentId}' is in both env and secretEnv`,

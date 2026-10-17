@@ -333,6 +333,22 @@ describe('generator', () => {
       expect(one(key), key).toBeUndefined();
     }
     expect(one('adminPassword', 'boolean')).toBeUndefined();
+    // A collection of secret values is as secret as one, a list or a map.
+    for (const [key, type] of [
+      ['apiKeys', 'array'],
+      ['signingKeys', 'array'],
+      ['secrets', 'object'],
+      ['connectionStrings', 'object'],
+      ['tokens', 'array'],
+      ['adminPasswords', 'string'],
+    ]) {
+      expect(one(key, type), key).toBe(true);
+    }
+    // Names of Secrets are not secrets, as a list either.
+    for (const key of ['imagePullSecrets', 'pullSecrets', 'secretNames']) {
+      expect(one(key, 'array'), key).toBeUndefined();
+    }
+    expect(one('tokens', 'integer')).toBeUndefined();
   });
 
   it('refuses agents that disagree on what a key is', () => {
@@ -492,6 +508,25 @@ describe('the committed contracts', () => {
       const types = p.offers.map(o => o.offerType);
       expect(types.length, p.agentId).toBe(new Set(types).size);
     }
+    // The gcp snapshot holds GcpGke once, and two aliases of it under other
+    // offer types: not two GcpGke entries (release review finding, answered).
+    const gcp = (
+      readSnapshot('.') as {
+        agentId: string;
+        offers: {offerType: string; aliasOfOfferType?: string | null}[];
+      }[]
+    ).find(p => p.agentId === 'fractal-cloud-agent-gcp')!;
+    const gke = 'NetworkAndCompute.PaaS.GcpGke';
+    expect(
+      gcp.offers
+        .filter(o => o.offerType === gke || o.aliasOfOfferType === gke)
+        .map(o => [o.offerType, o.aliasOfOfferType ?? null])
+        .sort(),
+    ).toEqual([
+      ['NetworkAndCompute.PaaS.GKE', gke],
+      [gke, null],
+      ['NetworkAndCompute.PaaS.Kubernetes', gke],
+    ]);
     expect(NetworkAndCompute_PaaS_GcpGke.serviceTypes).toEqual([
       'NetworkAndCompute.PaaS.Kubernetes',
     ]);

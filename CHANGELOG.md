@@ -17,11 +17,11 @@ of truth for what is on npm.
 consumer is known to use the removed APIs). Each item links to its section below.
 
 - **`CertificateManager`, `CertificateManagerNode`, `CertManager`, `CertManagerConfig`
-  removed.** cert-manager is internal to `TraefikGateway` now. Replace the component
+  removed** from the package's exports. cert-manager is internal to `TraefikGateway` now. Replace the component
   with `dnsZones` (TXT write on the zone of the gateway's hosts) and `acmeEmail` on the
   gateway, and remove the `CertificateManager` component only once the caas-k8s agent
   is v1.6.0 or later (see "Removed (BREAKING) — `CertificateManager`...").
-- **`ObservabilityElastic` removed.** Select `GrafanaLoki` for `Logging`. Deployed
+- **`ObservabilityElastic` removed** from the package's exports. Select `GrafanaLoki` for `Logging`. Deployed
   Elastic resources are left running, unmanaged.
 - **`Jaeger` storage keys removed.** `storageSettings` and `storageClassName` are gone;
   `Jaeger` must link to exactly one `StorageOpenSearch` with `access: 'read-write'` and
@@ -106,6 +106,26 @@ consumer is known to use the removed APIs). Each item links to its section below
   malformed escape), `imagePullSecrets` that are not Secret names, an empty
   `nodeSelector` or one with non-string values, `monitorIntervalSeconds` below 1 or
   fractional, and a blank `image`.
+
+- **Round 5: every dropped check accounted for.** The single-value checks 2.12.0 made
+  and 2.13.0 had dropped are back, each mirroring the reconciling agent's current
+  rule: `AwsCloudFront` `redirectTo` (https only, a DNS host, no credentials, port,
+  query or fragment, URL path characters), its site keys (`defaultRootObject` /
+  `errorDocument` object keys, a boolean `spaFallback`, not together with
+  `errorDocument`); `TraefikGateway` namespace, ForwardAuth settings, header names,
+  exempt ids, body size, source ranges, host, replicas, idle timeout, ACM ARN, TLS
+  Secret name and hosts, `host` coverage, `plainHttp: false` without TLS, an NLB TLS
+  listener with Traefik TLS, and the removed `forwardAuthExcludedPrefixes`; `Eks` node
+  pools (names, the reserved `system` / `general-purpose`, repeats, architectures,
+  capacity types) and control-plane log types; `KubePrometheusStack`, `GrafanaLoki`,
+  `GrafanaTempo`, `GrafanaAlloy` and `SqsExporter` namespaces, storage classes,
+  retention, `prometheusStorageGi`, datasource URLs, `lokiPushUrl` and a blank
+  `imagePullSecrets` entry; the RDS DBMS `storageType`, `administratorLogin` length,
+  `requireSecureTransport` and log-export shape; `AwsSnsTopic` `maximumMessageSize`.
+  A neutral VM size, a contract key and a `secretEnv` name are looked up as own
+  properties only, so `constructor` or `__proto__` is neither a size nor a key. The
+  contract generator also marks collections of secret values sensitive (`apiKeys`,
+  `secrets`, `connectionStrings`, ...; not `imagePullSecrets`).
 
 ### Removed — `ObservabilityElastic`
 
@@ -360,75 +380,37 @@ logged, and each warning is logged as a `WARN` line. A control plane without val
 (`ParameterValidationResult`, `ComponentValidationResult`, `ValidationIssue`, ...). A
 `400 OfferParametersInvalid` from the create or update is surfaced as the same error.
 
-### Changed (BREAKING) — the SDK no longer re-checks single parameter values
+### Changed — the single-value checks the SDK makes follow the agents
 
-The per-offer `validate` functions that re-implemented the agents' value checks are
-removed: a parameter's allowed values belong in the contract its agent publishes, not in
-a copy in the SDK. What the SDK no longer refuses at `toLiveSystem()`, and so now sends:
+Every check of a single parameter value that 2.12.0 made at `toLiveSystem()` is still
+made, mirroring the rule the reconciling agent applies today (the PR of the 2.13.0
+release review lists each one and where it lives), except these, which the agent
+handles itself:
 
-- `AwsCloudFront`: `redirectTo` that is not an `https://host[/path]` redirect target,
-  the redirect timeouts outside their ranges, `defaultRootObject` / `errorDocument`
-  that are not object keys, a non-boolean `spaFallback`, and `spaFallback` together
-  with `errorDocument` (the agent refuses these at deploy). (Refused again, see "Fixed — release
-  review": aliases, `originDomain` / `originDomainName` host names, aliases without an
-  origin, `originProtocol`, `wafRateLimitPer5Min`, origin timeouts, a self-redirect.)
-- `TraefikGateway`: `namespace` that is not a Kubernetes namespace name;
-  `tlsSecretName` / `tlsClusterIssuer` that are not Kubernetes names; `tlsHosts`
-  entries that are not host names or one-label wildcards; a `host` not covered by
-  `tlsHosts`; TLS without hosts; `plainHttp: false` without TLS; `tlsCertificateArn`
-  together with Traefik TLS; a `tlsCertificateArn` that is not an ACM ARN; `host` that
-  is not a host name; `replicas` and `entryPointIdleTimeoutSeconds` below 1;
-  `loadBalancerSourceRanges` entries that are not CIDRs; ForwardAuth settings without
-  `forwardAuthAddress`, header lists holding non-header names,
-  `forwardAuthExemptComponentIds` entries that are not component ids, and
-  `forwardAuthMaxBodySize` below 1. (`tlsHosts` without a certificate source, and a
-  `forwardAuthAddress` that is not an http(s) URL without credentials, are still
-  refused.)
-- `KubePrometheusStack`, `GrafanaLoki`, `GrafanaTempo`, `GrafanaAlloy`, `SqsExporter`:
-  `namespace` that is not a Kubernetes namespace name. `KubePrometheusStack`,
-  `GrafanaLoki`, `GrafanaTempo`: `storageClassName` that is not a Kubernetes name, and a
-  retention that is not a whole number of at least 1; `KubePrometheusStack`:
-  `prometheusStorageGi` below 1, and `lokiUrl` / `tempoUrl` that are neither `none` nor
-  an absolute http(s) URL. `GrafanaAlloy`: `lokiPushUrl` that is not an absolute
-  http(s) URL. (`SqsExporter`'s `imagePullSecrets`, `queueUrls`,
-  `monitorIntervalSeconds`, `nodeSelector` and `image` are refused again, see "Fixed —
-  release review".)
-- `AwsSnsTopic`: `topicName` that is not an SNS name, `maximumMessageSize` outside
-  1024–1048576 bytes.
-- `AwsSqsQueue`: `queueName` that is not an SQS name (the agent repairs it). Still
-  refused when the Live System is built: numeric settings outside the agent's ranges,
-  and, as no contract can express them:
-  a filter event name that is blank or holds a comma (the list travels comma-joined),
-  `filterEventNames` together with `filterPolicy`, a queue filtering a subscription
-  while subscribing to no topic, a queue depending on two topics or on a topic that is
-  not an `AwsSnsTopic`, and `dlqAlarm: true` (no contract key: the agent creates no
-  alarm).
-- `AwsRdsPostgresDbms` / `AwsRdsMySqlDbms`: `storageType` RDS does not offer,
-  `administratorLogin` longer than the engine allows, `cloudwatchLogExports` entries, a
-  non-boolean `requireSecureTransport`.
-- `Eks`: `controlPlaneLogTypes`, node pools without a name or with a name that is not a
-  DNS-1123 label, unknown architectures and capacity types.
+- `AwsSnsTopic` `topicName` and `AwsSqsQueue` `queueName` that are not SNS / SQS names:
+  the AWS agent repairs them (`AwsMessagingNames.sanitize`).
 - `K8sWorkload`: the probe, rollout, autoscaling, disruption-budget, grace-period,
   `ssmParameters` and `sesIdentityArns` checks. aria-agent-caas-k8s refuses each of
-  them, naming the parameter, from v1.3.0 on (`internal/workload/spec.go`,
-  `param_grants.go`), the first release that reads these keys at all (v1.2.x reads none
-  of them), so no agent takes them unchecked; this SDK needs v1.6.0 or later anyway.
-  A `secretEnv` value that is not a
-  `secretRef(...)` reference is still refused, without echoing it: a raw secret must
-  not reach the Live System, and the contract cannot tell a reference from a secret yet.
+  them, naming the parameter, before it creates anything (`internal/workload/spec.go`,
+  `param_grants.go`), from v1.3.0 on, the first release that reads these keys at all;
+  this SDK needs v1.6.0 or later anyway. A `secretEnv` value that is not a
+  `secretRef(...)` reference is still refused, without echoing it.
+- `AwsRdsPostgresDbms` / `AwsRdsMySqlDbms`: a log type listed twice in
+  `cloudwatchLogExports` (the agent drops the repeat), and log types the engine and mode
+  do not export (the agent refuses them, naming the supported ones).
+- `TraefikGateway` `tlsClusterIssuer` that is not a Kubernetes name: the agent no longer
+  reads it as a certificate source (it is refused as the only one).
 
-**Known gap: per-offer value checks moved to the agents' contracts; until the agents
-publish them, bad values are refused by the agent at deploy rather than by
-`toLiveSystem()`.** `cloud.liveSystems.deploy` asks the control plane to validate the
-Live System against the published contracts (see above), but the contracts carry almost
-no value constraints yet (0 of the 117 aria-agent-caas-k8s parameters, 2 of 593
-fractal-cloud-agent-aws parameters), and the control plane runs that check in `report`
-mode by default, which never refuses.
+Where the agent now accepts more than 2.12.0 did, so does the SDK: a CloudFront
+`redirectTo` to an IPv4 address, `requireSecureTransport` as `'true'` / `'false'` text,
+`cloudwatchLogExports` as comma-separated text, a blank `storageClassName`, control-plane
+log types in any case.
 
-What remains in the SDK involves several components or how the SDK encodes a value: a
-CloudFront origin and the certificate of the gateway behind it, gateway route coverage,
-a Container App's environment, a Service Bus tier against its topics, a Grafana
-backend's bucket link, a load balancer's subnets, an empty list sent as blank.
+**Known gap.** `cloud.liveSystems.deploy` asks the control plane to validate the Live
+System against the published contracts (see above), but the contracts carry almost no
+value constraints yet, and the control plane runs that check in `report` mode by
+default, which never refuses. The SDK's own checks above are what refuses a bad value
+before deploy.
 
 ### Breaking — a load balancer declares its subnets
 
