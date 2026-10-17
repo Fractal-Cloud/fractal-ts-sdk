@@ -14,7 +14,7 @@ export const contractKey = <
   contract: C,
   key: K,
 ): K => {
-  if (!(key in contract.params)) {
+  if (!Object.hasOwn(contract.params, key)) {
     throw new Error(
       `${contract.offerType} declares no parameter '${key}' ` +
         `(declared: ${Object.keys(contract.params).join(', ')}).`,

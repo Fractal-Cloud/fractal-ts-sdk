@@ -61,6 +61,17 @@ const contract = {
 
 const SECRET = 'hunter2-S3cr3t';
 
+describe('contractValueProblem and inherited names', () => {
+  it.each(['constructor', '__proto__', 'toString'])(
+    'reads %s as a key the contract does not declare',
+    key => {
+      expect(contractValueProblem(contract, key, 'x')).toBe(
+        `Test.IaaS.Secrets declares no '${key}'`,
+      );
+    },
+  );
+});
+
 describe('contractValueProblem never echoes a secret', () => {
   it.each([
     ['marked', 42],

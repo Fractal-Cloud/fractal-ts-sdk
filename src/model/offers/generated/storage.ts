@@ -182,7 +182,7 @@ export const Storage_CaaS_Elastic = {
         'fractal-cloud-agent-gcp',
       ],
     },
-    secrets: {type: 'object', required: false, default: {}},
+    secrets: {type: 'object', required: false, default: {}, sensitive: true},
     storage: {type: 'string', required: true},
     storageClassName: {type: 'string', required: false, default: ''},
   },

@@ -41,10 +41,16 @@ const VALUE_TYPES = new Set([
  * generated `sensitive` whatever its agent says: an agent may leave one
  * unmarked (fractal-cloud-agent-azure v8.25.2,
  * `CustomWorkloads.FaaS.AzureFunction.storageAccountConnectionString`). It then
- * takes a `secretRef(...)` and its value is never shown in a refusal.
+ * takes a `secretRef(...)` and its value is never shown in a refusal. A
+ * collection of them (`apiKeys`, `secrets`, `connectionStrings`), a list or a
+ * map, is marked too.
  */
 const SECRET_VALUE_KEY =
-  /(password|passphrase|pre.?shared.?key|private.?key|secret|secret.?value|token|api.?key|access.?key|signing.?key|connection.?string)$/i;
+  /(password|passphrase|pre.?shared.?key|private.?key|secret|secret.?value|token|api.?key|access.?key|signing.?key|connection.?string)s?$/i;
+/** Names of Kubernetes Secrets (`imagePullSecrets`): references, not secret values. */
+const SECRET_NAMES_KEY = /pull.?secrets?$/i;
+/** Value types that can hold a secret value: one, or a collection of them. */
+const SECRET_VALUE_TYPES = new Set(['string', 'object', 'array']);
 
 /** Older type spellings, normalized to the contract vocabulary. */
 const TYPE_SPELLINGS = {map: 'object', list: 'array', int: 'integer'};
@@ -115,8 +121,9 @@ const toParameter = (param, where) => {
   }
   if (
     out.sensitive !== true &&
-    (out.type === 'string' || out.type === 'object') &&
-    SECRET_VALUE_KEY.test(String(param.key))
+    SECRET_VALUE_TYPES.has(out.type) &&
+    SECRET_VALUE_KEY.test(String(param.key)) &&
+    !SECRET_NAMES_KEY.test(String(param.key))
   ) {
     out.sensitive = true;
   }

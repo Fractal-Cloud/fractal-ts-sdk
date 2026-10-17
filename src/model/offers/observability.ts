@@ -31,6 +31,11 @@ import {searchLinkRefusal} from '../components/search_link_refusal';
 import {parseRouteLink, routeRefusal} from './route_link_routes';
 import type {SqsExporterConfig} from './sqs_exporter_config';
 import {isKubernetesName} from './kubernetes_name';
+import {
+  ensureNamespace,
+  isHttpUrl,
+  isWholeAtLeastOne,
+} from './caas_param_checks';
 
 /** Throw the error every check here throws, naming the component. */
 const refuse = (id: string, why: string): never => {
@@ -208,10 +213,63 @@ const ensureOneReadWriteBucket = (
   }
 };
 
+// The Grafana stack's own parameters, as aria-agent-caas-k8s reads them
+// (kube_prometheus_stack_settings.go, grafana_loki_settings.go,
+// grafana_tempo_settings.go, grafana_alloy_settings.go: positiveParam,
+// datasourceURL, an http(s) lokiPushUrl) and as the Kubernetes API takes the
+// namespace and StorageClass names it passes on.
+
+/** The component's `retentionDays` (the neutral `withRetentionDays`), when set, must be at least one day. */
+const ensureRetention = (self: LiveSystemComponent): void => {
+  const days = self.parameters.retentionDays;
+  if (days !== undefined && !isWholeAtLeastOne(days)) {
+    refuse(
+      self.id,
+      `retentionDays ${String(days)} is not a whole number of at least 1`,
+    );
+  }
+};
+
+const ensureStorageClass = (id: string, storageClassName: unknown): void => {
+  if (
+    storageClassName !== undefined &&
+    !(
+      typeof storageClassName === 'string' &&
+      (storageClassName.trim() === '' ||
+        isKubernetesName(storageClassName.trim()))
+    )
+  ) {
+    refuse(
+      id,
+      `storageClassName '${String(storageClassName)}' is not a Kubernetes name`,
+    );
+  }
+};
+
+/** A Grafana datasource URL: `none` (no datasource) or an absolute http(s) URL. */
+const ensureDatasource = (id: string, key: string, value: unknown): void => {
+  if (
+    value !== undefined &&
+    !(
+      typeof value === 'string' &&
+      (value.trim().toLowerCase() === 'none' || isHttpUrl(value.trim()))
+    )
+  ) {
+    refuse(
+      id,
+      `${key} '${String(value)}' is neither none nor an absolute http(s) URL`,
+    );
+  }
+};
+
 const ensureBackend = (
   self: LiveSystemComponent,
   all: readonly LiveSystemComponent[],
+  config: {namespace?: unknown; storageClassName?: unknown},
 ): void => {
+  ensureNamespace(self.id, config.namespace);
+  ensureStorageClass(self.id, config.storageClassName);
+  ensureRetention(self);
   ensureOneReadWriteBucket(self, all);
 };
 
@@ -290,7 +348,21 @@ export const KubePrometheusStack = defineOffer<
   neutral: {
     scrapeInterval: unsupported('the agent sets no scrape interval'),
   },
-  validate: (self, all) => ensureGrafanaRoutes(self, all),
+  validate: (self, all, config) => {
+    ensureNamespace(self.id, config.namespace);
+    ensureStorageClass(self.id, config.storageClassName);
+    ensureRetention(self);
+    const storage: unknown = config.prometheusStorageGi;
+    if (storage !== undefined && !isWholeAtLeastOne(storage)) {
+      refuse(
+        self.id,
+        `prometheusStorageGi ${String(storage)} is not a whole number of at least 1`,
+      );
+    }
+    ensureDatasource(self.id, 'lokiUrl', config.lokiUrl);
+    ensureDatasource(self.id, 'tempoUrl', config.tempoUrl);
+    ensureGrafanaRoutes(self, all);
+  },
 });
 
 /**
@@ -329,7 +401,15 @@ export const GrafanaAlloy = defineOffer<
   contract: Observability_CaaS_GrafanaAlloy,
   deliveryModel: 'CaaS',
   validate: (self, all, config) => {
+    ensureNamespace(self.id, config.namespace);
     if (config.lokiPushUrl !== undefined) {
+      const url: unknown = config.lokiPushUrl;
+      if (!(typeof url === 'string' && isHttpUrl(url.trim()))) {
+        refuse(
+          self.id,
+          `lokiPushUrl '${String(url)}' is not an absolute http(s) URL`,
+        );
+      }
       return;
     }
     const dependsOnLoki = self.dependencies.some(id =>
@@ -393,6 +473,13 @@ const ensureSqsExporterParameters = (
     refuse(
       self.id,
       `queueUrls holds '${badUrl}', which is not https://sqs.<region>.amazonaws.com/<account>/<name>`,
+    );
+  }
+  ensureNamespace(self.id, config.namespace);
+  if ((config.imagePullSecrets ?? []).some(n => n.trim() === '')) {
+    refuse(
+      self.id,
+      'imagePullSecrets holds a blank entry, which the agent would drop: remove it',
     );
   }
   const badSecret = (config.imagePullSecrets ?? []).find(

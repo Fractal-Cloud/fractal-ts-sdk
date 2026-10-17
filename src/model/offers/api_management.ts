@@ -21,6 +21,7 @@ import {certificateCovers, gatewayCertificateHosts} from './certificate_hosts';
 import {TRAEFIK_GATEWAY_OFFER_TYPE} from './offer_type_ids';
 import {parseRouteLink} from './route_link_routes';
 import type {TraefikGatewayConfig} from './traefik_gateway_config';
+import {ensureTraefikGatewayParameters} from './traefik_gateway_checks';
 
 /** Throw the error every check here throws, naming the component. */
 const refuse = (id: string, why: string): never => {
@@ -86,6 +87,78 @@ const SITE_KEYS = [
   'spaFallback',
   'errorDocument',
 ] as const;
+
+/**
+ * An object key a bucket site may name (`defaultRootObject`, `errorDocument`), as the agent reads
+ * one (`CloudFrontConfig.objectKeyOf`): letters, digits and `._/-`, not starting with `.` or `/`, at
+ * most 255 characters, no `..`. Blank is unset.
+ */
+const OBJECT_KEY = /^[A-Za-z0-9_-][A-Za-z0-9._/-]{0,254}$/;
+
+/** Refuses an object key the agent would refuse. */
+const refuseBadObjectKey = (
+  self: LiveSystemComponent,
+  key: 'defaultRootObject' | 'errorDocument',
+  value: unknown,
+): void => {
+  if (
+    value === undefined ||
+    (typeof value === 'string' && value.trim() === '')
+  ) {
+    return;
+  }
+  const text = typeof value === 'string' ? value.trim() : '';
+  if (!OBJECT_KEY.test(text) || text.includes('..')) {
+    throw new Error(
+      `Live component '${self.id}': ${key} '${String(value)}' is not an object key: letters, digits ` +
+        "and '._/-', no leading '/' or '.', no '..', at most 255 characters (e.g. 'index.html').",
+    );
+  }
+};
+
+/**
+ * The site keys as the agent refuses them (`CloudFrontConfig.fromParams`): malformed object keys,
+ * a `spaFallback` that is neither a boolean nor `true` / `false`, and `spaFallback` together with
+ * `errorDocument`.
+ */
+const ensureSiteKeys = (
+  self: LiveSystemComponent,
+  config: {
+    spaFallback?: unknown;
+    errorDocument?: unknown;
+    defaultRootObject?: unknown;
+  },
+): void => {
+  refuseBadObjectKey(self, 'defaultRootObject', config.defaultRootObject);
+  refuseBadObjectKey(self, 'errorDocument', config.errorDocument);
+  const spa = config.spaFallback;
+  if (
+    spa !== undefined &&
+    typeof spa !== 'boolean' &&
+    !(
+      typeof spa === 'string' &&
+      ['true', 'false', ''].includes(spa.trim().toLowerCase())
+    )
+  ) {
+    throw new Error(
+      `Live component '${self.id}': spaFallback '${String(spa)}' is not a boolean.`,
+    );
+  }
+  const spaOn =
+    spa === true ||
+    (typeof spa === 'string' && spa.trim().toLowerCase() === 'true');
+  const errorDocument = config.errorDocument;
+  if (
+    spaOn &&
+    typeof errorDocument === 'string' &&
+    errorDocument.trim() !== ''
+  ) {
+    throw new Error(
+      `Live component '${self.id}': spaFallback answers every missing key with the root object, so ` +
+        'no errorDocument would ever be served. Set one of them.',
+    );
+  }
+};
 
 /** Which linked bucket, if any, is the distribution's origin; refuses more than one, or a bad bucket link. */
 const siteBucketOrigin = (
@@ -153,6 +226,7 @@ const siteBucketOrigin = (
     }
   }
   const bucketOrigin = buckets.length === 1;
+  ensureSiteKeys(self, config);
   const declared = SITE_KEYS.filter(k =>
     k === 'spaFallback' ? config.spaFallback === true : config[k] !== undefined,
   );
@@ -162,6 +236,44 @@ const siteBucketOrigin = (
     );
   }
   return bucketOrigin;
+};
+
+/**
+ * A redirect target's host as `java.net.URI` reads one, which the agent parses it with
+ * (`CloudFrontRedirect.parse`): a host name whose last label starts with a letter (an all-digit one
+ * leaves URI without a host), or an IPv4 address.
+ */
+const TARGET_HOST =
+  /^(?:(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?|(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})$/i;
+
+/**
+ * Why `redirectTo` cannot be a redirect target, or undefined when it can, by the agent's
+ * `CloudFrontRedirect.parse`: `https://`, a host, no credentials or port, no query or fragment, and
+ * a path of URL path characters and well-formed percent escapes. Read on the text as written,
+ * rather than through `URL`, which normalizes what the agent refuses.
+ */
+const redirectRefusal = (target: string): string | undefined => {
+  const match = /^([a-z][a-z0-9+.-]*):\/\/([^/?#]*)([^?#]*)(.*)$/i.exec(target);
+  if (match === null) {
+    return 'it is not a URL of the form https://host[/path]';
+  }
+  const [, scheme, authority, path, rest] = match;
+  if (scheme.toLowerCase() !== 'https') {
+    return 'it must start with https://';
+  }
+  if (rest !== '') {
+    return "the request's own query string is appended, so it may carry neither a query nor a fragment";
+  }
+  if (authority.includes('@') || authority.includes(':')) {
+    return 'it may carry neither credentials nor a port';
+  }
+  if (!TARGET_HOST.test(authority.replace(/\.$/, ''))) {
+    return 'its host is not a DNS host name';
+  }
+  if (!/^(?:[A-Za-z0-9\-._~!$&()*+,;=:@/]|%[0-9A-Fa-f]{2})*$/.test(path)) {
+    return 'its path holds characters a URL path may not (or a malformed percent escape)';
+  }
+  return undefined;
 };
 
 /** A host name as the AWS agent reads one (`CloudFrontConfig.HOST_NAME`), any case. */
@@ -377,6 +489,14 @@ export const AwsCloudFront = defineOffer<
       config.redirectTo === undefined
         ? undefined
         : javaTrim(config.redirectTo) || undefined;
+    if (target !== undefined) {
+      const refusal = redirectRefusal(target);
+      if (refusal !== undefined) {
+        throw new Error(
+          `Live component '${self.id}': redirectTo '${config.redirectTo}' is not a redirect target: ${refusal}.`,
+        );
+      }
+    }
     const gateways = all.filter(
       c =>
         VPC_ORIGIN_GATEWAY_TYPES.includes(c.type) &&
@@ -661,12 +781,13 @@ export const TraefikGateway = defineOffer<
       },
     ];
   },
-  // Only the encoding, what involves other components, and what no one else
-  // refuses (a credential in forwardAuthAddress) are checked here; the other
-  // checks of the gateway's own parameters are the control plane's, against
-  // the agent's contract (`cloud.liveSystems.deploy` validates first).
+  // The gateway's own parameters are refused as aria-agent-caas-k8s refuses
+  // them (traefik_gateway_checks.ts), plus a credential in forwardAuthAddress,
+  // which no one else refuses; then the encoding and what involves other
+  // components.
   validate: (self, all, config) => {
     ensureForwardAuthAddress(self.id, self.parameters.forwardAuthAddress);
+    ensureTraefikGatewayParameters(self, config);
     // An empty list travels as a blank string, which the agent reads as unset:
     // it would apply its default rather than what the empty list says.
     for (const key of TRAEFIK_GATEWAY_LISTS) {

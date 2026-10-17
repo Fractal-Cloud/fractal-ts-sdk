@@ -128,13 +128,14 @@ export const EcsService = defineOffer<
     const service = NetworkAndCompute_CaaS_ECSService;
     const all: Record<string, unknown> = {...ctx.parameters, ...config};
     const taskParameters = Object.fromEntries(
-      Object.entries(all).filter(([k]) => k in task.params),
+      Object.entries(all).filter(([k]) => Object.hasOwn(task.params, k)),
     );
     // Everything that is not a task-definition key goes to the service, so a
     // key neither contract declares is still visible on the emitted component.
     const serviceParameters = Object.fromEntries(
       Object.entries(all).filter(
-        ([k]) => k in service.params || !(k in task.params),
+        ([k]) =>
+          Object.hasOwn(service.params, k) || !Object.hasOwn(task.params, k),
       ),
     );
     const taskId = `${ctx.id}-task`;

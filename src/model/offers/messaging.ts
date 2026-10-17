@@ -338,6 +338,22 @@ export const AwsSnsTopic = defineOffer<
     ),
     partitionCount: unsupported('the agent has no partition setting'),
   },
+  // The range the AWS agent takes (AwsSnsTopicConfig MIN/MAX_MAXIMUM_MESSAGE_SIZE).
+  // topicName is not checked: the agent repairs it (AwsMessagingNames.sanitize).
+  validate: self => {
+    const size = self.parameters.maximumMessageSize;
+    if (
+      size !== undefined &&
+      (typeof size !== 'number' ||
+        !Number.isInteger(size) ||
+        size < 1024 ||
+        size > 1048576)
+    ) {
+      throw new Error(
+        `AwsSnsTopic '${self.id}': maximumMessageSize ${String(size)} is not a whole number of bytes from 1024 to 1048576.`,
+      );
+    }
+  },
 });
 
 // ── AWS: SES identity (satisfies 'Messaging.EmailSender') ────────────────────
