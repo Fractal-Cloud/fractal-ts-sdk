@@ -545,8 +545,12 @@ export const Storage_PaaS_AwsS3 = {
     forceDestroy: {type: 'boolean', required: false, default: false},
     lifecycleExpirationDays: {type: 'number', required: false},
     region: {type: 'string', required: false},
-    versioning: {type: 'boolean', required: false, default: false},
-    versioningEnabled: {type: 'boolean', required: false, default: false},
+    versioning: {
+      type: 'boolean',
+      required: false,
+      default: false,
+      aliases: [{deprecated: true, key: 'versioningEnabled'}],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -1604,8 +1608,12 @@ export const Storage_PaaS_S3 = {
     forceDestroy: {type: 'boolean', required: false, default: false},
     lifecycleExpirationDays: {type: 'number', required: false},
     region: {type: 'string', required: false},
-    versioning: {type: 'boolean', required: false, default: false},
-    versioningEnabled: {type: 'boolean', required: false, default: false},
+    versioning: {
+      type: 'boolean',
+      required: false,
+      default: false,
+      aliases: [{deprecated: true, key: 'versioningEnabled'}],
+    },
   },
 } as const satisfies OfferContract;
 

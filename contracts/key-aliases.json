@@ -1,0 +1,35 @@
+{
+  "$comment": "Keys an agent declares twice, as its canonical key and as an older spelling it still reads only as a fallback, instead of declaring the older one as an alias of the canonical key. The generator folds each `alias` into `key` as a deprecated alias, so the SDK offers only the canonical key. It fails when the agent data no longer declares both keys: remove the entry once the agent declares the alias itself. See docs/offer-contracts.md.",
+  "aliases": [
+    {
+      "offerType": "BigData.PaaS.AwsS3Datalake",
+      "key": "versioning",
+      "alias": "versioningEnabled",
+      "upstream": "fractal-cloud-agents: AwsS3BucketConfig.contract() declares versioningEnabled as its own parameter; versioning wins when both arrive"
+    },
+    {
+      "offerType": "BigData.PaaS.S3",
+      "key": "versioning",
+      "alias": "versioningEnabled",
+      "upstream": "fractal-cloud-agents: AwsS3BucketConfig.contract() (alias offer type of BigData.PaaS.AwsS3Datalake)"
+    },
+    {
+      "offerType": "Messaging.PaaS.EventHubNamespace",
+      "key": "disableLocalAuth",
+      "alias": "diableLocalAuth",
+      "upstream": "fractal-cloud-agents: AzureEventhubNamespace declares the misspelling diableLocalAuth as its own parameter; read only when disableLocalAuth is unset"
+    },
+    {
+      "offerType": "Storage.PaaS.AwsS3",
+      "key": "versioning",
+      "alias": "versioningEnabled",
+      "upstream": "fractal-cloud-agents: AwsS3BucketConfig.contract() declares versioningEnabled as its own parameter; versioning wins when both arrive"
+    },
+    {
+      "offerType": "Storage.PaaS.S3",
+      "key": "versioning",
+      "alias": "versioningEnabled",
+      "upstream": "fractal-cloud-agents: AwsS3BucketConfig.contract() (alias offer type of Storage.PaaS.AwsS3)"
+    }
+  ]
+}

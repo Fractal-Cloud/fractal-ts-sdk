@@ -4,7 +4,7 @@
  * environment's `withDnsZones` entry.
  */
 import {describe, it, expect} from 'vitest';
-import {createFractal} from './core';
+import {createFractal, guardrail} from './core';
 import {DnsZoneComponent} from './components/dns';
 import {
   ManagementEnvironment,
@@ -89,5 +89,16 @@ describe('allowBulkDelete when not declared, or slipped past the setter', () => 
       DnsZoneComponent({id: 'z'}).withDomainName('fractal.cloud'),
     ).components[0].parameters;
     expect('allowBulkDelete' in params).toBe(false);
+  });
+
+  it('AwsRoute53HostedZone refuses a non-boolean set through a raw guardrail', () => {
+    const base = DnsZoneComponent({id: 'z'}).withDomainName('fractal.cloud');
+    const raw = {
+      ...base,
+      state: guardrail(base.state, 'allowBulkDelete', 'yes'),
+    };
+    expect(() => zoneLiveSystem(raw)).toThrow(
+      /Live component 'z': allowBulkDelete must be true or false, got "yes"/,
+    );
   });
 });

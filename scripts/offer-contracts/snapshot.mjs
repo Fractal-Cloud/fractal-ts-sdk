@@ -15,6 +15,7 @@ import {
 } from './generator.mjs';
 
 export const SOURCES_FILE = 'contracts/sources.json';
+export const KEY_ALIASES_FILE = 'contracts/key-aliases.json';
 export const SNAPSHOT_DIR = 'contracts/snapshot';
 export const GENERATED_DIR = 'src/model/offers/generated';
 
@@ -55,12 +56,16 @@ export const readSnapshot = root =>
     return projection;
   });
 
+/** The key pairs the generator folds into one key with an alias (see generator.mjs). */
+export const readKeyAliases = root =>
+  JSON.parse(readFileSync(join(root, KEY_ALIASES_FILE), 'utf8')).aliases;
+
 /** The generated modules, formatted, for the snapshot under `root`. */
 export const generateFromSnapshot = async root => {
   const options =
     (await prettier.resolveConfig(join(root, GENERATED_DIR, 'x.ts'))) ?? {};
   return formatModules(
-    renderModules(buildModel(readSnapshot(root))),
+    renderModules(buildModel(readSnapshot(root), readKeyAliases(root))),
     prettier,
     options,
   );

@@ -340,6 +340,92 @@ export const AwsSnsTopic = defineOffer<
   },
 });
 
+// ── AWS: SES identity (satisfies 'Messaging.EmailSender') ────────────────────
+// The checks below mirror the AWS agent's `AwsSesIdentityConfig`
+// (fractal-cloud-agents, aws.core messaging/paas). They are kept here because
+// what they guard is not recoverable: production access is account-wide and
+// cannot be reverted, and an incomplete request is only a warning on the agent
+// (no request is sent, the component stays Active).
+
+/** A domain name as the AWS agent accepts it (lower case, at least two labels). */
+const SES_DOMAIN =
+  /^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$/;
+/** One DNS label. */
+const DNS_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+
+/** A string parameter as the agent reads it: trimmed; blank or absent is unset. */
+const trimmedParam = (value: unknown): string | undefined =>
+  typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
+
+/** A DNS name as the AWS agent reads it: trimmed, lower case, no trailing dot. */
+const normalizedDnsName = (value: unknown): string | undefined => {
+  const trimmed = trimmedParam(value)?.toLowerCase();
+  return trimmed?.endsWith('.') ? trimmed.slice(0, -1) : trimmed;
+};
+
+const sesRefuse = (id: string, why: string): never => {
+  throw new Error(`AwsSesIdentity '${id}': ${why}.`);
+};
+
+/**
+ * The production access request as the AWS agent sends it: with
+ * `productionAccess`, `mailType`, `websiteUrl` (http(s)) and
+ * `useCaseDescription` are required; `mailType` and `contactLanguage` are read
+ * case-insensitively. Without it the agent reads none of them, so none is
+ * checked. Free-text values are never echoed.
+ */
+const ensureSesProductionAccess = (
+  id: string,
+  params: Readonly<Record<string, unknown>>,
+): void => {
+  if (params.productionAccess !== true) {
+    return;
+  }
+  for (const key of ['mailType', 'websiteUrl', 'useCaseDescription']) {
+    if (trimmedParam(params[key]) === undefined) {
+      sesRefuse(
+        id,
+        `productionAccess needs ${key}; without it the agent sends no request`,
+      );
+    }
+  }
+  if (!/^https?:\/\/\S+$/.test(trimmedParam(params.websiteUrl)!)) {
+    sesRefuse(id, 'websiteUrl is not an http(s) URL');
+  }
+  const mailType = trimmedParam(params.mailType)!.toUpperCase();
+  if (!['TRANSACTIONAL', 'MARKETING'].includes(mailType)) {
+    sesRefuse(id, 'mailType is not TRANSACTIONAL or MARKETING');
+  }
+  const language = trimmedParam(params.contactLanguage)?.toUpperCase();
+  if (language !== undefined && !['EN', 'JA'].includes(language)) {
+    sesRefuse(id, 'contactLanguage is not EN or JA');
+  }
+};
+
+/** `domain` and `mailFromSubdomain` as the agent refuses them. */
+const ensureSesNames = (
+  id: string,
+  params: Readonly<Record<string, unknown>>,
+): void => {
+  const domain = normalizedDnsName(params.domain);
+  if (domain === undefined || !SES_DOMAIN.test(domain)) {
+    sesRefuse(id, 'domain is not a domain name');
+  }
+  const sub = normalizedDnsName(params.mailFromSubdomain);
+  if (sub === undefined) {
+    return;
+  }
+  if (!DNS_LABEL.test(sub)) {
+    sesRefuse(
+      id,
+      "mailFromSubdomain must be one DNS label (letters, digits, '-')",
+    );
+  }
+  if (sub.length + 1 + domain!.length > 253) {
+    sesRefuse(id, `'${sub}.${domain}' is longer than a domain name may be`);
+  }
+};
+
 /**
  * An Amazon SES v2 domain identity with Easy DKIM (2048-bit), optionally with a
  * custom MAIL FROM domain `<mailFromSubdomain>.<domain>`.
@@ -348,9 +434,9 @@ export const AwsSnsTopic = defineOffer<
  * `Instantiating` until SES has verified them.
  *
  * `productionAccess: true` has the agent ask AWS, once, to move the account out
- * of the SES sandbox, with `websiteUrl` and `useCaseDescription` (both required
- * then), `mailType` and `contactLanguage`. Production access is account-wide and
- * per region, and cannot be reverted: `false` again only warns.
+ * of the SES sandbox, with `mailType`, `websiteUrl` and `useCaseDescription`
+ * (all required then) and `contactLanguage`. Production access is account-wide
+ * and per region, and cannot be reverted: `false` again only warns.
  *
  * Output fields: `identityArn`, `dkimRecords` (three CNAMEs), `verificationStatus`,
  * with a MAIL FROM subdomain `mailFromRecords` (MX and SPF) and `mailFromStatus`,
@@ -372,7 +458,7 @@ export const AwsSesIdentity = defineOffer<
        * cannot be reverted. Unset or `false` = the sandbox.
        */
       productionAccess?: boolean;
-      /** For the production access request. The agent's default: `TRANSACTIONAL`. */
+      /** Required with `productionAccess`: the kind of mail sent. No kind is assumed. */
       mailType?: 'TRANSACTIONAL' | 'MARKETING';
       /** Required with `productionAccess`: the sender's http(s) website. */
       websiteUrl?: string;
@@ -392,6 +478,10 @@ export const AwsSesIdentity = defineOffer<
       'its agent does not write the SES records through a DNS zone grant yet; ' +
         'it publishes them as output fields for the zone to declare',
     ),
+  },
+  validate: self => {
+    ensureSesNames(self.id, self.parameters);
+    ensureSesProductionAccess(self.id, self.parameters);
   },
 });
 
@@ -458,6 +548,14 @@ type SqsQueueConfig = ContractConfig<
   }
 >;
 
+/** The ranges the AWS agent refuses outside of (`AwsSqsQueueConfig`). */
+const SQS_INTEGER_BOUNDS: ReadonlyArray<readonly [string, number, number]> = [
+  ['visibilityTimeoutSeconds', 0, 43200],
+  ['messageRetentionSeconds', 60, 1209600],
+  ['dlqRetentionSeconds', 60, 1209600],
+  ['maxReceiveCount', 1, 1000],
+];
+
 /**
  * A standard Amazon SQS queue with a dead-letter queue (`<queueName>-dlq`,
  * SSE-SQS on both). When it depends on an `AwsSnsTopic` — declared with
@@ -522,9 +620,24 @@ export const AwsSqsQueue = defineOffer<
     ];
   },
   // What the contract cannot express: the queue's dependency structure, how the
-  // filters combine with it, the encoding of the comma-joined event names, and a
-  // value no contract key carries. Parameter values are the control plane's.
+  // filters combine with it, the encoding of the comma-joined event names, a
+  // value no contract key carries, and the agent's ranges, which the contract
+  // does not declare. The queue name is not checked: the agent repairs it.
   validate: (self, all, config) => {
+    for (const [key, min, max] of SQS_INTEGER_BOUNDS) {
+      const value = self.parameters[key];
+      if (
+        value !== undefined &&
+        (typeof value !== 'number' ||
+          !Number.isInteger(value) ||
+          value < min ||
+          value > max)
+      ) {
+        throw new Error(
+          `AwsSqsQueue '${self.id}': ${key} ${String(value)} is not a whole number from ${min} to ${max}.`,
+        );
+      }
+    }
     if (
       self.parameters['dlqAlarm'] !== undefined &&
       self.parameters['dlqAlarm'] !== false

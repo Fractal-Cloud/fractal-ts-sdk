@@ -235,10 +235,45 @@ const mergeParameter = (offerType, key, current, next) => {
 };
 
 /**
+ * An agent that declares a key twice, its canonical spelling and an older one
+ * it still reads as a fallback, as two separate parameters (instead of one with
+ * an alias) would have the SDK offer both. `keyAliases`
+ * (contracts/key-aliases.json) names such pairs: the older key is folded into
+ * the canonical one as a deprecated alias. An entry the agent data no longer
+ * needs fails the generator, so the table shrinks as agents fix their data.
+ */
+const applyKeyAliases = (offers, keyAliases) => {
+  for (const {offerType, key, alias} of keyAliases) {
+    const where = `contracts/key-aliases.json: ${offerType}`;
+    const entry = offers.get(offerType);
+    if (entry === undefined) {
+      fail(`${where} is declared by no agent; remove the entry`);
+    }
+    for (const k of [key, alias]) {
+      if (!entry.params.has(k)) {
+        fail(`${where} declares no '${k}'; remove the entry`);
+      }
+    }
+    const canonical = entry.params.get(key);
+    const older = entry.params.get(alias);
+    if (older.type !== canonical.type) {
+      fail(
+        `${where}: '${alias}' is '${older.type}', '${key}' is '${canonical.type}'`,
+      );
+    }
+    canonical.aliases = [
+      ...(canonical.aliases ?? []),
+      {deprecated: true, key: alias},
+    ];
+    entry.params.delete(alias);
+  }
+};
+
+/**
  * Merges every projection into one model: offer type → contract. Deterministic
  * whatever the projection order: agents, offers and keys are sorted.
  */
-export const buildModel = projections => {
+export const buildModel = (projections, keyAliases = []) => {
   const sorted = [...projections].sort((a, b) =>
     a.agentId.localeCompare(b.agentId),
   );
@@ -287,6 +322,7 @@ export const buildModel = projections => {
       offers.set(offerType, entry);
     }
   }
+  applyKeyAliases(offers, keyAliases);
   return [...offers.values()].sort((a, b) =>
     a.offerType.localeCompare(b.offerType),
   );

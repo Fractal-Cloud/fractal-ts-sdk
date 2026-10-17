@@ -449,6 +449,79 @@ describe('liveSystems.deploy()', () => {
     log.mockRestore();
   });
 
+  const MALFORMED: ReadonlyArray<readonly [string, unknown]> = [
+    ['a null summary', {...VALID.body, summary: null}],
+    [
+      'a component without fields',
+      {...VALID.body, valid: false, components: [{componentId: 'uploads'}]},
+    ],
+    [
+      'a field without issues',
+      {
+        ...VALID.body,
+        valid: false,
+        components: [{componentId: 'uploads', fields: [{field: '/bucket'}]}],
+      },
+    ],
+    ['a null component', {...VALID.body, valid: false, components: [null]}],
+    [
+      'a null issue',
+      {
+        ...VALID.body,
+        valid: false,
+        components: [
+          {
+            componentId: 'uploads',
+            fields: [{field: '/bucket', issues: [null]}],
+          },
+        ],
+      },
+    ],
+    ['a null Live System issue', {...VALID.body, liveSystemIssues: [null]}],
+  ];
+
+  it.each(MALFORMED)(
+    'submits unchecked, with a warning, when the validation answer has %s',
+    async (_name, body) => {
+      h.state.queue = [
+        {status: 404},
+        {status: 200, body},
+        {status: 201},
+        {status: 200, body: {status: 'Active'}},
+        {status: 200, body: {status: 'Active', components: []}},
+      ];
+      const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+      await cloud.liveSystems.deploy(liveSystem(), {
+        mode: 'wait',
+        pollIntervalMs: 1,
+        timeoutMs: 5000,
+      });
+      expect(h.requests.map(r => r.method)).toEqual([
+        'GET',
+        'POST',
+        'POST',
+        'GET',
+        'GET',
+      ]);
+      expect(
+        log.mock.calls.some(c =>
+          String(c[0]).includes(
+            'WARN  Live System validation unavailable, submitting',
+          ),
+        ),
+      ).toBe(true);
+      log.mockRestore();
+    },
+  );
+
+  it.each(MALFORMED)(
+    'validate: answers undefined when the validation answer has %s',
+    async (_name, body) => {
+      h.state.queue = [{status: 200}, {status: 200, body}];
+      expect(await cloud.liveSystems.validate(liveSystem())).toBeUndefined();
+    },
+  );
+
   it('skips validation when asked', async () => {
     h.state.queue = [{status: 404}, {status: 201}];
     await cloud.liveSystems.deploy(liveSystem(), {

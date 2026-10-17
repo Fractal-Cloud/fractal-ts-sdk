@@ -201,18 +201,47 @@ const liveSystemExists = async (
   return existing.status === 200;
 };
 
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** An issue carries what `enforceValidation` and the error message read from it. */
+const isIssue = (v: unknown): boolean =>
+  isRecord(v) &&
+  typeof v.blocking === 'boolean' &&
+  typeof v.severity === 'string' &&
+  typeof v.message === 'string';
+
+const isIssueList = (v: unknown): boolean =>
+  Array.isArray(v) && v.every(isIssue);
+
+const isComponentResult = (v: unknown): boolean =>
+  isRecord(v) &&
+  typeof v.componentId === 'string' &&
+  Array.isArray(v.fields) &&
+  v.fields.every(
+    f => isRecord(f) && typeof f.field === 'string' && isIssueList(f.issues),
+  );
+
+/**
+ * The whole shape the SDK reads, nested parts included: a 200 answer that is
+ * partial or from a differently versioned control plane is treated like no
+ * validation at all (warned, then submitted), never a TypeError mid-deploy.
+ */
 const isValidationResult = (body: unknown): body is ParameterValidationResult =>
-  typeof body === 'object' &&
-  body !== null &&
-  typeof (body as {valid?: unknown}).valid === 'boolean' &&
-  Array.isArray((body as {components?: unknown}).components) &&
-  Array.isArray((body as {liveSystemIssues?: unknown}).liveSystemIssues) &&
-  typeof (body as {summary?: unknown}).summary === 'object';
+  isRecord(body) &&
+  typeof body.valid === 'boolean' &&
+  isRecord(body.summary) &&
+  typeof body.summary.errors === 'number' &&
+  typeof body.summary.warnings === 'number' &&
+  isIssueList(body.liveSystemIssues) &&
+  Array.isArray(body.components) &&
+  body.components.every(isComponentResult);
 
 /**
  * Asks the control plane what creating (or updating) the Live System would
  * answer about its component parameters, without changing anything. Undefined
- * when the control plane offers no validation (an older one answers 404).
+ * when the control plane offers no validation (an older one answers 404), or
+ * answers with a result whose shape the SDK cannot read.
  */
 const requestValidation = async (
   ls: LiveSystem,

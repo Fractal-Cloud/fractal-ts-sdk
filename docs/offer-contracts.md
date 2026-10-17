@@ -72,6 +72,10 @@ per offer type, named after it (`NetworkAndCompute.IaaS.AwsLb` → `NetworkAndCo
 - **A key named for a secret value** (`...Password`, `...Secret`, `...Token`, `...ApiKey`,
   `...ConnectionString`, ...; not a secret's name or id) is generated `sensitive` even when its agent
   leaves it unmarked, so it takes a `secretRef(...)` and a refusal never shows it.
+- **A key an agent declares twice** (its canonical key and an older spelling it still reads,
+  each as its own parameter instead of one with an alias) is folded into the canonical key as a
+  deprecated alias, as listed in `contracts/key-aliases.json`. An entry the agent data no longer
+  needs fails the generator: remove it once the agent declares the alias itself.
 - **Merging never widens an offer.** An optional key only some of the declaring agents read is not
   a config key (`ContractParameters`), and a neutral translation into one is refused, naming the
   agents. A key some agent requires stays, since that agent cannot work without it.

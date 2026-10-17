@@ -516,8 +516,14 @@ describe('offers and the contracts their agents publish', () => {
       if (offer.contract === undefined) {
         continue;
       }
-      const stale = Object.keys(offer.neutral ?? {}).filter(k =>
-        declaredKeys(offer.contract!).has(k),
+      // A deprecated alias may have one: it moves the value to the canonical key.
+      const deprecated = new Set(
+        Object.values(offer.contract.params as OfferContract['params']).flatMap(
+          p => (p.aliases ?? []).filter(a => a.deprecated).map(a => a.key),
+        ),
+      );
+      const stale = Object.keys(offer.neutral ?? {}).filter(
+        k => declaredKeys(offer.contract!).has(k) && !deprecated.has(k),
       );
       expect(stale, `${name}: the agent reads these now`).toEqual([]);
     }
