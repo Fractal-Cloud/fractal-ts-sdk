@@ -257,8 +257,10 @@ const ensureSecretEnvReferences = (
  * topologySpread, nodeSelector, env, secretEnv, ssmParameters,
  * sesIdentityArns) already carries its canonical name.
  *
- * Their values are not re-checked here: aria-agent-caas-k8s (v1.6.0 and later)
- * refuses the component, naming the parameter, for autoscaling.maxReplicas below
+ * Their values are not re-checked here: aria-agent-caas-k8s refuses the
+ * component, naming the parameter, from v1.3.0 on, the first release that reads
+ * these keys at all (v1.2.x reads none of them, so no agent version takes them
+ * unchecked; this SDK needs v1.6.0 or later anyway), for autoscaling.maxReplicas below
  * minReplicas, a targetCpuUtilization that is not a percentage, replicas 0 with
  * autoscaling, maxSurge and maxUnavailable both 0, preStopSleepSeconds not
  * shorter than terminationGracePeriodSeconds and a probe path that is not
