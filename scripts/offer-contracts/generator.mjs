@@ -208,7 +208,14 @@ const mergeParameter = (offerType, key, current, next) => {
           })
       : undefined,
   );
-  setOrDelete(merged, 'deprecated', current.deprecated ?? next.deprecated);
+  // A deprecation (true, or a note) by one agent wins over another's `false`.
+  const deprecations = [current.deprecated, next.deprecated];
+  setOrDelete(
+    merged,
+    'deprecated',
+    deprecations.find(d => d !== undefined && d !== null && d !== false) ??
+      deprecations.find(d => d === false),
+  );
   // What an agent works out when the key is absent holds only when all do.
   setOrDelete(
     merged,

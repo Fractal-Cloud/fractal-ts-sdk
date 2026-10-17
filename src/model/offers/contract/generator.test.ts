@@ -209,6 +209,26 @@ describe('generator', () => {
     );
   });
 
+  it('keeps a key deprecated when any agent deprecates it, in any order', () => {
+    const note = {level: 'warn', note: 'use other'};
+    for (const [first, second, deprecated] of [
+      [{deprecated: false}, {deprecated: note}, note],
+      [{deprecated: note}, {deprecated: false}, note],
+      [{}, {deprecated: note}, note],
+      [{deprecated: true}, {deprecated: false}, true],
+      [{deprecated: false}, {}, false],
+      [{}, {}, undefined],
+    ] as const) {
+      for (const projections of [
+        twoAgents(first, second),
+        twoAgents(first, second).reverse(),
+      ]) {
+        const [offer] = buildModel(projections);
+        expect(offer.params.get('k').deprecated).toEqual(deprecated);
+      }
+    }
+  });
+
   it('keeps a key sensitive when any agent marks it so', () => {
     for (const [first, second] of [
       [{sensitive: false}, {sensitive: true}],

@@ -30,6 +30,7 @@ import {
 import {searchLinkRefusal} from '../components/search_link_refusal';
 import {parseRouteLink, routeRefusal} from './route_link_routes';
 import type {SqsExporterConfig} from './sqs_exporter_config';
+import {isKubernetesName} from './kubernetes_name';
 
 /** Throw the error every check here throws, naming the component. */
 const refuse = (id: string, why: string): never => {
@@ -373,6 +374,68 @@ export const GrafanaTempo = defineOffer<
 // agent declares under the BFF component `Observability.CaaS.Monitoring`.
 
 /**
+ * A queue URL as aria-agent-caas-k8s reads one (`sqsexporter.QueueFromURL`):
+ * https (any case), `sqs.<region>.amazonaws.com`, a 12-digit account and a
+ * queue name, no query; a fragment is ignored.
+ */
+const SQS_QUEUE_URL =
+  /^[Hh][Tt][Tt][Pp][Ss]:\/\/sqs\.[a-z0-9-]+\.amazonaws\.com\/[0-9]{12}\/[A-Za-z0-9_-]{1,80}(\.fifo)?(#\S*)?$/;
+
+/** The exporter's own parameters, refused as the agent refuses them (`sqs_exporter_settings.go`). */
+const ensureSqsExporterParameters = (
+  self: LiveSystemComponent,
+  config: SqsExporterConfig,
+): void => {
+  const badUrl = (config.queueUrls ?? []).find(
+    u => !SQS_QUEUE_URL.test(u.trim()) || /%(?![0-9A-Fa-f]{2})/.test(u),
+  );
+  if (badUrl !== undefined) {
+    refuse(
+      self.id,
+      `queueUrls holds '${badUrl}', which is not https://sqs.<region>.amazonaws.com/<account>/<name>`,
+    );
+  }
+  const badSecret = (config.imagePullSecrets ?? []).find(
+    n => !isKubernetesName(n.trim()),
+  );
+  if (badSecret !== undefined) {
+    refuse(
+      self.id,
+      `imagePullSecrets entry '${badSecret}' is not a Secret name`,
+    );
+  }
+  if (
+    config.nodeSelector !== undefined &&
+    Object.keys(config.nodeSelector).length === 0
+  ) {
+    refuse(
+      self.id,
+      'nodeSelector is empty: the agent reads an empty selector as unset; omit it',
+    );
+  }
+  for (const [key, value] of Object.entries(config.nodeSelector ?? {})) {
+    if (typeof value !== 'string') {
+      refuse(self.id, `nodeSelector '${key}' is not a string`);
+    }
+  }
+  const interval: unknown = config.monitorIntervalSeconds;
+  if (
+    interval !== undefined &&
+    (typeof interval !== 'number' ||
+      !Number.isInteger(interval) ||
+      interval < 1)
+  ) {
+    refuse(
+      self.id,
+      `monitorIntervalSeconds ${String(interval)} is not a whole number of seconds of at least 1`,
+    );
+  }
+  if (typeof config.image === 'string' && config.image.trim() === '') {
+    refuse(self.id, "image is blank: omit it for the agent's own image");
+  }
+};
+
+/**
  * A Prometheus exporter of SQS queue depth (EKS only): a Deployment, a Service
  * (port `metrics`, 8080) and a ServiceMonitor that `KubePrometheusStack` scrapes.
  * It watches every `AwsSqsQueue` it links to (no settings; a reference to
@@ -429,6 +492,7 @@ export const SqsExporter = defineOffer<
         );
       }
     }
+    ensureSqsExporterParameters(self, config);
     const linkedQueues = self.links.filter(l =>
       all.some(c => c.id === l.componentId && c.type === SQS_QUEUE_TYPE),
     );

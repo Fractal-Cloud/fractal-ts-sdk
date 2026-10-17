@@ -102,12 +102,13 @@ describe('liveSystems.deploy()', () => {
   });
 
   it('fire-and-forget: creates (POST) and returns without polling', async () => {
-    h.state.queue = [{status: 404}, VALID, {status: 201}];
+    h.state.queue = [{status: 404}, VALID, {status: 404}, {status: 201}];
     await cloud.liveSystems.deploy(liveSystem()); // default mode
 
     expect(h.requests.map(r => `${r.method} ${r.url}`)).toEqual([
       `GET ${LS_URL}`, // existence probe
       'POST https://api.fractal.cloud/livesystems/validate', // validation
+      `GET ${LS_URL}`, // existence again, before submitting
       'POST https://api.fractal.cloud/livesystems', // create, no poll
     ]);
     const post = h.requests.find(
@@ -147,6 +148,7 @@ describe('liveSystems.deploy()', () => {
     h.state.queue = [
       {status: 404}, // LS existence
       VALID, // validation
+      {status: 404}, // existence again, before submitting
       {status: 201}, // LS create
       {status: 200, body: {status: 'Provisioning'}}, // poll 1
       {status: 200, body: {status: 'Active'}}, // poll 2
@@ -173,6 +175,7 @@ describe('liveSystems.deploy()', () => {
     expect(h.requests.map(r => r.method)).toEqual([
       'GET',
       'POST',
+      'GET',
       'POST',
       'GET',
       'GET',
@@ -252,6 +255,7 @@ describe('liveSystems.deploy()', () => {
     h.state.queue = [
       {status: 404}, // LS existence
       VALID, // validation
+      {status: 404}, // existence again, before submitting
       {status: 201}, // LS create
       {status: 200, body: {status: 'FailedMutation'}}, // poll
     ];
@@ -266,11 +270,12 @@ describe('liveSystems.deploy()', () => {
   });
 
   it('updates (PUT) when the live system already exists', async () => {
-    h.state.queue = [{status: 200}, VALID, {status: 200}];
+    h.state.queue = [{status: 200}, VALID, {status: 200}, {status: 200}];
     await cloud.liveSystems.deploy(liveSystem());
     expect(h.requests.map(r => `${r.method} ${r.url}`)).toEqual([
       `GET ${LS_URL}`,
       `POST ${LS_URL}/validate`,
+      `GET ${LS_URL}`,
       `PUT ${LS_URL}`,
     ]);
   });
@@ -324,6 +329,72 @@ describe('liveSystems.deploy()', () => {
     },
   });
 
+  it('decides create or update after validation: one created meanwhile is updated', async () => {
+    h.state.queue = [
+      {status: 404}, // existence: not yet
+      VALID, // validation (as a create)
+      {status: 200}, // existence again, right before submitting: created meanwhile
+      {status: 200}, // update
+    ];
+    await cloud.liveSystems.deploy(liveSystem());
+    expect(h.requests.map(r => `${r.method} ${r.url}`)).toEqual([
+      `GET ${LS_URL}`,
+      'POST https://api.fractal.cloud/livesystems/validate',
+      `GET ${LS_URL}`,
+      `PUT ${LS_URL}`,
+    ]);
+  });
+
+  it('warns about each component the control plane did not validate, and submits', async () => {
+    const answer = result([]);
+    const unvalidated = {
+      ...answer,
+      body: {
+        ...answer.body,
+        summary: {...answer.body.summary, unvalidatedComponents: 1},
+        components: [
+          {
+            ...answer.body.components[0],
+            validated: false,
+            unvalidatedReason: 'contractUnavailable',
+            fields: [],
+          },
+        ],
+      },
+    };
+    h.state.queue = [
+      {status: 404},
+      unvalidated,
+      {status: 404},
+      {status: 201},
+      {status: 200, body: {status: 'Active'}},
+      {status: 200, body: {status: 'Active', components: []}},
+    ];
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await cloud.liveSystems.deploy(liveSystem(), {
+      mode: 'wait',
+      pollIntervalMs: 1,
+      timeoutMs: 5000,
+    });
+    const lines = log.mock.calls.map(c => String(c[0]));
+    expect(
+      lines.filter(l =>
+        /WARN {2}Live System validation skipped a component {2}system=\S+ component=uploads reason=contractUnavailable$/.test(
+          l,
+        ),
+      ),
+    ).toHaveLength(1);
+    expect(h.requests.map(r => r.method)).toEqual([
+      'GET',
+      'POST',
+      'GET',
+      'POST',
+      'GET',
+      'GET',
+    ]);
+    log.mockRestore();
+  });
+
   it('refuses the deploy before submitting when validation finds a blocking issue', async () => {
     h.state.queue = [
       {status: 404},
@@ -351,6 +422,7 @@ describe('liveSystems.deploy()', () => {
     h.state.queue = [
       {status: 404},
       result([issue('warn', 'bucket is not read by the agent.')]),
+      {status: 404},
       {status: 201},
       {status: 200, body: {status: 'Active'}},
       {status: 200, body: {status: 'Active', components: []}},
@@ -383,6 +455,7 @@ describe('liveSystems.deploy()', () => {
     h.state.queue = [
       {status: 404},
       result([reported]),
+      {status: 404},
       {status: 201},
       {status: 200, body: {status: 'Active'}},
       {status: 200, body: {status: 'Active', components: []}},
@@ -422,6 +495,7 @@ describe('liveSystems.deploy()', () => {
     h.state.queue = [
       {status: 404},
       {status: 404}, // an older control plane: no validate route
+      {status: 404},
       {status: 201},
       {status: 200, body: {status: 'Active'}},
       {status: 200, body: {status: 'Active', components: []}},
@@ -435,6 +509,7 @@ describe('liveSystems.deploy()', () => {
     expect(h.requests.map(r => r.method)).toEqual([
       'GET',
       'POST',
+      'GET',
       'POST',
       'GET',
       'GET',
@@ -486,6 +561,7 @@ describe('liveSystems.deploy()', () => {
       h.state.queue = [
         {status: 404},
         {status: 200, body},
+        {status: 404},
         {status: 201},
         {status: 200, body: {status: 'Active'}},
         {status: 200, body: {status: 'Active', components: []}},
@@ -499,6 +575,7 @@ describe('liveSystems.deploy()', () => {
       expect(h.requests.map(r => r.method)).toEqual([
         'GET',
         'POST',
+        'GET',
         'POST',
         'GET',
         'GET',
@@ -535,6 +612,7 @@ describe('liveSystems.deploy()', () => {
     h.state.queue = [
       {status: 404},
       VALID,
+      {status: 404},
       {
         throws: {
           status: 400,
