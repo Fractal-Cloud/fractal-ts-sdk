@@ -164,6 +164,103 @@ const siteBucketOrigin = (
   return bucketOrigin;
 };
 
+/** A host name as the AWS agent reads one (`CloudFrontConfig.HOST_NAME`), any case. */
+const HOST_NAME =
+  /^(?=.{1,253}$)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/i;
+/** A host as the agent normalizes it: trimmed, lower case, no trailing dot. */
+const normalizedHost = (value: string): string =>
+  javaTrim(value).replace(/\.$/, '').toLowerCase();
+/** Bounds CloudFront puts on its origin read and keep-alive timeouts (above 60 s needs a quota increase). */
+const ORIGIN_TIMEOUT_MIN = 1;
+const ORIGIN_TIMEOUT_MAX = 180;
+/** Bounds AWS WAF puts on a rate-based rule's limit (per 5-minute window). */
+const WAF_RATE_LIMIT_MIN = 10;
+const WAF_RATE_LIMIT_MAX = 2_000_000_000;
+
+/**
+ * The checks of the distribution's own parameters the AWS agent makes too
+ * (`CloudFrontConfig`), refused before anything is deployed, and a redirect to
+ * one of its own aliases, which the agent would deploy as an endless loop.
+ * Values are read from the live component, whichever path set them.
+ */
+const ensureCloudFrontParameters = (
+  self: LiveSystemComponent,
+  target: string | undefined,
+): void => {
+  const p = self.parameters;
+  const fail = (why: string): never => refuse(self.id, why);
+  const aliases = Array.isArray(p.aliases) ? (p.aliases as unknown[]) : [];
+  const invalid = aliases.filter(
+    a => typeof a !== 'string' || !HOST_NAME.test(normalizedHost(a)),
+  );
+  if (invalid.length > 0) {
+    fail(
+      `aliases holds ${invalid.map(a => `'${String(a)}'`).join(', ')}, not a host name`,
+    );
+  }
+  for (const key of ['originDomain', 'originDomainName'] as const) {
+    const value = p[key];
+    if (
+      typeof value === 'string' &&
+      javaTrim(value) !== '' &&
+      !HOST_NAME.test(normalizedHost(value))
+    ) {
+      fail(`${key} '${value}' is not a host name`);
+    }
+  }
+  const protocol = p.originProtocol;
+  if (
+    protocol !== undefined &&
+    !(
+      typeof protocol === 'string' &&
+      ['', 'https', 'http'].includes(javaTrim(protocol).toLowerCase())
+    )
+  ) {
+    fail(`originProtocol '${String(protocol)}' is neither https nor http`);
+  }
+  const waf = p.wafRateLimitPer5Min;
+  if (
+    waf !== undefined &&
+    (typeof waf !== 'number' ||
+      !Number.isInteger(waf) ||
+      waf < WAF_RATE_LIMIT_MIN ||
+      waf > WAF_RATE_LIMIT_MAX)
+  ) {
+    fail(
+      `wafRateLimitPer5Min ${String(waf)} is not a whole number from ${WAF_RATE_LIMIT_MIN} to ${WAF_RATE_LIMIT_MAX}`,
+    );
+  }
+  for (const key of [
+    'originReadTimeoutSeconds',
+    'originKeepaliveTimeoutSeconds',
+  ] as const) {
+    const value = p[key];
+    if (
+      value !== undefined &&
+      (typeof value !== 'number' ||
+        !Number.isInteger(value) ||
+        value < ORIGIN_TIMEOUT_MIN ||
+        value > ORIGIN_TIMEOUT_MAX)
+    ) {
+      fail(
+        `${key} ${String(value)} is not a whole number of seconds from ${ORIGIN_TIMEOUT_MIN} to ${ORIGIN_TIMEOUT_MAX}`,
+      );
+    }
+  }
+  const host =
+    target === undefined
+      ? undefined
+      : /^https:\/\/([^/?#]+)/i.exec(target)?.[1];
+  if (host !== undefined) {
+    const own = normalizedHost(host);
+    if (aliases.some(a => typeof a === 'string' && normalizedHost(a) === own)) {
+      fail(
+        `aliases holds the redirect target's own host ${own}, which would redirect to itself forever`,
+      );
+    }
+  }
+};
+
 export const AwsCloudFront = defineOffer<
   'APIManagement.ApiGateway',
   ContractConfig<
@@ -271,11 +368,10 @@ export const AwsCloudFront = defineOffer<
     routes: unsupported('the agent reads no route list from parameters'),
     dnsZones: unsupported('its agent takes no DNS zone access'),
   },
-  // Only what involves other components is checked here: which linked bucket
-  // or gateway is the origin, and whether a TLS gateway's certificate covers
-  // the hosts CloudFront forwards. Every check of this component's own
-  // parameters is the control plane's, against the agent's contract
-  // (`cloud.liveSystems.deploy` validates before submitting).
+  // Checked here: which linked bucket or gateway is the origin, whether a TLS
+  // gateway's certificate covers the hosts CloudFront forwards, and the agent's
+  // own checks of this component's parameters (ensureCloudFrontParameters),
+  // which the control plane does not enforce by default.
   validate: (self, all, config) => {
     const target =
       config.redirectTo === undefined
@@ -316,9 +412,25 @@ export const AwsCloudFront = defineOffer<
           'drop its tlsCertificateArn.',
       );
     }
-    if (target !== undefined && (vpcOrigin || bucketOrigin)) {
+    if (target !== undefined && (customOrigin || vpcOrigin || bucketOrigin)) {
       throw new Error(
         `Live component '${self.id}': a distribution serves redirectTo or an origin, not both.`,
+      );
+    }
+    ensureCloudFrontParameters(self, target);
+    const aliases = Array.isArray(self.parameters.aliases)
+      ? self.parameters.aliases
+      : [];
+    if (
+      aliases.length > 0 &&
+      target === undefined &&
+      !customOrigin &&
+      !vpcOrigin &&
+      !bucketOrigin
+    ) {
+      throw new Error(
+        `Live component '${self.id}': aliases need an origin (originDomain, a linked ` +
+          'gateway or a linked bucket) or redirectTo to serve.',
       );
     }
     // CloudFront checks the origin certificate against the viewer host it

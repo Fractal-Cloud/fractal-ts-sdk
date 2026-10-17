@@ -177,6 +177,44 @@ describe('SqsExporter', () => {
   it.each([
     [{queueUrls: []}, /queueUrls is an empty list/],
     [{imagePullSecrets: []}, /imagePullSecrets is an empty list/],
+    // What aria-agent-caas-k8s refuses (sqs_exporter_settings.go, sqsexporter/queue.go).
+    [
+      {queueUrls: ['https://sqs.eu-west-1.amazonaws.com/123/q']},
+      "queueUrls holds 'https://sqs.eu-west-1.amazonaws.com/123/q', which is not https://sqs.<region>.amazonaws.com/<account>/<name>",
+    ],
+    [
+      {queueUrls: ['http://sqs.eu-west-1.amazonaws.com/123456789012/q']},
+      /queueUrls holds .* which is not https:\/\/sqs/,
+    ],
+    [
+      {queueUrls: ['https://sqs.eu-west-1.amazonaws.com/123456789012/q?x=1']},
+      /queueUrls holds .* which is not https:\/\/sqs/,
+    ],
+    [
+      {queueUrls: ['https://sqs.eu-west-1.amazonaws.com/123456789012/q#%zz']},
+      /queueUrls holds .* which is not https:\/\/sqs/,
+    ],
+    [
+      {imagePullSecrets: ['Docker_Hub']},
+      "imagePullSecrets entry 'Docker_Hub' is not a Secret name",
+    ],
+    [
+      {nodeSelector: {}},
+      'nodeSelector is empty: the agent reads an empty selector as unset; omit it',
+    ],
+    [
+      {nodeSelector: {'kubernetes.io/arch': 64}},
+      "nodeSelector 'kubernetes.io/arch' is not a string",
+    ],
+    [
+      {monitorIntervalSeconds: 0},
+      'monitorIntervalSeconds 0 is not a whole number of seconds of at least 1',
+    ],
+    [
+      {monitorIntervalSeconds: 2.5},
+      'monitorIntervalSeconds 2.5 is not a whole number of seconds of at least 1',
+    ],
+    [{image: '  '}, "image is blank: omit it for the agent's own image"],
   ])('refuses %o', (config, reason) => {
     expect(() => exporter(config as Parameters<typeof SqsExporter>[0])).toThrow(
       reason,

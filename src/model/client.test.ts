@@ -290,15 +290,17 @@ describe('liveSystems.deploy', () => {
   });
 
   it('never registers a blueprint as a side effect', async () => {
-    h.state.queue = [{status: 404}, VALID, {status: 201}];
+    h.state.queue = [{status: 404}, VALID, {status: 404}, {status: 201}];
     const cloud = createFractalCloudClient(creds);
 
     await cloud.liveSystems.deploy(storageLiveSystem());
 
-    // Exactly the LiveSystem round-trip: existence probe, validation, create.
+    // Exactly the LiveSystem round-trip: existence probe, validation, existence
+    // again right before submitting, create.
     expect(h.requests.map(r => `${r.method} ${r.url}`)).toEqual([
       `GET ${LS_URL}`,
       'POST https://api.fractal.cloud/livesystems/validate',
+      `GET ${LS_URL}`,
       'POST https://api.fractal.cloud/livesystems',
     ]);
     expect(h.requests.some(r => r.url.includes('/blueprints/'))).toBe(false);
@@ -310,6 +312,7 @@ describe('liveSystems.deploy', () => {
     h.state.queue = [
       {status: 404}, // LS existence probe
       VALID,
+      {status: 404},
       {
         throws: {
           status: 400,
@@ -328,6 +331,7 @@ describe('liveSystems.deploy', () => {
     h.state.queue = [
       {status: 404},
       VALID,
+      {status: 404},
       {throws: {status: 403, response: {body: {reasonCode: 'Forbidden'}}}},
     ];
     const cloud = createFractalCloudClient(creds);
@@ -353,7 +357,7 @@ describe('baseUrl override', () => {
 
     h.state.queue = [{status: 404}, {status: 201}];
     await cloud.blueprints.create(storageFractal());
-    h.state.queue = [{status: 404}, VALID, {status: 201}];
+    h.state.queue = [{status: 404}, VALID, {status: 404}, {status: 201}];
     await cloud.liveSystems.deploy(storageLiveSystem());
 
     expect(h.requests.map(r => r.url)).toEqual([
@@ -361,6 +365,7 @@ describe('baseUrl override', () => {
       `https://staging.fractal.cloud/blueprints/Personal/${OWNER}/reusable-templates/basic-storage/1.0.0`,
       `https://staging.fractal.cloud/livesystems/Personal/${OWNER}/reusable-templates/acme-storage`,
       'https://staging.fractal.cloud/livesystems/validate',
+      `https://staging.fractal.cloud/livesystems/Personal/${OWNER}/reusable-templates/acme-storage`,
       'https://staging.fractal.cloud/livesystems',
     ]);
   });

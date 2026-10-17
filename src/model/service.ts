@@ -307,6 +307,15 @@ const enforceValidation = (
       ),
     ),
   ].filter(w => !w.issue.blocking);
+  // A component the control plane could not check (no contract yet, ...) is
+  // not refused, but never passes for checked either.
+  for (const c of result.components.filter(c => c.validated === false)) {
+    log(quiet, 'WARN', 'Live System validation skipped a component', {
+      system,
+      component: c.componentId,
+      reason: c.unvalidatedReason ?? 'unknown',
+    });
+  }
   // A non-blocking issue is reported, never dropped: a warning, or an error the
   // control plane does not enforce (report mode).
   for (const {issue, component, field} of warnings) {
@@ -461,9 +470,12 @@ export async function deployLiveSystem(
       fractal: fractalApiId(ls),
     });
   }
-  const exists = await liveSystemExists(ls, cfg);
+  let exists = await liveSystemExists(ls, cfg);
   if (!(opts.skipValidation ?? false)) {
     enforceValidation(ls, await requestValidation(ls, cfg, exists), silent);
+    // Create or update is decided right before submitting: the Live System may
+    // have been created (or deleted) while it was being validated.
+    exists = await liveSystemExists(ls, cfg);
   }
   await submit(ls, cfg, exists);
   if (opts.mode === 'fire-and-forget') {

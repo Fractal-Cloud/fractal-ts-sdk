@@ -11,6 +11,45 @@ of truth for what is on npm.
 
 ## 2.13.0
 
+### Breaking — what to change when upgrading
+
+2.13.0 is a minor release that breaks the following, by the maintainers' decision (no
+consumer is known to use the removed APIs). Each item links to its section below.
+
+- **`CertificateManager`, `CertificateManagerNode`, `CertManager`, `CertManagerConfig`
+  removed.** cert-manager is internal to `TraefikGateway` now. Replace the component
+  with `dnsZones` (TXT write on the zone of the gateway's hosts) and `acmeEmail` on the
+  gateway, and remove the `CertificateManager` component only once the caas-k8s agent
+  is v1.6.0 or later (see "Removed (BREAKING) — `CertificateManager`...").
+- **`ObservabilityElastic` removed.** Select `GrafanaLoki` for `Logging`. Deployed
+  Elastic resources are left running, unmanaged.
+- **`Jaeger` storage keys removed.** `storageSettings` and `storageClassName` are gone;
+  `Jaeger` must link to exactly one `StorageOpenSearch` with `access: 'read-write'` and
+  depend on it.
+- **`HetznerServer` emits `NetworkAndCompute.IaaS.HetznerCloudServer`** (was
+  `NetworkAndCompute.IaaS.HetznerServer`), and **`OpenshiftVm` emits
+  `NetworkAndCompute.IaaS.OpenshiftVirtualMachine` with delivery model `IaaS`** (was
+  `NetworkAndCompute.CaaS.OpenshiftVm`, `CaaS`); `OpenshiftSecurityGroup` emits
+  `NetworkAndCompute.CaaS.OpenshiftSecurityGroup`. No agent declares the old types, so a
+  Live System stored with one holds a component that was never reconciled and owns no
+  infrastructure. Redeploy the Live System with 2.13.0: the update gives the component
+  its new type, which the agent then creates. Nothing has to be deleted. A component
+  another Live System references cannot be retyped (`409
+  ComponentReferencedByAnotherLiveSystem`): remove the reference first. `OpenshiftVm`
+  also requires `name` and `image`.
+- **`EcsService` and `CloudRun` emit the types their agents reconcile**
+  (`NetworkAndCompute.CaaS.ECSService` plus a `<id>-task` task definition, and
+  `NetworkAndCompute.CaaS.CloudRunService`, delivery model `CaaS`). Their old
+  placeholder types were never reconciled either; redeploy as above.
+- **`AwsSesIdentity` requires `mailType` with `productionAccess: true`**, as the AWS
+  agent does (it assumes no kind of mail and sends no request without one). Add
+  `mailType: 'TRANSACTIONAL'` or `'MARKETING'`.
+- **`LoadBalancer` declares its subnets** (`subnets: [...]`) for `AwsLb`, `AzureLb` and
+  `GcpGlb`.
+- **Offer configs come from the agents' contracts**: keys no agent reads are no longer
+  accepted, and some keys were renamed to the agents' spelling (see "Changed — offer
+  configs are generated from the agents' published contracts").
+
 ### Fixed — release review
 
 - **A validation answer the SDK cannot read no longer fails a deploy.**
@@ -50,6 +89,23 @@ of truth for what is on npm.
   `ObjectStorage` or a `Datalake` selected as `AwsS3` / `AwsS3Datalake` is sent as
   `versioning`, the key the agent reads first; `versioning` is no longer a config key
   of those offers, the guardrail sets it.
+
+- **Round 4.** `deploy` logs `WARN Live System validation skipped a component` for
+  each component the control plane did not validate (`validated: false`), naming the
+  component and the reason, and still submits. It checks whether the Live System exists
+  again right before submitting, so one created or deleted while it was being
+  validated is updated or created as it now is. The contract generator keeps a key
+  deprecated when any agent deprecates it (a `false` from another agent no longer
+  wins). `AwsCloudFront` refuses again, as its agent does: aliases, `originDomain` and
+  `originDomainName` that are not host names, aliases without an origin or redirect,
+  `redirectTo` together with `originDomain`, `originProtocol` other than `https` /
+  `http`, `wafRateLimitPer5Min` outside 10–2000000000 and origin timeouts outside
+  1–180 s, plus an alias equal to the redirect target's host (an endless redirect the
+  agent would deploy). `SqsExporter` refuses again, as aria-agent-caas-k8s does: queue
+  URLs that are not `https://sqs.<region>.amazonaws.com/<account>/<name>` (or carry a
+  malformed escape), `imagePullSecrets` that are not Secret names, an empty
+  `nodeSelector` or one with non-string values, `monitorIntervalSeconds` below 1 or
+  fractional, and a blank `image`.
 
 ### Removed — `ObservabilityElastic`
 
@@ -310,12 +366,12 @@ The per-offer `validate` functions that re-implemented the agents' value checks 
 removed: a parameter's allowed values belong in the contract its agent publishes, not in
 a copy in the SDK. What the SDK no longer refuses at `toLiveSystem()`, and so now sends:
 
-- `AwsCloudFront`: `aliases` that are not host names; aliases with neither an origin nor `redirectTo`;
-  `redirectTo` that is not an `https://host[/path]` redirect target; `originDomain` /
-  `originDomainName` that are not host names; `originProtocol` other than `https` /
-  `http`; `wafRateLimitPer5Min` and the origin / redirect timeouts outside their
-  ranges; `defaultRootObject` / `errorDocument` that are not object keys; a non-boolean
-  `spaFallback`, and `spaFallback` together with `errorDocument`.
+- `AwsCloudFront`: `redirectTo` that is not an `https://host[/path]` redirect target,
+  the redirect timeouts outside their ranges, `defaultRootObject` / `errorDocument`
+  that are not object keys, a non-boolean `spaFallback`, and `spaFallback` together
+  with `errorDocument` (the agent refuses these at deploy). (Refused again, see "Fixed — release
+  review": aliases, `originDomain` / `originDomainName` host names, aliases without an
+  origin, `originProtocol`, `wafRateLimitPer5Min`, origin timeouts, a self-redirect.)
 - `TraefikGateway`: `namespace` that is not a Kubernetes namespace name;
   `tlsSecretName` / `tlsClusterIssuer` that are not Kubernetes names; `tlsHosts`
   entries that are not host names or one-label wildcards; a `host` not covered by
@@ -334,9 +390,9 @@ a copy in the SDK. What the SDK no longer refuses at `toLiveSystem()`, and so no
   retention that is not a whole number of at least 1; `KubePrometheusStack`:
   `prometheusStorageGi` below 1, and `lokiUrl` / `tempoUrl` that are neither `none` nor
   an absolute http(s) URL. `GrafanaAlloy`: `lokiPushUrl` that is not an absolute
-  http(s) URL. `SqsExporter`: `imagePullSecrets` entries that are not Secret names,
-  `queueUrls` that are not SQS queue URLs, `monitorIntervalSeconds` below 1, and
-  `nodeSelector` values that are not strings.
+  http(s) URL. (`SqsExporter`'s `imagePullSecrets`, `queueUrls`,
+  `monitorIntervalSeconds`, `nodeSelector` and `image` are refused again, see "Fixed —
+  release review".)
 - `AwsSnsTopic`: `topicName` that is not an SNS name, `maximumMessageSize` outside
   1024–1048576 bytes.
 - `AwsSqsQueue`: `queueName` that is not an SQS name (the agent repairs it). Still
