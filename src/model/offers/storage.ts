@@ -98,7 +98,7 @@ export const AwsS3 = defineOffer<
   'Storage.ObjectStorage',
   ContractConfig<
     typeof Storage_PaaS_AwsS3,
-    'versioningEnabled',
+    'versioning',
     {
       /**
        * Expire every object this many days after it was written (and abort
@@ -122,8 +122,23 @@ export const AwsS3 = defineOffer<
       'the agent keeps every bucket private',
     ),
     retentionDays: toContractKey(Storage_PaaS_AwsS3, 'lifecycleExpirationDays'),
+    // The agent reads `versioning`; `versioningEnabled` only as its alias.
+    versioningEnabled: toContractKey(Storage_PaaS_AwsS3, 'versioning'),
     storageClass: unsupported('the agent sets no storage class'),
     tags: unsupported('the agent applies no tags to it'),
+  },
+  // The agent refuses an expiration that is not a positive number of days; the
+  // contract declares only its type.
+  validate: self => {
+    const days = self.parameters.lifecycleExpirationDays;
+    if (
+      days !== undefined &&
+      (typeof days !== 'number' || !Number.isInteger(days) || days < 1)
+    ) {
+      throw new Error(
+        `AwsS3 '${self.id}': lifecycleExpirationDays ${String(days)} is not a whole number of at least 1.`,
+      );
+    }
   },
 });
 /**

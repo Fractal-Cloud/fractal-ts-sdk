@@ -63,13 +63,19 @@ per offer type, named after it (`NetworkAndCompute.IaaS.AwsLb` → `NetworkAndCo
   aliases, deprecations, constraints and rules come from the contract. A parameter's description
   becomes its doc comment.
 - **An offer several agents declare** (the self-hosted CaaS offers) is merged into one contract,
-  because the SDK emits one component and any of those agents may reconcile it: a key is required if
-  any agent requires it, `integer` and `number` meet at `number`, allowed values intersect, differing
+  because the SDK emits one component and any of those agents may reconcile it: a key is required
+  only if every declaring agent requires it (when only some do, it is optional and `requiredBy`
+  names them), `integer` and `number` meet at `number`, allowed values intersect, differing
   defaults are dropped, and `agents` records which agents read a key when not all do. Any other
   disagreement fails the generator, naming both agents.
+- **A key an agent declares twice** (its canonical key and an older spelling it still reads,
+  each as its own parameter instead of one with an alias) is folded into the canonical key as a
+  deprecated alias, as listed in `contracts/key-aliases.json`. An entry the agent data no longer
+  needs fails the generator: remove it once the agent declares the alias itself.
 - **Merging never widens an offer.** An optional key only some of the declaring agents read is not
   a config key (`ContractParameters`), and a neutral translation into one is refused, naming the
-  agents. A key some agent requires stays, since that agent cannot work without it.
+  agents. A key some agent requires (`requiredBy`) stays, optional, since that agent cannot work
+  without it.
 - Generated modules hold data only; unused contracts are tree-shaken from the bundle.
 
 Dependencies and links are not generated: in the SDK they are carried by the blueprint.

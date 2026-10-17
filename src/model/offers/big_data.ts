@@ -221,7 +221,7 @@ export const AwsS3Datalake = defineOffer<
   'BigData.Datalake',
   ContractConfig<
     typeof BigData_PaaS_AwsS3Datalake,
-    'versioningEnabled',
+    'versioning',
     {bucket: string}
   >
 >({
@@ -230,6 +230,8 @@ export const AwsS3Datalake = defineOffer<
   provider: 'AWS',
   deliveryModel: 'PaaS',
   neutral: {
+    // The agent reads `versioning`; `versioningEnabled` only as its alias.
+    versioningEnabled: toContractKey(BigData_PaaS_AwsS3Datalake, 'versioning'),
     retentionDays: toContractKey(
       BigData_PaaS_AwsS3Datalake,
       'lifecycleExpirationDays',

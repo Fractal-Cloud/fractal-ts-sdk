@@ -9,7 +9,8 @@ import type {OfferContract} from './offer_contract';
  * reconciled by any of them, so an optional key only some of them read (the
  * parameter carries `agents`) is left out: offering it would widen the offer
  * past what the agent that ends up reconciling it reads. A key some agent
- * requires stays, since that agent cannot work without it.
+ * requires (`requiredBy`) stays, optional, since that agent cannot work
+ * without it and another one may reconcile the component instead.
  */
 export type ContractParameters<C extends OfferContract> = {
   -readonly [
@@ -25,8 +26,10 @@ export type ContractParameters<C extends OfferContract> = {
       readonly required: true;
     }
       ? never
-      : C['params'][K] extends {readonly agents: readonly string[]}
-        ? never
-        : K
+      : C['params'][K] extends {readonly requiredBy: readonly string[]}
+        ? K
+        : C['params'][K] extends {readonly agents: readonly string[]}
+          ? never
+          : K
   ]?: ContractValue<C['params'][K]>;
 };

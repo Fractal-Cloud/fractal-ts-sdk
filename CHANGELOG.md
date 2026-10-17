@@ -11,6 +11,54 @@ of truth for what is on npm.
 
 ## 2.13.0
 
+### Fixed — release review
+
+- **A validation answer the SDK cannot read no longer fails a deploy.**
+  `cloud.liveSystems.deploy` and `cloud.liveSystems.validate` check the whole shape of
+  the control plane's answer, nested parts included (each component's `fields`, each
+  field's `issues`, each issue, a non-null `summary`). A partial or differently
+  versioned answer is treated like no validation at all: `deploy` warns
+  (`WARN Live System validation unavailable, submitting`) and submits, `validate`
+  returns `undefined`. Before, it failed the deploy with a `TypeError`.
+- **Checks whose loss could not be undone are back in `toLiveSystem()`**, mirroring
+  the agents' rules, because nothing else refuses them before the agent does (the SDK
+  does not check vendor config against the contract, and the control plane validates
+  in `report` mode by default):
+  - `TraefikGateway`: a `forwardAuthAddress` that is not an absolute http(s) URL
+    without credentials. aria-agent-caas-k8s accepts user info in it and stores it in
+    the gateway's middleware. The value is never echoed.
+  - `AwsSesIdentity`: `productionAccess` (account-wide, cannot be reverted) without
+    `mailType`, `websiteUrl` or `useCaseDescription`, a `websiteUrl` that is not an
+    http(s) URL, `mailType` other than `TRANSACTIONAL` / `MARKETING`, `contactLanguage`
+    other than `EN` / `JA`; `domain` that is not a domain name, `mailFromSubdomain`
+    that is not one DNS label or makes the MAIL FROM domain too long. `mailType` is now
+    documented as required with `productionAccess`: the AWS agent assumes no kind.
+  - `AwsRoute53HostedZone`: `recordManagement` other than `authoritative` / `lax` and a
+    non-boolean `allowBulkDelete` set past the `DnsZone` setters (an operation's `set`,
+    a raw guardrail, a config cast).
+  - `AwsS3`: `lifecycleExpirationDays` that is not a whole number of at least 1.
+    `AwsSqsQueue`: `visibilityTimeoutSeconds` (0–43200), `messageRetentionSeconds` and
+    `dlqRetentionSeconds` (60–1209600) and `maxReceiveCount` (1–1000) outside the
+    agent's ranges, a mapped guardrail included.
+- **A key only some agents of a shared offer require is optional.** The contract
+  generator required a key of an offer several agents declare when any of them
+  required it; it is now required only when every one of them does, and otherwise
+  optional, still offered, with `requiredBy` naming the agents that need it.
+  `CaaSSparkCluster` / `CaaSSparkJob` `sparkOperatorName`, `CaaSSparkJob`
+  `mainApplicationFile` and `KafkaTopic` `clusterName`, which only the Java agents
+  require, are no longer required by the type, since aria-agent-caas-k8s may reconcile
+  the offer instead.
+- **A key an agent declares twice is one key with a deprecated alias.** The Azure
+  agent declares the misspelling `diableLocalAuth` next to `disableLocalAuth`
+  (`Messaging.PaaS.EventHubNamespace`), and the AWS agent `versioningEnabled` next to
+  `versioning` (`Storage.PaaS.AwsS3` / `S3`, `BigData.PaaS.AwsS3Datalake` / `S3`), each
+  as a separate parameter. The generated contracts now carry only the canonical key,
+  with the other as a deprecated alias (`contracts/key-aliases.json`, which fails the
+  generator once the agent declares the alias itself). `withVersioningEnabled` on an
+  `ObjectStorage` or a `Datalake` selected as `AwsS3` / `AwsS3Datalake` is sent as
+  `versioning`, the key the agent reads first; `versioning` is no longer a config key
+  of those offers, the guardrail sets it.
+
 ### Removed — `ObservabilityElastic`
 
 The Elastic stack is no longer offered: the agents retired `Observability.CaaS.Elastic`
@@ -264,10 +312,11 @@ a copy in the SDK. What the SDK no longer refuses at `toLiveSystem()`, and so no
   together with Traefik TLS; a `tlsCertificateArn` that is not an ACM ARN; `host` that
   is not a host name; `replicas` and `entryPointIdleTimeoutSeconds` below 1;
   `loadBalancerSourceRanges` entries that are not CIDRs; ForwardAuth settings without
-  `forwardAuthAddress`, a `forwardAuthAddress` that is not an http(s) URL without
-  credentials, header lists holding non-header names, `forwardAuthExemptComponentIds`
-  entries that are not component ids, and `forwardAuthMaxBodySize` below 1.
-  (`tlsHosts` without a certificate source is still refused.)
+  `forwardAuthAddress`, header lists holding non-header names,
+  `forwardAuthExemptComponentIds` entries that are not component ids, and
+  `forwardAuthMaxBodySize` below 1. (`tlsHosts` without a certificate source, and a
+  `forwardAuthAddress` that is not an http(s) URL without credentials, are still
+  refused.)
 - `KubePrometheusStack`, `GrafanaLoki`, `GrafanaTempo`, `GrafanaAlloy`, `SqsExporter`:
   `namespace` that is not a Kubernetes namespace name. `KubePrometheusStack`,
   `GrafanaLoki`, `GrafanaTempo`: `storageClassName` that is not a Kubernetes name, and a
@@ -279,25 +328,19 @@ a copy in the SDK. What the SDK no longer refuses at `toLiveSystem()`, and so no
   `nodeSelector` values that are not strings.
 - `AwsSnsTopic`: `topicName` that is not an SNS name, `maximumMessageSize` outside
   1024–1048576 bytes.
-- `AwsSqsQueue`: `queueName` that is not an SQS name; numeric settings outside their
-  ranges. Still refused when the Live System is built, as no contract can express them:
+- `AwsSqsQueue`: `queueName` that is not an SQS name (the agent repairs it). Still
+  refused when the Live System is built: numeric settings outside the agent's ranges,
+  and, as no contract can express them:
   a filter event name that is blank or holds a comma (the list travels comma-joined),
   `filterEventNames` together with `filterPolicy`, a queue filtering a subscription
   while subscribing to no topic, a queue depending on two topics or on a topic that is
   not an `AwsSnsTopic`, and `dlqAlarm: true` (no contract key: the agent creates no
   alarm).
-- `AwsSesIdentity`: `domain` that is not a domain name, `mailFromSubdomain` that is not
-  one DNS label or makes the MAIL FROM domain too long, `productionAccess` without its
-  `websiteUrl` / `useCaseDescription`, a `websiteUrl` that is not an http(s) URL,
-  `mailType` other than `TRANSACTIONAL` / `MARKETING`, `contactLanguage` other than
-  `EN` / `JA`.
 - `AwsRdsPostgresDbms` / `AwsRdsMySqlDbms`: `storageType` RDS does not offer,
   `administratorLogin` longer than the engine allows, `cloudwatchLogExports` entries, a
-  non-boolean `requireSecureTransport`. `AwsS3`: `lifecycleExpirationDays` below 1.
+  non-boolean `requireSecureTransport`.
 - `Eks`: `controlPlaneLogTypes`, node pools without a name or with a name that is not a
   DNS-1123 label, unknown architectures and capacity types.
-- `AwsRoute53HostedZone`: `recordManagement` and `allowBulkDelete` set past the setters'
-  types (the `DnsZone` setters and the environment's `withDnsZones` still refuse them).
 - `K8sWorkload`: the probe, rollout, autoscaling, disruption-budget, grace-period,
   `ssmParameters` and `sesIdentityArns` checks. A `secretEnv` value that is not a
   `secretRef(...)` reference is still refused, without echoing it: a raw secret must

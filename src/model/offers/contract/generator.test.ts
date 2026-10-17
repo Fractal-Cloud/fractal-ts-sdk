@@ -107,8 +107,11 @@ describe('generator', () => {
       required: false,
       agents: ['aria-agent-caas-k8s', 'fractal-cloud-agent-aws'],
     });
-    // required by one agent is required for the component.
-    expect(params.storageSize.required).toBe(true);
+    // Required by one agent, not read by the other: whichever agent reconciles
+    // the component, a key is required only when that agent requires it, so the
+    // merged contract does not require it of everyone, and records who does.
+    expect(params.storageSize.required).toBe(false);
+    expect(params.storageSize.requiredBy).toEqual(['fractal-cloud-agent-aws']);
     expect(params.storageSize.agents).toEqual(['fractal-cloud-agent-aws']);
     expect(params.namespace.default).toBe('kafka');
   });
@@ -179,6 +182,56 @@ describe('generator', () => {
     return [a, b];
   };
 
+  it('requires a key only when every agent declaring the offer requires it', () => {
+    for (const [first, second, required, requiredBy] of [
+      [{required: true}, {required: true}, true, undefined],
+      [{required: true}, {required: false}, false, ['a']],
+      [{required: false}, {required: true}, false, ['b']],
+      [{}, {required: true}, false, ['b']],
+      [{}, {}, false, undefined],
+    ] as const) {
+      // whatever order the agents come in
+      for (const projections of [
+        twoAgents(first, second),
+        twoAgents(first, second).reverse(),
+      ]) {
+        const [offer] = buildModel(projections);
+        expect(offer.params.get('k').required).toBe(required);
+        expect(offer.params.get('k').requiredBy).toEqual(requiredBy);
+      }
+    }
+  });
+
+  it('does not require a key that another agent declaring the offer does not read', () => {
+    const [a, b] = twoAgents({required: true}, {});
+    const notK = {
+      ...b,
+      offers: [{...b.offers[0], params: [{key: 'other', type: 'string'}]}],
+    };
+    for (const projections of [
+      [a, notK],
+      [notK, a],
+    ]) {
+      const [offer] = buildModel(projections);
+      expect(offer.params.get('k')).toMatchObject({
+        required: false,
+        requiredBy: ['a'],
+        agents: ['a'],
+      });
+    }
+    // Declared by one agent only, it stays as that agent says.
+    const [single] = buildModel([a]);
+    expect(single.params.get('k').required).toBe(true);
+    expect(single.params.get('k').requiredBy).toBeUndefined();
+  });
+
+  it('renders requiredBy next to agents', async () => {
+    const files = await generate([fixture('java-agent'), fixture('go-agent')]);
+    expect(files.get('messaging.ts')).toMatch(
+      /storageSize: \{\s*type: 'string',\s*required: false,\s*agents: \['fractal-cloud-agent-aws'\],\s*requiredBy: \['fractal-cloud-agent-aws'\],\s*\}/,
+    );
+  });
+
   it('refuses agents whose vocabularies share no value', () => {
     expect(() =>
       buildModel(twoAgents({values: ['p', 'q']}, {values: ['r', 's']})),
@@ -230,6 +283,88 @@ describe('generator', () => {
     expect(() => buildModel([twice])).toThrow(
       /declares Messaging.CaaS.Kafka twice/,
     );
+  });
+
+  describe('key aliases (contracts/key-aliases.json)', () => {
+    const projection = (
+      params: ReadonlyArray<Record<string, unknown>>,
+    ): Record<string, unknown> => ({
+      schemaVersion: '2.0',
+      agentId: 'a',
+      agentVersion: 'v1',
+      offers: [{offerType: 'X.PaaS.Y', provider: 'AWS', params}],
+    });
+    const declaredTwice = projection([
+      {key: 'versioning', type: 'boolean', default: false},
+      {key: 'versioningEnabled', type: 'boolean', default: false},
+    ]);
+    const alias = {
+      offerType: 'X.PaaS.Y',
+      key: 'versioning',
+      alias: 'versioningEnabled',
+    };
+
+    it('turns an older spelling into a deprecated alias of the canonical key', () => {
+      const [offer] = buildModel([declaredTwice], [alias]);
+      expect([...offer.params.keys()]).toEqual(['versioning']);
+      expect(offer.params.get('versioning').aliases).toEqual([
+        {deprecated: true, key: 'versioningEnabled'},
+      ]);
+    });
+
+    it('keeps aliases the agent already declares', () => {
+      const [offer] = buildModel(
+        [
+          projection([
+            {
+              key: 'versioning',
+              type: 'boolean',
+              aliases: [{key: 'old', deprecated: true}],
+            },
+            {key: 'versioningEnabled', type: 'boolean'},
+          ]),
+        ],
+        [alias],
+      );
+      expect(offer.params.get('versioning').aliases).toEqual([
+        {key: 'old', deprecated: true},
+        {deprecated: true, key: 'versioningEnabled'},
+      ]);
+    });
+
+    it('fails once the agent no longer declares both keys, so the entry is removed', () => {
+      expect(() =>
+        buildModel(
+          [projection([{key: 'versioning', type: 'boolean'}])],
+          [alias],
+        ),
+      ).toThrow(
+        /key-aliases\.json: X\.PaaS\.Y declares no 'versioningEnabled'; remove the entry/,
+      );
+      expect(() =>
+        buildModel(
+          [projection([{key: 'versioningEnabled', type: 'boolean'}])],
+          [alias],
+        ),
+      ).toThrow(/X\.PaaS\.Y declares no 'versioning'/);
+      expect(() =>
+        buildModel([declaredTwice], [{...alias, offerType: 'X.PaaS.Z'}]),
+      ).toThrow(/X\.PaaS\.Z is declared by no agent/);
+    });
+
+    it('refuses an alias of another type', () => {
+      expect(() =>
+        buildModel(
+          [
+            projection([
+              {key: 'versioning', type: 'boolean'},
+              {key: 'versioningEnabled', type: 'string'},
+            ]),
+          ],
+          [alias],
+        ),
+      ).toThrow(/'versioningEnabled' is 'string', 'versioning' is 'boolean'/);
+    });
   });
 
   it('names modules and constants after the offer type', () => {

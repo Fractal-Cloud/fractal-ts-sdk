@@ -196,8 +196,14 @@ export const Messaging_CaaS_KafkaTopic = {
   params: {
     clusterName: {
       type: 'string',
-      required: true,
+      required: false,
       agents: [
+        'fractal-cloud-agent-aws',
+        'fractal-cloud-agent-azure',
+        'fractal-cloud-agent-gcp',
+        'fractal-cloud-agent-oci',
+      ],
+      requiredBy: [
         'fractal-cloud-agent-aws',
         'fractal-cloud-agent-azure',
         'fractal-cloud-agent-gcp',
@@ -504,8 +510,12 @@ export const Messaging_PaaS_EventHubNamespace = {
   params: {
     alternateName: {type: 'string', required: false, default: ''},
     autoInflateEnabled: {type: 'boolean', required: false, default: true},
-    diableLocalAuth: {type: 'boolean', required: false, default: false},
-    disableLocalAuth: {type: 'boolean', required: false, default: false},
+    disableLocalAuth: {
+      type: 'boolean',
+      required: false,
+      default: false,
+      aliases: [{deprecated: true, key: 'diableLocalAuth'}],
+    },
     kafkaEnabled: {type: 'boolean', required: false, default: true},
     maximumThroughputUnits: {type: 'integer', required: false, default: 20},
     minimumTlsVersion: {type: 'string', required: false, default: '1.2'},

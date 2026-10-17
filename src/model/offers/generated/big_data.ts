@@ -142,8 +142,14 @@ export const BigData_CaaS_SparkCluster = {
     },
     sparkOperatorName: {
       type: 'string',
-      required: true,
+      required: false,
       agents: [
+        'fractal-cloud-agent-aws',
+        'fractal-cloud-agent-azure',
+        'fractal-cloud-agent-gcp',
+        'fractal-cloud-agent-oci',
+      ],
+      requiredBy: [
         'fractal-cloud-agent-aws',
         'fractal-cloud-agent-azure',
         'fractal-cloud-agent-gcp',
@@ -301,8 +307,14 @@ export const BigData_CaaS_SparkJob = {
     },
     mainApplicationFile: {
       type: 'string',
-      required: true,
+      required: false,
       agents: [
+        'fractal-cloud-agent-aws',
+        'fractal-cloud-agent-azure',
+        'fractal-cloud-agent-gcp',
+        'fractal-cloud-agent-oci',
+      ],
+      requiredBy: [
         'fractal-cloud-agent-aws',
         'fractal-cloud-agent-azure',
         'fractal-cloud-agent-gcp',
@@ -371,8 +383,14 @@ export const BigData_CaaS_SparkJob = {
     },
     sparkOperatorName: {
       type: 'string',
-      required: true,
+      required: false,
       agents: [
+        'fractal-cloud-agent-aws',
+        'fractal-cloud-agent-azure',
+        'fractal-cloud-agent-gcp',
+        'fractal-cloud-agent-oci',
+      ],
+      requiredBy: [
         'fractal-cloud-agent-aws',
         'fractal-cloud-agent-azure',
         'fractal-cloud-agent-gcp',
@@ -1106,8 +1124,12 @@ export const BigData_PaaS_AwsS3Datalake = {
     forceDestroy: {type: 'boolean', required: false, default: false},
     lifecycleExpirationDays: {type: 'number', required: false},
     region: {type: 'string', required: false},
-    versioning: {type: 'boolean', required: false, default: false},
-    versioningEnabled: {type: 'boolean', required: false, default: false},
+    versioning: {
+      type: 'boolean',
+      required: false,
+      default: false,
+      aliases: [{deprecated: true, key: 'versioningEnabled'}],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -1480,8 +1502,9 @@ export const BigData_PaaS_Databricks = {
     },
     credentialsId: {
       type: 'string',
-      required: true,
+      required: false,
       agents: ['fractal-cloud-agent-aws'],
+      requiredBy: ['fractal-cloud-agent-aws'],
     },
     enableNoPublicIp: {
       type: 'boolean',
@@ -1511,8 +1534,9 @@ export const BigData_PaaS_Databricks = {
     region: {type: 'string', required: false},
     storageConfigurationId: {
       type: 'string',
-      required: true,
+      required: false,
       agents: ['fractal-cloud-agent-aws'],
+      requiredBy: ['fractal-cloud-agent-aws'],
     },
   },
 } as const satisfies OfferContract;
@@ -2224,8 +2248,12 @@ export const BigData_PaaS_S3 = {
     forceDestroy: {type: 'boolean', required: false, default: false},
     lifecycleExpirationDays: {type: 'number', required: false},
     region: {type: 'string', required: false},
-    versioning: {type: 'boolean', required: false, default: false},
-    versioningEnabled: {type: 'boolean', required: false, default: false},
+    versioning: {
+      type: 'boolean',
+      required: false,
+      default: false,
+      aliases: [{deprecated: true, key: 'versioningEnabled'}],
+    },
   },
 } as const satisfies OfferContract;
 

@@ -17,6 +17,7 @@ import {
 } from '../network_and_compute';
 import {AzureApiManagement, GcpApiGateway} from '../api_management';
 import {EcsService} from '../custom_workloads';
+import {CaaSSparkCluster} from '../big_data';
 
 // A translation names the agent's key through the contract: `lbScheme` is one…
 contractKey(NetworkAndCompute_IaaS_AwsLb, 'lbScheme');
@@ -52,6 +53,12 @@ EcsService({containerImage: 'registry/app:1'});
 GcpApiGateway({apiConfig: 'openapi: 3.0.0'});
 // @ts-expect-error `apiConfig` is required by the GCP agent's contract.
 GcpApiGateway({});
+
+// A key only some of the agents declaring an offer require (`requiredBy`) is
+// optional, since another agent may reconcile it, but still offered: the
+// Java agents' Spark offers fail without `sparkOperatorName`.
+CaaSSparkCluster({sparkOperatorName: 'spark-operator'});
+CaaSSparkCluster({});
 
 /** An override may only re-type a key the contract declares. */
 export type LbConfigWithScheme = ContractConfig<

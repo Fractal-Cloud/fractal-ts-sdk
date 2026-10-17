@@ -27,6 +27,31 @@ const refuse = (id: string, why: string): never => {
   throw new Error(`Live component '${id}': ${why}.`);
 };
 
+/**
+ * An absolute http(s) URL with a host and no user info, and no `%` that is
+ * not an escape (Go's url.Parse, the agent's, refuses one).
+ */
+const FORWARD_AUTH_ADDRESS = /^https?:\/\/[^\s/?#@]+(?:[/?#]\S*)?$/;
+
+/**
+ * `forwardAuthAddress` must not carry credentials. aria-agent-caas-k8s accepts
+ * any absolute http(s) URL, user info included, and stores it in the gateway's
+ * middleware, so this is the only refusal before a credential would be sent on.
+ * The value is never echoed.
+ */
+const ensureForwardAuthAddress = (id: string, value: unknown): void => {
+  if (value === undefined) {
+    return;
+  }
+  const address = typeof value === 'string' ? value.trim() : '';
+  if (
+    !FORWARD_AUTH_ADDRESS.test(address) ||
+    /%(?![0-9A-Fa-f]{2})/.test(address)
+  ) {
+    refuse(id, 'forwardAuthAddress is not an http(s) URL without credentials');
+  }
+};
+
 // ── ApiGateway ───────────────────────────────────────────────────────────────
 
 /** Trims what Java's `String.trim()` trims, as the agent does: control characters and spaces only. */
@@ -524,10 +549,12 @@ export const TraefikGateway = defineOffer<
       },
     ];
   },
-  // Only the encoding and what involves other components are checked here;
-  // every check of the gateway's own parameters is the control plane's,
-  // against the agent's contract (`cloud.liveSystems.deploy` validates first).
+  // Only the encoding, what involves other components, and what no one else
+  // refuses (a credential in forwardAuthAddress) are checked here; the other
+  // checks of the gateway's own parameters are the control plane's, against
+  // the agent's contract (`cloud.liveSystems.deploy` validates first).
   validate: (self, all, config) => {
+    ensureForwardAuthAddress(self.id, self.parameters.forwardAuthAddress);
     // An empty list travels as a blank string, which the agent reads as unset:
     // it would apply its default rather than what the empty list says.
     for (const key of TRAEFIK_GATEWAY_LISTS) {

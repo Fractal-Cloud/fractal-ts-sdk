@@ -338,6 +338,42 @@ describe('AwsSqsQueue review follow-ups', () => {
     expect(inbox.parameters.maxReceiveCount).toBe(7);
   });
 
+  // The ranges the AWS agent refuses outside of (AwsSqsQueueConfig).
+  it.each([
+    ['visibilityTimeoutSeconds', -1, '0 to 43200'],
+    ['visibilityTimeoutSeconds', 43201, '0 to 43200'],
+    ['messageRetentionSeconds', 59, '60 to 1209600'],
+    ['messageRetentionSeconds', 1209601, '60 to 1209600'],
+    ['dlqRetentionSeconds', 59, '60 to 1209600'],
+    ['maxReceiveCount', 0, '1 to 1000'],
+    ['maxReceiveCount', 1001, '1 to 1000'],
+    ['maxReceiveCount', 2.5, '1 to 1000'],
+  ])('refuses %s %s', (key, value, range) => {
+    expect(() => neutralQueue(e => e, AwsSqsQueue({[key]: value}))).toThrow(
+      `AwsSqsQueue 'inbox': ${key} ${value} is not a whole number from ${range}.`,
+    );
+  });
+
+  it('refuses a mapped guardrail outside the agent range', () => {
+    expect(() =>
+      neutralQueue(e => e.withMessageRetentionHours(24 * 15)),
+    ).toThrow(/messageRetentionSeconds 1296000 is not a whole number from 60 to 1209600/);
+  });
+
+  it('accepts the range bounds', () => {
+    expect(() =>
+      neutralQueue(
+        e => e,
+        AwsSqsQueue({
+          visibilityTimeoutSeconds: 0,
+          messageRetentionSeconds: 1209600,
+          dlqRetentionSeconds: 60,
+          maxReceiveCount: 1000,
+        }),
+      ),
+    ).not.toThrow();
+  });
+
   it('refuses deadLetterEnabled false: the queue always has a dead-letter queue', () => {
     expect(() => neutralQueue(e => e.withDeadLetterEnabled(false))).toThrow(
       /deadLetterEnabled/,

@@ -8,6 +8,8 @@
 import {NetworkAndCompute_PaaS_AwsRoute53HostedZone} from './generated/network_and_compute';
 import type {ContractConfig} from './contract/contract_config';
 import {defineOffer} from '../core';
+import {allowBulkDeleteRefusal} from '../components/dns_bulk_delete';
+import {recordManagementRefusal} from '../components/dns_record_management';
 
 /**
  * Amazon Route 53 hosted zone (public, or private and associated with the
@@ -18,14 +20,12 @@ import {defineOffer} from '../core';
 /*
  * The zone's guardrails are set through `DnsZone`'s setters, which refuse an
  * `allowBulkDelete` that is not a boolean and a `recordManagement` other than
- * `authoritative` or `lax`, and are omitted from this offer's config. A value
- * that bypasses them (a raw operation `set`, a cast) is checked downstream:
- * `allowBulkDelete` is typed `boolean` in the agent's contract (the control
- * plane refuses another type before deploy), and the agent refuses an unknown
- * `recordManagement`. Only `additive` it reads, and holds the zone: no record
- * set is created, changed or deleted until it declares `authoritative` or
- * `lax`. Declaring the vocabulary in the agent's contract would refuse it
- * before deploy.
+ * `authoritative` or `lax`. `validate` repeats both checks on the live
+ * component, for a value that bypasses the setters (an operation's `ops.set`,
+ * a raw `guardrail(...)`, a config cast past its type): the agent's contract
+ * declares no vocabulary for `recordManagement`, and the SDK does not check
+ * vendor config against the contract, so nothing else refuses it before the
+ * agent, which holds the zone on `additive` rather than failing it.
  */
 export const AwsRoute53HostedZone = defineOffer<
   'NetworkAndCompute.DnsZone',
@@ -46,4 +46,12 @@ export const AwsRoute53HostedZone = defineOffer<
   contract: NetworkAndCompute_PaaS_AwsRoute53HostedZone,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  validate: self => {
+    const refusal =
+      recordManagementRefusal(self.parameters.recordManagement) ??
+      allowBulkDeleteRefusal(self.parameters.allowBulkDelete);
+    if (refusal !== undefined) {
+      throw new Error(`Live component '${self.id}': ${refusal}`);
+    }
+  },
 });

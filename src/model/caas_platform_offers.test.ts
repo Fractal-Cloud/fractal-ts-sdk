@@ -311,6 +311,38 @@ describe('TraefikGateway platform keys', () => {
     ).not.toThrow();
   });
 
+  // aria-agent-caas-k8s accepts any absolute http(s) URL, user info included
+  // (traefik_gateway_settings.go): the SDK is the only place a credential in
+  // the address is refused before it is stored and sent on.
+  it.each([
+    ['user and password', 'https://svc:s3cr3t@auth.example.com/verify'],
+    ['a user only', 'http://token@auth/'],
+    ['credentials inside surrounding spaces', ' https://u:p@auth/ '],
+    ['another scheme', 'ftp://auth/'],
+    ['no host', 'http:///verify'],
+    ['a relative address', 'auth/verify'],
+    ['a malformed escape', 'http://auth/%zz'],
+  ])('refuses a forwardAuthAddress with %s, without echoing it', (_, address) => {
+    let message = '';
+    try {
+      gateway({forwardAuthAddress: address});
+    } catch (err) {
+      message = (err as Error).message;
+    }
+    expect(message).toMatch(
+      /Live component 'traefik': forwardAuthAddress is not an http\(s\) URL without credentials/,
+    );
+    expect(message).not.toContain(address.trim());
+    expect(message).not.toContain('s3cr3t');
+  });
+
+  it('accepts a plain http(s) forwardAuthAddress', () => {
+    expect(
+      gateway({forwardAuthAddress: 'https://auth.example.com:8443/verify?x=1'})
+        .parameters.forwardAuthAddress,
+    ).toBe('https://auth.example.com:8443/verify?x=1');
+  });
+
   it('accepts an exempt id with an inner slash, as the agent does', () => {
     expect(
       gateway({

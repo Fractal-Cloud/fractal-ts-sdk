@@ -8,7 +8,8 @@
  * per infrastructure domain, exporting one `as const` contract per offer type.
  * An offer type several agents declare (the self-hosted CaaS offers) is merged
  * into one contract, because the SDK emits ONE component for it and any of
- * those agents may be the one that reconciles it.
+ * those agents may be the one that reconciles it: a key is required only when
+ * every one of them requires it.
  */
 import {createHash} from 'node:crypto';
 
@@ -126,7 +127,9 @@ const mergeParameter = (offerType, key, current, next) => {
     }
     merged.type = 'number';
   }
-  merged.required = current.required || next.required;
+  // Settled once every agent is read (buildModel): required only when every
+  // agent declaring the offer requires it.
+  merged.requiredBy = [...current.requiredBy, ...next.requiredBy];
   if (!sameJson(current.default, next.default)) {
     delete merged.default;
   }
@@ -164,10 +167,45 @@ const mergeParameter = (offerType, key, current, next) => {
 };
 
 /**
+ * An agent that declares a key twice, its canonical spelling and an older one
+ * it still reads as a fallback, as two separate parameters (instead of one with
+ * an alias) would have the SDK offer both. `keyAliases`
+ * (contracts/key-aliases.json) names such pairs: the older key is folded into
+ * the canonical one as a deprecated alias. An entry the agent data no longer
+ * needs fails the generator, so the table shrinks as agents fix their data.
+ */
+const applyKeyAliases = (offers, keyAliases) => {
+  for (const {offerType, key, alias} of keyAliases) {
+    const where = `contracts/key-aliases.json: ${offerType}`;
+    const entry = offers.get(offerType);
+    if (entry === undefined) {
+      fail(`${where} is declared by no agent; remove the entry`);
+    }
+    for (const k of [key, alias]) {
+      if (!entry.params.has(k)) {
+        fail(`${where} declares no '${k}'; remove the entry`);
+      }
+    }
+    const canonical = entry.params.get(key);
+    const older = entry.params.get(alias);
+    if (older.type !== canonical.type) {
+      fail(
+        `${where}: '${alias}' is '${older.type}', '${key}' is '${canonical.type}'`,
+      );
+    }
+    canonical.aliases = [
+      ...(canonical.aliases ?? []),
+      {deprecated: true, key: alias},
+    ];
+    entry.params.delete(alias);
+  }
+};
+
+/**
  * Merges every projection into one model: offer type → contract. Deterministic
  * whatever the projection order: agents, offers and keys are sorted.
  */
-export const buildModel = projections => {
+export const buildModel = (projections, keyAliases = []) => {
   const sorted = [...projections].sort((a, b) =>
     a.agentId.localeCompare(b.agentId),
   );
@@ -200,10 +238,12 @@ export const buildModel = projections => {
       }
       for (const param of offer.params ?? []) {
         const where = `${projection.agentId} ${offerType}.${param.key}`;
+        const parameter = toParameter(param, where);
         const next = {
-          ...toParameter(param, where),
+          ...parameter,
           description: param.description,
           agents: [projection.agentId],
+          requiredBy: parameter.required ? [projection.agentId] : [],
         };
         const current = entry.params.get(param.key);
         entry.params.set(
@@ -214,6 +254,22 @@ export const buildModel = projections => {
         );
       }
       offers.set(offerType, entry);
+    }
+  }
+  applyKeyAliases(offers, keyAliases);
+  // Any of the agents declaring an offer may be the one that reconciles the
+  // component, so a key is required only when every one of them requires it
+  // (an agent that does not declare the key does not). When only some do, the
+  // key is optional and `requiredBy` names them.
+  for (const entry of offers.values()) {
+    for (const param of entry.params.values()) {
+      const requiredBy = [...new Set(param.requiredBy)].sort();
+      param.required = requiredBy.length === entry.declaredBy.length;
+      if (param.required || requiredBy.length === 0) {
+        delete param.requiredBy;
+      } else {
+        param.requiredBy = requiredBy;
+      }
     }
   }
   return [...offers.values()].sort((a, b) =>
@@ -241,13 +297,17 @@ const docComment = (text, indent) => {
 
 const renderParameter = (key, param, allAgents) => {
   const indent = '    ';
-  const {description, agents, ...members} = param;
+  const {description, agents, requiredBy, ...members} = param;
   const parts = Object.entries(members).map(
     ([member, value]) => `${member}: ${literal(value)}`,
   );
   // Recorded only when not every declaring agent reads the key.
   if (agents.length !== allAgents.length) {
     parts.push(`agents: ${literal(agents)}`);
+  }
+  // Recorded only when some, not all, declaring agents require the key.
+  if (requiredBy !== undefined) {
+    parts.push(`requiredBy: ${literal(requiredBy)}`);
   }
   const doc = description ? docComment(description, indent) : '';
   return `${doc}${indent}${literal(key)}: {${parts.join(', ')}},\n`;

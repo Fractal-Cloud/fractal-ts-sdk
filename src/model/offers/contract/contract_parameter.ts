@@ -31,4 +31,10 @@ export type ContractParameter = {
    * and not all of them do. Absent: every declaring agent reads it.
    */
   readonly agents?: readonly string[];
+  /**
+   * The agents that require the key, when the offer is declared by several
+   * agents and only some of them do: the key is then optional (`required`
+   * false), since another agent may reconcile the component, but offered.
+   */
+  readonly requiredBy?: readonly string[];
 };
