@@ -114,11 +114,7 @@ export const Messaging_CaaS_Kafka = {
         'fractal-cloud-agent-oci',
       ],
     },
-    namespace: {
-      type: 'string',
-      required: false,
-      derived: {note: 'defaults to the component id when absent'},
-    },
+    namespace: {type: 'string', required: false},
     region: {
       type: 'string',
       required: false,
@@ -214,11 +210,7 @@ export const Messaging_CaaS_KafkaTopic = {
         'fractal-cloud-agent-oci',
       ],
     },
-    namespace: {
-      type: 'string',
-      required: false,
-      derived: {note: 'defaults to the component id when absent'},
-    },
+    namespace: {type: 'string', required: false},
     partitions: {type: 'integer', required: false},
     region: {
       type: 'string',

@@ -17,6 +17,8 @@ import {gatewayRouteSettings} from './components/gateway_route_settings';
 import {AwsCloudFront, Traefik, TraefikGateway} from './offers/api_management';
 import {K8sWorkload} from './offers/custom_workloads';
 import {referenceTo} from './reference';
+import {mergeRouteSettings} from './route_link_merge';
+import {secretRef} from './secret';
 
 const OWNER = '00000000-0000-0000-0000-0000000000cc';
 const environment = {ownerType: 'Organizational', ownerId: OWNER, name: 'prod'};
@@ -294,6 +296,31 @@ describe('repeated route declarations to one gateway', () => {
         .specialize()
         .withRoute({routes: [{prefix: '/members'}], retryAttempts: 0}),
     ).toThrow(/retryAttempts '0' contradicts '2'/);
+  });
+
+  it('never echoes a link setting that is not a number in the refusal', () => {
+    const secret = 'hunter2-S3cr3t';
+    const refusal =
+      (existing: Record<string, unknown>, added: Record<string, unknown>) =>
+      () =>
+        mergeRouteSettings(
+          'service',
+          'gateway',
+          {'routes.0.prefix': '/a', ...existing},
+          {'routes.0.prefix': '/b', ...added},
+        );
+    const expected =
+      "Routes from 'service' to 'gateway' are one link: token (value withheld) " +
+      'contradicts (value withheld) declared before.';
+    expect(refusal({token: secretRef('svc-token')}, {token: secret})).toThrow(
+      expected,
+    );
+    expect(refusal({token: secret}, {token: 'other'})).toThrow(expected);
+    // A digits-only secret is withheld too: only the route timeouts, retries
+    // and port are shown.
+    expect(refusal({pin: '123456'}, {pin: '654321'})).toThrow(
+      'one link: pin (value withheld) contradicts (value withheld) declared before.',
+    );
   });
 
   it('refuses a merge that adds a timeout the earlier routes did not ask for', () => {

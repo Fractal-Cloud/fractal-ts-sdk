@@ -126,11 +126,7 @@ export const BigData_CaaS_SparkCluster = {
     executorInstances: {type: 'integer', required: false, default: 2},
     executorMemory: {type: 'string', required: false},
     image: {type: 'string', required: false},
-    namespace: {
-      type: 'string',
-      required: false,
-      derived: {note: 'defaults to the component id when absent'},
-    },
+    namespace: {type: 'string', required: false},
     region: {
       type: 'string',
       required: false,
@@ -332,11 +328,7 @@ export const BigData_CaaS_SparkJob = {
         'fractal-cloud-agent-oci',
       ],
     },
-    namespace: {
-      type: 'string',
-      required: false,
-      derived: {note: 'defaults to the component id when absent'},
-    },
+    namespace: {type: 'string', required: false},
     region: {
       type: 'string',
       required: false,
@@ -522,11 +514,7 @@ export const BigData_CaaS_SparkMlExperiment = {
         'fractal-cloud-agent-oci',
       ],
     },
-    namespace: {
-      type: 'string',
-      required: false,
-      derived: {note: 'defaults to the component id when absent'},
-    },
+    namespace: {type: 'string', required: false},
     region: {
       type: 'string',
       required: false,
@@ -639,11 +627,7 @@ export const BigData_CaaS_SparkOperator = {
         'fractal-cloud-agent-oci',
       ],
     },
-    namespace: {
-      type: 'string',
-      required: false,
-      derived: {note: 'defaults to the component id when absent'},
-    },
+    namespace: {type: 'string', required: false},
     operatorVersion: {
       type: 'string',
       required: false,

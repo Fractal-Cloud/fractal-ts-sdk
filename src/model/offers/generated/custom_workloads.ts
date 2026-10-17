@@ -201,6 +201,7 @@ export const CustomWorkloads_FaaS_AzureFunction = {
       type: 'string',
       required: false,
       default: '',
+      sensitive: true,
     },
   },
 } as const satisfies OfferContract;

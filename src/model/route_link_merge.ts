@@ -13,6 +13,26 @@
 
 const ROUTE_KEY = /^routes\.(\d+)\.(.+)$/;
 
+/** The settings `gatewayRouteSettings` writes besides routes: whole numbers. */
+const NUMERIC_KEYS = new Set([
+  'responseTimeoutMs',
+  'idleConnTimeoutMs',
+  'retryAttempts',
+  'servicePort',
+]);
+
+/**
+ * A setting as a refusal shows it: a timeout, retry count or port (a whole
+ * number, sent as its string) is shown; any other value is withheld, as a link
+ * setting may carry a token or a secret reference.
+ */
+const shown = (key: string, value: unknown): string =>
+  NUMERIC_KEYS.has(key) &&
+  (typeof value === 'number' ||
+    (typeof value === 'string' && /^\d{1,10}$/.test(value)))
+    ? `'${String(value)}'`
+    : '(value withheld)';
+
 /** Does a link's settings map carry gateway routes (see `gatewayRouteSettings`)? */
 export const isRouteSettings = (settings: Record<string, unknown>): boolean =>
   Object.keys(settings).some(k => ROUTE_KEY.test(k));
@@ -63,7 +83,7 @@ export const mergeRouteSettings = (
     if (merged[key] !== value) {
       throw new Error(
         `Routes from '${sourceId}' to '${targetId}' are one link: ${key} ` +
-          `'${String(value)}' contradicts '${String(merged[key])}' declared before. ` +
+          `${shown(key, value)} contradicts ${shown(key, merged[key])} declared before. ` +
           'Timeouts, retries and the service port apply to every route of the link.',
       );
     }

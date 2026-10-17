@@ -64,9 +64,14 @@ per offer type, named after it (`NetworkAndCompute.IaaS.AwsLb` → `NetworkAndCo
   becomes its doc comment.
 - **An offer several agents declare** (the self-hosted CaaS offers) is merged into one contract,
   because the SDK emits one component and any of those agents may reconcile it: a key is required if
-  any agent requires it, `integer` and `number` meet at `number`, allowed values intersect, differing
-  defaults are dropped, and `agents` records which agents read a key when not all do. Any other
-  disagreement fails the generator, naming both agents.
+  any agent requires it, `integer` and `number` meet at `number`, allowed values intersect (and only
+  warn or fold case when every agent declaring them says so), a key is `sensitive` if any agent marks
+  it, differing defaults and `derived` notes are dropped, an alias is kept only when every agent reads
+  it, and `agents` records which agents read a key when not all do. Any other disagreement (two
+  different `constraints` included) fails the generator, naming both agents.
+- **A key named for a secret value** (`...Password`, `...Secret`, `...Token`, `...ApiKey`,
+  `...ConnectionString`, ...; not a secret's name or id) is generated `sensitive` even when its agent
+  leaves it unmarked, so it takes a `secretRef(...)` and a refusal never shows it.
 - **Merging never widens an offer.** An optional key only some of the declaring agents read is not
   a config key (`ContractParameters`), and a neutral translation into one is refused, naming the
   agents. A key some agent requires stays, since that agent cannot work without it.
