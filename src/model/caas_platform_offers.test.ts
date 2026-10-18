@@ -910,6 +910,41 @@ describe('CloudFront alias coverage edge cases', () => {
     ).not.toThrow();
   });
 
+  // A gateway issuing its own certificate names only the hosts whose zone
+  // grants it TXT write; an alias on another zone is not covered.
+  it('refuses an alias whose zone grants the gateway no TXT write', () => {
+    const issuing = (aliases: string[]) =>
+      createFractal({
+        id: 'platform-edge-issuing',
+        version,
+        boundedContextId,
+        blueprint: bp => {
+          const cdn = bp.add(ApiGateway({id: 'cdn'}));
+          const traefik = bp.add(
+            ApiGateway({id: 'traefik'}).withDnsZones([
+              {name: 'fractal.cloud', access: {TXT: 'write'}},
+            ]),
+          );
+          bp.link(cdn, traefik);
+          return {cdn, traefik};
+        },
+      }).toLiveSystem({
+        name: 'platform',
+        environment,
+        select: {
+          cdn: AwsCloudFront({aliases}),
+          traefik: TraefikGateway({
+            host: 'api.fractal.cloud',
+            tlsHosts: ['api.fractal.cloud', 'www.yanchware.com'],
+          }),
+        },
+      });
+    expect(() => issuing(['api.fractal.cloud'])).not.toThrow();
+    expect(() => issuing(['www.yanchware.com'])).toThrow(
+      /alias www.yanchware.com is not covered by the certificate of gateway 'traefik' \(api.fractal.cloud\)/,
+    );
+  });
+
   it('refuses an alias two labels below a wildcard', () => {
     expect(() => edge(['a.b.apps.fractal.cloud'], TLS)).toThrow(
       /alias a.b.apps.fractal.cloud is not covered by the certificate of gateway 'traefik'/,

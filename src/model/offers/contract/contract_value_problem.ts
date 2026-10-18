@@ -16,7 +16,57 @@ type Constraints = {
   readonly maxLength?: number;
   readonly minimum?: number;
   readonly maximum?: number;
+  readonly minItems?: number;
+  readonly maxItems?: number;
   readonly level?: 'error' | 'warn';
+};
+
+/** An array item's canonical rendering, or undefined for a reference, an object, an array or null. */
+const itemRendering = (item: unknown): string | undefined =>
+  typeof item === 'string'
+    ? item.trim()
+    : typeof item === 'number' || typeof item === 'boolean'
+      ? String(item)
+      : undefined;
+
+/**
+ * Why an array is not one `constraints` accept, as aria-spec
+ * (tests/contract/SPEC.md, section on constraints) applies them to an array:
+ * `minItems` / `maxItems` to the item count, and `pattern` to each item that
+ * has a canonical rendering (references and non-scalars are skipped). Item
+ * values are never shown.
+ */
+const arrayConstraintProblem = (
+  key: string,
+  constraints: Constraints,
+  value: readonly unknown[],
+): string | undefined => {
+  if (constraints.level === 'warn') {
+    return undefined;
+  }
+  if (
+    constraints.minItems !== undefined &&
+    value.length < constraints.minItems
+  ) {
+    return `'${key}' has fewer than ${constraints.minItems} items`;
+  }
+  if (
+    constraints.maxItems !== undefined &&
+    value.length > constraints.maxItems
+  ) {
+    return `'${key}' has more than ${constraints.maxItems} items`;
+  }
+  if (constraints.pattern !== undefined) {
+    const pattern = new RegExp(`^(?:${constraints.pattern})$`);
+    const bad = value.findIndex(item => {
+      const rendering = itemRendering(item);
+      return rendering !== undefined && !pattern.test(rendering);
+    });
+    if (bad >= 0) {
+      return `'${key}' item ${bad} does not match ${constraints.pattern}`;
+    }
+  }
+  return undefined;
 };
 
 const inVocabulary = (param: ContractParameter, value: unknown): boolean => {
@@ -124,6 +174,11 @@ export const parameterValueProblem = (
     !(Array.isArray(value) ? value : [value]).every(v => inVocabulary(param, v))
   ) {
     return `${shown} is not one of ${param.values.join(', ')} for '${key}'`;
+  }
+  if (Array.isArray(value)) {
+    return param.constraints === undefined
+      ? undefined
+      : arrayConstraintProblem(key, param.constraints as Constraints, value);
   }
   const problem =
     param.constraints === undefined
