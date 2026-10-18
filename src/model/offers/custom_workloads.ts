@@ -237,8 +237,7 @@ export const AzureContainerApp = defineOffer<
   'CustomWorkloads.Workload',
   ContractConfig<
     typeof CustomWorkloads_PaaS_AzureContainerApp,
-    'image' | 'maxReplicas' | 'port',
-    {resourceGroup: string}
+    'image' | 'maxReplicas' | 'port'
   >
 >({
   satisfies: 'CustomWorkloads.Workload',

@@ -84,8 +84,8 @@ describe('Workload parameters on a Kubernetes workload', () => {
       resourceLimits: {cpu: '1', memory: '1Gi'},
       autoscaling: {minReplicas: 2, maxReplicas: 6, targetCpuUtilization: 70},
       podDisruptionBudget: {minAvailable: 1},
-      maxSurge: 1,
-      maxUnavailable: 0,
+      maxSurge: '1', // the contract's string
+      maxUnavailable: '0',
       terminationGracePeriodSeconds: 90,
       preStopSleepSeconds: 10,
       readinessProbe: {path: '/health/ready', port: 8080, periodSeconds: 5},

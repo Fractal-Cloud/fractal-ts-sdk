@@ -12,7 +12,7 @@ export const NetworkAndCompute_CaaS_CloudRunService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.PaaS.CloudRun',
@@ -20,18 +20,31 @@ export const NetworkAndCompute_CaaS_CloudRunService = {
     },
   ],
   params: {
-    concurrency: {type: 'integer', required: false, default: 80},
-    cpu: {type: 'string', required: false, default: '1'},
+    /** Maximum concurrent requests per instance (1-1000). Required to create a service; a deployed service without it keeps the value it runs with. A change to this key alone does not update an existing service; it is applied with the next update. */
+    concurrency: {type: 'integer', required: false},
+    /** CPU limit of each instance, in Kubernetes quantity form (1, 2, 4, 6 or 8, or below 1 in millicores, e.g. 1000m). Required to create a service; a deployed service without it keeps the value it runs with. */
+    cpu: {type: 'string', required: false},
     /** Environment variables of the container: name to a string, number or boolean, or to an environment-secret reference {"$envSecret": "<shortName>"}, which is passed as the cloud's secret reference and never as the raw value. Changing it rolls out a new revision. */
     environment: {type: 'object', required: false},
-    image: {type: 'string', required: true},
-    ingress: {type: 'string', required: false, default: 'all'},
-    maxInstances: {type: 'integer', required: false, default: 100},
-    memory: {type: 'string', required: false, default: '512Mi'},
-    minInstances: {type: 'integer', required: false, default: 0},
-    port: {type: 'integer', required: false, default: 8080},
+    /** Full container image reference the service runs, e.g. europe-docker.pkg.dev/<project>/<repository>/<image>:<tag>. A change deploys a new revision. Required to create a service; a deployed service without it keeps the image it runs. */
+    image: {type: 'string', required: false},
+    /** Who may reach the service: all (the internet), internal (the VPC and the project), or internal-and-cloud-load-balancing (also an external Application Load Balancer). Any other value is refused for a new service. Required to create a service; a deployed service without it keeps the value it runs with. A change to this key alone does not update an existing service; it is applied with the next update. */
+    ingress: {
+      type: 'string',
+      required: false,
+      values: ['all', 'internal', 'internal-and-cloud-load-balancing'],
+    },
+    /** Maximum number of instances, at least minInstances. Required to create a service; a deployed service without it keeps the value it runs with. */
+    maxInstances: {type: 'integer', required: false},
+    /** Memory limit of each instance, in Kubernetes quantity form, e.g. 512Mi or 2Gi. Required to create a service; a deployed service without it keeps the value it runs with. */
+    memory: {type: 'string', required: false},
+    /** Minimum number of instances kept running; 0 lets the service scale to zero. Required to create a service; a deployed service without it keeps the value it runs with. */
+    minInstances: {type: 'integer', required: false},
+    /** Container port Cloud Run sends requests to (1-65535), the port the image listens on. Required to create a service; a deployed service without it keeps the value it runs with. A change to this key alone does not update an existing service; it is applied with the next update. */
+    port: {type: 'integer', required: false},
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
-    /** Service account the revision runs as. Granted secretAccessor on the secrets 'environment' references. When unset and secrets are referenced, an agent-owned account is created and used. */
+    /** Service account the revision runs as. Granted secretAccessor on the secrets 'environment' references. When unset, a new service runs as an account the agent creates in the deployment project, holding no roles beyond those grants. An account in another project that the agent cannot read is ignored with a contract warning. */
     serviceAccountEmail: {type: 'string', required: false, default: ''},
   },
 } as const satisfies OfferContract;
@@ -42,16 +55,20 @@ export const NetworkAndCompute_CaaS_ECSService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
+    /** Whether each task gets a public IP address in its subnet. When unset, false. */
     assignPublicIp: {type: 'boolean', required: false, default: false},
+    /** Number of tasks the ECS service keeps running. When unset, 1. */
     desiredCount: {type: 'integer', required: false, default: 1},
+    /** ECS launch type of the service: FARGATE or EC2. Applied when the service is created; changing it later does not change an existing service. When unset, FARGATE. */
     launchType: {type: 'string', required: false, default: 'FARGATE'},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -62,24 +79,32 @@ export const NetworkAndCompute_CaaS_ECSTaskDefinition = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
-    containerImage: {type: 'string', required: true},
+    /** Container image reference the task runs (registry/repository:tag or @digest). Required to create: a new task definition without one is refused. An existing task definition declared without it keeps its deployed image, with a warning. Changing it registers a new task definition revision. */
+    containerImage: {type: 'string', required: false},
+    /** Name of the task's container, which a load balancer targets. When unset, the component id. */
     containerName: {type: 'string', required: false, default: ''},
-    containerPort: {type: 'integer', required: false, default: 8080},
+    /** Port the container's image listens on, mapped in the task definition and published to load balancers and linked components. Required to create: declare the port your application listens on (e.g. 8080); no port is assumed and a new task definition without it is refused. An existing task definition declared without it keeps its deployed port, with a warning. */
+    containerPort: {type: 'integer', required: false},
+    /** Task CPU in ECS CPU units, as a string (1024 = 1 vCPU; Fargate accepts 256, 512, 1024, 2048, 4096, ...). Must be a combination with memory that Fargate accepts. When unset, 256. */
     cpu: {type: 'string', required: false, default: '256'},
     /** Environment variables of the container: name to a string, number or boolean, or to an environment-secret reference {"$envSecret": "<shortName>"}, which is passed as the cloud's secret reference and never as the raw value. Changing it rolls out a new revision. */
     environment: {type: 'object', required: false},
     /** Task execution role. Granted read on the secrets 'environment' references. When unset and secrets are referenced, an agent-owned role is created and used. */
     executionRoleArn: {type: 'string', required: false, default: ''},
+    /** Task memory in MiB, as a string (e.g. 512, 1024, 2048). Must be a combination with cpu that Fargate accepts. When unset, 512. */
     memory: {type: 'string', required: false, default: '512'},
+    /** Docker network mode of the task: awsvpc (required by Fargate), bridge, host or none. When unset, awsvpc. */
     networkMode: {type: 'string', required: false, default: 'awsvpc'},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** ARN of the IAM role the containers run as (arn:aws:iam::<account>:role/<name>). Linked platform services (e.g. DynamoDB tables) grant this role, so a link that needs a grant requires it. When unset, the task has no role. */
     taskRoleArn: {type: 'string', required: false, default: ''},
   },
 } as const satisfies OfferContract;
@@ -327,7 +352,7 @@ export const NetworkAndCompute_IaaS_AwsEc2Instance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -336,15 +361,28 @@ export const NetworkAndCompute_IaaS_AwsEc2Instance = {
   params: {
     /** AMI id (ami-...). Leave empty to use the latest Amazon Linux 2023 AMI, resolved at create time. */
     amiId: {type: 'string', required: false, default: ''},
+    /** Whether the instance gets a public IPv4 address at launch. When unset, false. */
     associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** Legacy: name of an existing IAM instance profile to launch with; identity.instanceProfile wins when both are set. When neither is set, the agent creates a role and instance profile for the instance when a link needs a grant. */
     iamInstanceProfile: {type: 'string', required: false, default: ''},
+    /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
-    instanceType: {type: 'string', required: false, default: ''},
+    /** EC2 instance type (e.g. m6i.large). Wins over size. Changing it resizes an existing instance (stop, modify, start). When neither it nor size is set, a cost-guarded, region-available type with vCPU quota headroom is chosen at create time. */
+    instanceType: {type: 'string', required: false},
     /** Name of an existing EC2 key pair to launch with. Wins over publicSSHKey. */
     keyName: {type: 'string', required: false, default: ''},
-    /** OpenSSH public key (e.g. ssh-ed25519 AAAA...) to authorize on the instance. Imported as a key pair of this component, used at launch and deleted on teardown. Ignored when keyName is set. When neither is set, a new instance gets a generated ed25519 key pair whose private key is stored as an environment secret, named in the sshPrivateKeySecretName output. Changing it does not change a running instance's key. */
+    /** OpenSSH public key (e.g. ssh-ed25519 AAAA...) to authorize on the instance. Imported as a key pair of this component, used at launch and deleted on teardown. Ignored when keyName is set; a value that is not a public key is refused. Changing it does not change a running instance's key. With neither set: When unset, a new VM gets an agent-generated ed25519 key pair: its private key (OpenSSH format) is stored in AWS Secrets Manager (the instance's account and region) as a secret named with a fresh GUID, which is published in the sshPrivateKeySecretName output (the store in sshPrivateKeyStore) and deleted with the VM. A deployed VM is never re-keyed. */
     publicSSHKey: {type: 'string', required: false},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** Vendor-neutral VM size: small (1-2 vCPU, 1-2 GiB, burstable), medium (2 vCPU, 8 GiB), large (4 vCPU, 16 GiB), xlarge (8 vCPU, 32 GiB). Mapped to this offer's own size key when that key is not set; an explicitly set vendor size key wins (a contradiction is published as a contract warning). Applies when the VM is created only: changing it never resizes or recreates an existing VM. */
+    size: {
+      type: 'string',
+      required: false,
+      values: ['small', 'medium', 'large', 'xlarge'],
+      valuesCaseInsensitive: true,
+    },
+    /** Startup script (e.g. a shell script or cloud-init document) as plain text; the agent base64-encodes it. Applied at launch only. When unset, none. */
     userData: {type: 'string', required: false, default: ''},
   },
 } as const satisfies OfferContract;
@@ -355,7 +393,7 @@ export const NetworkAndCompute_IaaS_AwsLb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -367,8 +405,18 @@ export const NetworkAndCompute_IaaS_AwsLb = {
       type: 'string',
       required: false,
       values: ['internet-facing', 'internal'],
+      valuesCaseInsensitive: true,
+      valuesLevel: 'warn',
     },
-    lbType: {type: 'string', required: false, default: 'application'},
+    /** ELBv2 load balancer type: application, network or gateway. Fixed once the load balancer exists: a deployed load balancer keeps its type. */
+    lbType: {
+      type: 'string',
+      required: false,
+      values: ['application', 'network', 'gateway'],
+      valuesCaseInsensitive: true,
+      valuesLevel: 'warn',
+    },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -379,7 +427,7 @@ export const NetworkAndCompute_IaaS_AwsLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.IaaS.AwsLb',
@@ -392,8 +440,18 @@ export const NetworkAndCompute_IaaS_AwsLoadBalancer = {
       type: 'string',
       required: false,
       values: ['internet-facing', 'internal'],
+      valuesCaseInsensitive: true,
+      valuesLevel: 'warn',
     },
-    lbType: {type: 'string', required: false, default: 'application'},
+    /** ELBv2 load balancer type: application, network or gateway. Fixed once the load balancer exists: a deployed load balancer keeps its type. */
+    lbType: {
+      type: 'string',
+      required: false,
+      values: ['application', 'network', 'gateway'],
+      valuesCaseInsensitive: true,
+      valuesLevel: 'warn',
+    },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -404,17 +462,20 @@ export const NetworkAndCompute_IaaS_AwsSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
+    /** Description of the security group, set at creation. When unset, the component id. */
     description: {type: 'string', required: false, default: ''},
     /** Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On AWS declaring egress replaces the default allow-all egress rule of the group. */
     egressRules: {type: 'array', required: false},
+    /** Inbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | sourceComponentId}]; sourceComponentId names a Fractal component whose managed security group is admitted. An omitted toPort means the single port fromPort. The group's inbound rules are reconciled to exactly these, so unset removes all. */
     ingressRules: {type: 'array', required: false, default: []},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -425,15 +486,18 @@ export const NetworkAndCompute_IaaS_AwsSubnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
+    /** Availability Zone of the subnet (e.g. eu-west-1a), set at creation. When unset, the available zone the VPC's existing subnets use least. */
     availabilityZone: {type: 'string', required: false, default: ''},
+    /** IPv4 address block of the subnet (e.g. 10.20.1.0/24), inside its VPC's block. When unset, a block is carved deterministically from the VPC's block. Cannot be changed after creation. */
     cidrBlock: {type: 'string', required: false, default: ''},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -444,7 +508,7 @@ export const NetworkAndCompute_IaaS_AwsVpc = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -453,9 +517,13 @@ export const NetworkAndCompute_IaaS_AwsVpc = {
   params: {
     /** IPv4 address block of the VPC, e.g. 10.20.0.0/16. */
     cidrBlock: {type: 'string', required: true},
+    /** Whether instances with public addresses get public DNS hostnames (enableDnsHostnames); needed for private DNS of interface endpoints and private EKS endpoints. Applied once the VPC is available and kept on every pass. When unset, the value of enableDnsSupport on a VPC the agent creates; a VPC deployed before keeps its own. true requires enableDnsSupport true: a new VPC declaring it with enableDnsSupport false is refused, an existing one is left as it is, with a warning. */
     enableDnsHostnames: {type: 'boolean', required: false, default: true},
+    /** Whether the Amazon-provided DNS resolver answers in the VPC (enableDnsSupport). Applied once the VPC is available and kept on every pass. When unset, true on a VPC the agent creates; a VPC deployed before keeps its own. false turns undeclared enableDnsHostnames off too. */
     enableDnsSupport: {type: 'boolean', required: false, default: true},
+    /** Tenancy of instances launched in the VPC: default or dedicated. Set at creation; a different value on an existing VPC is reported as drift, not changed. When unset, default. */
     instanceTenancy: {type: 'string', required: false, default: ''},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -466,13 +534,14 @@ export const NetworkAndCompute_IaaS_AzureLb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** 'internal' gives the load balancer a private frontend IP in its first subnet; 'internet-facing' gives it a Fractal-owned public IP. Any other value is treated as internal. Applied only when the load balancer is created; an existing one keeps its frontend. */
     lbScheme: {
       type: 'string',
       required: false,
@@ -488,6 +557,7 @@ export const NetworkAndCompute_IaaS_AzureLb = {
       values: ['Standard'],
       valuesCaseInsensitive: true,
     },
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -498,7 +568,7 @@ export const NetworkAndCompute_IaaS_AzureLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureLb',
@@ -506,6 +576,7 @@ export const NetworkAndCompute_IaaS_AzureLoadBalancer = {
     },
   ],
   params: {
+    /** 'internal' gives the load balancer a private frontend IP in its first subnet; 'internet-facing' gives it a Fractal-owned public IP. Any other value is treated as internal. Applied only when the load balancer is created; an existing one keeps its frontend. */
     lbScheme: {
       type: 'string',
       required: false,
@@ -521,6 +592,7 @@ export const NetworkAndCompute_IaaS_AzureLoadBalancer = {
       values: ['Standard'],
       valuesCaseInsensitive: true,
     },
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -531,7 +603,7 @@ export const NetworkAndCompute_IaaS_AzureNetworkSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureNsg',
@@ -539,10 +611,11 @@ export const NetworkAndCompute_IaaS_AzureNetworkSecurityGroup = {
     },
   ],
   params: {
-    description: {type: 'string', required: false, default: ''},
     /** Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On Azure each rule is an outbound allow; the NSG's built-in AllowInternetOutBound still applies below them. A rule whose destination is a component is skipped: Azure cannot match an NSG without an Application Security Group. */
     egressRules: {type: 'array', required: false},
+    /** Inbound allow rules: [{protocol?, fromPort?, toPort?, sourceCidr | sourceComponentId}]. protocol defaults to tcp; an omitted toPort means the single port fromPort, and a rule with no fromPort covers all ports. An entry with neither source is skipped, and a rule whose source is a component is skipped (Azure cannot match an NSG without an Application Security Group). When non-empty, the agent's inbound rules are made exactly these; unset or empty leaves the NSG's inbound rules untouched. */
     ingressRules: {type: 'array', required: false, default: []},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
     /** Resource group a new NSG is created in; created (and tagged as Fractal-managed) when it does not exist. Unset places the NSG in the Live System's resource group. An NSG that already exists is never moved: changing this value later has no effect on it. */
     resourceGroup: {type: 'string', required: false},
@@ -555,17 +628,18 @@ export const NetworkAndCompute_IaaS_AzureNsg = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
-    description: {type: 'string', required: false, default: ''},
     /** Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On Azure each rule is an outbound allow; the NSG's built-in AllowInternetOutBound still applies below them. A rule whose destination is a component is skipped: Azure cannot match an NSG without an Application Security Group. */
     egressRules: {type: 'array', required: false},
+    /** Inbound allow rules: [{protocol?, fromPort?, toPort?, sourceCidr | sourceComponentId}]. protocol defaults to tcp; an omitted toPort means the single port fromPort, and a rule with no fromPort covers all ports. An entry with neither source is skipped, and a rule whose source is a component is skipped (Azure cannot match an NSG without an Application Security Group). When non-empty, the agent's inbound rules are made exactly these; unset or empty leaves the NSG's inbound rules untouched. */
     ingressRules: {type: 'array', required: false, default: []},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
     /** Resource group a new NSG is created in; created (and tagged as Fractal-managed) when it does not exist. Unset places the NSG in the Live System's resource group. An NSG that already exists is never moved: changing this value later has no effect on it. */
     resourceGroup: {type: 'string', required: false},
@@ -578,7 +652,7 @@ export const NetworkAndCompute_IaaS_AzureSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureNsg',
@@ -586,10 +660,11 @@ export const NetworkAndCompute_IaaS_AzureSecurityGroup = {
     },
   ],
   params: {
-    description: {type: 'string', required: false, default: ''},
     /** Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On Azure each rule is an outbound allow; the NSG's built-in AllowInternetOutBound still applies below them. A rule whose destination is a component is skipped: Azure cannot match an NSG without an Application Security Group. */
     egressRules: {type: 'array', required: false},
+    /** Inbound allow rules: [{protocol?, fromPort?, toPort?, sourceCidr | sourceComponentId}]. protocol defaults to tcp; an omitted toPort means the single port fromPort, and a rule with no fromPort covers all ports. An entry with neither source is skipped, and a rule whose source is a component is skipped (Azure cannot match an NSG without an Application Security Group). When non-empty, the agent's inbound rules are made exactly these; unset or empty leaves the NSG's inbound rules untouched. */
     ingressRules: {type: 'array', required: false, default: []},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
     /** Resource group a new NSG is created in; created (and tagged as Fractal-managed) when it does not exist. Unset places the NSG in the Live System's resource group. An NSG that already exists is never moved: changing this value later has no effect on it. */
     resourceGroup: {type: 'string', required: false},
@@ -602,16 +677,17 @@ export const NetworkAndCompute_IaaS_AzureSubnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** IPv4 address range of the subnet in CIDR notation, inside its VNet's address space. When unset, the CIDR the subnet was deployed with, else a /24 carved from the VNet's block by the subnet's position among the VNet's subnets (ordered by component id). Immutable after creation: a different value on an existing subnet fails the component. */
     cidrBlock: {type: 'string', required: false, default: ''},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
-    vnetName: {type: 'string', required: false, default: ''},
   },
 } as const satisfies OfferContract;
 
@@ -621,7 +697,7 @@ export const NetworkAndCompute_IaaS_AzureVirtualMachine = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureVm',
@@ -629,25 +705,34 @@ export const NetworkAndCompute_IaaS_AzureVirtualMachine = {
     },
   ],
   params: {
+    /** When true, the VM's network interface gets a new public IP. Applied when the VM is created. When unset, false: the VM has a private IP only. */
     associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
-    imageId: {
-      type: 'string',
-      required: false,
-      default: 'Canonical:ubuntu-24_04-lts:server:latest',
-    },
+    /** Linux marketplace image as a URN 'publisher:offer:sku[:version]' (version 'latest' or omitted for the latest). Required to create a VM: a new VM without it is refused. Applied when the VM is created; changing it later does not rebuild the VM, and a deployed VM declared without it keeps its image, with a warning. */
+    imageId: {type: 'string', required: false},
+    /** OpenSSH public key authorized for the admin user 'azureuser' (key material, e.g. 'ssh-ed25519 AAAA...'); a value that is not one is refused. Applied when the VM is created. When unset, a new VM gets an agent-generated ed25519 key pair: its private key (OpenSSH format) is stored in the environment's Key Vault as a secret named with a fresh GUID, which is published in the sshPrivateKeySecretName output (the store in sshPrivateKeyStore) and deleted with the VM. A deployed VM is never re-keyed. */
     publicSSHKey: {
       type: 'string',
       required: false,
       default: '',
       aliases: [{deprecated: true, key: 'keyName'}],
     },
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** Vendor-neutral VM size: small (1-2 vCPU, 1-2 GiB, burstable), medium (2 vCPU, 8 GiB), large (4 vCPU, 16 GiB), xlarge (8 vCPU, 32 GiB). Mapped to this offer's own size key when that key is not set; an explicitly set vendor size key wins (a contradiction is published as a contract warning). Applies when the VM is created only: changing it never resizes or recreates an existing VM. */
+    size: {
+      type: 'string',
+      required: false,
+      values: ['small', 'medium', 'large', 'xlarge'],
+      valuesCaseInsensitive: true,
+    },
+    /** Startup script or cloud-init document as plain text; the agent base64-encodes it into the VM's userData. Applied when the VM is created. When unset, no user data. */
     userData: {type: 'string', required: false, default: ''},
+    /** Azure VM size (e.g. Standard_D2s_v5). Wins over size. Applied when the VM is created. When neither it nor size is set, the cheapest size of at most 4 vCPUs, in a burstable or small general-purpose family, that this subscription may use in the VM's region and has cores quota for. */
     vmSize: {
       type: 'string',
       required: false,
-      default: 'Standard_B1s',
       aliases: [{deprecated: true, key: 'instanceType'}],
     },
   },
@@ -659,7 +744,7 @@ export const NetworkAndCompute_IaaS_AzureVirtualNetwork = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureVnet',
@@ -667,8 +752,9 @@ export const NetworkAndCompute_IaaS_AzureVirtualNetwork = {
     },
   ],
   params: {
-    /** IPv4 address space of the VNet, e.g. 10.20.0.0/16. */
-    cidrBlock: {type: 'string', required: true},
+    /** IPv4 address space of the VNet, e.g. 10.20.0.0/16. Required to create: a deployed VNet declared without it keeps its address space. */
+    cidrBlock: {type: 'string', required: false},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -679,32 +765,41 @@ export const NetworkAndCompute_IaaS_AzureVm = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** When true, the VM's network interface gets a new public IP. Applied when the VM is created. When unset, false: the VM has a private IP only. */
     associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
-    imageId: {
-      type: 'string',
-      required: false,
-      default: 'Canonical:ubuntu-24_04-lts:server:latest',
-    },
+    /** Linux marketplace image as a URN 'publisher:offer:sku[:version]' (version 'latest' or omitted for the latest). Required to create a VM: a new VM without it is refused. Applied when the VM is created; changing it later does not rebuild the VM, and a deployed VM declared without it keeps its image, with a warning. */
+    imageId: {type: 'string', required: false},
+    /** OpenSSH public key authorized for the admin user 'azureuser' (key material, e.g. 'ssh-ed25519 AAAA...'); a value that is not one is refused. Applied when the VM is created. When unset, a new VM gets an agent-generated ed25519 key pair: its private key (OpenSSH format) is stored in the environment's Key Vault as a secret named with a fresh GUID, which is published in the sshPrivateKeySecretName output (the store in sshPrivateKeyStore) and deleted with the VM. A deployed VM is never re-keyed. */
     publicSSHKey: {
       type: 'string',
       required: false,
       default: '',
       aliases: [{deprecated: true, key: 'keyName'}],
     },
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** Vendor-neutral VM size: small (1-2 vCPU, 1-2 GiB, burstable), medium (2 vCPU, 8 GiB), large (4 vCPU, 16 GiB), xlarge (8 vCPU, 32 GiB). Mapped to this offer's own size key when that key is not set; an explicitly set vendor size key wins (a contradiction is published as a contract warning). Applies when the VM is created only: changing it never resizes or recreates an existing VM. */
+    size: {
+      type: 'string',
+      required: false,
+      values: ['small', 'medium', 'large', 'xlarge'],
+      valuesCaseInsensitive: true,
+    },
+    /** Startup script or cloud-init document as plain text; the agent base64-encodes it into the VM's userData. Applied when the VM is created. When unset, no user data. */
     userData: {type: 'string', required: false, default: ''},
+    /** Azure VM size (e.g. Standard_D2s_v5). Wins over size. Applied when the VM is created. When neither it nor size is set, the cheapest size of at most 4 vCPUs, in a burstable or small general-purpose family, that this subscription may use in the VM's region and has cores quota for. */
     vmSize: {
       type: 'string',
       required: false,
-      default: 'Standard_B1s',
       aliases: [{deprecated: true, key: 'instanceType'}],
     },
   },
@@ -716,15 +811,16 @@ export const NetworkAndCompute_IaaS_AzureVnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
-    /** IPv4 address space of the VNet, e.g. 10.20.0.0/16. */
-    cidrBlock: {type: 'string', required: true},
+    /** IPv4 address space of the VNet, e.g. 10.20.0.0/16. Required to create: a deployed VNet declared without it keeps its address space. */
+    cidrBlock: {type: 'string', required: false},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -735,7 +831,7 @@ export const NetworkAndCompute_IaaS_EC2 = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.IaaS.AwsEc2Instance',
@@ -745,15 +841,28 @@ export const NetworkAndCompute_IaaS_EC2 = {
   params: {
     /** AMI id (ami-...). Leave empty to use the latest Amazon Linux 2023 AMI, resolved at create time. */
     amiId: {type: 'string', required: false, default: ''},
+    /** Whether the instance gets a public IPv4 address at launch. When unset, false. */
     associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** Legacy: name of an existing IAM instance profile to launch with; identity.instanceProfile wins when both are set. When neither is set, the agent creates a role and instance profile for the instance when a link needs a grant. */
     iamInstanceProfile: {type: 'string', required: false, default: ''},
+    /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
-    instanceType: {type: 'string', required: false, default: ''},
+    /** EC2 instance type (e.g. m6i.large). Wins over size. Changing it resizes an existing instance (stop, modify, start). When neither it nor size is set, a cost-guarded, region-available type with vCPU quota headroom is chosen at create time. */
+    instanceType: {type: 'string', required: false},
     /** Name of an existing EC2 key pair to launch with. Wins over publicSSHKey. */
     keyName: {type: 'string', required: false, default: ''},
-    /** OpenSSH public key (e.g. ssh-ed25519 AAAA...) to authorize on the instance. Imported as a key pair of this component, used at launch and deleted on teardown. Ignored when keyName is set. When neither is set, a new instance gets a generated ed25519 key pair whose private key is stored as an environment secret, named in the sshPrivateKeySecretName output. Changing it does not change a running instance's key. */
+    /** OpenSSH public key (e.g. ssh-ed25519 AAAA...) to authorize on the instance. Imported as a key pair of this component, used at launch and deleted on teardown. Ignored when keyName is set; a value that is not a public key is refused. Changing it does not change a running instance's key. With neither set: When unset, a new VM gets an agent-generated ed25519 key pair: its private key (OpenSSH format) is stored in AWS Secrets Manager (the instance's account and region) as a secret named with a fresh GUID, which is published in the sshPrivateKeySecretName output (the store in sshPrivateKeyStore) and deleted with the VM. A deployed VM is never re-keyed. */
     publicSSHKey: {type: 'string', required: false},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** Vendor-neutral VM size: small (1-2 vCPU, 1-2 GiB, burstable), medium (2 vCPU, 8 GiB), large (4 vCPU, 16 GiB), xlarge (8 vCPU, 32 GiB). Mapped to this offer's own size key when that key is not set; an explicitly set vendor size key wins (a contradiction is published as a contract warning). Applies when the VM is created only: changing it never resizes or recreates an existing VM. */
+    size: {
+      type: 'string',
+      required: false,
+      values: ['small', 'medium', 'large', 'xlarge'],
+      valuesCaseInsensitive: true,
+    },
+    /** Startup script (e.g. a shell script or cloud-init document) as plain text; the agent base64-encodes it. Applied at launch only. When unset, none. */
     userData: {type: 'string', required: false, default: ''},
   },
 } as const satisfies OfferContract;
@@ -764,29 +873,40 @@ export const NetworkAndCompute_IaaS_GcpComputeInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Whether the instance gets an ephemeral external IPv4 address. Reconciled on an existing instance too (the address is added or removed). When unset, false: private only. */
     associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
-    imageLink: {
-      type: 'string',
-      required: false,
-      default: 'projects/debian-cloud/global/images/family/debian-12',
-    },
-    machineType: {type: 'string', required: false, default: 'e2-medium'},
+    /** Boot disk source image, as an image or image-family path (a family resolves to its latest image). Applied when the instance is created only: a new VM without it is refused; an existing VM keeps the image it was created from. */
+    imageLink: {type: 'string', required: false},
+    /** GCE machine type (e.g. e2-standard-2). Wins over size. Applied when the instance is created. A new VM with neither it nor size is refused; an existing VM keeps the machine type it runs on. */
+    machineType: {type: 'string', required: false},
+    /** SSH public key in OpenSSH format, set as the instance's ssh-keys metadata. A malformed key is refused. When unset, a new VM gets an agent-generated ed25519 key pair: its private key (OpenSSH format) is stored in the environment project's Secret Manager as a secret named with a fresh GUID, which is published in the sshPrivateKeySecretName output (the store in sshPrivateKeyStore) and deleted with the VM. A deployed VM is never re-keyed. */
     publicSSHKey: {
       type: 'string',
       required: false,
       default: '',
       aliases: [{deprecated: true, key: 'keyData'}],
     },
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
+    /** Vendor-neutral VM size: small (1-2 vCPU, 1-2 GiB, burstable), medium (2 vCPU, 8 GiB), large (4 vCPU, 16 GiB), xlarge (8 vCPU, 32 GiB). Mapped to this offer's own size key when that key is not set; an explicitly set vendor size key wins (a contradiction is published as a contract warning). Applies when the VM is created only: changing it never resizes or recreates an existing VM. */
+    size: {
+      type: 'string',
+      required: false,
+      values: ['small', 'medium', 'large', 'xlarge'],
+      valuesCaseInsensitive: true,
+    },
+    /** Script run at boot, set as the instance's startup-script metadata. Applied when the instance is created only. When unset, no startup script. */
     userData: {type: 'string', required: false, default: ''},
+    /** Compute Engine zone of the instance, as <region>-<letter>, in the region of the instance's subnetwork. Applied when the instance is created only: a new VM without it is refused, as is one whose zone is outside its subnetwork's region; an existing VM keeps the zone it lives in. */
     zone: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -797,18 +917,22 @@ export const NetworkAndCompute_IaaS_GcpFirewall = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Free-text description set on the GCP firewall. When unset, the component id. */
     description: {type: 'string', required: false},
     /** Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On GCP each rule becomes an EGRESS firewall of its own on the same target tags, named <component id>-egress-<hash>; GCP's implied allow-all egress still applies below them. A rule whose destination is a component is skipped: GCP egress cannot target a tag. */
     egressRules: {type: 'array', required: false},
+    /** Inbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | sourceComponentId}]. An omitted toPort means the single port fromPort; a rule with no fromPort covers every port of its protocol. A rule with neither sourceCidr nor sourceComponentId is skipped. The legacy {protocol, ports: ["80", "8000-9000"]} shape is translated, and a legacy rule that cannot be translated safely is not applied. When unset, no ingress rules. To reach instances through Identity-Aware Proxy TCP forwarding, allow its range 35.235.240.0/20 on the ports you need (e.g. 22 for SSH). */
     ingressRules: {type: 'array', required: false, default: []},
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
+    /** Network tags of the instances this firewall applies to, as a list of strings. Unioned with the tags of the components that link to the firewall; required when no component links to it, because the agent never creates an untargeted firewall. A tag carried by another Live System's instances is rejected. */
     targetTags: {type: 'array', required: false},
   },
 } as const satisfies OfferContract;
@@ -819,13 +943,14 @@ export const NetworkAndCompute_IaaS_GcpGlb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Load-balancing scheme of the regional passthrough load balancer: INTERNAL or EXTERNAL. Only applied when the forwarding rule is created; an existing load balancer keeps its scheme. When unset, INTERNAL. */
     lbScheme: {
       type: 'string',
       required: false,
@@ -833,6 +958,7 @@ export const NetworkAndCompute_IaaS_GcpGlb = {
       values: ['INTERNAL', 'EXTERNAL'],
       valuesLevel: 'warn',
     },
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -843,13 +969,14 @@ export const NetworkAndCompute_IaaS_GcpLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Load-balancing scheme of the regional passthrough load balancer: INTERNAL or EXTERNAL. Only applied when the forwarding rule is created; an existing load balancer keeps its scheme. When unset, INTERNAL. */
     lbScheme: {
       type: 'string',
       required: false,
@@ -857,6 +984,7 @@ export const NetworkAndCompute_IaaS_GcpLoadBalancer = {
       values: ['INTERNAL', 'EXTERNAL'],
       valuesLevel: 'warn',
     },
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -867,7 +995,7 @@ export const NetworkAndCompute_IaaS_GcpSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpFirewall',
@@ -875,11 +1003,15 @@ export const NetworkAndCompute_IaaS_GcpSecurityGroup = {
     },
   ],
   params: {
+    /** Free-text description set on the GCP firewall. When unset, the component id. */
     description: {type: 'string', required: false},
     /** Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On GCP each rule becomes an EGRESS firewall of its own on the same target tags, named <component id>-egress-<hash>; GCP's implied allow-all egress still applies below them. A rule whose destination is a component is skipped: GCP egress cannot target a tag. */
     egressRules: {type: 'array', required: false},
+    /** Inbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | sourceComponentId}]. An omitted toPort means the single port fromPort; a rule with no fromPort covers every port of its protocol. A rule with neither sourceCidr nor sourceComponentId is skipped. The legacy {protocol, ports: ["80", "8000-9000"]} shape is translated, and a legacy rule that cannot be translated safely is not applied. When unset, no ingress rules. To reach instances through Identity-Aware Proxy TCP forwarding, allow its range 35.235.240.0/20 on the ports you need (e.g. 22 for SSH). */
     ingressRules: {type: 'array', required: false, default: []},
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
+    /** Network tags of the instances this firewall applies to, as a list of strings. Unioned with the tags of the components that link to the firewall; required when no component links to it, because the agent never creates an untargeted firewall. A tag carried by another Live System's instances is rejected. */
     targetTags: {type: 'array', required: false},
   },
 } as const satisfies OfferContract;
@@ -890,16 +1022,16 @@ export const NetworkAndCompute_IaaS_GcpSubnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
-    /** IPv4 range of the subnet, e.g. 10.20.1.0/24. */
-    cidrBlock: {type: 'string', required: true},
-    networkName: {type: 'string', required: false, default: ''},
+    /** IPv4 range of the subnet, e.g. 10.20.1.0/24. The subnet is created in the network of its GcpVpc dependency. Required to create: a deployed subnet declared without it keeps its range. */
+    cidrBlock: {type: 'string', required: false},
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -910,7 +1042,7 @@ export const NetworkAndCompute_IaaS_GcpVirtualMachine = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpComputeInstance',
@@ -918,22 +1050,33 @@ export const NetworkAndCompute_IaaS_GcpVirtualMachine = {
     },
   ],
   params: {
+    /** Whether the instance gets an ephemeral external IPv4 address. Reconciled on an existing instance too (the address is added or removed). When unset, false: private only. */
     associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
-    imageLink: {
-      type: 'string',
-      required: false,
-      default: 'projects/debian-cloud/global/images/family/debian-12',
-    },
-    machineType: {type: 'string', required: false, default: 'e2-medium'},
+    /** Boot disk source image, as an image or image-family path (a family resolves to its latest image). Applied when the instance is created only: a new VM without it is refused; an existing VM keeps the image it was created from. */
+    imageLink: {type: 'string', required: false},
+    /** GCE machine type (e.g. e2-standard-2). Wins over size. Applied when the instance is created. A new VM with neither it nor size is refused; an existing VM keeps the machine type it runs on. */
+    machineType: {type: 'string', required: false},
+    /** SSH public key in OpenSSH format, set as the instance's ssh-keys metadata. A malformed key is refused. When unset, a new VM gets an agent-generated ed25519 key pair: its private key (OpenSSH format) is stored in the environment project's Secret Manager as a secret named with a fresh GUID, which is published in the sshPrivateKeySecretName output (the store in sshPrivateKeyStore) and deleted with the VM. A deployed VM is never re-keyed. */
     publicSSHKey: {
       type: 'string',
       required: false,
       default: '',
       aliases: [{deprecated: true, key: 'keyData'}],
     },
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
+    /** Vendor-neutral VM size: small (1-2 vCPU, 1-2 GiB, burstable), medium (2 vCPU, 8 GiB), large (4 vCPU, 16 GiB), xlarge (8 vCPU, 32 GiB). Mapped to this offer's own size key when that key is not set; an explicitly set vendor size key wins (a contradiction is published as a contract warning). Applies when the VM is created only: changing it never resizes or recreates an existing VM. */
+    size: {
+      type: 'string',
+      required: false,
+      values: ['small', 'medium', 'large', 'xlarge'],
+      valuesCaseInsensitive: true,
+    },
+    /** Script run at boot, set as the instance's startup-script metadata. Applied when the instance is created only. When unset, no startup script. */
     userData: {type: 'string', required: false, default: ''},
+    /** Compute Engine zone of the instance, as <region>-<letter>, in the region of the instance's subnetwork. Applied when the instance is created only: a new VM without it is refused, as is one whose zone is outside its subnetwork's region; an existing VM keeps the zone it lives in. */
     zone: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -944,7 +1087,7 @@ export const NetworkAndCompute_IaaS_GcpVm = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpComputeInstance',
@@ -952,22 +1095,33 @@ export const NetworkAndCompute_IaaS_GcpVm = {
     },
   ],
   params: {
+    /** Whether the instance gets an ephemeral external IPv4 address. Reconciled on an existing instance too (the address is added or removed). When unset, false: private only. */
     associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
-    imageLink: {
-      type: 'string',
-      required: false,
-      default: 'projects/debian-cloud/global/images/family/debian-12',
-    },
-    machineType: {type: 'string', required: false, default: 'e2-medium'},
+    /** Boot disk source image, as an image or image-family path (a family resolves to its latest image). Applied when the instance is created only: a new VM without it is refused; an existing VM keeps the image it was created from. */
+    imageLink: {type: 'string', required: false},
+    /** GCE machine type (e.g. e2-standard-2). Wins over size. Applied when the instance is created. A new VM with neither it nor size is refused; an existing VM keeps the machine type it runs on. */
+    machineType: {type: 'string', required: false},
+    /** SSH public key in OpenSSH format, set as the instance's ssh-keys metadata. A malformed key is refused. When unset, a new VM gets an agent-generated ed25519 key pair: its private key (OpenSSH format) is stored in the environment project's Secret Manager as a secret named with a fresh GUID, which is published in the sshPrivateKeySecretName output (the store in sshPrivateKeyStore) and deleted with the VM. A deployed VM is never re-keyed. */
     publicSSHKey: {
       type: 'string',
       required: false,
       default: '',
       aliases: [{deprecated: true, key: 'keyData'}],
     },
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
+    /** Vendor-neutral VM size: small (1-2 vCPU, 1-2 GiB, burstable), medium (2 vCPU, 8 GiB), large (4 vCPU, 16 GiB), xlarge (8 vCPU, 32 GiB). Mapped to this offer's own size key when that key is not set; an explicitly set vendor size key wins (a contradiction is published as a contract warning). Applies when the VM is created only: changing it never resizes or recreates an existing VM. */
+    size: {
+      type: 'string',
+      required: false,
+      values: ['small', 'medium', 'large', 'xlarge'],
+      valuesCaseInsensitive: true,
+    },
+    /** Script run at boot, set as the instance's startup-script metadata. Applied when the instance is created only. When unset, no startup script. */
     userData: {type: 'string', required: false, default: ''},
+    /** Compute Engine zone of the instance, as <region>-<letter>, in the region of the instance's subnetwork. Applied when the instance is created only: a new VM without it is refused, as is one whose zone is outside its subnetwork's region; an existing VM keeps the zone it lives in. */
     zone: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -978,15 +1132,23 @@ export const NetworkAndCompute_IaaS_GcpVpc = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
-    subnetMode: {type: 'string', required: false, default: 'CUSTOM'},
+    /** Subnet mode of the VPC network: CUSTOM creates no subnets (declare them as GcpSubnet components), AUTO lets GCP create one subnet in every region from its fixed 10.128.0.0/9 ranges. Applied when the network is created only; any other value is refused. When unset, CUSTOM. */
+    subnetMode: {
+      type: 'string',
+      required: false,
+      default: 'CUSTOM',
+      values: ['CUSTOM', 'AUTO'],
+      valuesCaseInsensitive: true,
+    },
   },
 } as const satisfies OfferContract;
 
@@ -996,13 +1158,14 @@ export const NetworkAndCompute_IaaS_GlobalLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Load-balancing scheme of the regional passthrough load balancer: INTERNAL or EXTERNAL. Only applied when the forwarding rule is created; an existing load balancer keeps its scheme. When unset, INTERNAL. */
     lbScheme: {
       type: 'string',
       required: false,
@@ -1010,6 +1173,7 @@ export const NetworkAndCompute_IaaS_GlobalLoadBalancer = {
       values: ['INTERNAL', 'EXTERNAL'],
       valuesLevel: 'warn',
     },
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1020,18 +1184,43 @@ export const NetworkAndCompute_IaaS_OciComputeInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
-    availabilityZone: {type: 'string', required: false, default: ''},
+    /** OCI availability domain the instance is launched in, by its full tenancy-specific name as OCI lists it for the region. When unset, the availability domain of the instance's subnet when that subnet is availability-domain specific, else the first of the agent region's availability domains (in name order) as OCI lists them for the tenancy. Applied when the instance is created. */
+    availabilityZone: {
+      type: 'string',
+      required: false,
+      derived: {
+        note: "When unset, the availability domain of the instance's subnet when that subnet is availability-domain specific, else the first of the agent region's availability domains (in name order) as OCI lists them for the tenancy.",
+      },
+    },
+    /** OCI compartment the component's resource is created in, as {parentId, name, description?}: parentId is the OCID of the parent compartment or tenancy, name the compartment's name. The compartment is looked up under parentId and created there when absent (description defaults to 'Standard compartment'). Required for a new component; nothing is assumed. A deployed component without it is kept in the compartment its resource lives in, with a warning. Offers that run on a Kubernetes cluster do not read it. */
+    compartment: {type: 'object', required: false},
+    /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
-    imageId: {type: 'string', required: false, default: ''},
+    /** OCID of the image the instance boots from (ocid1.image...). Required to create: a new instance without it is refused; a deployed one keeps its image, with a warning. Applied when the instance is created; changing it does not rebuild an existing one. */
+    imageId: {type: 'string', required: false},
+    /** SSH public key(s) in OpenSSH format, set as the instance's ssh_authorized_keys metadata. When unset, no key is installed. Applied when the instance is created. */
     keyName: {type: 'string', required: false, default: ''},
-    shape: {type: 'string', required: false, default: 'VM.Standard.E4.Flex'},
+    /** Memory in GB of a Flex shape. Wins over size. Refused with a fixed shape. When neither it nor size is set, 16 GB per OCPU. Applied when the instance is created. */
+    memoryInGBs: {type: 'number', required: false},
+    /** OCPUs of a Flex shape (1 OCPU = 2 vCPUs). Wins over size. Refused with a fixed shape. When neither it nor size is set, 1 on a declared Flex shape. Applied when the instance is created. */
+    ocpus: {type: 'number', required: false},
+    /** OCI shape (e.g. VM.Standard.E4.Flex). Wins over size. Applied when the instance is created. Set it or size: a new instance with neither is refused, as no VM size is assumed; size maps to VM.Standard.E4.Flex. An existing instance keeps its shape. */
+    shape: {type: 'string', required: false},
+    /** Vendor-neutral VM size: small (1-2 vCPU, 1-2 GiB, burstable), medium (2 vCPU, 8 GiB), large (4 vCPU, 16 GiB), xlarge (8 vCPU, 32 GiB). Mapped to this offer's own size key when that key is not set; an explicitly set vendor size key wins (a contradiction is published as a contract warning). Applies when the VM is created only: changing it never resizes or recreates an existing VM. */
+    size: {
+      type: 'string',
+      required: false,
+      values: ['small', 'medium', 'large', 'xlarge'],
+      valuesCaseInsensitive: true,
+    },
+    /** Startup script (cloud-init) as raw text; the agent base64-encodes it into the instance's user_data metadata. When unset, none. Applied when the instance is created. */
     userData: {type: 'string', required: false, default: ''},
   },
 } as const satisfies OfferContract;
@@ -1042,18 +1231,43 @@ export const NetworkAndCompute_IaaS_OciInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
-    availabilityZone: {type: 'string', required: false, default: ''},
+    /** OCI availability domain the instance is launched in, by its full tenancy-specific name as OCI lists it for the region. When unset, the availability domain of the instance's subnet when that subnet is availability-domain specific, else the first of the agent region's availability domains (in name order) as OCI lists them for the tenancy. Applied when the instance is created. */
+    availabilityZone: {
+      type: 'string',
+      required: false,
+      derived: {
+        note: "When unset, the availability domain of the instance's subnet when that subnet is availability-domain specific, else the first of the agent region's availability domains (in name order) as OCI lists them for the tenancy.",
+      },
+    },
+    /** OCI compartment the component's resource is created in, as {parentId, name, description?}: parentId is the OCID of the parent compartment or tenancy, name the compartment's name. The compartment is looked up under parentId and created there when absent (description defaults to 'Standard compartment'). Required for a new component; nothing is assumed. A deployed component without it is kept in the compartment its resource lives in, with a warning. Offers that run on a Kubernetes cluster do not read it. */
+    compartment: {type: 'object', required: false},
+    /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
-    imageId: {type: 'string', required: false, default: ''},
+    /** OCID of the image the instance boots from (ocid1.image...). Required to create: a new instance without it is refused; a deployed one keeps its image, with a warning. Applied when the instance is created; changing it does not rebuild an existing one. */
+    imageId: {type: 'string', required: false},
+    /** SSH public key(s) in OpenSSH format, set as the instance's ssh_authorized_keys metadata. When unset, no key is installed. Applied when the instance is created. */
     keyName: {type: 'string', required: false, default: ''},
-    shape: {type: 'string', required: false, default: 'VM.Standard.E4.Flex'},
+    /** Memory in GB of a Flex shape. Wins over size. Refused with a fixed shape. When neither it nor size is set, 16 GB per OCPU. Applied when the instance is created. */
+    memoryInGBs: {type: 'number', required: false},
+    /** OCPUs of a Flex shape (1 OCPU = 2 vCPUs). Wins over size. Refused with a fixed shape. When neither it nor size is set, 1 on a declared Flex shape. Applied when the instance is created. */
+    ocpus: {type: 'number', required: false},
+    /** OCI shape (e.g. VM.Standard.E4.Flex). Wins over size. Applied when the instance is created. Set it or size: a new instance with neither is refused, as no VM size is assumed; size maps to VM.Standard.E4.Flex. An existing instance keeps its shape. */
+    shape: {type: 'string', required: false},
+    /** Vendor-neutral VM size: small (1-2 vCPU, 1-2 GiB, burstable), medium (2 vCPU, 8 GiB), large (4 vCPU, 16 GiB), xlarge (8 vCPU, 32 GiB). Mapped to this offer's own size key when that key is not set; an explicitly set vendor size key wins (a contradiction is published as a contract warning). Applies when the VM is created only: changing it never resizes or recreates an existing VM. */
+    size: {
+      type: 'string',
+      required: false,
+      values: ['small', 'medium', 'large', 'xlarge'],
+      valuesCaseInsensitive: true,
+    },
+    /** Startup script (cloud-init) as raw text; the agent base64-encodes it into the instance's user_data metadata. When unset, none. Applied when the instance is created. */
     userData: {type: 'string', required: false, default: ''},
   },
 } as const satisfies OfferContract;
@@ -1064,16 +1278,23 @@ export const NetworkAndCompute_IaaS_OciLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
-    /** Whether the load balancer is private (no public IP). Defaults to private for a new load balancer. Fixed at creation: an existing load balancer keeps its exposure, and declaring the opposite is refused. */
+    /** OCI compartment the component's resource is created in, as {parentId, name, description?}: parentId is the OCID of the parent compartment or tenancy, name the compartment's name. The compartment is looked up under parentId and created there when absent (description defaults to 'Standard compartment'). Required for a new component; nothing is assumed. A deployed component without it is kept in the compartment its resource lives in, with a warning. Offers that run on a Kubernetes cluster do not read it. */
+    compartment: {type: 'object', required: false},
+    /** Whether the load balancer is private (no public IP). Defaults to private for a new load balancer. Fixed at creation: an existing load balancer keeps its exposure, and declaring the opposite is refused, as is a value other than true or false. */
     isPrivate: {type: 'boolean', required: false, default: true},
-    lbType: {type: 'string', required: false, default: '100Mbps'},
+    /** OCI load balancer shape name: flexible, which OCI creates new load balancers on and which takes minimumBandwidthInMbps and maximumBandwidthInMbps, or a legacy fixed-bandwidth shape (10Mbps, 100Mbps, 400Mbps, 8000Mbps) where the tenancy still accepts one. None is assumed: a new load balancer without it is refused. Applied when the load balancer is created; an existing one keeps its shape. */
+    lbType: {type: 'string', required: false},
+    /** Upper bound, in Mbps, of the flexible shape's bandwidth (10 to 8000, at least minimumBandwidthInMbps). Required with lbType flexible, together with minimumBandwidthInMbps; no range is assumed. Used only with the flexible shape, when the load balancer is created. */
+    maximumBandwidthInMbps: {type: 'integer', required: false},
+    /** Lower bound, in Mbps, of the flexible shape's bandwidth (10 to 8000). Required with lbType flexible, together with maximumBandwidthInMbps; no range is assumed. Used only with the flexible shape, when the load balancer is created. */
+    minimumBandwidthInMbps: {type: 'integer', required: false},
   },
 } as const satisfies OfferContract;
 
@@ -1083,18 +1304,22 @@ export const NetworkAndCompute_IaaS_OciNetworkSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
+    /** OCI compartment the component's resource is created in, as {parentId, name, description?}: parentId is the OCID of the parent compartment or tenancy, name the compartment's name. The compartment is looked up under parentId and created there when absent (description defaults to 'Standard compartment'). Required for a new component; nothing is assumed. A deployed component without it is kept in the compartment its resource lives in, with a warning. Offers that run on a Kubernetes cluster do not read it. Ignored when 'compartmentId' is set. */
+    compartment: {type: 'object', required: false},
     /** OCID of the compartment the security group is created in (ocid1.compartment...). */
     compartmentId: {type: 'string', required: false},
+    /** Free-text description of the security group. When unset, the component id. Not sent to OCI: the network security group is named after the component id. */
     description: {type: 'string', required: false},
     /** Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On OCI the rules are the network security group's egress rules; it has no egress until some is declared. */
     egressRules: {type: 'array', required: false},
+    /** Inbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | sourceComponentId}]. protocol defaults to tcp; an omitted toPort means the single port fromPort. A rule with neither sourceCidr nor sourceComponentId is skipped; a sourceComponentId resolves to that component's managed security group. The group's ingress rules are exactly these: unset or empty removes every ingress rule. */
     ingressRules: {type: 'array', required: false},
   },
 } as const satisfies OfferContract;
@@ -1105,18 +1330,22 @@ export const NetworkAndCompute_IaaS_OciSecurityList = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
+    /** OCI compartment the component's resource is created in, as {parentId, name, description?}: parentId is the OCID of the parent compartment or tenancy, name the compartment's name. The compartment is looked up under parentId and created there when absent (description defaults to 'Standard compartment'). Required for a new component; nothing is assumed. A deployed component without it is kept in the compartment its resource lives in, with a warning. Offers that run on a Kubernetes cluster do not read it. Ignored when 'compartmentId' is set. */
+    compartment: {type: 'object', required: false},
     /** OCID of the compartment the security group is created in (ocid1.compartment...). */
     compartmentId: {type: 'string', required: false},
+    /** Free-text description of the security group. When unset, the component id. Not sent to OCI: the network security group is named after the component id. */
     description: {type: 'string', required: false},
     /** Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On OCI the rules are the network security group's egress rules; it has no egress until some is declared. */
     egressRules: {type: 'array', required: false},
+    /** Inbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | sourceComponentId}]. protocol defaults to tcp; an omitted toPort means the single port fromPort. A rule with neither sourceCidr nor sourceComponentId is skipped; a sourceComponentId resolves to that component's managed security group. The group's ingress rules are exactly these: unset or empty removes every ingress rule. */
     ingressRules: {type: 'array', required: false},
   },
 } as const satisfies OfferContract;
@@ -1127,15 +1356,19 @@ export const NetworkAndCompute_IaaS_OciSubnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
+    /** OCI availability domain, by its full tenancy-specific name, for an AD-specific subnet. When unset, no availability domain is requested (OCI's regional subnet). Applied when the subnet is created. */
     availabilityZone: {type: 'string', required: false, default: ''},
+    /** IPv4 CIDR block of the subnet, within its OciVcn's block. When unset, a /24 carved deterministically from the declared OciVcn's block; an existing subnet keeps the block it was deployed with. Cannot be changed after creation: declaring a different block for an existing subnet is refused. */
     cidrBlock: {type: 'string', required: false, default: ''},
+    /** OCI compartment the component's resource is created in, as {parentId, name, description?}: parentId is the OCID of the parent compartment or tenancy, name the compartment's name. The compartment is looked up under parentId and created there when absent (description defaults to 'Standard compartment'). Required for a new component; nothing is assumed. A deployed component without it is kept in the compartment its resource lives in, with a warning. Offers that run on a Kubernetes cluster do not read it. */
+    compartment: {type: 'object', required: false},
   },
 } as const satisfies OfferContract;
 
@@ -1145,14 +1378,17 @@ export const NetworkAndCompute_IaaS_OciVcn = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
-    cidrBlock: {type: 'string', required: false, default: ''},
+    /** IPv4 CIDR block of the VCN (e.g. 10.0.0.0/16). Required to create: a new VCN without it is refused; set it to a block that does not overlap the networks it will be peered or connected with. An existing VCN without it keeps its deployed block. Cannot be changed after creation: declaring a different block for an existing VCN is refused. */
+    cidrBlock: {type: 'string', required: false},
+    /** OCI compartment the component's resource is created in, as {parentId, name, description?}: parentId is the OCID of the parent compartment or tenancy, name the compartment's name. The compartment is looked up under parentId and created there when absent (description defaults to 'Standard compartment'). Required for a new component; nothing is assumed. A deployed component without it is kept in the compartment its resource lives in, with a warning. Offers that run on a Kubernetes cluster do not read it. */
+    compartment: {type: 'object', required: false},
   },
 } as const satisfies OfferContract;
 
@@ -1200,7 +1436,7 @@ export const NetworkAndCompute_IaaS_SecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureNsg',
@@ -1208,7 +1444,7 @@ export const NetworkAndCompute_IaaS_SecurityGroup = {
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpFirewall',
@@ -1216,10 +1452,17 @@ export const NetworkAndCompute_IaaS_SecurityGroup = {
     },
   ],
   params: {
-    description: {type: 'string', required: false},
+    /** Free-text description set on the GCP firewall. When unset, the component id. */
+    description: {
+      type: 'string',
+      required: false,
+      agents: ['fractal-cloud-agent-gcp'],
+    },
     /** Outbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | destCidr | sourceComponentId}]; the CIDR or component is the destination. An omitted toPort means the single port fromPort. Unset leaves the group's egress untouched; declared (even empty) the rules are exactly these. On Azure each rule is an outbound allow; the NSG's built-in AllowInternetOutBound still applies below them. A rule whose destination is a component is skipped: Azure cannot match an NSG without an Application Security Group. */
     egressRules: {type: 'array', required: false},
+    /** Inbound allow rules: [{protocol?, fromPort?, toPort?, sourceCidr | sourceComponentId}]. protocol defaults to tcp; an omitted toPort means the single port fromPort, and a rule with no fromPort covers all ports. An entry with neither source is skipped, and a rule whose source is a component is skipped (Azure cannot match an NSG without an Application Security Group). When non-empty, the agent's inbound rules are made exactly these; unset or empty leaves the NSG's inbound rules untouched. */
     ingressRules: {type: 'array', required: false, default: []},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
     /** Resource group a new NSG is created in; created (and tagged as Fractal-managed) when it does not exist. Unset places the NSG in the Live System's resource group. An NSG that already exists is never moved: changing this value later has no effect on it. */
     resourceGroup: {
@@ -1227,6 +1470,7 @@ export const NetworkAndCompute_IaaS_SecurityGroup = {
       required: false,
       agents: ['fractal-cloud-agent-azure'],
     },
+    /** Network tags of the instances this firewall applies to, as a list of strings. Unioned with the tags of the components that link to the firewall; required when no component links to it, because the agent never creates an untargeted firewall. A tag carried by another Live System's instances is rejected. */
     targetTags: {
       type: 'array',
       required: false,
@@ -1241,7 +1485,7 @@ export const NetworkAndCompute_IaaS_VirtualMachine = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpComputeInstance',
@@ -1249,22 +1493,33 @@ export const NetworkAndCompute_IaaS_VirtualMachine = {
     },
   ],
   params: {
+    /** Whether the instance gets an ephemeral external IPv4 address. Reconciled on an existing instance too (the address is added or removed). When unset, false: private only. */
     associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
-    imageLink: {
-      type: 'string',
-      required: false,
-      default: 'projects/debian-cloud/global/images/family/debian-12',
-    },
-    machineType: {type: 'string', required: false, default: 'e2-medium'},
+    /** Boot disk source image, as an image or image-family path (a family resolves to its latest image). Applied when the instance is created only: a new VM without it is refused; an existing VM keeps the image it was created from. */
+    imageLink: {type: 'string', required: false},
+    /** GCE machine type (e.g. e2-standard-2). Wins over size. Applied when the instance is created. A new VM with neither it nor size is refused; an existing VM keeps the machine type it runs on. */
+    machineType: {type: 'string', required: false},
+    /** SSH public key in OpenSSH format, set as the instance's ssh-keys metadata. A malformed key is refused. When unset, a new VM gets an agent-generated ed25519 key pair: its private key (OpenSSH format) is stored in the environment project's Secret Manager as a secret named with a fresh GUID, which is published in the sshPrivateKeySecretName output (the store in sshPrivateKeyStore) and deleted with the VM. A deployed VM is never re-keyed. */
     publicSSHKey: {
       type: 'string',
       required: false,
       default: '',
       aliases: [{deprecated: true, key: 'keyData'}],
     },
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
+    /** Vendor-neutral VM size: small (1-2 vCPU, 1-2 GiB, burstable), medium (2 vCPU, 8 GiB), large (4 vCPU, 16 GiB), xlarge (8 vCPU, 32 GiB). Mapped to this offer's own size key when that key is not set; an explicitly set vendor size key wins (a contradiction is published as a contract warning). Applies when the VM is created only: changing it never resizes or recreates an existing VM. */
+    size: {
+      type: 'string',
+      required: false,
+      values: ['small', 'medium', 'large', 'xlarge'],
+      valuesCaseInsensitive: true,
+    },
+    /** Script run at boot, set as the instance's startup-script metadata. Applied when the instance is created only. When unset, no startup script. */
     userData: {type: 'string', required: false, default: ''},
+    /** Compute Engine zone of the instance, as <region>-<letter>, in the region of the instance's subnetwork. Applied when the instance is created only: a new VM without it is refused, as is one whose zone is outside its subnetwork's region; an existing VM keeps the zone it lives in. */
     zone: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1275,7 +1530,7 @@ export const NetworkAndCompute_IaaS_VNet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureVnet',
@@ -1283,8 +1538,9 @@ export const NetworkAndCompute_IaaS_VNet = {
     },
   ],
   params: {
-    /** IPv4 address space of the VNet, e.g. 10.20.0.0/16. */
-    cidrBlock: {type: 'string', required: true},
+    /** IPv4 address space of the VNet, e.g. 10.20.0.0/16. Required to create: a deployed VNet declared without it keeps its address space. */
+    cidrBlock: {type: 'string', required: false},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1295,7 +1551,7 @@ export const NetworkAndCompute_PaaS_AKS = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.PaaS.AzureAks',
@@ -1303,14 +1559,28 @@ export const NetworkAndCompute_PaaS_AKS = {
     },
   ],
   params: {
+    /** Microsoft Entra integration of the cluster: {managed?, enableAzureRbac?, adminGroupObjectIDs?}. managed defaults to true and enableAzureRbac to the value of managed; adminGroupObjectIDs lists Entra group object IDs granted cluster admin. When unset, managed Entra integration with Azure RBAC, which the platform's Kubernetes agent needs to reach the cluster. */
     azureActiveDirectoryProfile: {type: 'object', required: false, default: {}},
+    /** Range of the cluster's node subnet in an environment with a spoke network, when the cluster has no VNet dependency and no vnetSubnetAddressIpRange: copied to vnetSubnetAddressIpRange. When unset there, a /24 allocated by IPAM (or the range already deployed). */
     cidrBlock: {type: 'string', required: false, default: ''},
-    managedClusterSkuTier: {type: 'string', required: false, default: 'Free'},
-    nodePools: {type: 'array', required: false, default: []},
+    /** AKS pricing tier of the control plane: Free (no uptime SLA, for development and test), Standard (uptime SLA, for production) or Premium (Standard plus long-term support), case-insensitive. Required to create a cluster, as is a known tier; a deployed cluster without it, or with an unknown one, keeps its tier, with a warning. */
+    managedClusterSkuTier: {
+      type: 'string',
+      required: false,
+      values: ['Free', 'Standard', 'Premium'],
+      valuesCaseInsensitive: true,
+    },
+    /** Node pools: [{name, agentPoolMode (System | User), machineType? (Azure VM size; when unset, the cheapest size of at least 2 vCPUs and 4 GB, at most 4 vCPUs, in a burstable or small general-purpose family that this subscription may use in the cluster's region and has cores quota for), osType? (Linux), osSku?, diskSizeGb? (100), initialNodeCount? (1), minNodeCount? (1), maxNodeCount? (20), autoscalingEnabled? (true), maxPodsPerNode? (30, at most 250), maxSurge?, drainTimeoutInMinutes?, nodeTaints?, labels?}]. A Windows pool is always a User pool. Required to create a cluster, with at least one pool whose agentPoolMode is System; a deployed cluster without it keeps its pools, which are then not managed. */
+    nodePools: {type: 'array', required: false},
+    /** Public IPs the cluster's outbound traffic leaves from: [{name, azureResourceGroup?: {name, region}}]; each IP is created when missing, in the cluster's resource group unless one is named. When unset, a single public IP named pip-<cluster name>. */
     outboundIps: {type: 'array', required: false, default: []},
+    /** Pod CIDR of the cluster network. When unset in an environment with a spoke network, the Live System's IPAM k8s-pods range; otherwise required to create the cluster (no default range is applied, to avoid collisions). */
     podIpRange: {type: 'string', required: false, default: ''},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** Kubernetes service CIDR of the cluster; the cluster DNS service IP is taken from it. When unset in an environment with a spoke network, the Live System's IPAM k8s-services range; otherwise required to create the cluster (no default range is applied, to avoid collisions). */
     serviceIpRange: {type: 'string', required: false, default: ''},
+    /** CIDR of the subnet snet-<cluster> the nodes are placed in, inside the target VNet: the VNet dependency, else the environment's spoke. Used only when it fits that VNet and clashes with no other subnet; an existing subnet keeps its range. When unset or unusable, the spoke's IPAM allocation or a free /24 carved from the VNet. */
     vnetSubnetAddressIpRange: {type: 'string', required: false, default: ''},
   },
 } as const satisfies OfferContract;
@@ -1338,7 +1608,7 @@ export const NetworkAndCompute_PaaS_AwsEc2Instance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.IaaS.AwsEc2Instance',
@@ -1348,15 +1618,28 @@ export const NetworkAndCompute_PaaS_AwsEc2Instance = {
   params: {
     /** AMI id (ami-...). Leave empty to use the latest Amazon Linux 2023 AMI, resolved at create time. */
     amiId: {type: 'string', required: false, default: ''},
+    /** Whether the instance gets a public IPv4 address at launch. When unset, false. */
     associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** Legacy: name of an existing IAM instance profile to launch with; identity.instanceProfile wins when both are set. When neither is set, the agent creates a role and instance profile for the instance when a link needs a grant. */
     iamInstanceProfile: {type: 'string', required: false, default: ''},
+    /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
-    instanceType: {type: 'string', required: false, default: ''},
+    /** EC2 instance type (e.g. m6i.large). Wins over size. Changing it resizes an existing instance (stop, modify, start). When neither it nor size is set, a cost-guarded, region-available type with vCPU quota headroom is chosen at create time. */
+    instanceType: {type: 'string', required: false},
     /** Name of an existing EC2 key pair to launch with. Wins over publicSSHKey. */
     keyName: {type: 'string', required: false, default: ''},
-    /** OpenSSH public key (e.g. ssh-ed25519 AAAA...) to authorize on the instance. Imported as a key pair of this component, used at launch and deleted on teardown. Ignored when keyName is set. When neither is set, a new instance gets a generated ed25519 key pair whose private key is stored as an environment secret, named in the sshPrivateKeySecretName output. Changing it does not change a running instance's key. */
+    /** OpenSSH public key (e.g. ssh-ed25519 AAAA...) to authorize on the instance. Imported as a key pair of this component, used at launch and deleted on teardown. Ignored when keyName is set; a value that is not a public key is refused. Changing it does not change a running instance's key. With neither set: When unset, a new VM gets an agent-generated ed25519 key pair: its private key (OpenSSH format) is stored in AWS Secrets Manager (the instance's account and region) as a secret named with a fresh GUID, which is published in the sshPrivateKeySecretName output (the store in sshPrivateKeyStore) and deleted with the VM. A deployed VM is never re-keyed. */
     publicSSHKey: {type: 'string', required: false},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** Vendor-neutral VM size: small (1-2 vCPU, 1-2 GiB, burstable), medium (2 vCPU, 8 GiB), large (4 vCPU, 16 GiB), xlarge (8 vCPU, 32 GiB). Mapped to this offer's own size key when that key is not set; an explicitly set vendor size key wins (a contradiction is published as a contract warning). Applies when the VM is created only: changing it never resizes or recreates an existing VM. */
+    size: {
+      type: 'string',
+      required: false,
+      values: ['small', 'medium', 'large', 'xlarge'],
+      valuesCaseInsensitive: true,
+    },
+    /** Startup script (e.g. a shell script or cloud-init document) as plain text; the agent base64-encodes it. Applied at launch only. When unset, none. */
     userData: {type: 'string', required: false, default: ''},
   },
 } as const satisfies OfferContract;
@@ -1367,24 +1650,252 @@ export const NetworkAndCompute_PaaS_AwsEks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
+    /** EKS add-ons to install, as a list of add-on objects. When unset, the agent's default add-ons. eks-pod-identity-agent is always installed, declared or not; unusable entries are ignored with a status warning. */
     addons: {type: 'array', required: false},
-    controlPlaneLogTypes: {type: 'array', required: false},
+    /** Control-plane log types shipped to CloudWatch (api, audit, authenticator, controllerManager, scheduler). When unset, none on a new cluster and an existing cluster's logging is left as it is. Declared, every type not named is disabled, so an empty list turns logging off. */
+    controlPlaneLogTypes: {
+      type: 'array',
+      required: false,
+      values: [
+        'api',
+        'audit',
+        'authenticator',
+        'controllerManager',
+        'scheduler',
+      ],
+      valuesCaseInsensitive: true,
+    },
+    /** Kubernetes version of the cluster as major.minor (e.g. 1.31). When unset, a new cluster gets the current EKS default version and is never upgraded. Declared one minor ahead of an existing cluster's version, it upgrades the control plane on the next pass; more than one minor ahead, a major change or a downgrade is refused. */
     kubernetesVersion: {type: 'string', required: false},
-    networkPolicyProvider: {type: 'string', required: false, default: ''},
-    nodePools: {type: 'array', required: false},
+    /** EKS Auto Mode NodePools to create, as a list of pool objects (Graviton/arm64 by default). When unset, the built-in general-purpose and system pools. Declaring pools on an existing cluster disables the amd64-only general-purpose pool on the next pass, so amd64-only images stop scheduling unless a declared pool offers amd64. */
+    nodePools: {
+      type: 'array',
+      required: false,
+      constraints: {
+        items: {
+          config: {
+            architectures: {
+              description:
+                "CPU architectures the pool's nodes may have: arm64, amd64. When unset, arm64.",
+              type: 'array',
+              values: ['arm64', 'amd64'],
+            },
+            autoscalingEnabled: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field autoscalingEnabled; EKS Auto Mode ignores it.',
+              type: 'boolean',
+            },
+            capacityTypes: {
+              description:
+                "Capacity types the pool's nodes may use: on-demand, spot. When unset, on-demand.",
+              type: 'array',
+              values: ['on-demand', 'spot'],
+            },
+            diskSizeGb: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field diskSizeGb; EKS Auto Mode ignores it.',
+              type: 'integer',
+            },
+            drainTimeoutInMinutes: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field drainTimeoutInMinutes; EKS Auto Mode ignores it.',
+              type: 'integer',
+            },
+            initialNodeCount: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field initialNodeCount; EKS Auto Mode ignores it.',
+              type: 'integer',
+            },
+            instanceFamilies: {
+              description:
+                "EC2 instance families the pool's nodes may come from, e.g. m7g. When unset, m7g.",
+              type: 'array',
+            },
+            instanceSizes: {
+              description:
+                "EC2 instance sizes the pool's nodes may have, e.g. xlarge. When unset, any size.",
+              type: 'array',
+            },
+            labels: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field labels; EKS Auto Mode ignores it.',
+              type: 'object',
+            },
+            machineType: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field machineType; EKS Auto Mode ignores it.',
+              type: 'string',
+            },
+            maxNodeCount: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field maxNodeCount; EKS Auto Mode ignores it.',
+              type: 'integer',
+            },
+            maxPodsPerNode: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field maxPodsPerNode; EKS Auto Mode ignores it.',
+              type: 'integer',
+            },
+            maxSurge: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field maxSurge; EKS Auto Mode ignores it.',
+              type: 'string',
+            },
+            minNodeCount: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field minNodeCount; EKS Auto Mode ignores it.',
+              type: 'integer',
+            },
+            name: {
+              constraints: {
+                level: 'warn',
+                pattern: '[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?',
+              },
+              description: "the NodePool's name",
+              example: 'graviton-spot',
+              type: 'string',
+            },
+            nodeTaints: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field nodeTaints; EKS Auto Mode ignores it.',
+              type: 'array',
+            },
+            osSku: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field osSku; EKS Auto Mode ignores it.',
+              type: 'string',
+            },
+            osType: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field osType; EKS Auto Mode ignores it.',
+              type: 'string',
+            },
+            useGen2VirtualMachine: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field useGen2VirtualMachine; EKS Auto Mode ignores it.',
+              type: 'boolean',
+            },
+          },
+          parameterRules: [
+            {
+              id: 'customPoolName',
+              key: 'name',
+              kind: 'requiredIf',
+              message: 'An EKS Auto Mode node pool needs a name.',
+              when: {
+                anyOf: [
+                  {key: 'architectures', present: true},
+                  {key: 'instanceFamilies', present: true},
+                  {key: 'capacityTypes', present: true},
+                  {key: 'instanceSizes', present: true},
+                ],
+              },
+            },
+            {
+              cases: [
+                {
+                  fix: 'Give the node pool another name.',
+                  id: 'customPool',
+                  message:
+                    "system and general-purpose are EKS's built-in node pools and cannot be declared as custom ones.",
+                  then: {
+                    restrict: [
+                      {key: 'name', notIn: ['system', 'general-purpose']},
+                    ],
+                  },
+                  when: {
+                    anyOf: [
+                      {key: 'architectures', present: true},
+                      {key: 'instanceFamilies', present: true},
+                      {key: 'capacityTypes', present: true},
+                      {key: 'instanceSizes', present: true},
+                    ],
+                  },
+                },
+              ],
+              id: 'customPoolNotBuiltIn',
+              kind: 'branches',
+            },
+          ],
+        },
+      },
+    },
+    /** Prefix length of the pod block allocated from IPAM when podIpRange is unset (e.g. 20 for a /20). When unset, 20. */
     podCidrPrefixLength: {type: 'integer', required: false, default: 20},
+    /** CIDR block for pod addresses. When unset in an environment with a spoke network, allocated from IPAM. Used only by clusters running the VPC CNI with custom networking and only when it is a 100.64.0.0/10 block; Auto Mode clusters give pods node-subnet addresses. */
     podIpRange: {type: 'string', required: false, default: ''},
+    /** Set true to give a new cluster an unrestricted public API endpoint. When unset or false, the endpoint is limited to the operator's allowlist when one is configured, else private when the agent shares the cluster's VPC, else left public. Applies at creation. */
     privateClusterDisabled: {type: 'boolean', required: false, default: false},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** Prefix length of the service block allocated from IPAM when serviceIpRange is unset (e.g. 20 for a /20). When unset, 20. */
     serviceCidrPrefixLength: {type: 'integer', required: false, default: 20},
+    /** CIDR of Kubernetes service addresses (e.g. 172.20.0.0/16), set at creation. When unset in an environment with a spoke network, allocated from IPAM; otherwise the EKS default range. */
     serviceIpRange: {type: 'string', required: false, default: ''},
+    /** Whether workloads get cloud identities (EKS Pod Identity). Always enabled on Fractal-managed clusters: false is ignored with a status warning. When unset, true. */
     workloadIdentityEnabled: {type: 'boolean', required: false, default: true},
   },
 } as const satisfies OfferContract;
@@ -1395,7 +1906,7 @@ export const NetworkAndCompute_PaaS_AwsLb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.IaaS.AwsLb',
@@ -1408,8 +1919,18 @@ export const NetworkAndCompute_PaaS_AwsLb = {
       type: 'string',
       required: false,
       values: ['internet-facing', 'internal'],
+      valuesCaseInsensitive: true,
+      valuesLevel: 'warn',
     },
-    lbType: {type: 'string', required: false, default: 'application'},
+    /** ELBv2 load balancer type: application, network or gateway. Fixed once the load balancer exists: a deployed load balancer keeps its type. */
+    lbType: {
+      type: 'string',
+      required: false,
+      values: ['application', 'network', 'gateway'],
+      valuesCaseInsensitive: true,
+      valuesLevel: 'warn',
+    },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1420,45 +1941,66 @@ export const NetworkAndCompute_PaaS_AwsRoute53HostedZone = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
+    /** Whether an existing untagged public zone of the same name is claimed: tagged as this component's and reconciled to the declaration. When unset or false, such a zone is reported and never changed. */
     adoptExisting: {type: 'boolean', required: false, default: false},
+    /** Lets one pass delete 3 or more record sets that are also more than half of the zone's record sets (apex NS and SOA aside). Without it such a pass writes the declared record sets and withholds every deletion with a warning, so an empty or transiently missing 'records' cannot wipe a populated zone. Applies once per declaration and never to an empty one; remove it afterwards. When unset, false. */
     allowBulkDelete: {type: 'boolean', required: false, default: false},
+    /** Record types the zone may declare; a declared record set of another type is refused. Accepted: A, AAAA, CAA, CNAME, DS, MX, NAPTR, NS, PTR, SPF, SRV, TXT (case-insensitive); SOA is refused, it belongs to the DNS provider. Must not be empty; when unset, A, AAAA, CAA, CNAME, MX, NS, PTR, SRV and TXT. */
     allowedRecordTypes: {
       type: 'array',
       required: false,
       default: ['A', 'AAAA', 'CAA', 'CNAME', 'MX', 'NS', 'PTR', 'SRV', 'TXT'],
     },
+    /** Whether NS record sets below the apex (delegations of subdomains) may be declared. The apex NS record set is never writable. When unset, false. */
     allowSubdomainDelegation: {
       type: 'boolean',
       required: false,
       default: false,
     },
+    /** Domain names of the certificate authorities allowed to issue for the domain, e.g. letsencrypt.org. The zone publishes one apex 'CAA 0 issue' record per entry, and an apex CAA record may then not be declared in 'records'. Requires CAA in allowedRecordTypes. When empty, no apex CAA record is generated and one generated before is removed. */
     caaIssuers: {type: 'array', required: false, default: []},
+    /** Hosted zone comment, set at creation; the agent appends its ownership marker and truncates the text to fit Route 53's limit. When unset, "Managed by Fractal Cloud". */
     comment: {
       type: 'string',
       required: false,
       default: 'Managed by Fractal Cloud',
     },
+    /** DNSSEC signing, case-insensitive. required: the zone is signed and its DS records are published as the 'dsRecords' output, or the component fails. optional: signed when the offer can, otherwise served unsigned with the reason reported. disabled: not signed; signing an earlier pass enabled is not stopped automatically. When unset, disabled. */
     dnssec: {type: 'string', required: false, default: 'disabled'},
+    /** Deprecated: use dnssec. true reads as dnssec required, false as disabled. Read only when dnssec is not set. */
     dnssecEnabled: {type: 'boolean', required: false},
+    /** Domain name of the hosted zone (e.g. example.org), without a trailing dot. Required: a zone without one is refused. */
     domainName: {type: 'string', required: true},
+    /** Deprecated: use recordManagement. true reads as authoritative; false reads as the retired 'additive' mode, which holds the zone (no record set is written or deleted). Read only when recordManagement is not set. */
     fullyManaged: {type: 'boolean', required: false},
+    /** Highest TTL, in seconds, a declared record set may have (inclusive; alias records have no TTL and are not checked). A whole number, at least minTtl. When unset, 604800 (7 days). */
     maxTtl: {type: 'integer', required: false, default: 604800},
+    /** Lowest TTL, in seconds, a declared record set may have (inclusive; alias records have no TTL and are not checked). A whole number from 0 up to maxTtl. When unset, 0. */
     minTtl: {type: 'integer', required: false, default: 0},
+    /** How the zone treats record sets it did not declare. authoritative: the zone holds exactly its declared records; every other record set is deleted (apex NS and SOA aside). lax: record sets the zone did not define are never deleted; its own are restored when changed, and one it no longer declares is deleted only if it applied it before. When unset, authoritative. The retired value 'additive' holds the zone: no pass creates, changes or deletes its record sets until it is replaced. */
     recordManagement: {
       type: 'string',
       required: false,
       default: 'authoritative',
     },
+    /** Record sets of the zone, each an object with name (relative to the zone, @ for the apex), type, ttl in seconds and values, or an alias object (dnsName, hostedZoneId) instead of values. Checked against the zone's guardrails; how records nobody declared are treated follows recordManagement. When unset, none. */
     records: {type: 'array', required: false, default: []},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
-    visibility: {type: 'string', required: false, default: 'public'},
+    /** Who can resolve the zone: public (the internet) or private (only inside the environment's networks). An offer that cannot create a private zone refuses it. Required to create a zone; a deployed zone without it keeps the visibility it has, which never changes. */
+    visibility: {
+      type: 'string',
+      required: false,
+      values: ['public', 'private'],
+      valuesCaseInsensitive: true,
+    },
   },
 } as const satisfies OfferContract;
 
@@ -1468,21 +2010,35 @@ export const NetworkAndCompute_PaaS_AzureAks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** Microsoft Entra integration of the cluster: {managed?, enableAzureRbac?, adminGroupObjectIDs?}. managed defaults to true and enableAzureRbac to the value of managed; adminGroupObjectIDs lists Entra group object IDs granted cluster admin. When unset, managed Entra integration with Azure RBAC, which the platform's Kubernetes agent needs to reach the cluster. */
     azureActiveDirectoryProfile: {type: 'object', required: false, default: {}},
+    /** Range of the cluster's node subnet in an environment with a spoke network, when the cluster has no VNet dependency and no vnetSubnetAddressIpRange: copied to vnetSubnetAddressIpRange. When unset there, a /24 allocated by IPAM (or the range already deployed). */
     cidrBlock: {type: 'string', required: false, default: ''},
-    managedClusterSkuTier: {type: 'string', required: false, default: 'Free'},
-    nodePools: {type: 'array', required: false, default: []},
+    /** AKS pricing tier of the control plane: Free (no uptime SLA, for development and test), Standard (uptime SLA, for production) or Premium (Standard plus long-term support), case-insensitive. Required to create a cluster, as is a known tier; a deployed cluster without it, or with an unknown one, keeps its tier, with a warning. */
+    managedClusterSkuTier: {
+      type: 'string',
+      required: false,
+      values: ['Free', 'Standard', 'Premium'],
+      valuesCaseInsensitive: true,
+    },
+    /** Node pools: [{name, agentPoolMode (System | User), machineType? (Azure VM size; when unset, the cheapest size of at least 2 vCPUs and 4 GB, at most 4 vCPUs, in a burstable or small general-purpose family that this subscription may use in the cluster's region and has cores quota for), osType? (Linux), osSku?, diskSizeGb? (100), initialNodeCount? (1), minNodeCount? (1), maxNodeCount? (20), autoscalingEnabled? (true), maxPodsPerNode? (30, at most 250), maxSurge?, drainTimeoutInMinutes?, nodeTaints?, labels?}]. A Windows pool is always a User pool. Required to create a cluster, with at least one pool whose agentPoolMode is System; a deployed cluster without it keeps its pools, which are then not managed. */
+    nodePools: {type: 'array', required: false},
+    /** Public IPs the cluster's outbound traffic leaves from: [{name, azureResourceGroup?: {name, region}}]; each IP is created when missing, in the cluster's resource group unless one is named. When unset, a single public IP named pip-<cluster name>. */
     outboundIps: {type: 'array', required: false, default: []},
+    /** Pod CIDR of the cluster network. When unset in an environment with a spoke network, the Live System's IPAM k8s-pods range; otherwise required to create the cluster (no default range is applied, to avoid collisions). */
     podIpRange: {type: 'string', required: false, default: ''},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** Kubernetes service CIDR of the cluster; the cluster DNS service IP is taken from it. When unset in an environment with a spoke network, the Live System's IPAM k8s-services range; otherwise required to create the cluster (no default range is applied, to avoid collisions). */
     serviceIpRange: {type: 'string', required: false, default: ''},
+    /** CIDR of the subnet snet-<cluster> the nodes are placed in, inside the target VNet: the VNet dependency, else the environment's spoke. Used only when it fits that VNet and clashes with no other subnet; an existing subnet keeps its range. When unset or unusable, the spoke's IPAM allocation or a free /24 carved from the VNet. */
     vnetSubnetAddressIpRange: {type: 'string', required: false, default: ''},
   },
 } as const satisfies OfferContract;
@@ -1493,13 +2049,14 @@ export const NetworkAndCompute_PaaS_AzureAppService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1510,25 +2067,29 @@ export const NetworkAndCompute_PaaS_AzureContainerAppsEnvironment = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** Azure location the environment is created in (e.g. 'westeurope'). When unset, the component's region. Applied when the environment is created. */
     location: {
       type: 'string',
       required: false,
       derived: {note: "defaults to the component's region when absent"},
     },
+    /** Shared key of the Log Analytics workspace named by logAnalyticsWorkspaceId. Used only together with it. Applied when the environment is created. */
     logAnalyticsSharedKey: {
       type: 'string',
       required: false,
       default: '',
       sensitive: true,
     },
+    /** Workspace (customer) ID GUID of the Log Analytics workspace that receives the apps' logs, not its ARM resource ID. Used only together with logAnalyticsSharedKey; when either is unset, no log destination is configured. Applied when the environment is created. */
     logAnalyticsWorkspaceId: {type: 'string', required: false, default: ''},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1539,13 +2100,14 @@ export const NetworkAndCompute_PaaS_AzureContainerInstanceService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1556,25 +2118,30 @@ export const NetworkAndCompute_PaaS_AzureDnsZone = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** When true, an untagged zone of the same name already in the resource group is claimed: the Fractal ownership tags are stamped on it and it is reconciled. When unset, false: such a zone is reported read-only and never changed. A zone owned by another Live System is never claimed. */
     adoptExisting: {type: 'boolean', required: false, default: false},
+    /** Lets one pass delete 3 or more record sets that are also more than half of the zone's record sets (apex NS and SOA aside). Without it such a pass writes the declared record sets and withholds every deletion with a warning, so an empty or transiently missing 'records' cannot wipe a populated zone. Applies once per declaration and never to an empty one; remove it afterwards. When unset, false. */
     allowBulkDelete: {type: 'boolean', required: false, default: false},
+    /** Record types the zone may declare; a declared record set of another type is refused. Accepted: A, AAAA, CAA, CNAME, DS, MX, NAPTR, NS, PTR, SPF, SRV, TXT (case-insensitive); SOA is refused, it belongs to the DNS provider. Must not be empty; when unset, A, AAAA, CAA, CNAME, MX, NS, PTR, SRV and TXT. */
     allowedRecordTypes: {
       type: 'array',
       required: false,
       default: ['A', 'AAAA', 'CAA', 'CNAME', 'MX', 'NS', 'PTR', 'SRV', 'TXT'],
     },
+    /** Whether NS record sets below the apex (delegations of subdomains) may be declared. The apex NS record set is never writable. When unset, false. */
     allowSubdomainDelegation: {
       type: 'boolean',
       required: false,
       default: false,
     },
+    /** Resource group the zone lives in, as {name, region}; created when it does not exist. When unset, the Live System's resource group rg-<Live System name>. Name an existing zone's group to adopt a zone outside the Live System's group. */
     azureResourceGroup: {
       type: 'object',
       required: false,
@@ -1582,31 +2149,49 @@ export const NetworkAndCompute_PaaS_AzureDnsZone = {
         note: "{name, region}; defaults to the Live System's resource group rg-<name>",
       },
     },
+    /** Domain names of the certificate authorities allowed to issue for the domain, e.g. letsencrypt.org. The zone publishes one apex 'CAA 0 issue' record per entry, and an apex CAA record may then not be declared in 'records'. Requires CAA in allowedRecordTypes. When empty, no apex CAA record is generated and one generated before is removed. */
     caaIssuers: {type: 'array', required: false, default: []},
+    /** DNSSEC signing, case-insensitive. required: the zone is signed and its DS records are published as the 'dsRecords' output, or the component fails. optional: signed when the offer can, otherwise served unsigned with the reason reported. disabled: not signed; signing an earlier pass enabled is not stopped automatically. When unset, disabled. */
     dnssec: {type: 'string', required: false, default: 'disabled'},
+    /** Deprecated: use dnssec. true reads as dnssec required, false as disabled. Read only when dnssec is not set. */
     dnssecEnabled: {type: 'boolean', required: false},
+    /** Domain name of the zone, e.g. 'apps.fractal.cloud' (a trailing dot is accepted). An existing zone of this name in the resource group is used, never duplicated. A blank or invalid name fails the component. */
     domainName: {type: 'string', required: true},
+    /** Deprecated: use recordManagement. true reads as authoritative; false reads as the retired 'additive' mode, which holds the zone (no record set is written or deleted). Read only when recordManagement is not set. */
     fullyManaged: {type: 'boolean', required: false},
+    /** Highest TTL, in seconds, a declared record set may have (inclusive; alias records have no TTL and are not checked). A whole number, at least minTtl. When unset, 604800 (7 days). */
     maxTtl: {type: 'integer', required: false, default: 604800},
+    /** Lowest TTL, in seconds, a declared record set may have (inclusive; alias records have no TTL and are not checked). A whole number from 0 up to maxTtl. When unset, 0. */
     minTtl: {type: 'integer', required: false, default: 0},
+    /** How the zone treats record sets it did not declare. authoritative: the zone holds exactly its declared records; every other record set is deleted (apex NS and SOA aside). lax: record sets the zone did not define are never deleted; its own are restored when changed, and one it no longer declares is deleted only if it applied it before. When unset, authoritative. The retired value 'additive' holds the zone: no pass creates, changes or deletes its record sets until it is replaced. */
     recordManagement: {
       type: 'string',
       required: false,
       default: 'authoritative',
     },
+    /** Record sets of the zone: [{name, type, ttl?, values}], name relative to the zone ('@' or empty for the apex) or fully qualified, ttl in seconds (300 when unset), TXT values unquoted. One entry per name and type. Apex NS and SOA are never touched. What happens to record sets not declared here is set by recordManagement. */
     records: {type: 'array', required: false, default: []},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** Azure subscription ID (GUID) the zone lives in. When unset, the Live System's subscriptionId parameter, else the environment's subscription. */
     subscriptionId: {
       type: 'string',
       required: false,
       derived: {note: "defaults to the environment's subscription"},
     },
+    /** Microsoft Entra tenant ID (GUID) of the zone's subscription. When unset, the Live System's tenantId parameter, else the environment's tenant. */
     tenantId: {
       type: 'string',
       required: false,
       derived: {note: "defaults to the environment's tenant"},
     },
-    visibility: {type: 'string', required: false, default: 'public'},
+    /** Who can resolve the zone: public (the internet) or private (only inside the environment's networks). An offer that cannot create a private zone refuses it. Required to create a zone; a deployed zone without it keeps the visibility it has, which never changes. */
+    visibility: {
+      type: 'string',
+      required: false,
+      values: ['public', 'private'],
+      valuesCaseInsensitive: true,
+    },
   },
 } as const satisfies OfferContract;
 
@@ -1616,25 +2201,38 @@ export const NetworkAndCompute_PaaS_CloudRun = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
-    concurrency: {type: 'integer', required: false, default: 80},
-    cpu: {type: 'string', required: false, default: '1'},
+    /** Maximum concurrent requests per instance (1-1000). Required to create a service; a deployed service without it keeps the value it runs with. A change to this key alone does not update an existing service; it is applied with the next update. */
+    concurrency: {type: 'integer', required: false},
+    /** CPU limit of each instance, in Kubernetes quantity form (1, 2, 4, 6 or 8, or below 1 in millicores, e.g. 1000m). Required to create a service; a deployed service without it keeps the value it runs with. */
+    cpu: {type: 'string', required: false},
     /** Environment variables of the container: name to a string, number or boolean, or to an environment-secret reference {"$envSecret": "<shortName>"}, which is passed as the cloud's secret reference and never as the raw value. Changing it rolls out a new revision. */
     environment: {type: 'object', required: false},
-    image: {type: 'string', required: true},
-    ingress: {type: 'string', required: false, default: 'all'},
-    maxInstances: {type: 'integer', required: false, default: 100},
-    memory: {type: 'string', required: false, default: '512Mi'},
-    minInstances: {type: 'integer', required: false, default: 0},
-    port: {type: 'integer', required: false, default: 8080},
+    /** Full container image reference the service runs, e.g. europe-docker.pkg.dev/<project>/<repository>/<image>:<tag>. A change deploys a new revision. Required to create a service; a deployed service without it keeps the image it runs. */
+    image: {type: 'string', required: false},
+    /** Who may reach the service: all (the internet), internal (the VPC and the project), or internal-and-cloud-load-balancing (also an external Application Load Balancer). Any other value is refused for a new service. Required to create a service; a deployed service without it keeps the value it runs with. A change to this key alone does not update an existing service; it is applied with the next update. */
+    ingress: {
+      type: 'string',
+      required: false,
+      values: ['all', 'internal', 'internal-and-cloud-load-balancing'],
+    },
+    /** Maximum number of instances, at least minInstances. Required to create a service; a deployed service without it keeps the value it runs with. */
+    maxInstances: {type: 'integer', required: false},
+    /** Memory limit of each instance, in Kubernetes quantity form, e.g. 512Mi or 2Gi. Required to create a service; a deployed service without it keeps the value it runs with. */
+    memory: {type: 'string', required: false},
+    /** Minimum number of instances kept running; 0 lets the service scale to zero. Required to create a service; a deployed service without it keeps the value it runs with. */
+    minInstances: {type: 'integer', required: false},
+    /** Container port Cloud Run sends requests to (1-65535), the port the image listens on. Required to create a service; a deployed service without it keeps the value it runs with. A change to this key alone does not update an existing service; it is applied with the next update. */
+    port: {type: 'integer', required: false},
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
-    /** Service account the revision runs as. Granted secretAccessor on the secrets 'environment' references. When unset and secrets are referenced, an agent-owned account is created and used. */
+    /** Service account the revision runs as. Granted secretAccessor on the secrets 'environment' references. When unset, a new service runs as an account the agent creates in the deployment project, holding no roles beyond those grants. An account in another project that the agent cannot read is ignored with a contract warning. */
     serviceAccountEmail: {type: 'string', required: false, default: ''},
   },
 } as const satisfies OfferContract;
@@ -1645,14 +2243,16 @@ export const NetworkAndCompute_PaaS_DnsZone = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** When true, the zone is created as a private zone; when false, as a public one. The zone is named after the component id. When unset, true. Applied when the zone is created. */
     isPrivate: {type: 'boolean', required: false, default: true},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1663,13 +2263,14 @@ export const NetworkAndCompute_PaaS_ECS = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1680,7 +2281,7 @@ export const NetworkAndCompute_PaaS_EKS = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.PaaS.AwsEks',
@@ -1688,17 +2289,245 @@ export const NetworkAndCompute_PaaS_EKS = {
     },
   ],
   params: {
+    /** EKS add-ons to install, as a list of add-on objects. When unset, the agent's default add-ons. eks-pod-identity-agent is always installed, declared or not; unusable entries are ignored with a status warning. */
     addons: {type: 'array', required: false},
-    controlPlaneLogTypes: {type: 'array', required: false},
+    /** Control-plane log types shipped to CloudWatch (api, audit, authenticator, controllerManager, scheduler). When unset, none on a new cluster and an existing cluster's logging is left as it is. Declared, every type not named is disabled, so an empty list turns logging off. */
+    controlPlaneLogTypes: {
+      type: 'array',
+      required: false,
+      values: [
+        'api',
+        'audit',
+        'authenticator',
+        'controllerManager',
+        'scheduler',
+      ],
+      valuesCaseInsensitive: true,
+    },
+    /** Kubernetes version of the cluster as major.minor (e.g. 1.31). When unset, a new cluster gets the current EKS default version and is never upgraded. Declared one minor ahead of an existing cluster's version, it upgrades the control plane on the next pass; more than one minor ahead, a major change or a downgrade is refused. */
     kubernetesVersion: {type: 'string', required: false},
-    networkPolicyProvider: {type: 'string', required: false, default: ''},
-    nodePools: {type: 'array', required: false},
+    /** EKS Auto Mode NodePools to create, as a list of pool objects (Graviton/arm64 by default). When unset, the built-in general-purpose and system pools. Declaring pools on an existing cluster disables the amd64-only general-purpose pool on the next pass, so amd64-only images stop scheduling unless a declared pool offers amd64. */
+    nodePools: {
+      type: 'array',
+      required: false,
+      constraints: {
+        items: {
+          config: {
+            architectures: {
+              description:
+                "CPU architectures the pool's nodes may have: arm64, amd64. When unset, arm64.",
+              type: 'array',
+              values: ['arm64', 'amd64'],
+            },
+            autoscalingEnabled: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field autoscalingEnabled; EKS Auto Mode ignores it.',
+              type: 'boolean',
+            },
+            capacityTypes: {
+              description:
+                "Capacity types the pool's nodes may use: on-demand, spot. When unset, on-demand.",
+              type: 'array',
+              values: ['on-demand', 'spot'],
+            },
+            diskSizeGb: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field diskSizeGb; EKS Auto Mode ignores it.',
+              type: 'integer',
+            },
+            drainTimeoutInMinutes: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field drainTimeoutInMinutes; EKS Auto Mode ignores it.',
+              type: 'integer',
+            },
+            initialNodeCount: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field initialNodeCount; EKS Auto Mode ignores it.',
+              type: 'integer',
+            },
+            instanceFamilies: {
+              description:
+                "EC2 instance families the pool's nodes may come from, e.g. m7g. When unset, m7g.",
+              type: 'array',
+            },
+            instanceSizes: {
+              description:
+                "EC2 instance sizes the pool's nodes may have, e.g. xlarge. When unset, any size.",
+              type: 'array',
+            },
+            labels: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field labels; EKS Auto Mode ignores it.',
+              type: 'object',
+            },
+            machineType: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field machineType; EKS Auto Mode ignores it.',
+              type: 'string',
+            },
+            maxNodeCount: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field maxNodeCount; EKS Auto Mode ignores it.',
+              type: 'integer',
+            },
+            maxPodsPerNode: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field maxPodsPerNode; EKS Auto Mode ignores it.',
+              type: 'integer',
+            },
+            maxSurge: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field maxSurge; EKS Auto Mode ignores it.',
+              type: 'string',
+            },
+            minNodeCount: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field minNodeCount; EKS Auto Mode ignores it.',
+              type: 'integer',
+            },
+            name: {
+              constraints: {
+                level: 'warn',
+                pattern: '[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?',
+              },
+              description: "the NodePool's name",
+              example: 'graviton-spot',
+              type: 'string',
+            },
+            nodeTaints: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field nodeTaints; EKS Auto Mode ignores it.',
+              type: 'array',
+            },
+            osSku: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field osSku; EKS Auto Mode ignores it.',
+              type: 'string',
+            },
+            osType: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field osType; EKS Auto Mode ignores it.',
+              type: 'string',
+            },
+            useGen2VirtualMachine: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field useGen2VirtualMachine; EKS Auto Mode ignores it.',
+              type: 'boolean',
+            },
+          },
+          parameterRules: [
+            {
+              id: 'customPoolName',
+              key: 'name',
+              kind: 'requiredIf',
+              message: 'An EKS Auto Mode node pool needs a name.',
+              when: {
+                anyOf: [
+                  {key: 'architectures', present: true},
+                  {key: 'instanceFamilies', present: true},
+                  {key: 'capacityTypes', present: true},
+                  {key: 'instanceSizes', present: true},
+                ],
+              },
+            },
+            {
+              cases: [
+                {
+                  fix: 'Give the node pool another name.',
+                  id: 'customPool',
+                  message:
+                    "system and general-purpose are EKS's built-in node pools and cannot be declared as custom ones.",
+                  then: {
+                    restrict: [
+                      {key: 'name', notIn: ['system', 'general-purpose']},
+                    ],
+                  },
+                  when: {
+                    anyOf: [
+                      {key: 'architectures', present: true},
+                      {key: 'instanceFamilies', present: true},
+                      {key: 'capacityTypes', present: true},
+                      {key: 'instanceSizes', present: true},
+                    ],
+                  },
+                },
+              ],
+              id: 'customPoolNotBuiltIn',
+              kind: 'branches',
+            },
+          ],
+        },
+      },
+    },
+    /** Prefix length of the pod block allocated from IPAM when podIpRange is unset (e.g. 20 for a /20). When unset, 20. */
     podCidrPrefixLength: {type: 'integer', required: false, default: 20},
+    /** CIDR block for pod addresses. When unset in an environment with a spoke network, allocated from IPAM. Used only by clusters running the VPC CNI with custom networking and only when it is a 100.64.0.0/10 block; Auto Mode clusters give pods node-subnet addresses. */
     podIpRange: {type: 'string', required: false, default: ''},
+    /** Set true to give a new cluster an unrestricted public API endpoint. When unset or false, the endpoint is limited to the operator's allowlist when one is configured, else private when the agent shares the cluster's VPC, else left public. Applies at creation. */
     privateClusterDisabled: {type: 'boolean', required: false, default: false},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** Prefix length of the service block allocated from IPAM when serviceIpRange is unset (e.g. 20 for a /20). When unset, 20. */
     serviceCidrPrefixLength: {type: 'integer', required: false, default: 20},
+    /** CIDR of Kubernetes service addresses (e.g. 172.20.0.0/16), set at creation. When unset in an environment with a spoke network, allocated from IPAM; otherwise the EKS default range. */
     serviceIpRange: {type: 'string', required: false, default: ''},
+    /** Whether workloads get cloud identities (EKS Pod Identity). Always enabled on Fractal-managed clusters: false is ignored with a status warning. When unset, true. */
     workloadIdentityEnabled: {type: 'boolean', required: false, default: true},
   },
 } as const satisfies OfferContract;
@@ -1709,45 +2538,66 @@ export const NetworkAndCompute_PaaS_GcpDnsZone = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** When true, an unlabeled managed zone of the same DNS name and visibility that already exists is claimed: labeled as Fractal's and reconciled. When false (the default), such a zone is reported and never changed. */
     adoptExisting: {type: 'boolean', required: false, default: false},
+    /** Lets one pass delete 3 or more record sets that are also more than half of the zone's record sets (apex NS and SOA aside). Without it such a pass writes the declared record sets and withholds every deletion with a warning, so an empty or transiently missing 'records' cannot wipe a populated zone. Applies once per declaration and never to an empty one; remove it afterwards. When unset, false. */
     allowBulkDelete: {type: 'boolean', required: false, default: false},
+    /** Record types the zone may declare; a declared record set of another type is refused. Accepted: A, AAAA, CAA, CNAME, DS, MX, NAPTR, NS, PTR, SPF, SRV, TXT (case-insensitive); SOA is refused, it belongs to the DNS provider. Must not be empty; when unset, A, AAAA, CAA, CNAME, MX, NS, PTR, SRV and TXT. */
     allowedRecordTypes: {
       type: 'array',
       required: false,
       default: ['A', 'AAAA', 'CAA', 'CNAME', 'MX', 'NS', 'PTR', 'SRV', 'TXT'],
     },
+    /** Whether NS record sets below the apex (delegations of subdomains) may be declared. The apex NS record set is never writable. When unset, false. */
     allowSubdomainDelegation: {
       type: 'boolean',
       required: false,
       default: false,
     },
+    /** Domain names of the certificate authorities allowed to issue for the domain, e.g. letsencrypt.org. The zone publishes one apex 'CAA 0 issue' record per entry, and an apex CAA record may then not be declared in 'records'. Requires CAA in allowedRecordTypes. When empty, no apex CAA record is generated and one generated before is removed. */
     caaIssuers: {type: 'array', required: false, default: []},
+    /** Description of the managed zone, set when it is created, followed by an ownership marker the agent appends. When unset, Managed by Fractal Cloud. */
     description: {
       type: 'string',
       required: false,
       default: 'Managed by Fractal Cloud',
     },
+    /** DNSSEC signing, case-insensitive. required: the zone is signed and its DS records are published as the 'dsRecords' output, or the component fails. optional: signed when the offer can, otherwise served unsigned with the reason reported. disabled: not signed; signing an earlier pass enabled is not stopped automatically. When unset, disabled. */
     dnssec: {type: 'string', required: false, default: 'disabled'},
+    /** Deprecated: use dnssec. true reads as dnssec required, false as disabled. Read only when dnssec is not set. */
     dnssecEnabled: {type: 'boolean', required: false},
+    /** DNS name of the Cloud DNS managed zone, e.g. example.org (a trailing dot is optional). */
     domainName: {type: 'string', required: true},
+    /** Deprecated: use recordManagement. true reads as authoritative; false reads as the retired 'additive' mode, which holds the zone (no record set is written or deleted). Read only when recordManagement is not set. */
     fullyManaged: {type: 'boolean', required: false},
+    /** Highest TTL, in seconds, a declared record set may have (inclusive; alias records have no TTL and are not checked). A whole number, at least minTtl. When unset, 604800 (7 days). */
     maxTtl: {type: 'integer', required: false, default: 604800},
+    /** Lowest TTL, in seconds, a declared record set may have (inclusive; alias records have no TTL and are not checked). A whole number from 0 up to maxTtl. When unset, 0. */
     minTtl: {type: 'integer', required: false, default: 0},
+    /** How the zone treats record sets it did not declare. authoritative: the zone holds exactly its declared records; every other record set is deleted (apex NS and SOA aside). lax: record sets the zone did not define are never deleted; its own are restored when changed, and one it no longer declares is deleted only if it applied it before. When unset, authoritative. The retired value 'additive' holds the zone: no pass creates, changes or deletes its record sets until it is replaced. */
     recordManagement: {
       type: 'string',
       required: false,
       default: 'authoritative',
     },
+    /** Record sets of the zone: [{name, type, ttl?, values}], name relative to the zone (@ or empty for the apex) or fully qualified, ttl in seconds (300 when unset). One entry per name and type. Alias records are refused: Cloud DNS has none. When unset, no records. */
     records: {type: 'array', required: false, default: []},
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
-    visibility: {type: 'string', required: false, default: 'public'},
+    /** Who can resolve the zone: public (the internet) or private (only inside the environment's networks). An offer that cannot create a private zone refuses it. Required to create a zone; a deployed zone without it keeps the visibility it has, which never changes. */
+    visibility: {
+      type: 'string',
+      required: false,
+      values: ['public', 'private'],
+      valuesCaseInsensitive: true,
+    },
   },
 } as const satisfies OfferContract;
 
@@ -1757,35 +2607,52 @@ export const NetworkAndCompute_PaaS_GcpGke = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Initial Kubernetes version of the cluster, e.g. 1.30. Applied at creation only; the cluster is enrolled in the REGULAR release channel and upgraded by GKE. When unset, the channel's default version. */
     kubernetesVersion: {type: 'string', required: false, default: ''},
     /** Control-plane range of a private cluster, e.g. 172.16.0.0/28. Not set when omitted. */
     masterIpv4CidrBlock: {type: 'string', required: false},
+    /** Name of the VPC network the cluster and its subnet are created in. When unset, the environment's spoke network. */
     networkName: {type: 'string', required: false, default: ''},
-    networkPolicyProvider: {type: 'string', required: false, default: ''},
-    nodePools: {type: 'array', required: false, default: []},
+    /** Network policy provider: CALICO enables Kubernetes NetworkPolicy enforcement (GKE's Calico provider and its add-on); any other value is refused for a new cluster. Applied when the cluster is created only. When unset, network policies are not enforced. */
+    networkPolicyProvider: {
+      type: 'string',
+      required: false,
+      values: ['CALICO'],
+      valuesCaseInsensitive: true,
+      valuesLevel: 'warn',
+    },
+    /** Node pools: [{name, machineType, diskSizeGb?, initialNodeCount?, autoscalingEnabled?, minNodeCount?, maxNodeCount?, maxPodsPerNode?, maxSurge?}]. Per pool, when unset: 100 GB disk, 1 initial node, autoscaling on from 1 to 20 nodes, 30 pods per node, surge of 1. Required to create a cluster, with a machineType per pool offered in the cluster's region: no pool or machine type is assumed. A running cluster without the list keeps the pools it has, and a declared pool without machineType keeps the machine type it runs on. */
+    nodePools: {type: 'array', required: false},
+    /** Prefix length of the pod range IPAM allocates in spoke mode, e.g. 20 for a /20. Ignored when podIpRange is set or in atom mode. When unset, 20. */
     podCidrPrefixLength: {type: 'integer', required: false, default: 20},
     /** Pod range of the cluster. Allocated by IPAM in spoke mode; required in atom mode. */
     podIpRange: {type: 'string', required: false},
+    /** Name of the pod secondary range the agent creates on the cluster's subnet, holding podIpRange. When unset, tier-1-pods. */
     podsRangeName: {type: 'string', required: false, default: ''},
+    /** Kubernetes PriorityClasses the agent keeps in the cluster: [{name, value, description?, preemptionPolicy?}]. When unset, none. */
     priorityClasses: {type: 'array', required: false, default: []},
+    /** When true, nodes get public IP addresses; when false (the default), the cluster has private nodes. The control plane endpoint is private either way. */
     privateClusterDisabled: {type: 'boolean', required: false, default: false},
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
-    roles: {type: 'array', required: false, default: []},
+    /** Prefix length of the service range IPAM allocates in spoke mode. Ignored when serviceIpRange is set or in atom mode. When unset, 20. */
     serviceCidrPrefixLength: {type: 'integer', required: false, default: 20},
     /** Service range of the cluster. Allocated by IPAM in spoke mode; required in atom mode. */
     serviceIpRange: {type: 'string', required: false},
+    /** Name of the service secondary range the agent creates on the cluster's subnet, holding serviceIpRange. When unset, tier-1-services. */
     servicesRangeName: {type: 'string', required: false, default: ''},
     /** Primary range of the cluster's subnet. Allocated by IPAM in spoke mode; required in atom mode. */
     subnetworkIpRange: {type: 'string', required: false},
+    /** Name of the dedicated subnet the agent creates for the cluster. When unset, <component id>-compute-tier-1. */
     subnetworkName: {type: 'string', required: false, default: ''},
-    windowsAdminUsername: {type: 'string', required: false, default: ''},
+    /** Workload identity is always enabled on the cluster; false is ignored with a warning in the component's status message. */
     workloadIdentityEnabled: {type: 'boolean', required: false, default: true},
   },
 } as const satisfies OfferContract;
@@ -1796,13 +2663,14 @@ export const NetworkAndCompute_PaaS_GcpGlb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Load-balancing scheme of the regional passthrough load balancer: INTERNAL or EXTERNAL. Only applied when the forwarding rule is created; an existing load balancer keeps its scheme. When unset, INTERNAL. */
     lbScheme: {
       type: 'string',
       required: false,
@@ -1810,6 +2678,7 @@ export const NetworkAndCompute_PaaS_GcpGlb = {
       values: ['INTERNAL', 'EXTERNAL'],
       valuesLevel: 'warn',
     },
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1820,7 +2689,7 @@ export const NetworkAndCompute_PaaS_GcpVm = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpComputeInstance',
@@ -1828,22 +2697,33 @@ export const NetworkAndCompute_PaaS_GcpVm = {
     },
   ],
   params: {
+    /** Whether the instance gets an ephemeral external IPv4 address. Reconciled on an existing instance too (the address is added or removed). When unset, false: private only. */
     associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
-    imageLink: {
-      type: 'string',
-      required: false,
-      default: 'projects/debian-cloud/global/images/family/debian-12',
-    },
-    machineType: {type: 'string', required: false, default: 'e2-medium'},
+    /** Boot disk source image, as an image or image-family path (a family resolves to its latest image). Applied when the instance is created only: a new VM without it is refused; an existing VM keeps the image it was created from. */
+    imageLink: {type: 'string', required: false},
+    /** GCE machine type (e.g. e2-standard-2). Wins over size. Applied when the instance is created. A new VM with neither it nor size is refused; an existing VM keeps the machine type it runs on. */
+    machineType: {type: 'string', required: false},
+    /** SSH public key in OpenSSH format, set as the instance's ssh-keys metadata. A malformed key is refused. When unset, a new VM gets an agent-generated ed25519 key pair: its private key (OpenSSH format) is stored in the environment project's Secret Manager as a secret named with a fresh GUID, which is published in the sshPrivateKeySecretName output (the store in sshPrivateKeyStore) and deleted with the VM. A deployed VM is never re-keyed. */
     publicSSHKey: {
       type: 'string',
       required: false,
       default: '',
       aliases: [{deprecated: true, key: 'keyData'}],
     },
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
+    /** Vendor-neutral VM size: small (1-2 vCPU, 1-2 GiB, burstable), medium (2 vCPU, 8 GiB), large (4 vCPU, 16 GiB), xlarge (8 vCPU, 32 GiB). Mapped to this offer's own size key when that key is not set; an explicitly set vendor size key wins (a contradiction is published as a contract warning). Applies when the VM is created only: changing it never resizes or recreates an existing VM. */
+    size: {
+      type: 'string',
+      required: false,
+      values: ['small', 'medium', 'large', 'xlarge'],
+      valuesCaseInsensitive: true,
+    },
+    /** Script run at boot, set as the instance's startup-script metadata. Applied when the instance is created only. When unset, no startup script. */
     userData: {type: 'string', required: false, default: ''},
+    /** Compute Engine zone of the instance, as <region>-<letter>, in the region of the instance's subnetwork. Applied when the instance is created only: a new VM without it is refused, as is one whose zone is outside its subnetwork's region; an existing VM keeps the zone it lives in. */
     zone: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1854,7 +2734,7 @@ export const NetworkAndCompute_PaaS_GKE = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.PaaS.GcpGke',
@@ -1862,28 +2742,45 @@ export const NetworkAndCompute_PaaS_GKE = {
     },
   ],
   params: {
+    /** Initial Kubernetes version of the cluster, e.g. 1.30. Applied at creation only; the cluster is enrolled in the REGULAR release channel and upgraded by GKE. When unset, the channel's default version. */
     kubernetesVersion: {type: 'string', required: false, default: ''},
     /** Control-plane range of a private cluster, e.g. 172.16.0.0/28. Not set when omitted. */
     masterIpv4CidrBlock: {type: 'string', required: false},
+    /** Name of the VPC network the cluster and its subnet are created in. When unset, the environment's spoke network. */
     networkName: {type: 'string', required: false, default: ''},
-    networkPolicyProvider: {type: 'string', required: false, default: ''},
-    nodePools: {type: 'array', required: false, default: []},
+    /** Network policy provider: CALICO enables Kubernetes NetworkPolicy enforcement (GKE's Calico provider and its add-on); any other value is refused for a new cluster. Applied when the cluster is created only. When unset, network policies are not enforced. */
+    networkPolicyProvider: {
+      type: 'string',
+      required: false,
+      values: ['CALICO'],
+      valuesCaseInsensitive: true,
+      valuesLevel: 'warn',
+    },
+    /** Node pools: [{name, machineType, diskSizeGb?, initialNodeCount?, autoscalingEnabled?, minNodeCount?, maxNodeCount?, maxPodsPerNode?, maxSurge?}]. Per pool, when unset: 100 GB disk, 1 initial node, autoscaling on from 1 to 20 nodes, 30 pods per node, surge of 1. Required to create a cluster, with a machineType per pool offered in the cluster's region: no pool or machine type is assumed. A running cluster without the list keeps the pools it has, and a declared pool without machineType keeps the machine type it runs on. */
+    nodePools: {type: 'array', required: false},
+    /** Prefix length of the pod range IPAM allocates in spoke mode, e.g. 20 for a /20. Ignored when podIpRange is set or in atom mode. When unset, 20. */
     podCidrPrefixLength: {type: 'integer', required: false, default: 20},
     /** Pod range of the cluster. Allocated by IPAM in spoke mode; required in atom mode. */
     podIpRange: {type: 'string', required: false},
+    /** Name of the pod secondary range the agent creates on the cluster's subnet, holding podIpRange. When unset, tier-1-pods. */
     podsRangeName: {type: 'string', required: false, default: ''},
+    /** Kubernetes PriorityClasses the agent keeps in the cluster: [{name, value, description?, preemptionPolicy?}]. When unset, none. */
     priorityClasses: {type: 'array', required: false, default: []},
+    /** When true, nodes get public IP addresses; when false (the default), the cluster has private nodes. The control plane endpoint is private either way. */
     privateClusterDisabled: {type: 'boolean', required: false, default: false},
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
-    roles: {type: 'array', required: false, default: []},
+    /** Prefix length of the service range IPAM allocates in spoke mode. Ignored when serviceIpRange is set or in atom mode. When unset, 20. */
     serviceCidrPrefixLength: {type: 'integer', required: false, default: 20},
     /** Service range of the cluster. Allocated by IPAM in spoke mode; required in atom mode. */
     serviceIpRange: {type: 'string', required: false},
+    /** Name of the service secondary range the agent creates on the cluster's subnet, holding serviceIpRange. When unset, tier-1-services. */
     servicesRangeName: {type: 'string', required: false, default: ''},
     /** Primary range of the cluster's subnet. Allocated by IPAM in spoke mode; required in atom mode. */
     subnetworkIpRange: {type: 'string', required: false},
+    /** Name of the dedicated subnet the agent creates for the cluster. When unset, <component id>-compute-tier-1. */
     subnetworkName: {type: 'string', required: false, default: ''},
-    windowsAdminUsername: {type: 'string', required: false, default: ''},
+    /** Workload identity is always enabled on the cluster; false is ignored with a warning in the component's status message. */
     workloadIdentityEnabled: {type: 'boolean', required: false, default: true},
   },
 } as const satisfies OfferContract;
@@ -1901,7 +2798,7 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
     },
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.PaaS.AwsEks',
@@ -1909,7 +2806,7 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.PaaS.AzureAks',
@@ -1917,7 +2814,7 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.PaaS.GcpGke',
@@ -1925,33 +2822,51 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
+    /** EKS add-ons to install, as a list of add-on objects. When unset, the agent's default add-ons. eks-pod-identity-agent is always installed, declared or not; unusable entries are ignored with a status warning. */
     addons: {
       type: 'array',
       required: false,
       agents: ['fractal-cloud-agent-aws'],
     },
+    /** Microsoft Entra integration of the cluster: {managed?, enableAzureRbac?, adminGroupObjectIDs?}. managed defaults to true and enableAzureRbac to the value of managed; adminGroupObjectIDs lists Entra group object IDs granted cluster admin. When unset, managed Entra integration with Azure RBAC, which the platform's Kubernetes agent needs to reach the cluster. */
     azureActiveDirectoryProfile: {
       type: 'object',
       required: false,
       default: {},
       agents: ['fractal-cloud-agent-azure'],
     },
+    /** Range of the cluster's node subnet in an environment with a spoke network, when the cluster has no VNet dependency and no vnetSubnetAddressIpRange: copied to vnetSubnetAddressIpRange. When unset there, a /24 allocated by IPAM (or the range already deployed). */
     cidrBlock: {
       type: 'string',
       required: false,
       default: '',
       agents: ['fractal-cloud-agent-azure'],
     },
+    /** OCI compartment the component's resource is created in, as {parentId, name, description?}: parentId is the OCID of the parent compartment or tenancy, name the compartment's name. The compartment is looked up under parentId and created there when absent (description defaults to 'Standard compartment'). Required for a new component; nothing is assumed. A deployed component without it is kept in the compartment its resource lives in, with a warning. Offers that run on a Kubernetes cluster do not read it. */
+    compartment: {
+      type: 'object',
+      required: false,
+      agents: ['fractal-cloud-agent-oci'],
+    },
+    /** Control-plane log types shipped to CloudWatch (api, audit, authenticator, controllerManager, scheduler). When unset, none on a new cluster and an existing cluster's logging is left as it is. Declared, every type not named is disabled, so an empty list turns logging off. */
     controlPlaneLogTypes: {
       type: 'array',
       required: false,
+      values: [
+        'api',
+        'audit',
+        'authenticator',
+        'controllerManager',
+        'scheduler',
+      ],
+      valuesCaseInsensitive: true,
       agents: ['fractal-cloud-agent-aws'],
     },
     ha: {
@@ -1960,6 +2875,7 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
       default: true,
       agents: ['aria-agent-aruba'],
     },
+    /** Kubernetes version of the cluster as major.minor (e.g. 1.31). When unset, a new cluster gets the current EKS default version and is never upgraded. Declared one minor ahead of an existing cluster's version, it upgrades the control plane on the next pass; more than one minor ahead, a major change or a downgrade is refused. */
     kubernetesVersion: {
       type: 'string',
       required: false,
@@ -1969,10 +2885,12 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
         'fractal-cloud-agent-gcp',
       ],
     },
+    /** AKS pricing tier of the control plane: Free (no uptime SLA, for development and test), Standard (uptime SLA, for production) or Premium (Standard plus long-term support), case-insensitive. Required to create a cluster, as is a known tier; a deployed cluster without it, or with an unknown one, keeps its tier, with a warning. */
     managedClusterSkuTier: {
       type: 'string',
       required: false,
-      default: 'Free',
+      values: ['Free', 'Standard', 'Premium'],
+      valuesCaseInsensitive: true,
       agents: ['fractal-cloud-agent-azure'],
     },
     /** Control-plane range of a private cluster, e.g. 172.16.0.0/28. Not set when omitted. */
@@ -1981,17 +2899,21 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
       required: false,
       agents: ['fractal-cloud-agent-gcp'],
     },
+    /** Name of the VPC network the cluster and its subnet are created in. When unset, the environment's spoke network. */
     networkName: {
       type: 'string',
       required: false,
       default: '',
       agents: ['fractal-cloud-agent-gcp'],
     },
+    /** Network policy provider: CALICO enables Kubernetes NetworkPolicy enforcement (GKE's Calico provider and its add-on); any other value is refused for a new cluster. Applied when the cluster is created only. When unset, network policies are not enforced. */
     networkPolicyProvider: {
       type: 'string',
       required: false,
-      default: '',
-      agents: ['fractal-cloud-agent-aws', 'fractal-cloud-agent-gcp'],
+      values: ['CALICO'],
+      valuesCaseInsensitive: true,
+      valuesLevel: 'warn',
+      agents: ['fractal-cloud-agent-gcp'],
     },
     nodePoolCount: {
       type: 'integer',
@@ -2004,28 +2926,235 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
       required: false,
       agents: ['aria-agent-aruba'],
     },
+    /** EKS Auto Mode NodePools to create, as a list of pool objects (Graviton/arm64 by default). When unset, the built-in general-purpose and system pools. Declaring pools on an existing cluster disables the amd64-only general-purpose pool on the next pass, so amd64-only images stop scheduling unless a declared pool offers amd64. */
     nodePools: {
       type: 'array',
       required: false,
+      constraints: {
+        items: {
+          config: {
+            architectures: {
+              description:
+                "CPU architectures the pool's nodes may have: arm64, amd64. When unset, arm64.",
+              type: 'array',
+              values: ['arm64', 'amd64'],
+            },
+            autoscalingEnabled: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field autoscalingEnabled; EKS Auto Mode ignores it.',
+              type: 'boolean',
+            },
+            capacityTypes: {
+              description:
+                "Capacity types the pool's nodes may use: on-demand, spot. When unset, on-demand.",
+              type: 'array',
+              values: ['on-demand', 'spot'],
+            },
+            diskSizeGb: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field diskSizeGb; EKS Auto Mode ignores it.',
+              type: 'integer',
+            },
+            drainTimeoutInMinutes: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field drainTimeoutInMinutes; EKS Auto Mode ignores it.',
+              type: 'integer',
+            },
+            initialNodeCount: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field initialNodeCount; EKS Auto Mode ignores it.',
+              type: 'integer',
+            },
+            instanceFamilies: {
+              description:
+                "EC2 instance families the pool's nodes may come from, e.g. m7g. When unset, m7g.",
+              type: 'array',
+            },
+            instanceSizes: {
+              description:
+                "EC2 instance sizes the pool's nodes may have, e.g. xlarge. When unset, any size.",
+              type: 'array',
+            },
+            labels: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field labels; EKS Auto Mode ignores it.',
+              type: 'object',
+            },
+            machineType: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field machineType; EKS Auto Mode ignores it.',
+              type: 'string',
+            },
+            maxNodeCount: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field maxNodeCount; EKS Auto Mode ignores it.',
+              type: 'integer',
+            },
+            maxPodsPerNode: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field maxPodsPerNode; EKS Auto Mode ignores it.',
+              type: 'integer',
+            },
+            maxSurge: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field maxSurge; EKS Auto Mode ignores it.',
+              type: 'string',
+            },
+            minNodeCount: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field minNodeCount; EKS Auto Mode ignores it.',
+              type: 'integer',
+            },
+            name: {
+              constraints: {
+                level: 'warn',
+                pattern: '[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?',
+              },
+              description: "the NodePool's name",
+              example: 'graviton-spot',
+              type: 'string',
+            },
+            nodeTaints: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field nodeTaints; EKS Auto Mode ignores it.',
+              type: 'array',
+            },
+            osSku: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field osSku; EKS Auto Mode ignores it.',
+              type: 'string',
+            },
+            osType: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field osType; EKS Auto Mode ignores it.',
+              type: 'string',
+            },
+            useGen2VirtualMachine: {
+              deprecated: {
+                level: 'warn',
+                note: 'EKS Auto Mode ignores it: an AKS/GKE-shaped entry is no EKS node pool; declare architectures, instanceFamilies, capacityTypes or instanceSizes instead',
+              },
+              description:
+                'AKS/GKE node pool field useGen2VirtualMachine; EKS Auto Mode ignores it.',
+              type: 'boolean',
+            },
+          },
+          parameterRules: [
+            {
+              id: 'customPoolName',
+              key: 'name',
+              kind: 'requiredIf',
+              message: 'An EKS Auto Mode node pool needs a name.',
+              when: {
+                anyOf: [
+                  {key: 'architectures', present: true},
+                  {key: 'instanceFamilies', present: true},
+                  {key: 'capacityTypes', present: true},
+                  {key: 'instanceSizes', present: true},
+                ],
+              },
+            },
+            {
+              cases: [
+                {
+                  fix: 'Give the node pool another name.',
+                  id: 'customPool',
+                  message:
+                    "system and general-purpose are EKS's built-in node pools and cannot be declared as custom ones.",
+                  then: {
+                    restrict: [
+                      {key: 'name', notIn: ['system', 'general-purpose']},
+                    ],
+                  },
+                  when: {
+                    anyOf: [
+                      {key: 'architectures', present: true},
+                      {key: 'instanceFamilies', present: true},
+                      {key: 'capacityTypes', present: true},
+                      {key: 'instanceSizes', present: true},
+                    ],
+                  },
+                },
+              ],
+              id: 'customPoolNotBuiltIn',
+              kind: 'branches',
+            },
+          ],
+        },
+      },
       agents: [
         'fractal-cloud-agent-aws',
         'fractal-cloud-agent-azure',
         'fractal-cloud-agent-gcp',
       ],
     },
+    /** Public IPs the cluster's outbound traffic leaves from: [{name, azureResourceGroup?: {name, region}}]; each IP is created when missing, in the cluster's resource group unless one is named. When unset, a single public IP named pip-<cluster name>. */
     outboundIps: {
       type: 'array',
       required: false,
       default: [],
       agents: ['fractal-cloud-agent-azure'],
     },
+    /** Prefix length of the pod block allocated from IPAM when podIpRange is unset (e.g. 20 for a /20). When unset, 20. */
     podCidrPrefixLength: {
       type: 'integer',
       required: false,
       default: 20,
       agents: ['fractal-cloud-agent-aws', 'fractal-cloud-agent-gcp'],
     },
-    /** Pod range of the cluster. Allocated by IPAM in spoke mode; required in atom mode. */
+    /** CIDR block for pod addresses. When unset in an environment with a spoke network, allocated from IPAM. Used only by clusters running the VPC CNI with custom networking and only when it is a 100.64.0.0/10 block; Auto Mode clusters give pods node-subnet addresses. */
     podIpRange: {
       type: 'string',
       required: false,
@@ -2035,24 +3164,28 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
         'fractal-cloud-agent-gcp',
       ],
     },
+    /** Name of the pod secondary range the agent creates on the cluster's subnet, holding podIpRange. When unset, tier-1-pods. */
     podsRangeName: {
       type: 'string',
       required: false,
       default: '',
       agents: ['fractal-cloud-agent-gcp'],
     },
+    /** Kubernetes PriorityClasses the agent keeps in the cluster: [{name, value, description?, preemptionPolicy?}]. When unset, none. */
     priorityClasses: {
       type: 'array',
       required: false,
       default: [],
       agents: ['fractal-cloud-agent-gcp'],
     },
+    /** Set true to give a new cluster an unrestricted public API endpoint. When unset or false, the endpoint is limited to the operator's allowlist when one is configured, else private when the agent shares the cluster's VPC, else left public. Applies at creation. */
     privateClusterDisabled: {
       type: 'boolean',
       required: false,
       default: false,
       agents: ['fractal-cloud-agent-aws', 'fractal-cloud-agent-gcp'],
     },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {
       type: 'string',
       required: false,
@@ -2062,19 +3195,14 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
         'fractal-cloud-agent-gcp',
       ],
     },
-    roles: {
-      type: 'array',
-      required: false,
-      default: [],
-      agents: ['fractal-cloud-agent-gcp'],
-    },
+    /** Prefix length of the service block allocated from IPAM when serviceIpRange is unset (e.g. 20 for a /20). When unset, 20. */
     serviceCidrPrefixLength: {
       type: 'integer',
       required: false,
       default: 20,
       agents: ['fractal-cloud-agent-aws', 'fractal-cloud-agent-gcp'],
     },
-    /** Service range of the cluster. Allocated by IPAM in spoke mode; required in atom mode. */
+    /** CIDR of Kubernetes service addresses (e.g. 172.20.0.0/16), set at creation. When unset in an environment with a spoke network, allocated from IPAM; otherwise the EKS default range. */
     serviceIpRange: {
       type: 'string',
       required: false,
@@ -2084,6 +3212,7 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
         'fractal-cloud-agent-gcp',
       ],
     },
+    /** Name of the service secondary range the agent creates on the cluster's subnet, holding serviceIpRange. When unset, tier-1-services. */
     servicesRangeName: {
       type: 'string',
       required: false,
@@ -2096,24 +3225,21 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
       required: false,
       agents: ['fractal-cloud-agent-gcp'],
     },
+    /** Name of the dedicated subnet the agent creates for the cluster. When unset, <component id>-compute-tier-1. */
     subnetworkName: {
       type: 'string',
       required: false,
       default: '',
       agents: ['fractal-cloud-agent-gcp'],
     },
+    /** CIDR of the subnet snet-<cluster> the nodes are placed in, inside the target VNet: the VNet dependency, else the environment's spoke. Used only when it fits that VNet and clashes with no other subnet; an existing subnet keeps its range. When unset or unusable, the spoke's IPAM allocation or a free /24 carved from the VNet. */
     vnetSubnetAddressIpRange: {
       type: 'string',
       required: false,
       default: '',
       agents: ['fractal-cloud-agent-azure'],
     },
-    windowsAdminUsername: {
-      type: 'string',
-      required: false,
-      default: '',
-      agents: ['fractal-cloud-agent-gcp'],
-    },
+    /** Whether workloads get cloud identities (EKS Pod Identity). Always enabled on Fractal-managed clusters: false is ignored with a status warning. When unset, true. */
     workloadIdentityEnabled: {
       type: 'boolean',
       required: false,
@@ -2129,25 +3255,39 @@ export const NetworkAndCompute_PaaS_OciContainerInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
+    /** Whether the instance's VNIC gets a public IP. When unset, false. Applied at creation only. */
     assignPublicIp: {type: 'boolean', required: false, default: false},
-    availabilityDomain: {type: 'string', required: false, default: ''},
+    /** OCI availability domain the instance is launched in, by its full tenancy-specific name as OCI lists it for the region. When unset, the availability domain of the instance's subnet when that subnet is availability-domain specific, else the first of the agent region's availability domains (in name order) as OCI lists them for the tenancy. Applied at creation only. */
+    availabilityDomain: {
+      type: 'string',
+      required: false,
+      derived: {
+        note: "When unset, the availability domain of the instance's subnet when that subnet is availability-domain specific, else the first of the agent region's availability domains (in name order) as OCI lists them for the tenancy.",
+      },
+    },
+    /** OCI compartment the component's resource is created in, as {parentId, name, description?}: parentId is the OCID of the parent compartment or tenancy, name the compartment's name. The compartment is looked up under parentId and created there when absent (description defaults to 'Standard compartment'). Required for a new component; nothing is assumed. A deployed component without it is kept in the compartment its resource lives in, with a warning. Offers that run on a Kubernetes cluster do not read it. */
+    compartment: {type: 'object', required: false},
+    /** What OCI does when the container exits: ALWAYS, NEVER or ON_FAILURE (case insensitive). Any other value is refused. When unset, ALWAYS. Applied at creation only. */
     containerRestartPolicy: {
       type: 'string',
       required: false,
       default: 'ALWAYS',
     },
+    /** Container image the instance runs, as a full image reference (registry/repository:tag). Required to create: a running instance declared without it keeps the image it runs. Changing it deletes and recreates the instance. */
     imageUrl: {type: 'string', required: false},
+    /** Memory of the container instance in GB. When unset, 2. Changing it deletes and recreates the instance. */
     memoryInGBs: {type: 'number', required: false, default: 2},
+    /** OCPUs of the container instance's Flex shape (1 OCPU = 2 vCPUs). When unset, 1. Changing it deletes and recreates the instance. */
     ocpus: {type: 'number', required: false, default: 1},
-    port: {type: 'integer', required: false, default: 8080},
-    shape: {type: 'string', required: false, default: 'CI.Standard.E4.Flex'},
+    /** OCI container instance shape (e.g. CI.Standard.E4.Flex). Not every shape is offered in every region or tenancy, so none is assumed: a new instance without it is refused; set it to a shape your tenancy offers in the region. Applied when the instance is created; an existing instance keeps its shape, and one that has to be recreated is refused without it. */
+    shape: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
 
@@ -2157,13 +3297,16 @@ export const NetworkAndCompute_PaaS_OKE = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
-  params: {},
+  params: {
+    /** OCI compartment the component's resource is created in, as {parentId, name, description?}: parentId is the OCID of the parent compartment or tenancy, name the compartment's name. The compartment is looked up under parentId and created there when absent (description defaults to 'Standard compartment'). Required for a new component; nothing is assumed. A deployed component without it is kept in the compartment its resource lives in, with a warning. Offers that run on a Kubernetes cluster do not read it. */
+    compartment: {type: 'object', required: false},
+  },
 } as const satisfies OfferContract;
 
 export const NetworkAndCompute_SaaS_Unmanaged = {
@@ -2172,36 +3315,39 @@ export const NetworkAndCompute_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
+    /** Reference to a secret defined on the environment, written {"$envSecret": "<shortName>"}. The environment owns the value: the component only resolves and publishes it, and deleting the component leaves the secret in place. Preferred over 'secretValue'; when both are set, this one wins. Fails when no environment secret has that short name. */
     secret: {type: 'object', required: false, sensitive: true},
+    /** Name under which 'secretValue' is stored in the environment secret store. When unset, the component id. Ignored when 'secret' references an environment secret, which keeps its own name. Changing it writes a new secret and revokes the readers' grants on the old one. */
     secretName: {type: 'string', required: false, default: ''},
+    /** Raw secret value (legacy) that the component stores in the environment secret store under 'secretName', granting read access to the custom workloads linked to it. Required when 'secret' is not set; deleting the component deletes the stored secret. */
     secretValue: {type: 'string', required: false, sensitive: true},
   },
 } as const satisfies OfferContract;

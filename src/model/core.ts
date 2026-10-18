@@ -16,6 +16,7 @@
  *     (`select`), with no global provider; mixed vendors are normal.
  */
 
+import {contractConfigProblem} from './offers/contract/contract_config_problem';
 import type {ComponentReference} from './component_reference';
 import type {OfferContract} from './offers/contract/offer_contract';
 import type {NeutralRule} from './neutral_rule';
@@ -174,9 +175,26 @@ export const defineOffer = <C extends string, Cfg>(
     deliveryModel: spec.deliveryModel,
     config,
     contract: spec.contract,
-    validate: spec.validate
-      ? (self, all) => spec.validate!(self, all, config)
-      : undefined,
+    // Value constraints come from the agent's published contract: every
+    // parameter emitted for the offer's own type is checked against it, then
+    // the offer's own structural rules run.
+    validate:
+      spec.contract !== undefined || spec.validate !== undefined
+        ? (self, all) => {
+            const contract = spec.contract;
+            if (
+              contract !== undefined &&
+              self.type === contract.offerType &&
+              self.reference === undefined
+            ) {
+              const problem = contractConfigProblem(contract, self.parameters);
+              if (problem !== undefined) {
+                throw new Error(`Live component '${self.id}': ${problem}.`);
+              }
+            }
+            spec.validate?.(self, all, config);
+          }
+        : undefined,
     instantiate: raw => {
       const ctx: InstantiationContext = spec.neutral
         ? {

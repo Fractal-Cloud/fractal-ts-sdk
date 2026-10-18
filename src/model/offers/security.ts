@@ -65,13 +65,7 @@ export const Keycloak = defineOffer<
 // guardrails come from the IdentityProvider Component, app clients from links.
 export const EntraExternalId = defineOffer<
   'Security.IdentityProvider',
-  ContractConfig<
-    typeof Security_PaaS_AzureEntraExternalId,
-    | 'mfaConfiguration'
-    | 'passwordPolicy'
-    | 'sessionDuration'
-    | 'userDirectoryName'
-  >
+  ContractConfig<typeof Security_PaaS_AzureEntraExternalId, 'mfaConfiguration'>
 >({
   satisfies: 'Security.IdentityProvider',
   contract: Security_PaaS_AzureEntraExternalId,
@@ -79,5 +73,10 @@ export const EntraExternalId = defineOffer<
   deliveryModel: 'PaaS',
   neutral: {
     tags: unsupported('the agent applies no tags to it'),
+    passwordPolicy: unsupported('the agent sets no password policy'),
+    sessionDuration: unsupported('the agent sets no session duration'),
+    userDirectoryName: unsupported(
+      'the tenant is named by tenantName, not the directory guardrail',
+    ),
   },
 });

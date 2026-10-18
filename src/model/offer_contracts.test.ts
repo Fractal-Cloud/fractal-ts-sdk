@@ -108,8 +108,6 @@ const UNPUBLISHED: Readonly<Record<string, string>> = {
   VsphereVlan: 'aria-agent-vmware releases no contract',
   VsphereVm: 'aria-agent-vmware releases no contract',
   Keycloak: 'no agent declares Security.CaaS.Keycloak',
-  StorageOpenSearch:
-    'aria-agent-caas-k8s has not released Storage.CaaS.OpenSearch yet',
 };
 
 /** One argument per neutral setter, so every guardrail of a component is set. */
@@ -297,6 +295,23 @@ const NEUTRAL = new Map<string, ProbedNode['state']>(
  * merged offer read does not count: the agent that reconciles the component
  * may be one that ignores it.
  */
+/**
+ * Neutral keys an offer keeps a rule for although its contract declares a key
+ * of the same name, each for a reason:
+ * - Service Bus `encryption` is a customer-managed-key map, not 'at-rest' / 'none';
+ * - a VM's `size` (fractal-cloud-agents v8.25.10) takes only the neutral sizes,
+ *   while `withSize` also takes the vendor's own machine type, which the SDK
+ *   sends under the vendor key (`instanceType`, `vmSize`, `machineType`,
+ *   `shape`), as it sends a neutral size mapped by offers/vm_sizes.ts.
+ */
+const HOMONYM_RULES: Readonly<Record<string, readonly string[]>> = {
+  AzureServiceBus: ['encryption'],
+  Ec2Instance: ['size'],
+  AzureVm: ['size'],
+  GcpVm: ['size'],
+  OciInstance: ['size'],
+};
+
 const declaredKeys = (contract: OfferContract): Set<string> =>
   new Set([
     ...Object.entries(contract.params)
@@ -484,9 +499,10 @@ describe('offers and the contracts their agents publish', () => {
   });
 
   it('refuses the translations whose target value the agents would not take', () => {
-    // A translation is refused, not sent, when the contract would not accept
-    // its result: here because only the Java agents read retentionMs, and
-    // aria-agent-caas-k8s may be the one reconciling the topic.
+    // None does with the pinned contracts: the Java agents' CaaS Spark and
+    // Kafka offers are gone (fractal-cloud-agents v8.25.10), so the keys only
+    // they read are refused as unsupported instead (contract_value_problem.test.ts
+    // covers a translation into a key only some agents read).
     const refused = OFFERS.flatMap(([name, offer]) =>
       Object.entries(NEUTRAL.get(offer.satisfies)?.parameters ?? {})
         .filter(
@@ -495,19 +511,13 @@ describe('offers and the contracts their agents publish', () => {
         )
         .map(([k]) => `${name}.${k}`),
     );
-    expect(refused).toEqual([
-      'CaaSSparkCluster.sparkVersion',
-      'CaaSSparkJob.maxRetries',
-      'KafkaTopic.messageRetentionHours',
-    ]);
+    expect(refused).toEqual([]);
     const kafka = Object.fromEntries(OFFERS)['KafkaTopic'];
     expect(() =>
       instantiateWith('KafkaTopic', kafka, {messageRetentionHours: 24}),
     ).toThrow(
       "Offer Messaging.CaaS.KafkaTopic, selected for 'probe', cannot honor withMessageRetentionHours ('messageRetentionHours'), a guardrail locked in the Fractal: " +
-        "'retentionMs' is read only by fractal-cloud-agent-aws, fractal-cloud-agent-azure, " +
-        'fractal-cloud-agent-gcp, fractal-cloud-agent-oci; aria-agent-caas-k8s also reconciles ' +
-        'Messaging.CaaS.KafkaTopic and ignores it.',
+        'aria-agent-caas-k8s sets no retention on a topic.',
     );
   });
 
@@ -522,8 +532,13 @@ describe('offers and the contracts their agents publish', () => {
           p => (p.aliases ?? []).filter(a => a.deprecated).map(a => a.key),
         ),
       );
+      // A neutral key kept on a rule for a reason (HOMONYM_RULES).
+      const homonyms = HOMONYM_RULES[name] ?? [];
       const stale = Object.keys(offer.neutral ?? {}).filter(
-        k => declaredKeys(offer.contract!).has(k) && !deprecated.has(k),
+        k =>
+          declaredKeys(offer.contract!).has(k) &&
+          !deprecated.has(k) &&
+          !homonyms.includes(k),
       );
       expect(stale, `${name}: the agent reads these now`).toEqual([]);
     }

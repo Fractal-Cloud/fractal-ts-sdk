@@ -5,12 +5,12 @@
  * Component each satisfies. Vendor knobs live in each offer's config only.
  * Vendor-neutral self-hosted offers (e.g. MinIO on any cluster) omit `provider`.
  */
-import {validateAwsRdsDbms} from './aws_rds_dbms_validation';
 import type {NeutralRule} from '../neutral_rule';
 import {applyNeutralRules} from '../apply_neutral_rules';
 import {toContractKey, unsupported, unsupportedUnless} from './neutral_rules';
 import {
   Storage_CaaS_MinioTenant,
+  Storage_CaaS_OpenSearch,
   Storage_CaaS_OpenshiftPersistentVolume,
   Storage_PaaS_ArubaMySqlDbms,
   Storage_PaaS_AwsRdsMySql,
@@ -35,7 +35,6 @@ import type {
 } from '../core';
 import type {AwsRdsDbmsConfig} from './aws_rds_dbms_config';
 import type {OpenSearchConfig} from './open_search_config';
-import {OPEN_SEARCH_OFFER_TYPE} from './offer_type_ids';
 import {searchLinkRefusal} from '../components/search_link_refusal';
 
 /**
@@ -127,19 +126,6 @@ export const AwsS3 = defineOffer<
     versioningEnabled: toContractKey(Storage_PaaS_AwsS3, 'versioning'),
     storageClass: unsupported('the agent sets no storage class'),
     tags: unsupported('the agent applies no tags to it'),
-  },
-  // The agent refuses an expiration that is not a positive number of days; the
-  // contract declares only its type.
-  validate: self => {
-    const days = self.parameters.lifecycleExpirationDays;
-    if (
-      days !== undefined &&
-      (typeof days !== 'number' || !Number.isInteger(days) || days < 1)
-    ) {
-      throw new Error(
-        `AwsS3 '${self.id}': lifecycleExpirationDays ${String(days)} is not a whole number of at least 1.`,
-      );
-    }
   },
 });
 /**
@@ -392,8 +378,7 @@ export const AwsRdsPostgresDbms = defineOffer<
     'AWS',
     Storage_PaaS_AwsRdsPostgresDatabase.offerType,
     RDS_DATABASE_RULES,
-  ), // The agent's limit for this engine (RdsEngine.maxMasterUserNameLength).
-  validate: self => validateAwsRdsDbms('AwsRdsPostgresDbms', self, 63),
+  ),
 });
 
 /**
@@ -438,8 +423,7 @@ export const AwsRdsMySqlDbms = defineOffer<
     'AWS',
     Storage_PaaS_AwsRdsMySqlDatabase.offerType,
     RDS_DATABASE_RULES,
-  ), // The agent's limit for this engine (RdsEngine.maxMasterUserNameLength).
-  validate: self => validateAwsRdsDbms('AwsRdsMySqlDbms', self, 16),
+  ),
 });
 export const ArubaMySqlDbms = defineOffer<
   'Storage.RelationalDbms',
@@ -598,18 +582,12 @@ export const StorageOpenSearch = defineOffer<
   OpenSearchConfig
 >({
   satisfies: 'Storage.Search',
-  offerType: OPEN_SEARCH_OFFER_TYPE,
+  contract: Storage_CaaS_OpenSearch,
   deliveryModel: 'CaaS',
-  validate: (self, all, config) => {
+  validate: (self, all) => {
     const refuse = (why: string): never => {
       throw new Error(`Live component '${self.id}': ${why}.`);
     };
-    if (
-      config.replicas !== undefined &&
-      (!Number.isInteger(config.replicas) || config.replicas < 1)
-    ) {
-      refuse(`replicas ${config.replicas} is not a whole number of at least 1`);
-    }
     for (const consumer of all) {
       for (const link of consumer.links) {
         if (link.componentId !== self.id) {

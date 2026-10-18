@@ -48,9 +48,9 @@ EcsService({launchType: 'FARGATE'});
 // @ts-expect-error `containerImage` is filled by the Workload's withImage.
 EcsService({containerImage: 'registry/app:1'});
 
-// A key the contract requires is required.
+// `apiConfig` is optional in the GCP agent's contract (v8.25.10): the agent
+// refuses a new gateway without it, a deployed one keeps its config.
 GcpApiGateway({apiConfig: 'openapi: 3.0.0'});
-// @ts-expect-error `apiConfig` is required by the GCP agent's contract.
 GcpApiGateway({});
 
 /** An override may only re-type a key the contract declares. */

@@ -87,7 +87,12 @@ describe('Search component and the StorageOpenSearch offer', () => {
     ).toEqual({});
   });
 
-  it.each([0, 1.5, -1])('refuses replicas %s', replicas => {
+  // The agent's contract (aria-agent-caas-k8s v1.8.0) bounds replicas.
+  it.each([
+    [0, "'replicas' 0 is below 1"],
+    [-1, "'replicas' -1 is below 1"],
+    [1.5, "1.5 is not the integer 'replicas' takes"],
+  ])('refuses replicas %s by the contract', (replicas, why) => {
     expect(() =>
       createFractal({
         id: 'search-stack',
@@ -99,7 +104,7 @@ describe('Search component and the StorageOpenSearch offer', () => {
         environment,
         select: {search: StorageOpenSearch({replicas})},
       }),
-    ).toThrow(`replicas ${replicas} is not a whole number of at least 1`);
+    ).toThrow(`Live component 'search': ${why}.`);
   });
 });
 

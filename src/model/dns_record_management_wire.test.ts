@@ -150,7 +150,9 @@ describe('recordManagement on the wire', () => {
     expect('recordManagement' in operationWire()).toBe(false);
   });
 
-  it('refuses strict on every path, naming authoritative and lax', () => {
+  // An operation's raw `set` is not refused by the SDK: the agent's contract
+  // declares no vocabulary for recordManagement yet, and the agent refuses it.
+  it('refuses strict through the environment and the builder, naming authoritative and lax', () => {
     const names = /'authoritative'.*'lax'/s;
     expect(() =>
       environmentWire({
@@ -161,6 +163,5 @@ describe('recordManagement on the wire', () => {
     expect(() =>
       builderWire('strict' as unknown as DnsRecordManagement),
     ).toThrow(names);
-    expect(() => operationWire('strict')).toThrow(names);
   });
 });

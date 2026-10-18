@@ -9,7 +9,7 @@ export const APIManagement_CaaS_Ambassador = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.6.0',
+      agentVersion: 'v1.8.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -18,7 +18,11 @@ export const APIManagement_CaaS_Ambassador = {
   params: {
     chartVersion: {type: 'string', required: false, default: '8.9.1'},
     host: {type: 'string', required: false},
-    namespace: {type: 'string', required: false},
+    namespace: {
+      type: 'string',
+      required: false,
+      constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?'},
+    },
   },
 } as const satisfies OfferContract;
 
@@ -43,47 +47,57 @@ export const APIManagement_CaaS_Traefik = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
+    /** Deprecated: id of the Kubernetes cluster component to deploy into. Used only when the component declares no dependency on a Kubernetes cluster; declare that dependency instead. */
     containerPlatform: {type: 'string', required: false},
+    /** Ports Traefik listens on, each a map {name, port, exposedPort, protocol, isTlsEnabled, isHttpsRedirected} or a 'name:port' string. exposedPort defaults to port, protocol to tcp (tcp or udp), isTlsEnabled to true (in the string form, true only for https and websecure) and isHttpsRedirected to false. Entries without a name or port are skipped and none left fails the component; a name must be a valid Kubernetes port name (at most 15 characters) and cannot be 'traefik', which the agent reserves. */
     entryPoints: {type: 'array', required: true},
+    /** Name of the environment secret the forward-auth service signs its session cookies with. Required together with the other three OIDC keys; a name that resolves to no secret counts as unset. */
     forwardAuthSecretId: {type: 'string', required: false},
+    /** Fully qualified host name the Traefik dashboard and API route (and the /_oauth callback when OIDC is on) answers on. When unset, that route matches an empty host, which no request carries: the dashboard and API are unreachable, and so is the /_oauth callback this route serves. */
     hostname: {type: 'string', required: false, default: ''},
+    /** Static IP address requested for Traefik's LoadBalancer Service (loadBalancerIP). The address must already be reserved for the cluster; when unset, the cloud provider assigns one. */
     loadbalancerIp: {type: 'string', required: false, default: ''},
+    /** Kubernetes namespace Traefik is deployed into. When unset, the component id, which must then be a valid DNS-1123 label (at most 63 lowercase letters, digits and hyphens). */
     namespace: {
       type: 'string',
       required: false,
       derived: {note: 'defaults to the component id when absent'},
     },
+    /** Client id of the OIDC application registered for this gateway. Required together with the other three OIDC keys. */
     oidcClientId: {type: 'string', required: false},
+    /** Name of the environment secret holding the OIDC client secret; the raw secret is never a parameter. Required together with the other three OIDC keys; a name that resolves to no secret counts as unset. */
     oidcClientSecretId: {type: 'string', required: false},
+    /** Issuer URL of the OpenID Connect provider that protects the routes through forward authentication. OIDC is enabled only when oidcIssuerUrl, oidcClientId, oidcClientSecretId and forwardAuthSecretId are all set; setting only some of them fails the component. */
     oidcIssuerUrl: {type: 'string', required: false},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {
       type: 'string',
       required: false,
@@ -93,9 +107,13 @@ export const APIManagement_CaaS_Traefik = {
         'fractal-cloud-agent-gcp',
       ],
     },
+    /** HSTS security-headers middleware: a map {active, stsSeconds, stsIncludeSubdomains, stsPreload, stsForce}. When unset, the middleware is applied with stsSeconds 63072000 (two years) and the three flags true; any key left out of the map takes that same value, and active=false removes the middleware. */
     securityHeadersSettings: {type: 'object', required: false, default: {}},
+    /** TLS certificates Traefik serves, each a map {certSecretId, keySecretId, isDefault} naming the environment secrets that hold the base64-encoded PEM certificate and its private key. Entries missing either id are skipped; a named secret that does not exist fails the component. When none is marked isDefault, the first one is the default certificate. */
     tlsCertificates: {type: 'array', required: false, default: []},
+    /** TLS options of the entry points, as {supportedTlsVersions, supportedCiphers}: supportedTlsVersions lists TLS_1_0, TLS_1_1, TLS_1_2 or TLS_1_3 (the lowest becomes the minimum version; any other value fails the component), supportedCiphers lists cipher-suite names as Go's crypto/tls spells them (e.g. TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256). Each half left unset keeps its default: TLS 1.2 and 1.3, with a fixed list of ECDHE and TLS 1.3 AES-GCM / ChaCha20 suites. */
     tlsSettings: {type: 'object', required: false, default: {}},
+    /** Distributed tracing, as {jaeger: {collectorEndpoint, localAgentPort, localAgentUrlPath}}. When jaeger is set without a collectorEndpoint, the endpoint is taken from the Jaeger component this gateway links to with link type JaegerTracing, and the component fails when there is no such link. When unset, tracing is off. */
     tracing: {type: 'object', required: false, default: {}},
   },
 } as const satisfies OfferContract;
@@ -106,15 +124,118 @@ export const APIManagement_CaaS_TraefikGateway = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.6.0',
+      agentVersion: 'v1.8.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
-      parameterRules: [],
+      parameterRules: [
+        {
+          fix: 'Set forwardAuthAddress, or remove the other forwardAuth settings.',
+          id: 'forward-auth-needs-address',
+          key: 'forwardAuthAddress',
+          kind: 'requiredIf',
+          level: 'warn',
+          message:
+            'forwardAuthAddress is not set, so the other forwardAuth settings are ignored.',
+          when: {
+            anyOf: [
+              {key: 'forwardAuthRequestHeaders', present: true},
+              {key: 'forwardAuthResponseHeaders', present: true},
+              {key: 'forwardAuthForwardBody', present: true},
+              {key: 'forwardAuthMaxBodySize', present: true},
+              {key: 'forwardAuthExemptComponentIds', present: true},
+            ],
+          },
+        },
+        {
+          cases: [
+            {
+              id: 'tls-secret',
+              then: {
+                rules: [
+                  {
+                    fix: 'Set tlsHosts, or host.',
+                    id: 'tls-secret-hosts',
+                    keys: ['tlsHosts', 'host'],
+                    kind: 'anyOf',
+                    message:
+                      'TLS from tlsSecretName needs the hosts its certificate covers.',
+                  },
+                ],
+              },
+              when: {key: 'tlsSecretName', present: true},
+            },
+          ],
+          id: 'tls-secret-needs-hosts',
+          kind: 'branches',
+        },
+        {
+          cases: [
+            {
+              id: 'tls-hosts',
+              then: {
+                rules: [
+                  {
+                    fix: 'Set tlsSecretName, or dnsZones with TXT write on the zone of the hosts.',
+                    id: 'tls-hosts-certificate-source',
+                    keys: ['tlsSecretName', 'tlsClusterIssuer', 'dnsZones'],
+                    kind: 'anyOf',
+                    message:
+                      'tlsHosts is set, but the gateway has no certificate for them.',
+                  },
+                ],
+              },
+              when: {key: 'tlsHosts', present: true},
+            },
+          ],
+          id: 'tls-hosts-need-certificate',
+          kind: 'branches',
+        },
+        {
+          cases: [
+            {
+              fix: 'Remove tlsSecretName, or tlsCertificateArn.',
+              id: 'tls-certificate-arn',
+              message:
+                'tlsCertificateArn and tlsSecretName both need port 443.',
+              then: {forbidden: ['tlsSecretName']},
+              when: {key: 'tlsCertificateArn', present: true},
+            },
+          ],
+          id: 'tls-certificate-arn-excludes-traefik-tls',
+          kind: 'branches',
+        },
+        {
+          cases: [
+            {
+              id: 'no-plain-http',
+              then: {
+                rules: [
+                  {
+                    fix: 'Set plainHttp to true, or give the gateway TLS: tlsSecretName, or dnsZones with TXT write on the zone of its hosts.',
+                    id: 'no-plain-http-certificate-source',
+                    keys: ['tlsSecretName', 'tlsClusterIssuer', 'dnsZones'],
+                    kind: 'anyOf',
+                    message:
+                      'plainHttp is false and the gateway has no TLS, so it would serve nothing.',
+                  },
+                ],
+              },
+              when: {equals: false, key: 'plainHttp'},
+            },
+          ],
+          id: 'plain-http-needs-tls',
+          kind: 'branches',
+        },
+      ],
     },
   ],
   params: {
     /** ACME account email of the gateway's certificate issuer; optional */
-    acmeEmail: {type: 'string', required: false},
+    acmeEmail: {
+      type: 'string',
+      required: false,
+      constraints: {level: 'warn', pattern: '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+'},
+    },
     /** ACME directory of the gateway's certificate issuer: production, staging, or an https URL */
     acmeServer: {type: 'string', required: false, default: 'production'},
     /** traefik chart version (39.0.9 is Traefik v3.6.15) */
@@ -126,9 +247,18 @@ export const APIManagement_CaaS_TraefikGateway = {
       type: 'integer',
       required: false,
       default: 75,
+      constraints: {maximum: 2147483647, minimum: 1},
     },
     /** When set, a global ForwardAuth middleware to this URL authenticates every route */
     forwardAuthAddress: {type: 'string', required: false},
+    /** Removed: path exemptions are gone */
+    forwardAuthExcludedPrefixes: {
+      type: 'string',
+      required: false,
+      deprecated: {
+        note: "a path never exempts a route; exempt the auth server's workload with forwardAuthExemptComponentIds instead",
+      },
+    },
     /** Comma-separated workloads whose own routes skip ForwardAuth (the auth server itself): a component id of this Live System, or <liveSystemId>/<componentId>. None by default. A path never exempts a route */
     forwardAuthExemptComponentIds: {
       type: 'string',
@@ -140,16 +270,19 @@ export const APIManagement_CaaS_TraefikGateway = {
       type: 'integer',
       required: false,
       default: 1048576,
+      constraints: {maximum: 2147483647, minimum: 1},
     },
     forwardAuthRequestHeaders: {
       type: 'string',
       required: false,
       default: 'authorization,cookie,x-clientid,x-clientsecret,origin',
+      constraints: {level: 'warn', pattern: "[-!#-'*+.0-9A-Z^-z|~, ]+"},
     },
     forwardAuthResponseHeaders: {
       type: 'string',
       required: false,
       default: 'x-jwt',
+      constraints: {level: 'warn', pattern: "[-!#-'*+.0-9A-Z^-z|~, ]+"},
     },
     /** Default host of every route, e.g. api.fractal.cloud */
     host: {type: 'string', required: false},
@@ -157,12 +290,30 @@ export const APIManagement_CaaS_TraefikGateway = {
     internalLoadBalancer: {type: 'boolean', required: false, default: true},
     /** Comma-separated CIDRs allowed to reach the load balancer (spec.loadBalancerSourceRanges) */
     loadBalancerSourceRanges: {type: 'string', required: false},
-    namespace: {type: 'string', required: false, default: 'traefik'},
+    namespace: {
+      type: 'string',
+      required: false,
+      default: 'traefik',
+      constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?'},
+    },
     /** Expose web (80) and serve the routes on it. Default true without TLS (unchanged gateways), false with TLS */
     plainHttp: {type: 'boolean', required: false},
-    replicas: {type: 'integer', required: false, default: 2},
+    replicas: {
+      type: 'integer',
+      required: false,
+      default: 2,
+      constraints: {maximum: 2147483647, minimum: 1},
+    },
     /** EKS: ACM certificate for an NLB TLS listener on 443 forwarding to the web entrypoint. Not for a gateway behind CloudFront: an NLB with a TLS listener cannot be a CloudFront VPC origin. Excludes Traefik TLS (tlsSecretName, or the gateway's own certificate) */
-    tlsCertificateArn: {type: 'string', required: false},
+    tlsCertificateArn: {
+      type: 'string',
+      required: false,
+      constraints: {
+        level: 'warn',
+        pattern:
+          'arn:aws[a-z-]*:acm:[a-z0-9-]+:[0-9]{12}:certificate/[A-Za-z0-9-]+',
+      },
+    },
     /** Ignored: the gateway issues its own certificate through its dnsZones grant */
     tlsClusterIssuer: {
       type: 'string',
@@ -186,26 +337,29 @@ export const APIManagement_PaaS_ApiGateway = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
-    apiConfig: {type: 'string', required: true},
+    /** The gateway's API: either the OpenAPI document itself (YAML starting with 'openapi:' or 'swagger:', or a JSON object), published as an API config this component owns, or an existing config as 'projects/<project>/locations/global/apis/<api>/configs/<config>'. The effective config is published as the apiConfigId output. A new gateway without a usable value is refused; a deployed one keeps serving its config. */
+    apiConfig: {type: 'string', required: false},
+    /** Legacy spelling of region, read only when region is unset. */
     location: {
       type: 'string',
       required: false,
       derived: {
-        note: "derived when absent: the LiveSystem's region, else the environment's Agent region when API Gateway is offered there, else europe-west1",
+        note: "derived when absent: the LiveSystem's region, else the location a deployed gateway recorded, else the environment's Agent region when API Gateway is offered there; otherwise refused",
       },
     },
+    /** Region the gateway is deployed in, e.g. us-central1; must be a region API Gateway is offered in. When unset, location, else the Live System's region, else the region of the environment's GCP agent when API Gateway is offered there, else the location a deployed gateway recorded; otherwise the gateway is refused with the list of locations API Gateway is offered in. */
     region: {
       type: 'string',
       required: false,
       derived: {
-        note: "derived when absent: the LiveSystem's region, else the environment's Agent region when API Gateway is offered there, else europe-west1",
+        note: "derived when absent: the LiveSystem's region, else the location a deployed gateway recorded, else the environment's Agent region when API Gateway is offered there; otherwise refused",
       },
     },
   },
@@ -217,22 +371,24 @@ export const APIManagement_PaaS_ApiManagement = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** Managed identity of the instance as {type}, type an Azure API Management identity type such as 'SystemAssigned' or 'None'. When unset, SystemAssigned. The identity's principal ID is published as the principalId output. */
     identity: {type: 'object', required: false, default: {}},
+    /** Whether the gateway's public endpoint is reachable. When unset, false for an instance VNet-integrated through a subnet link, true otherwise (Azure refuses a disabled public endpoint with no private endpoint behind it). */
     publicNetworkAccessEnabled: {type: 'boolean', required: false},
-    publisherEmail: {
-      type: 'string',
-      required: false,
-      default: 'platform@fractal.cloud',
-    },
-    publisherName: {type: 'string', required: false, default: 'Platform Team'},
+    /** Email address that receives API Management system notifications. Required to create: a new instance without it is refused (set it to an address your team reads to fix). An instance created before it was required keeps its own while it is unset, with a warning. A change is applied to the existing instance. */
+    publisherEmail: {type: 'string', required: false},
+    /** Your organization's name, shown as the API publisher in the developer portal and in notification emails. Required to create: a new instance without it is refused (set it to fix). An instance created before it was required keeps its own while it is unset, with a warning. A change is applied to the existing instance. */
+    publisherName: {type: 'string', required: false},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** Tier and capacity as '<tier>_<units>', e.g. 'Developer_1' or 'Premium_2'; the units default to 1 when omitted, must be a positive integer (a new instance with anything else is refused; a deployed one keeps its SKU, with a warning), and are ignored for Consumption. When unset, Developer_1 (no SLA: declare a production tier for production). A change is applied to the existing instance. */
     skuName: {type: 'string', required: false, default: 'Developer_1'},
   },
 } as const satisfies OfferContract;
@@ -243,35 +399,129 @@ export const APIManagement_PaaS_AwsCloudFront = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
-      parameterRules: [],
+      parameterRules: [
+        {
+          cases: [
+            {
+              fix: 'Remove originDomain, or remove redirectTo to serve the origin.',
+              id: 'redirect',
+              message:
+                'redirectTo and originDomain cannot be combined: a redirect is answered at the edge and serves no origin.',
+              then: {forbidden: ['originDomain']},
+              when: {key: 'redirectTo', present: true},
+            },
+            {
+              fix: 'Remove errorDocument, or set spaFallback to false.',
+              id: 'spaFallback',
+              message:
+                'spaFallback and errorDocument cannot be combined: the fallback answers every missing key with the root object and 200, so no 404 document would ever be served.',
+              then: {forbidden: ['errorDocument']},
+              when: {equals: true, key: 'spaFallback'},
+            },
+          ],
+          id: 'exclusiveSettings',
+          kind: 'branches',
+        },
+      ],
     },
   ],
   params: {
-    aliases: {type: 'array', required: false, default: []},
+    /** Host names the distribution answers for (e.g. www.example.org), lower-cased, without a trailing dot. The agent requests one ACM certificate in us-east-1 covering them and validates it by DNS. With redirectTo they are redirected; without it they make the distribution a site serving its origin. When unset, none: the distribution answers only on its cloudfront.net name. */
+    aliases: {
+      type: 'array',
+      required: false,
+      default: [],
+      constraints: {
+        pattern:
+          '[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?){1,14}\\.?',
+      },
+    },
+    /** Comment shown on the CloudFront distribution in the AWS console. When unset, "Managed by Fractal Cloud". */
     comment: {
       type: 'string',
       required: false,
       default: 'Managed by Fractal Cloud',
     },
-    defaultRootObject: {type: 'string', required: false},
-    errorDocument: {type: 'string', required: false},
+    /** Bucket origin only: the object key served for / and, through a viewer-request function, for every <path>/ (e.g. index.html; no leading slash; letters, digits and ._/-). When unset, index.html. Refused for any other origin. */
+    defaultRootObject: {
+      type: 'string',
+      required: false,
+      constraints: {
+        maxLength: 255,
+        pattern:
+          '[A-Za-z0-9_-](?:\\.?[A-Za-z0-9_/-]){0,100}(?:\\.?[A-Za-z0-9_/-]){0,100}(?:\\.?[A-Za-z0-9_/-]){0,54}\\.?',
+      },
+    },
+    /** Bucket origin only: the object key served with status 404 for a missing key (e.g. 404.html; no leading slash). Excludes spaFallback. When unset, none. */
+    errorDocument: {
+      type: 'string',
+      required: false,
+      constraints: {
+        maxLength: 255,
+        pattern:
+          '[A-Za-z0-9_-](?:\\.?[A-Za-z0-9_/-]){0,100}(?:\\.?[A-Za-z0-9_/-]){0,100}(?:\\.?[A-Za-z0-9_/-]){0,54}\\.?',
+      },
+    },
+    /** Host name of an external origin the distribution serves (e.g. app.example.org), reached over originProtocol. When unset and nothing else is the origin, the agent creates a private S3 bucket for the component and serves it. A site has exactly one origin: this, a linked gateway or a linked bucket. Excludes redirectTo. Cannot be changed on an existing distribution: delete and recreate the component. */
     originDomain: {type: 'string', required: false, default: ''},
-    originDomainName: {type: 'string', required: false, default: ''},
+    /** Host name a DNS-validated ACM certificate is requested for in the component's region, for use on the origin. It cannot be put on a load balancer serving as a VPC origin, which allows no TLS listener. When unset, no origin certificate. */
+    originDomainName: {
+      type: 'string',
+      required: false,
+      default: '',
+      constraints: {
+        pattern:
+          '[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?){1,14}\\.?',
+      },
+    },
+    /** Seconds CloudFront keeps an idle connection to a site origin open, 1 to 180 (above 60 needs an AWS quota increase). Keep it below the origin's own idle timeout, or viewers get 502s on reused closed connections. When unset, 60. */
     originKeepaliveTimeoutSeconds: {
       type: 'integer',
       required: false,
       default: 60,
+      constraints: {maximum: 180, minimum: 1},
     },
-    originProtocol: {type: 'string', required: false, default: ''},
-    originReadTimeoutSeconds: {type: 'integer', required: false, default: 60},
-    redirectTo: {type: 'string', required: false, default: ''},
+    /** Protocol a site reaches its origin with: https or http. When unset, https; a linked gateway must then serve a publicly trusted certificate covering the viewer host names on TCP 443. http is an explicit opt-in for the private hop. */
+    originProtocol: {
+      type: 'string',
+      required: false,
+      default: '',
+      values: ['https', 'http'],
+      valuesCaseInsensitive: true,
+    },
+    /** Seconds CloudFront waits for a site origin's response, 1 to 180 (above 60 needs an AWS quota increase). When unset, 60. */
+    originReadTimeoutSeconds: {
+      type: 'integer',
+      required: false,
+      default: 60,
+      constraints: {maximum: 180, minimum: 1},
+    },
+    /** An https URL every request is permanently redirected (301) to, at the edge, keeping its path and query string. Serves no origin, so it excludes originDomain. When unset, no redirect. */
+    redirectTo: {
+      type: 'string',
+      required: false,
+      default: '',
+      constraints: {
+        pattern:
+          '[Hh][Tt][Tt][Pp][Ss]://[A-Za-z0-9.-]+(?:/[A-Za-z0-9._~!$&()*+,;=:@%/-]*)?',
+      },
+    },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** Bucket origin only: answer a missing key (403/404) with the root object and status 200, for a single-page app. Excludes errorDocument. When unset, false. */
     spaFallback: {type: 'boolean', required: false},
+    /** Whether a site is protected by a WAF web ACL (CLOUDFRONT scope, us-east-1) the agent manages, including a per-IP rate limit. When unset, true. */
     wafEnabled: {type: 'boolean', required: false, default: true},
-    wafRateLimitPer5Min: {type: 'integer', required: false, default: 2000},
+    /** Requests one client IP may send a site in five minutes before the WAF blocks it, 10 to 2000000000. Applies only when wafEnabled. When unset, 2000. */
+    wafRateLimitPer5Min: {
+      type: 'integer',
+      required: false,
+      default: 2000,
+      constraints: {maximum: 2000000000, minimum: 10},
+    },
   },
 } as const satisfies OfferContract;
 
@@ -281,22 +531,24 @@ export const APIManagement_PaaS_AzureApiManagement = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** Managed identity of the instance as {type}, type an Azure API Management identity type such as 'SystemAssigned' or 'None'. When unset, SystemAssigned. The identity's principal ID is published as the principalId output. */
     identity: {type: 'object', required: false, default: {}},
+    /** Whether the gateway's public endpoint is reachable. When unset, false for an instance VNet-integrated through a subnet link, true otherwise (Azure refuses a disabled public endpoint with no private endpoint behind it). */
     publicNetworkAccessEnabled: {type: 'boolean', required: false},
-    publisherEmail: {
-      type: 'string',
-      required: false,
-      default: 'platform@fractal.cloud',
-    },
-    publisherName: {type: 'string', required: false, default: 'Platform Team'},
+    /** Email address that receives API Management system notifications. Required to create: a new instance without it is refused (set it to an address your team reads to fix). An instance created before it was required keeps its own while it is unset, with a warning. A change is applied to the existing instance. */
+    publisherEmail: {type: 'string', required: false},
+    /** Your organization's name, shown as the API publisher in the developer portal and in notification emails. Required to create: a new instance without it is refused (set it to fix). An instance created before it was required keeps its own while it is unset, with a warning. A change is applied to the existing instance. */
+    publisherName: {type: 'string', required: false},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** Tier and capacity as '<tier>_<units>', e.g. 'Developer_1' or 'Premium_2'; the units default to 1 when omitted, must be a positive integer (a new instance with anything else is refused; a deployed one keeps its SKU, with a warning), and are ignored for Consumption. When unset, Developer_1 (no SLA: declare a production tier for production). A change is applied to the existing instance. */
     skuName: {type: 'string', required: false, default: 'Developer_1'},
   },
 } as const satisfies OfferContract;
@@ -307,35 +559,129 @@ export const APIManagement_PaaS_CloudFront = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
-      parameterRules: [],
+      parameterRules: [
+        {
+          cases: [
+            {
+              fix: 'Remove originDomain, or remove redirectTo to serve the origin.',
+              id: 'redirect',
+              message:
+                'redirectTo and originDomain cannot be combined: a redirect is answered at the edge and serves no origin.',
+              then: {forbidden: ['originDomain']},
+              when: {key: 'redirectTo', present: true},
+            },
+            {
+              fix: 'Remove errorDocument, or set spaFallback to false.',
+              id: 'spaFallback',
+              message:
+                'spaFallback and errorDocument cannot be combined: the fallback answers every missing key with the root object and 200, so no 404 document would ever be served.',
+              then: {forbidden: ['errorDocument']},
+              when: {equals: true, key: 'spaFallback'},
+            },
+          ],
+          id: 'exclusiveSettings',
+          kind: 'branches',
+        },
+      ],
     },
   ],
   params: {
-    aliases: {type: 'array', required: false, default: []},
+    /** Host names the distribution answers for (e.g. www.example.org), lower-cased, without a trailing dot. The agent requests one ACM certificate in us-east-1 covering them and validates it by DNS. With redirectTo they are redirected; without it they make the distribution a site serving its origin. When unset, none: the distribution answers only on its cloudfront.net name. */
+    aliases: {
+      type: 'array',
+      required: false,
+      default: [],
+      constraints: {
+        pattern:
+          '[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?){1,14}\\.?',
+      },
+    },
+    /** Comment shown on the CloudFront distribution in the AWS console. When unset, "Managed by Fractal Cloud". */
     comment: {
       type: 'string',
       required: false,
       default: 'Managed by Fractal Cloud',
     },
-    defaultRootObject: {type: 'string', required: false},
-    errorDocument: {type: 'string', required: false},
+    /** Bucket origin only: the object key served for / and, through a viewer-request function, for every <path>/ (e.g. index.html; no leading slash; letters, digits and ._/-). When unset, index.html. Refused for any other origin. */
+    defaultRootObject: {
+      type: 'string',
+      required: false,
+      constraints: {
+        maxLength: 255,
+        pattern:
+          '[A-Za-z0-9_-](?:\\.?[A-Za-z0-9_/-]){0,100}(?:\\.?[A-Za-z0-9_/-]){0,100}(?:\\.?[A-Za-z0-9_/-]){0,54}\\.?',
+      },
+    },
+    /** Bucket origin only: the object key served with status 404 for a missing key (e.g. 404.html; no leading slash). Excludes spaFallback. When unset, none. */
+    errorDocument: {
+      type: 'string',
+      required: false,
+      constraints: {
+        maxLength: 255,
+        pattern:
+          '[A-Za-z0-9_-](?:\\.?[A-Za-z0-9_/-]){0,100}(?:\\.?[A-Za-z0-9_/-]){0,100}(?:\\.?[A-Za-z0-9_/-]){0,54}\\.?',
+      },
+    },
+    /** Host name of an external origin the distribution serves (e.g. app.example.org), reached over originProtocol. When unset and nothing else is the origin, the agent creates a private S3 bucket for the component and serves it. A site has exactly one origin: this, a linked gateway or a linked bucket. Excludes redirectTo. Cannot be changed on an existing distribution: delete and recreate the component. */
     originDomain: {type: 'string', required: false, default: ''},
-    originDomainName: {type: 'string', required: false, default: ''},
+    /** Host name a DNS-validated ACM certificate is requested for in the component's region, for use on the origin. It cannot be put on a load balancer serving as a VPC origin, which allows no TLS listener. When unset, no origin certificate. */
+    originDomainName: {
+      type: 'string',
+      required: false,
+      default: '',
+      constraints: {
+        pattern:
+          '[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?){1,14}\\.?',
+      },
+    },
+    /** Seconds CloudFront keeps an idle connection to a site origin open, 1 to 180 (above 60 needs an AWS quota increase). Keep it below the origin's own idle timeout, or viewers get 502s on reused closed connections. When unset, 60. */
     originKeepaliveTimeoutSeconds: {
       type: 'integer',
       required: false,
       default: 60,
+      constraints: {maximum: 180, minimum: 1},
     },
-    originProtocol: {type: 'string', required: false, default: ''},
-    originReadTimeoutSeconds: {type: 'integer', required: false, default: 60},
-    redirectTo: {type: 'string', required: false, default: ''},
+    /** Protocol a site reaches its origin with: https or http. When unset, https; a linked gateway must then serve a publicly trusted certificate covering the viewer host names on TCP 443. http is an explicit opt-in for the private hop. */
+    originProtocol: {
+      type: 'string',
+      required: false,
+      default: '',
+      values: ['https', 'http'],
+      valuesCaseInsensitive: true,
+    },
+    /** Seconds CloudFront waits for a site origin's response, 1 to 180 (above 60 needs an AWS quota increase). When unset, 60. */
+    originReadTimeoutSeconds: {
+      type: 'integer',
+      required: false,
+      default: 60,
+      constraints: {maximum: 180, minimum: 1},
+    },
+    /** An https URL every request is permanently redirected (301) to, at the edge, keeping its path and query string. Serves no origin, so it excludes originDomain. When unset, no redirect. */
+    redirectTo: {
+      type: 'string',
+      required: false,
+      default: '',
+      constraints: {
+        pattern:
+          '[Hh][Tt][Tt][Pp][Ss]://[A-Za-z0-9.-]+(?:/[A-Za-z0-9._~!$&()*+,;=:@%/-]*)?',
+      },
+    },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** Bucket origin only: answer a missing key (403/404) with the root object and status 200, for a single-page app. Excludes errorDocument. When unset, false. */
     spaFallback: {type: 'boolean', required: false},
+    /** Whether a site is protected by a WAF web ACL (CLOUDFRONT scope, us-east-1) the agent manages, including a per-IP rate limit. When unset, true. */
     wafEnabled: {type: 'boolean', required: false, default: true},
-    wafRateLimitPer5Min: {type: 'integer', required: false, default: 2000},
+    /** Requests one client IP may send a site in five minutes before the WAF blocks it, 10 to 2000000000. Applies only when wafEnabled. When unset, 2000. */
+    wafRateLimitPer5Min: {
+      type: 'integer',
+      required: false,
+      default: 2000,
+      constraints: {maximum: 2000000000, minimum: 10},
+    },
   },
 } as const satisfies OfferContract;
 
@@ -345,26 +691,29 @@ export const APIManagement_PaaS_GcpApiGateway = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
-    apiConfig: {type: 'string', required: true},
+    /** The gateway's API: either the OpenAPI document itself (YAML starting with 'openapi:' or 'swagger:', or a JSON object), published as an API config this component owns, or an existing config as 'projects/<project>/locations/global/apis/<api>/configs/<config>'. The effective config is published as the apiConfigId output. A new gateway without a usable value is refused; a deployed one keeps serving its config. */
+    apiConfig: {type: 'string', required: false},
+    /** Legacy spelling of region, read only when region is unset. */
     location: {
       type: 'string',
       required: false,
       derived: {
-        note: "derived when absent: the LiveSystem's region, else the environment's Agent region when API Gateway is offered there, else europe-west1",
+        note: "derived when absent: the LiveSystem's region, else the location a deployed gateway recorded, else the environment's Agent region when API Gateway is offered there; otherwise refused",
       },
     },
+    /** Region the gateway is deployed in, e.g. us-central1; must be a region API Gateway is offered in. When unset, location, else the Live System's region, else the region of the environment's GCP agent when API Gateway is offered there, else the location a deployed gateway recorded; otherwise the gateway is refused with the list of locations API Gateway is offered in. */
     region: {
       type: 'string',
       required: false,
       derived: {
-        note: "derived when absent: the LiveSystem's region, else the environment's Agent region when API Gateway is offered there, else europe-west1",
+        note: "derived when absent: the LiveSystem's region, else the location a deployed gateway recorded, else the environment's Agent region when API Gateway is offered there; otherwise refused",
       },
     },
   },
@@ -376,36 +725,39 @@ export const APIManagement_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
+    /** Reference to a secret defined on the environment, written {"$envSecret": "<shortName>"}. The environment owns the value: the component only resolves and publishes it, and deleting the component leaves the secret in place. Preferred over 'secretValue'; when both are set, this one wins. Fails when no environment secret has that short name. */
     secret: {type: 'object', required: false, sensitive: true},
+    /** Name under which 'secretValue' is stored in the environment secret store. When unset, the component id. Ignored when 'secret' references an environment secret, which keeps its own name. Changing it writes a new secret and revokes the readers' grants on the old one. */
     secretName: {type: 'string', required: false, default: ''},
+    /** Raw secret value (legacy) that the component stores in the environment secret store under 'secretName', granting read access to the custom workloads linked to it. Required when 'secret' is not set; deleting the component deletes the stored secret. */
     secretValue: {type: 'string', required: false, sensitive: true},
   },
 } as const satisfies OfferContract;

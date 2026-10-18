@@ -46,9 +46,42 @@ consumer is known to use the removed APIs). Each item links to its section below
   `mailType: 'TRANSACTIONAL'` or `'MARKETING'`.
 - **`LoadBalancer` declares its subnets** (`subnets: [...]`) for `AwsLb`, `AzureLb` and
   `GcpGlb`.
+- **Config keys the agents dropped, as of the contracts this release is generated from**
+  (fractal-cloud-agents v8.25.10, aria-agent-caas-k8s v1.8.0; see "Changed — contracts
+  refreshed"), are no longer accepted, and the neutral guardrails that reached them are
+  refused naming the offer:
+  - the Java agents no longer reconcile the CaaS Spark and Kafka offers, so only what
+    aria-agent-caas-k8s reads remains: `CaaSSparkCluster` loses `sparkOperatorName`,
+    `CaaSSparkJob` `mainApplicationFile`, `sparkOperatorName`, `type`, `mode`,
+    `arguments`, `sparkConf`, the driver / executor sizing and the restart keys,
+    `KafkaTopic` `clusterName`; `withSparkVersion` (cluster), `withMaxRetries` (job)
+    and `withMessageRetentionHours` (topic) are refused;
+  - `EntraExternalId` loses `resourceGroup` and `location`, and refuses
+    `withPasswordPolicy`, `withSessionDuration` and `userDirectoryName`;
+  - `Eks` refuses `withNetworkPolicyProvider`; `AzureContainerApp` loses
+    `resourceGroup`; `AzureNsg` `description`, `AzureSubnet` `vnetName`, `GcpSubnet`
+    `networkName`, `Gke` `roles` / `windowsAdminUsername`, the Azure Postgres DBMS
+    Citus keys and `Prometheus` `grafanaConfigSecretId` are gone.
 - **Offer configs come from the agents' contracts**: keys no agent reads are no longer
   accepted, and some keys were renamed to the agents' spelling (see "Changed — offer
   configs are generated from the agents' published contracts").
+
+### Changed — contracts refreshed
+
+The offer definitions are generated from fractal-cloud-agents **v8.25.10** (aws, azure,
+gcp, oci) and aria-agent-caas-k8s **v1.8.0** (were v8.25.2 and v1.6.0); aria-agent-aruba
+v0.0.22 and aria-agent-openshift v0.1.0 are unchanged. These contracts carry the value
+constraints the SDK now checks before deploy (CloudFront, SES, SQS, SNS, S3, RDS ranges,
+patterns and vocabularies; caas-k8s namespaces and counts). `StorageOpenSearch` is now
+defined from its published contract (`Storage.CaaS.OpenSearch`; config gains
+`sysctlInit`). The Elastic contracts are gone, as the offer is. The new keys
+(`size` on the VMs, OCI `compartment`, `ocpus` / `memoryInGBs`, GCP Postgres
+`instanceEdition` / `instanceTier`, `Prometheus` `apiGatewayUrl`) are config keys; a
+neutral `withSize` is still sent under the vendor key, which also takes a vendor
+machine type. `Jaeger` keeps refusing `storageSettings` / `storageClassName`: the
+contract marks them deprecated at warning level only (the agent refuses them on a new
+Jaeger). `contracts/key-aliases.json` is unchanged: the agents still declare
+`diableLocalAuth` and `versioningEnabled` as separate parameters.
 
 ### Fixed — release review
 
@@ -59,26 +92,33 @@ consumer is known to use the removed APIs). Each item links to its section below
   versioned answer is treated like no validation at all: `deploy` warns
   (`WARN Live System validation unavailable, submitting`) and submits, `validate`
   returns `undefined`. Before, it failed the deploy with a `TypeError`.
-- **Checks whose loss could not be undone are back in `toLiveSystem()`**, mirroring
-  the agents' rules, because nothing else refuses them before the agent does (the SDK
-  does not check vendor config against the contract, and the control plane validates
-  in `report` mode by default):
-  - `TraefikGateway`: a `forwardAuthAddress` that is not an absolute http(s) URL
-    without credentials. aria-agent-caas-k8s accepts user info in it and stores it in
-    the gateway's middleware. The value is never echoed.
-  - `AwsSesIdentity`: `productionAccess` (account-wide, cannot be reverted) without
-    `mailType`, `websiteUrl` or `useCaseDescription`, a `websiteUrl` that is not an
-    http(s) URL, `mailType` other than `TRANSACTIONAL` / `MARKETING`, `contactLanguage`
-    other than `EN` / `JA`; `domain` that is not a domain name, `mailFromSubdomain`
-    that is not one DNS label or makes the MAIL FROM domain too long. `mailType` is now
-    documented as required with `productionAccess`: the AWS agent assumes no kind.
-  - `AwsRoute53HostedZone`: `recordManagement` other than `authoritative` / `lax` and a
-    non-boolean `allowBulkDelete` set past the `DnsZone` setters (an operation's `set`,
-    a raw guardrail, a config cast).
-  - `AwsS3`: `lifecycleExpirationDays` that is not a whole number of at least 1.
-    `AwsSqsQueue`: `visibilityTimeoutSeconds` (0–43200), `messageRetentionSeconds` and
-    `dlqRetentionSeconds` (60–1209600) and `maxReceiveCount` (1–1000) outside the
-    agent's ranges, a mapped guardrail included.
+- **Value constraints come from the agents' published contracts.** Every parameter an
+  offer emits for its own offer type is checked against the contract of that offer
+  type while the Live System is built (`toLiveSystem()`), whether it came from the
+  offer's config, a neutral translation or an Interface operation: its type, its
+  closed vocabulary (`values`, unless only warned about) and its constraints
+  (`pattern`, `minLength` / `maxLength`, `minimum` / `maximum`, unless `level: warn`).
+  An environment-secret reference is accepted for any key. Before, only neutral
+  translations were checked, and the 2.13.0 release review had re-added hand-written
+  per-parameter value checks to make up for it; those are removed again (see "Changed
+  — single parameter values are the contracts' to check"). Keys a contract requires
+  are required by the offer's config type; the control plane checks them at deploy,
+  and may supply one itself (IPAM fills a subnet's `cidrBlock`).
+- **What the contract check found.** `AzureServiceBus` sent the neutral
+  `Broker.withEncryption('at-rest')` to the agent's `encryption`, which is a
+  customer-managed-key map: `'at-rest'` is now satisfied (Service Bus always encrypts
+  at rest) and not sent, and `'none'` is refused. `K8sWorkload` sends `maxSurge` /
+  `maxUnavailable` as the strings the contract declares (`"1"`, `"25%"`); the agent
+  reads a count in either form.
+- **Rules that combine several parameters stay**, as the agents apply them and as no
+  contract can express them: `AwsSesIdentity` `productionAccess` (account-wide,
+  cannot be reverted) without `mailType`, `websiteUrl` or `useCaseDescription`, and a
+  MAIL FROM domain longer than a domain name; `AwsCloudFront` aliases without an
+  origin, `redirectTo` together with an origin, an alias equal to the redirect
+  target's host (an endless redirect), `spaFallback` with `errorDocument`;
+  `TraefikGateway` ForwardAuth settings without `forwardAuthAddress`, `host` not
+  covered by `tlsHosts`, a TLS Secret without hosts, `plainHttp: false` without TLS,
+  `tlsCertificateArn` with Traefik TLS, and the removed `forwardAuthExcludedPrefixes`.
 - **A key an agent declares twice is one key with a deprecated alias.** The Azure
   agent declares the misspelling `diableLocalAuth` next to `disableLocalAuth`
   (`Messaging.PaaS.EventHubNamespace`), and the AWS agent `versioningEnabled` next to
@@ -90,43 +130,18 @@ consumer is known to use the removed APIs). Each item links to its section below
   `versioning`, the key the agent reads first; `versioning` is no longer a config key
   of those offers, the guardrail sets it.
 
-- **Round 4.** `deploy` logs `WARN Live System validation skipped a component` for
-  each component the control plane did not validate (`validated: false`), naming the
-  component and the reason, and still submits. It checks whether the Live System exists
-  again right before submitting, so one created or deleted while it was being
-  validated is updated or created as it now is. The contract generator keeps a key
-  deprecated when any agent deprecates it (a `false` from another agent no longer
-  wins). `AwsCloudFront` refuses again, as its agent does: aliases, `originDomain` and
-  `originDomainName` that are not host names, aliases without an origin or redirect,
-  `redirectTo` together with `originDomain`, `originProtocol` other than `https` /
-  `http`, `wafRateLimitPer5Min` outside 10–2000000000 and origin timeouts outside
-  1–180 s, plus an alias equal to the redirect target's host (an endless redirect the
-  agent would deploy). `SqsExporter` refuses again, as aria-agent-caas-k8s does: queue
-  URLs that are not `https://sqs.<region>.amazonaws.com/<account>/<name>` (or carry a
-  malformed escape), `imagePullSecrets` that are not Secret names, an empty
-  `nodeSelector` or one with non-string values, `monitorIntervalSeconds` below 1 or
-  fractional, and a blank `image`.
-
-- **Round 5: every dropped check accounted for.** The single-value checks 2.12.0 made
-  and 2.13.0 had dropped are back, each mirroring the reconciling agent's current
-  rule: `AwsCloudFront` `redirectTo` (https only, a DNS host, no credentials, port,
-  query or fragment, URL path characters), its site keys (`defaultRootObject` /
-  `errorDocument` object keys, a boolean `spaFallback`, not together with
-  `errorDocument`); `TraefikGateway` namespace, ForwardAuth settings, header names,
-  exempt ids, body size, source ranges, host, replicas, idle timeout, ACM ARN, TLS
-  Secret name and hosts, `host` coverage, `plainHttp: false` without TLS, an NLB TLS
-  listener with Traefik TLS, `acmeEmail` and `acmeServer` (the retired `CertManager`'s
-  rules, now the gateway's), and the removed `forwardAuthExcludedPrefixes`; `Eks` node
-  pools (names, the reserved `system` / `general-purpose`, repeats, architectures,
-  capacity types) and control-plane log types; `KubePrometheusStack`, `GrafanaLoki`,
-  `GrafanaTempo`, `GrafanaAlloy` and `SqsExporter` namespaces, storage classes,
-  retention, `prometheusStorageGi`, datasource URLs, `lokiPushUrl` and a blank
-  `imagePullSecrets` entry; the RDS DBMS `storageType`, `administratorLogin` length,
-  `requireSecureTransport` and log-export shape; `AwsSnsTopic` `maximumMessageSize`.
-  A neutral VM size, a contract key and a `secretEnv` name are looked up as own
-  properties only, so `constructor` or `__proto__` is neither a size nor a key. The
-  contract generator also marks collections of secret values sensitive (`apiKeys`,
-  `secrets`, `connectionStrings`, ...; not `imagePullSecrets`).
+- **`deploy` reports what was not validated, and decides create or update last.**
+  It logs `WARN Live System validation skipped a component` for each component the
+  control plane did not validate (`validated: false`), naming the component and the
+  reason, and still submits. It checks whether the Live System exists again right
+  before submitting, so one created or deleted while it was being validated is
+  updated or created as it now is.
+- **Contract generator.** A key is deprecated when any agent declaring the offer
+  deprecates it (a `false` from another agent no longer wins). Collections of secret
+  values are marked sensitive too (`apiKeys`, `secrets`, `connectionStrings`, ...; not
+  `imagePullSecrets`).
+- A neutral VM size, a contract key and a `secretEnv` name are looked up as own
+  properties only, so `constructor` or `__proto__` is neither a size nor a key.
 
 ### Removed — `ObservabilityElastic`
 
@@ -381,37 +396,39 @@ logged, and each warning is logged as a `WARN` line. A control plane without val
 (`ParameterValidationResult`, `ComponentValidationResult`, `ValidationIssue`, ...). A
 `400 OfferParametersInvalid` from the create or update is surfaced as the same error.
 
-### Changed — the single-value checks the SDK makes follow the agents
+### Changed — single parameter values are the contracts' to check
 
-Every check of a single parameter value that 2.12.0 made at `toLiveSystem()` is still
-made, mirroring the rule the reconciling agent applies today (the PR of the 2.13.0
-release review lists each one and where it lives), except these, which the agent
-handles itself:
+**Rule: value constraints come from the agents' published contracts; the SDK no longer
+hand-checks single parameter values; structural rules stay.** A parameter's type,
+allowed values, pattern, length and range belong in the contract its agent publishes,
+and the SDK checks every emitted parameter against that contract (see "Fixed — release
+review"). The per-offer `validate` functions keep only what a contract cannot express:
+rules on several parameters or components (dependencies, links, keys that exclude or
+require each other), how the SDK encodes a value (an empty list sent blank), and
+guardrails an offer cannot honor, which are refused naming the remedy.
 
-- `AwsSnsTopic` `topicName` and `AwsSqsQueue` `queueName` that are not SNS / SQS names:
-  the AWS agent repairs them (`AwsMessagingNames.sanitize`).
-- `K8sWorkload`: the probe, rollout, autoscaling, disruption-budget, grace-period,
-  `ssmParameters` and `sesIdentityArns` checks. aria-agent-caas-k8s refuses each of
-  them, naming the parameter, before it creates anything (`internal/workload/spec.go`,
-  `param_grants.go`), from v1.3.0 on, the first release that reads these keys at all;
-  this SDK needs v1.6.0 or later anyway. A `secretEnv` value that is not a
-  `secretRef(...)` reference is still refused, without echoing it.
-- `AwsRdsPostgresDbms` / `AwsRdsMySqlDbms`: a log type listed twice in
-  `cloudwatchLogExports` (the agent drops the repeat), and log types the engine and mode
-  do not export (the agent refuses them, naming the supported ones).
-- `TraefikGateway` `tlsClusterIssuer` that is not a Kubernetes name: the agent no longer
-  reads it as a certificate source (it is refused as the only one).
+So the SDK no longer refuses, at `toLiveSystem()`, a single value its agent's contract
+does not constrain yet; the agent refuses it at deploy. That includes `AwsCloudFront`
+host names, `redirectTo` grammar, `originProtocol`, WAF and timeout bounds and object
+keys; `TraefikGateway` names, URLs, header names, CIDRs, counts and the ACM ARN
+(`forwardAuthAddress` user info included: aria-agent-caas-k8s does not refuse it);
+`Eks` node-pool names, architectures, capacity types and log types; the Grafana stack's
+and `SqsExporter`'s namespaces, storage classes, retention, sizes and URLs; the RDS
+DBMS storage type, login length, secure transport and log exports; SNS / SQS sizes
+and ranges, names included; `AwsSesIdentity` domain, MAIL FROM label, website URL,
+mail type and contact language; `AwsS3` `lifecycleExpirationDays`;
+`AwsRoute53HostedZone` `recordManagement` set past the `DnsZone` setters (the setters
+and the environment's `withDnsZones` still refuse it; `allowBulkDelete` is refused by
+its contract type); and the `K8sWorkload` probe, rollout, autoscaling, disruption-budget,
+grace-period, `ssmParameters` and `sesIdentityArns` values. A `secretEnv` value that
+is not a `secretRef(...)` reference is still refused, without echoing it.
 
-Where the agent now accepts more than 2.12.0 did, so does the SDK: a CloudFront
-`redirectTo` to an IPv4 address, `requireSecureTransport` as `'true'` / `'false'` text,
-`cloudwatchLogExports` as comma-separated text, a blank `storageClassName`, control-plane
-log types in any case.
-
-**Known gap.** `cloud.liveSystems.deploy` asks the control plane to validate the Live
-System against the published contracts (see above), but the contracts carry almost no
-value constraints yet, and the control plane runs that check in `report` mode by
-default, which never refuses. The SDK's own checks above are what refuses a bad value
-before deploy.
+**Known gap.** The contracts this release is generated from carry many of these
+constraints (see "Changed — contracts refreshed"), not all: aria-agent-caas-k8s declares
+no constraint on `forwardAuthAddress` (a URL with user info included), host names,
+CIDRs, Secret names, storage classes or URLs, several patterns only at warning level,
+and fractal-cloud-agents none on EKS `controlPlaneLogTypes` or DNS `recordManagement`.
+Such a value is refused by the agent at deploy rather than at `toLiveSystem()`.
 
 ### Breaking — a load balancer declares its subnets
 

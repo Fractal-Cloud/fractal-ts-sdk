@@ -538,7 +538,7 @@ describe('the committed contracts', () => {
     ).toMatchObject({aliasOf: 'NetworkAndCompute.PaaS.GcpGke'});
   });
 
-  // fractal-cloud-agent-azure v8.25.2 does not mark it sensitive; the SDK does.
+  // fractal-cloud-agent-azure (v8.25.10) does not mark it sensitive; the SDK does.
   it('treat the Azure Function storage connection string as a secret', () => {
     const key = 'storageAccountConnectionString';
     expect(CustomWorkloads_FaaS_AzureFunction.params[key].sensitive).toBe(true);

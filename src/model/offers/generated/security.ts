@@ -9,44 +9,58 @@ export const Security_CaaS_Ocelot = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
+    /** Deprecated: id of the Kubernetes cluster component to deploy into. Used only when the component declares no dependency on a Kubernetes cluster; declare that dependency instead. */
     containerPlatform: {type: 'string', required: false},
+    /** Lifetime, in seconds, of the session cookie Ocelot issues. When unset, 900 (15 minutes). */
     cookieMaxAgeSec: {type: 'integer', required: false, default: 900},
+    /** Origins (scheme://host[:port]) allowed to call Ocelot cross-origin, passed to it as one comma-separated list. When unset, none. */
     corsOrigins: {type: 'array', required: false, default: []},
-    host: {type: 'string', required: true},
+    /** Host name, on the Live System's Traefik gateway, whose /ocelot/ route Ocelot serves. Required to create: a new Ocelot is refused without it; a deployed one is kept as it runs, with a warning. */
+    host: {type: 'string', required: false},
+    /** Kubernetes namespace Ocelot is deployed into. When unset, the component id, which must then be a valid DNS-1123 label (at most 63 lowercase letters, digits and hyphens). */
     namespace: {
       type: 'string',
       required: false,
       derived: {note: 'defaults to the component id when absent'},
     },
-    pathPrefix: {type: 'string', required: false, default: '/*'},
+    /** Deprecated and ignored: it chose the paths an Ambassador Edge Stack FilterPolicy guarded. Behind Traefik a route is authenticated by referencing Ocelot's ForwardAuth middleware (published as forwardAuthMiddlewareName / forwardAuthMiddlewareNamespace). Leave it unset. */
+    pathPrefix: {
+      type: 'string',
+      required: false,
+      deprecated: {
+        level: 'warn',
+        note: "ignored: a route is authenticated by referencing Ocelot's ForwardAuth middleware",
+      },
+    },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {
       type: 'string',
       required: false,
@@ -56,6 +70,7 @@ export const Security_CaaS_Ocelot = {
         'fractal-cloud-agent-gcp',
       ],
     },
+    /** Cloud roles granted to Ocelot's workload identity, each a map {name, scope, roleType}; roleType is BuiltInRole (when unset), CustomRole, AppRoleAssignment, OcelotRole or CosmosDbSqlRole. When unset, no extra roles. */
     roles: {type: 'array', required: false, default: []},
   },
 } as const satisfies OfferContract;
@@ -66,17 +81,22 @@ export const Security_PaaS_AwsCognito = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
+    /** Multi-factor authentication of the user pool: OFF, OPTIONAL or ON; OPTIONAL and ON enable TOTP authenticator apps. Enforced every pass. When unset, OFF. */
     mfaConfiguration: {type: 'string', required: false, default: 'OFF'},
+    /** Password policy of the user pool: {minLength, requireUppercase?, requireLowercase?, requireNumbers?, requireSymbols?}. Enforced every pass. minLength defaults to 8; an unset require flag keeps Cognito's default. */
     passwordPolicy: {type: 'object', required: false, default: {minLength: 8}},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** Lifetime in seconds of the access and ID tokens of the app clients created for linked consumers; refresh tokens keep Cognito's default. When unset, 3600. */
     sessionDuration: {type: 'integer', required: false, default: 3600},
+    /** Name of the Cognito user pool. When unset, the component id. */
     userDirectoryName: {type: 'string', required: false, default: ''},
   },
 } as const satisfies OfferContract;
@@ -87,22 +107,21 @@ export const Security_PaaS_AzureEntraExternalId = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
-    location: {type: 'string', required: false},
+    /** Entra object IDs of the emergency-access (break-glass) accounts excluded from the MFA Conditional Access policy. Required for mfaConfiguration=ON: without at least one, the policy is not enabled and the guardrail is reported as skipped, so administrators cannot be locked out. */
     mfaBreakGlassUserIds: {type: 'array', required: false},
+    /** MFA guardrail, applied as a Conditional Access policy requiring MFA for every user and application in the tenant: ON (enforced; needs mfaBreakGlassUserIds), OPTIONAL (report-only) or OFF (policy disabled), case-insensitive. When unset, Conditional Access is left untouched. Another value is skipped and reported. */
     mfaConfiguration: {type: 'string', required: false},
-    passwordPolicy: {type: 'object', required: false},
+    /** Not supported by this offer: an External ID tenant is not an ARM resource placed in a region. A set value is refused; remove it. */
     region: {type: 'string', required: false},
-    resourceGroup: {type: 'string', required: true},
-    sessionDuration: {type: 'integer', required: false},
-    tenantName: {type: 'string', required: true},
-    userDirectoryName: {type: 'string', required: false},
+    /** Subdomain of ciamlogin.com the published OIDC issuer and JWKS URLs use, i.e. the External ID tenant's name. The agent does not create the tenant; it uses the one it is configured for. When unset, the tenant ID, which ciamlogin.com also answers on. */
+    tenantName: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
 
@@ -112,36 +131,39 @@ export const Security_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
+    /** Reference to a secret defined on the environment, written {"$envSecret": "<shortName>"}. The environment owns the value: the component only resolves and publishes it, and deleting the component leaves the secret in place. Preferred over 'secretValue'; when both are set, this one wins. Fails when no environment secret has that short name. */
     secret: {type: 'object', required: false, sensitive: true},
+    /** Name under which 'secretValue' is stored in the environment secret store. When unset, the component id. Ignored when 'secret' references an environment secret, which keeps its own name. Changing it writes a new secret and revokes the readers' grants on the old one. */
     secretName: {type: 'string', required: false, default: ''},
+    /** Raw secret value (legacy) that the component stores in the environment secret store under 'secretName', granting read access to the custom workloads linked to it. Required when 'secret' is not set; deleting the component deletes the stored secret. */
     secretValue: {type: 'string', required: false, sensitive: true},
   },
 } as const satisfies OfferContract;

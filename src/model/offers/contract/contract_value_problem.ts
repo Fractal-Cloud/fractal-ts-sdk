@@ -105,6 +105,34 @@ const shownValue = (
 };
 
 /**
+ * Why `value` is not one `param` accepts, or undefined when it is: its type,
+ * its closed vocabulary and its value constraints (levels `warn` are not
+ * refusals). The value is shown only as `shownValue` allows.
+ */
+export const parameterValueProblem = (
+  key: string,
+  param: ContractParameter,
+  value: unknown,
+): string | undefined => {
+  const shown = shownValue(key, param, value);
+  if (!TYPE_CHECKS[param.type](value)) {
+    return `${shown} is not the ${param.type} '${key}' takes`;
+  }
+  if (
+    param.values !== undefined &&
+    param.valuesLevel !== 'warn' &&
+    !(Array.isArray(value) ? value : [value]).every(v => inVocabulary(param, v))
+  ) {
+    return `${shown} is not one of ${param.values.join(', ')} for '${key}'`;
+  }
+  const problem =
+    param.constraints === undefined
+      ? undefined
+      : constraintProblem(param.constraints as Constraints, value);
+  return problem === undefined ? undefined : `'${key}' ${shown} ${problem}`;
+};
+
+/**
  * Why `value` is not one the contract accepts for `key`, or undefined when it
  * is. Checks what the contract carries: that every agent declaring the offer
  * reads the key, its type, its closed vocabulary and its value constraints
@@ -132,20 +160,5 @@ export const contractValueProblem = (
       `${contract.offerType} and ignore${others.length === 1 ? 's' : ''} it`
     );
   }
-  const shown = shownValue(key, param, value);
-  if (!TYPE_CHECKS[param.type](value)) {
-    return `${shown} is not the ${param.type} '${key}' takes`;
-  }
-  if (
-    param.values !== undefined &&
-    param.valuesLevel !== 'warn' &&
-    !(Array.isArray(value) ? value : [value]).every(v => inVocabulary(param, v))
-  ) {
-    return `${shown} is not one of ${param.values.join(', ')} for '${key}'`;
-  }
-  const problem =
-    param.constraints === undefined
-      ? undefined
-      : constraintProblem(param.constraints as Constraints, value);
-  return problem === undefined ? undefined : `'${key}' ${shown} ${problem}`;
+  return parameterValueProblem(key, param, value);
 };
