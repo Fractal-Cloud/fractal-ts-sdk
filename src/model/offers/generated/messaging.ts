@@ -9,7 +9,7 @@ export const Messaging_CaaS_Kafka = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.8.0',
+      agentVersion: 'v1.8.1',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -32,7 +32,7 @@ export const Messaging_CaaS_KafkaTopic = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.8.0',
+      agentVersion: 'v1.8.1',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -56,28 +56,28 @@ export const Messaging_CaaS_KafkaUser = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -119,7 +119,7 @@ export const Messaging_PaaS_AwsMessaging = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -137,7 +137,7 @@ export const Messaging_PaaS_AwsSesIdentity = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -230,7 +230,7 @@ export const Messaging_PaaS_AwsSnsTopic = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -264,7 +264,7 @@ export const Messaging_PaaS_AwsSqsQueue = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -339,7 +339,7 @@ export const Messaging_PaaS_AzureServiceBus = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -375,7 +375,7 @@ export const Messaging_PaaS_AzureServiceBusTopic = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -431,7 +431,7 @@ export const Messaging_PaaS_EventHubInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -465,7 +465,7 @@ export const Messaging_PaaS_EventHubNamespace = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -513,7 +513,7 @@ export const Messaging_PaaS_GcpPubSub = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -534,7 +534,7 @@ export const Messaging_PaaS_GcpPubSubTopic = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -589,7 +589,7 @@ export const Messaging_PaaS_PubSub = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -607,7 +607,7 @@ export const Messaging_PaaS_PubSubTopic = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'Messaging.PaaS.GcpPubSubTopic',
@@ -626,7 +626,7 @@ export const Messaging_PaaS_Relay = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -644,7 +644,7 @@ export const Messaging_PaaS_ServiceBus = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'Messaging.PaaS.AzureServiceBus',
@@ -681,7 +681,7 @@ export const Messaging_PaaS_ServiceBusQueue = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -755,7 +755,7 @@ export const Messaging_PaaS_ServiceBusTopic = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'Messaging.PaaS.AzureServiceBusTopic',
@@ -815,7 +815,7 @@ export const Messaging_PaaS_Subscription = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -837,28 +837,28 @@ export const Messaging_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],

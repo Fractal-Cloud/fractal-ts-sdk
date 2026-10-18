@@ -12,7 +12,7 @@ export const NetworkAndCompute_CaaS_CloudRunService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.PaaS.CloudRun',
@@ -55,7 +55,7 @@ export const NetworkAndCompute_CaaS_ECSService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -79,7 +79,7 @@ export const NetworkAndCompute_CaaS_ECSTaskDefinition = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -352,7 +352,7 @@ export const NetworkAndCompute_IaaS_AwsEc2Instance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -393,7 +393,7 @@ export const NetworkAndCompute_IaaS_AwsLb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -427,7 +427,7 @@ export const NetworkAndCompute_IaaS_AwsLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.IaaS.AwsLb',
@@ -462,7 +462,7 @@ export const NetworkAndCompute_IaaS_AwsSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -486,7 +486,7 @@ export const NetworkAndCompute_IaaS_AwsSubnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -508,7 +508,7 @@ export const NetworkAndCompute_IaaS_AwsVpc = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -534,7 +534,7 @@ export const NetworkAndCompute_IaaS_AzureLb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -568,7 +568,7 @@ export const NetworkAndCompute_IaaS_AzureLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureLb',
@@ -603,7 +603,7 @@ export const NetworkAndCompute_IaaS_AzureNetworkSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureNsg',
@@ -628,7 +628,7 @@ export const NetworkAndCompute_IaaS_AzureNsg = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -652,7 +652,7 @@ export const NetworkAndCompute_IaaS_AzureSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureNsg',
@@ -677,7 +677,7 @@ export const NetworkAndCompute_IaaS_AzureSubnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -697,7 +697,7 @@ export const NetworkAndCompute_IaaS_AzureVirtualMachine = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureVm',
@@ -744,7 +744,7 @@ export const NetworkAndCompute_IaaS_AzureVirtualNetwork = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureVnet',
@@ -765,7 +765,7 @@ export const NetworkAndCompute_IaaS_AzureVm = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -811,7 +811,7 @@ export const NetworkAndCompute_IaaS_AzureVnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -831,7 +831,7 @@ export const NetworkAndCompute_IaaS_EC2 = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.IaaS.AwsEc2Instance',
@@ -873,7 +873,7 @@ export const NetworkAndCompute_IaaS_GcpComputeInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -917,7 +917,7 @@ export const NetworkAndCompute_IaaS_GcpFirewall = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -943,7 +943,7 @@ export const NetworkAndCompute_IaaS_GcpGlb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -969,7 +969,7 @@ export const NetworkAndCompute_IaaS_GcpLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -995,7 +995,7 @@ export const NetworkAndCompute_IaaS_GcpSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpFirewall',
@@ -1022,7 +1022,7 @@ export const NetworkAndCompute_IaaS_GcpSubnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1042,7 +1042,7 @@ export const NetworkAndCompute_IaaS_GcpVirtualMachine = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpComputeInstance',
@@ -1087,7 +1087,7 @@ export const NetworkAndCompute_IaaS_GcpVm = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpComputeInstance',
@@ -1132,7 +1132,7 @@ export const NetworkAndCompute_IaaS_GcpVpc = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1158,7 +1158,7 @@ export const NetworkAndCompute_IaaS_GlobalLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1184,7 +1184,7 @@ export const NetworkAndCompute_IaaS_OciComputeInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1231,7 +1231,7 @@ export const NetworkAndCompute_IaaS_OciInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1278,7 +1278,7 @@ export const NetworkAndCompute_IaaS_OciLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1304,7 +1304,7 @@ export const NetworkAndCompute_IaaS_OciNetworkSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1330,7 +1330,7 @@ export const NetworkAndCompute_IaaS_OciSecurityList = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1356,7 +1356,7 @@ export const NetworkAndCompute_IaaS_OciSubnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1378,7 +1378,7 @@ export const NetworkAndCompute_IaaS_OciVcn = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1436,7 +1436,7 @@ export const NetworkAndCompute_IaaS_SecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureNsg',
@@ -1444,7 +1444,7 @@ export const NetworkAndCompute_IaaS_SecurityGroup = {
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpFirewall',
@@ -1485,7 +1485,7 @@ export const NetworkAndCompute_IaaS_VirtualMachine = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpComputeInstance',
@@ -1530,7 +1530,7 @@ export const NetworkAndCompute_IaaS_VNet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureVnet',
@@ -1551,7 +1551,7 @@ export const NetworkAndCompute_PaaS_AKS = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.PaaS.AzureAks',
@@ -1608,7 +1608,7 @@ export const NetworkAndCompute_PaaS_AwsEc2Instance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.IaaS.AwsEc2Instance',
@@ -1650,7 +1650,7 @@ export const NetworkAndCompute_PaaS_AwsEks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -1906,7 +1906,7 @@ export const NetworkAndCompute_PaaS_AwsLb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.IaaS.AwsLb',
@@ -1941,7 +1941,7 @@ export const NetworkAndCompute_PaaS_AwsRoute53HostedZone = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -2010,7 +2010,7 @@ export const NetworkAndCompute_PaaS_AzureAks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -2049,7 +2049,7 @@ export const NetworkAndCompute_PaaS_AzureAppService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -2067,7 +2067,7 @@ export const NetworkAndCompute_PaaS_AzureContainerAppsEnvironment = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -2100,7 +2100,7 @@ export const NetworkAndCompute_PaaS_AzureContainerInstanceService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -2118,7 +2118,7 @@ export const NetworkAndCompute_PaaS_AzureDnsZone = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -2201,7 +2201,7 @@ export const NetworkAndCompute_PaaS_CloudRun = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -2243,7 +2243,7 @@ export const NetworkAndCompute_PaaS_DnsZone = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -2263,7 +2263,7 @@ export const NetworkAndCompute_PaaS_ECS = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -2281,7 +2281,7 @@ export const NetworkAndCompute_PaaS_EKS = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.PaaS.AwsEks',
@@ -2538,7 +2538,7 @@ export const NetworkAndCompute_PaaS_GcpDnsZone = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -2607,7 +2607,7 @@ export const NetworkAndCompute_PaaS_GcpGke = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -2663,7 +2663,7 @@ export const NetworkAndCompute_PaaS_GcpGlb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -2689,7 +2689,7 @@ export const NetworkAndCompute_PaaS_GcpVm = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpComputeInstance',
@@ -2734,7 +2734,7 @@ export const NetworkAndCompute_PaaS_GKE = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.PaaS.GcpGke',
@@ -2798,7 +2798,7 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
     },
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.PaaS.AwsEks',
@@ -2806,7 +2806,7 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.PaaS.AzureAks',
@@ -2814,7 +2814,7 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.PaaS.GcpGke',
@@ -2822,7 +2822,7 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -3255,7 +3255,7 @@ export const NetworkAndCompute_PaaS_OciContainerInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -3297,7 +3297,7 @@ export const NetworkAndCompute_PaaS_OKE = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -3315,28 +3315,28 @@ export const NetworkAndCompute_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],

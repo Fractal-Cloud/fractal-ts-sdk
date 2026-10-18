@@ -1,6 +1,6 @@
 {
   "agentId": "aria-agent-caas-k8s",
-  "agentVersion": "v1.8.0",
+  "agentVersion": "v1.8.1",
   "offers": [
     {
       "aliasOfOfferType": null,
@@ -219,7 +219,11 @@
           "type": "integer"
         },
         {
-          "description": "When set, a global ForwardAuth middleware to this URL authenticates every route",
+          "constraints": {
+            "level": "error",
+            "pattern": "https?://[A-Za-z0-9._~!$&'()*+,;=:\\[\\]-]+([/?#][A-Za-z0-9._~!$&'()*+,;=:@/?#%\\[\\]-]*)?"
+          },
+          "description": "When set, a global ForwardAuth middleware to this URL authenticates every route. An absolute http or https URL without credentials (no user info before '@') and with well-formed % escapes",
           "example": "http://auth.auth.svc.cluster.local:8080/verify",
           "key": "forwardAuthAddress",
           "type": "string"
@@ -373,7 +377,7 @@
           "field": "/forwardAuthAddress",
           "fix": "Set forwardAuthAddress to the URL of the authentication service, for example http://auth.auth.svc.cluster.local:8080/verify.",
           "id": "forward-auth-address",
-          "message": "forwardAuthAddress must be an absolute http or https URL.",
+          "message": "forwardAuthAddress must be an absolute http or https URL without credentials (user info) and with well-formed % escapes.",
           "reason": "NOT_EXPRESSIBLE"
         },
         {

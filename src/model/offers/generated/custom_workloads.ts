@@ -24,7 +24,7 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.8.0',
+      agentVersion: 'v1.8.1',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [
@@ -527,7 +527,7 @@ export const CustomWorkloads_FaaS_AwsLambda = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -552,7 +552,7 @@ export const CustomWorkloads_FaaS_AwsLambda = {
     roleArn: {type: 'string', required: false},
     /** Lambda runtime identifier matching the language of the function's code (e.g. java21, python3.12, nodejs20.x). Required for a zip-packaged function: no runtime is assumed, and a new zip function without it is refused; an existing function declared without it keeps its own runtime. Ignored for a container image. */
     runtime: {type: 'string', required: false},
-    /** OCI artifact reference (repository:tag or @digest) in the account's ECR holding the function: a container image, or a zip layer. Redeployed only when the artifact digest changes. Large zips are staged in an agent-owned S3 bucket. Required unless codeBase64 is set. */
+    /** OCI artifact reference (<registry>/<repository>:<tag> or @digest) holding the function: a container image, or a zip layer. Read with the account's ECR credentials from the account's ECR, and anonymously from any other registry, which must then serve anonymous pulls. A container image must be in the account's ECR, the only registry Lambda runs images from; a zip may come from either. Redeployed only when the artifact digest changes. Large zips are staged in an agent-owned S3 bucket. Required unless codeBase64 is set. */
     sourceArtifact: {type: 'string', required: false},
     /** Maximum run time of one invocation, in seconds (Lambda allows up to 900). When unset, 3. */
     timeoutSeconds: {type: 'integer', required: false, default: 3},
@@ -565,7 +565,7 @@ export const CustomWorkloads_FaaS_AzureFunction = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -574,9 +574,9 @@ export const CustomWorkloads_FaaS_AzureFunction = {
   params: {
     /** App Service plan the app runs on: {name? (asp-default), pricingPlan? (e.g. BASIC_B1, STANDARD_S1, PREMIUM_P1V3, as a string or {name}), numberOfWorkers? (1), operatingSystem? (Linux; any other value is Windows), zoneRedundancyEnabled? (false), azureRegion? (the app's region), azureResourceGroup? ({name, region}), tags?}. When unset, plan asp-default, BASIC_B1 with 1 worker, Linux, in the Live System's resource group and the app's region (its region, else its resource group's). A container-image function needs a Linux plan. An existing app keeps the plan it is bound to; a plan can be shared by several apps. */
     appServicePlan: {type: 'object', required: false, default: {}},
-    /** Application settings as a name to value map, added after the settings the agent sets itself (AzureWebJobsStorage, FUNCTIONS_EXTENSION_VERSION, FUNCTIONS_WORKER_RUNTIME and the package settings). A change alone is not detected as drift on an existing app. */
+    /** Application settings as a name to value map, added to the settings the agent sets itself (AzureWebJobsStorage, FUNCTIONS_EXTENSION_VERSION, FUNCTIONS_WORKER_RUNTIME and the package settings). A declared name replaces the agent's setting of that name, compared without regard to case, so FUNCTIONS_WORKER_RUNTIME can be chosen here. A change alone is not detected as drift on an existing app. */
     appSettings: {type: 'object', required: false, default: {}},
-    /** Site configuration: {applicationStack?: {nodeVersion | pythonVersion | dotnetVersion | javaVersion | powerShellVersion}, alwaysOn? (true), http2Enabled? (true), minimumTlsVersion? (1.2), ftpsState? (Disabled), healthCheckPath?, corsSettings?: {allowedOrigins, supportCredentials?}}. The first applicationStack version set picks the runtime; when none is, Node 20. On an existing app, only a runtime stack change is detected as drift. */
+    /** Site configuration: {applicationStack?: {nodeVersion | pythonVersion | dotnetVersion | javaVersion | powerShellVersion}, alwaysOn? (true), http2Enabled? (true), minimumTlsVersion? (1.2), ftpsState? (Disabled), healthCheckPath?, corsSettings?: {allowedOrigins, supportCredentials?}}. The first applicationStack version set picks the runtime; when none is, Node 20. dotnetVersion runs the .NET isolated worker (FUNCTIONS_WORKER_RUNTIME dotnet-isolated): the in-process model is retired (.NET 8, the last version offering it, leaves support on 2026-11-10). A deployed app running the in-process worker keeps it, with a contract warning; appSettings.FUNCTIONS_WORKER_RUNTIME chooses explicitly. On an existing app, only a runtime stack change is detected as drift. */
     configuration: {type: 'object', required: false, default: {}},
     /** Managed identity of the app as {type}, type an Azure managed identity type such as 'SystemAssigned' or 'None'. When unset, SystemAssigned, which a container-image function uses to pull from the registry. The identity's principal ID is published as the principalId output. */
     identity: {type: 'object', required: false, default: {}},
@@ -584,7 +584,7 @@ export const CustomWorkloads_FaaS_AzureFunction = {
     packageType: {type: 'string', required: false, default: ''},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
-    /** OCI artifact in an Azure Container Registry holding the function code, as '<registry>/<repository>:<tag>', pulled with the agent's managed identity. A container image is run as a Linux container function; a zip is staged to a blob and run from package. Redeployed only when the artifact's digest changes. When unset, the app is created with its runtime stack and no code. */
+    /** OCI artifact holding the function code, as '<registry>/<repository>:<tag>': in an Azure Container Registry, read with the agent's managed identity and pulled with the app's, or in a registry serving anonymous pulls. A container image is run as a Linux container function; a zip is staged to a blob and run from package. Redeployed only when the artifact's digest changes. When unset, the app is created with its runtime stack and no code. */
     sourceArtifact: {type: 'string', required: false, default: ''},
     /** Connection string of the storage account the Functions host uses (AzureWebJobsStorage). Required for a zip sourceArtifact, which is staged to a blob in that account: such a component fails without it. */
     storageAccountConnectionString: {
@@ -602,7 +602,7 @@ export const CustomWorkloads_FaaS_GcpFunction = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -615,7 +615,7 @@ export const CustomWorkloads_FaaS_GcpFunction = {
     location: {type: 'string', required: false},
     /** Region the function is deployed in, e.g. us-central1. When unset, location, else the Live System's region, else the region of the environment's GCP agent (else the region the agent is deployed in), else the location a deployed function recorded; with none of these the function is refused, no region is assumed. */
     region: {type: 'string', required: false},
-    /** Cloud Functions (2nd gen) runtime id matching the function's source, e.g. java21, python312 or nodejs20. Required to create a function: no runtime is assumed, and a new function without it is refused. A deployed function without it keeps the runtime it runs on. */
+    /** Cloud Functions (2nd gen) runtime id matching the function's source, e.g. java21, python312 or nodejs24. Required to create a function: no runtime is assumed, and a new function without it is refused. A deployed function without it keeps the runtime it runs on. */
     runtime: {type: 'string', required: false},
     /** OCI artifact reference of the function's source zip, e.g. europe-docker.pkg.dev/<project>/<repository>/<function>:<tag>. The agent copies the zip to a staging bucket it owns and redeploys only when the artifact digest changes; a container image is refused. The legacy sourceBucket + sourceObject pair is accepted in its place. Required to create a function; a deployed function without a source is kept as it is. */
     sourceArtifact: {type: 'string', required: false},
@@ -632,7 +632,7 @@ export const CustomWorkloads_FaaS_GoogleFunction = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'CustomWorkloads.FaaS.GcpFunction',
@@ -646,7 +646,7 @@ export const CustomWorkloads_FaaS_GoogleFunction = {
     location: {type: 'string', required: false},
     /** Region the function is deployed in, e.g. us-central1. When unset, location, else the Live System's region, else the region of the environment's GCP agent (else the region the agent is deployed in), else the location a deployed function recorded; with none of these the function is refused, no region is assumed. */
     region: {type: 'string', required: false},
-    /** Cloud Functions (2nd gen) runtime id matching the function's source, e.g. java21, python312 or nodejs20. Required to create a function: no runtime is assumed, and a new function without it is refused. A deployed function without it keeps the runtime it runs on. */
+    /** Cloud Functions (2nd gen) runtime id matching the function's source, e.g. java21, python312 or nodejs24. Required to create a function: no runtime is assumed, and a new function without it is refused. A deployed function without it keeps the runtime it runs on. */
     runtime: {type: 'string', required: false},
     /** OCI artifact reference of the function's source zip, e.g. europe-docker.pkg.dev/<project>/<repository>/<function>:<tag>. The agent copies the zip to a staging bucket it owns and redeploys only when the artifact digest changes; a container image is refused. The legacy sourceBucket + sourceObject pair is accepted in its place. Required to create a function; a deployed function without a source is kept as it is. */
     sourceArtifact: {type: 'string', required: false},
@@ -663,28 +663,28 @@ export const CustomWorkloads_IaaS_Workload = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -710,7 +710,7 @@ export const CustomWorkloads_PaaS_AwsEcsService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -728,7 +728,7 @@ export const CustomWorkloads_PaaS_AzureContainerApp = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -765,7 +765,7 @@ export const CustomWorkloads_PaaS_AzureContainerInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -799,7 +799,7 @@ export const CustomWorkloads_PaaS_GcpCloudRun = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -820,7 +820,7 @@ export const CustomWorkloads_PaaS_WebApp = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -908,28 +908,28 @@ export const CustomWorkloads_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
