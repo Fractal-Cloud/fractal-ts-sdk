@@ -85,12 +85,6 @@ describe('AwsS3 lifecycle expiration', () => {
     });
   });
 
-  // The AWS agent refuses an expiration that is not a positive number of days.
-  it.each([[0], [-1], [1.5]])('refuses lifecycleExpirationDays %s', days => {
-    expect(() => bucket({lifecycleExpirationDays: days})).toThrow(
-      /AwsS3 'loki-chunks': lifecycleExpirationDays .* is not a whole number of at least 1/,
-    );
-  });
 });
 
 describe('caas-k8s observability offers', () => {

@@ -28,31 +28,6 @@ const refuse = (id: string, why: string): never => {
   throw new Error(`Live component '${id}': ${why}.`);
 };
 
-/**
- * An absolute http(s) URL with a host and no user info, and no `%` that is
- * not an escape (Go's url.Parse, the agent's, refuses one).
- */
-const FORWARD_AUTH_ADDRESS = /^https?:\/\/[^\s/?#@]+(?:[/?#]\S*)?$/;
-
-/**
- * `forwardAuthAddress` must not carry credentials. aria-agent-caas-k8s accepts
- * any absolute http(s) URL, user info included, and stores it in the gateway's
- * middleware, so this is the only refusal before a credential would be sent on.
- * The value is never echoed.
- */
-const ensureForwardAuthAddress = (id: string, value: unknown): void => {
-  if (value === undefined) {
-    return;
-  }
-  const address = typeof value === 'string' ? value.trim() : '';
-  if (
-    !FORWARD_AUTH_ADDRESS.test(address) ||
-    /%(?![0-9A-Fa-f]{2})/.test(address)
-  ) {
-    refuse(id, 'forwardAuthAddress is not an http(s) URL without credentials');
-  }
-};
-
 // ── ApiGateway ───────────────────────────────────────────────────────────────
 
 /** Trims what Java's `String.trim()` trims, as the agent does: control characters and spaces only. */
@@ -89,67 +64,17 @@ const SITE_KEYS = [
 ] as const;
 
 /**
- * An object key a bucket site may name (`defaultRootObject`, `errorDocument`), as the agent reads
- * one (`CloudFrontConfig.objectKeyOf`): letters, digits and `._/-`, not starting with `.` or `/`, at
- * most 255 characters, no `..`. Blank is unset.
- */
-const OBJECT_KEY = /^[A-Za-z0-9_-][A-Za-z0-9._/-]{0,254}$/;
-
-/** Refuses an object key the agent would refuse. */
-const refuseBadObjectKey = (
-  self: LiveSystemComponent,
-  key: 'defaultRootObject' | 'errorDocument',
-  value: unknown,
-): void => {
-  if (
-    value === undefined ||
-    (typeof value === 'string' && value.trim() === '')
-  ) {
-    return;
-  }
-  const text = typeof value === 'string' ? value.trim() : '';
-  if (!OBJECT_KEY.test(text) || text.includes('..')) {
-    throw new Error(
-      `Live component '${self.id}': ${key} '${String(value)}' is not an object key: letters, digits ` +
-        "and '._/-', no leading '/' or '.', no '..', at most 255 characters (e.g. 'index.html').",
-    );
-  }
-};
-
-/**
- * The site keys as the agent refuses them (`CloudFrontConfig.fromParams`): malformed object keys,
- * a `spaFallback` that is neither a boolean nor `true` / `false`, and `spaFallback` together with
- * `errorDocument`.
+ * `spaFallback` answers every missing key with the root object, so it excludes
+ * `errorDocument` (`CloudFrontConfig.fromParams`). The values of the two are
+ * the contract's to check.
  */
 const ensureSiteKeys = (
   self: LiveSystemComponent,
-  config: {
-    spaFallback?: unknown;
-    errorDocument?: unknown;
-    defaultRootObject?: unknown;
-  },
+  config: {spaFallback?: unknown; errorDocument?: unknown},
 ): void => {
-  refuseBadObjectKey(self, 'defaultRootObject', config.defaultRootObject);
-  refuseBadObjectKey(self, 'errorDocument', config.errorDocument);
-  const spa = config.spaFallback;
-  if (
-    spa !== undefined &&
-    typeof spa !== 'boolean' &&
-    !(
-      typeof spa === 'string' &&
-      ['true', 'false', ''].includes(spa.trim().toLowerCase())
-    )
-  ) {
-    throw new Error(
-      `Live component '${self.id}': spaFallback '${String(spa)}' is not a boolean.`,
-    );
-  }
-  const spaOn =
-    spa === true ||
-    (typeof spa === 'string' && spa.trim().toLowerCase() === 'true');
   const errorDocument = config.errorDocument;
   if (
-    spaOn &&
+    config.spaFallback === true &&
     typeof errorDocument === 'string' &&
     errorDocument.trim() !== ''
   ) {
@@ -238,138 +163,35 @@ const siteBucketOrigin = (
   return bucketOrigin;
 };
 
-/**
- * A redirect target's host as `java.net.URI` reads one, which the agent parses it with
- * (`CloudFrontRedirect.parse`): a host name whose last label starts with a letter (an all-digit one
- * leaves URI without a host), or an IPv4 address.
- */
-const TARGET_HOST =
-  /^(?:(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?|(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})$/i;
-
-/**
- * Why `redirectTo` cannot be a redirect target, or undefined when it can, by the agent's
- * `CloudFrontRedirect.parse`: `https://`, a host, no credentials or port, no query or fragment, and
- * a path of URL path characters and well-formed percent escapes. Read on the text as written,
- * rather than through `URL`, which normalizes what the agent refuses.
- */
-const redirectRefusal = (target: string): string | undefined => {
-  const match = /^([a-z][a-z0-9+.-]*):\/\/([^/?#]*)([^?#]*)(.*)$/i.exec(target);
-  if (match === null) {
-    return 'it is not a URL of the form https://host[/path]';
-  }
-  const [, scheme, authority, path, rest] = match;
-  if (scheme.toLowerCase() !== 'https') {
-    return 'it must start with https://';
-  }
-  if (rest !== '') {
-    return "the request's own query string is appended, so it may carry neither a query nor a fragment";
-  }
-  if (authority.includes('@') || authority.includes(':')) {
-    return 'it may carry neither credentials nor a port';
-  }
-  if (!TARGET_HOST.test(authority.replace(/\.$/, ''))) {
-    return 'its host is not a DNS host name';
-  }
-  if (!/^(?:[A-Za-z0-9\-._~!$&()*+,;=:@/]|%[0-9A-Fa-f]{2})*$/.test(path)) {
-    return 'its path holds characters a URL path may not (or a malformed percent escape)';
-  }
-  return undefined;
-};
-
-/** A host name as the AWS agent reads one (`CloudFrontConfig.HOST_NAME`), any case. */
-const HOST_NAME =
-  /^(?=.{1,253}$)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/i;
 /** A host as the agent normalizes it: trimmed, lower case, no trailing dot. */
 const normalizedHost = (value: string): string =>
   javaTrim(value).replace(/\.$/, '').toLowerCase();
-/** Bounds CloudFront puts on its origin read and keep-alive timeouts (above 60 s needs a quota increase). */
-const ORIGIN_TIMEOUT_MIN = 1;
-const ORIGIN_TIMEOUT_MAX = 180;
-/** Bounds AWS WAF puts on a rate-based rule's limit (per 5-minute window). */
-const WAF_RATE_LIMIT_MIN = 10;
-const WAF_RATE_LIMIT_MAX = 2_000_000_000;
 
 /**
- * The checks of the distribution's own parameters the AWS agent makes too
- * (`CloudFrontConfig`), refused before anything is deployed, and a redirect to
- * one of its own aliases, which the agent would deploy as an endless loop.
- * Values are read from the live component, whichever path set them.
+ * A redirect to one of the distribution's own aliases, which the agent would
+ * deploy as an endless loop: a rule on two parameters, `redirectTo` and
+ * `aliases`, that no contract expresses.
  */
-const ensureCloudFrontParameters = (
+const ensureNoSelfRedirect = (
   self: LiveSystemComponent,
   target: string | undefined,
 ): void => {
-  const p = self.parameters;
-  const fail = (why: string): never => refuse(self.id, why);
-  const aliases = Array.isArray(p.aliases) ? (p.aliases as unknown[]) : [];
-  const invalid = aliases.filter(
-    a => typeof a !== 'string' || !HOST_NAME.test(normalizedHost(a)),
-  );
-  if (invalid.length > 0) {
-    fail(
-      `aliases holds ${invalid.map(a => `'${String(a)}'`).join(', ')}, not a host name`,
-    );
-  }
-  for (const key of ['originDomain', 'originDomainName'] as const) {
-    const value = p[key];
-    if (
-      typeof value === 'string' &&
-      javaTrim(value) !== '' &&
-      !HOST_NAME.test(normalizedHost(value))
-    ) {
-      fail(`${key} '${value}' is not a host name`);
-    }
-  }
-  const protocol = p.originProtocol;
-  if (
-    protocol !== undefined &&
-    !(
-      typeof protocol === 'string' &&
-      ['', 'https', 'http'].includes(javaTrim(protocol).toLowerCase())
-    )
-  ) {
-    fail(`originProtocol '${String(protocol)}' is neither https nor http`);
-  }
-  const waf = p.wafRateLimitPer5Min;
-  if (
-    waf !== undefined &&
-    (typeof waf !== 'number' ||
-      !Number.isInteger(waf) ||
-      waf < WAF_RATE_LIMIT_MIN ||
-      waf > WAF_RATE_LIMIT_MAX)
-  ) {
-    fail(
-      `wafRateLimitPer5Min ${String(waf)} is not a whole number from ${WAF_RATE_LIMIT_MIN} to ${WAF_RATE_LIMIT_MAX}`,
-    );
-  }
-  for (const key of [
-    'originReadTimeoutSeconds',
-    'originKeepaliveTimeoutSeconds',
-  ] as const) {
-    const value = p[key];
-    if (
-      value !== undefined &&
-      (typeof value !== 'number' ||
-        !Number.isInteger(value) ||
-        value < ORIGIN_TIMEOUT_MIN ||
-        value > ORIGIN_TIMEOUT_MAX)
-    ) {
-      fail(
-        `${key} ${String(value)} is not a whole number of seconds from ${ORIGIN_TIMEOUT_MIN} to ${ORIGIN_TIMEOUT_MAX}`,
-      );
-    }
-  }
+  const aliases = Array.isArray(self.parameters.aliases)
+    ? (self.parameters.aliases as unknown[])
+    : [];
   const host =
     target === undefined
       ? undefined
-      : /^https:\/\/([^/?#]+)/i.exec(target)?.[1];
-  if (host !== undefined) {
-    const own = normalizedHost(host);
-    if (aliases.some(a => typeof a === 'string' && normalizedHost(a) === own)) {
-      fail(
-        `aliases holds the redirect target's own host ${own}, which would redirect to itself forever`,
-      );
-    }
+      : /^https:\/\/([^/?#@:]+)/i.exec(target)?.[1];
+  if (host === undefined) {
+    return;
+  }
+  const own = normalizedHost(host);
+  if (aliases.some(a => typeof a === 'string' && normalizedHost(a) === own)) {
+    refuse(
+      self.id,
+      `aliases holds the redirect target's own host ${own}, which would redirect to itself forever`,
+    );
   }
 };
 
@@ -480,23 +302,15 @@ export const AwsCloudFront = defineOffer<
     routes: unsupported('the agent reads no route list from parameters'),
     dnsZones: unsupported('its agent takes no DNS zone access'),
   },
-  // Checked here: which linked bucket or gateway is the origin, whether a TLS
-  // gateway's certificate covers the hosts CloudFront forwards, and the agent's
-  // own checks of this component's parameters (ensureCloudFrontParameters),
-  // which the control plane does not enforce by default.
+  // Structural rules only: which linked bucket or gateway is the origin, which
+  // keys exclude each other, a redirect to its own alias, and whether a TLS
+  // gateway's certificate covers the hosts CloudFront forwards. Single values
+  // are checked against the agent's contract (`defineOffer`).
   validate: (self, all, config) => {
     const target =
       config.redirectTo === undefined
         ? undefined
         : javaTrim(config.redirectTo) || undefined;
-    if (target !== undefined) {
-      const refusal = redirectRefusal(target);
-      if (refusal !== undefined) {
-        throw new Error(
-          `Live component '${self.id}': redirectTo '${config.redirectTo}' is not a redirect target: ${refusal}.`,
-        );
-      }
-    }
     const gateways = all.filter(
       c =>
         VPC_ORIGIN_GATEWAY_TYPES.includes(c.type) &&
@@ -537,7 +351,7 @@ export const AwsCloudFront = defineOffer<
         `Live component '${self.id}': a distribution serves redirectTo or an origin, not both.`,
       );
     }
-    ensureCloudFrontParameters(self, target);
+    ensureNoSelfRedirect(self, target);
     const aliases = Array.isArray(self.parameters.aliases)
       ? self.parameters.aliases
       : [];
@@ -781,12 +595,10 @@ export const TraefikGateway = defineOffer<
       },
     ];
   },
-  // The gateway's own parameters are refused as aria-agent-caas-k8s refuses
-  // them (traefik_gateway_checks.ts), plus a credential in forwardAuthAddress,
-  // which no one else refuses; then the encoding and what involves other
-  // components.
+  // Structural rules only (traefik_gateway_checks.ts), the encoding and what
+  // involves other components. Single values are checked against the agent's
+  // contract (`defineOffer`).
   validate: (self, all, config) => {
-    ensureForwardAuthAddress(self.id, self.parameters.forwardAuthAddress);
     ensureTraefikGatewayParameters(self, config);
     // An empty list travels as a blank string, which the agent reads as unset:
     // it would apply its default rather than what the empty list says.

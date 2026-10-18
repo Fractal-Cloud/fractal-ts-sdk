@@ -30,12 +30,6 @@ import {
 import {searchLinkRefusal} from '../components/search_link_refusal';
 import {parseRouteLink, routeRefusal} from './route_link_routes';
 import type {SqsExporterConfig} from './sqs_exporter_config';
-import {isKubernetesName} from './kubernetes_name';
-import {
-  ensureNamespace,
-  isHttpUrl,
-  isWholeAtLeastOne,
-} from './caas_param_checks';
 
 /** Throw the error every check here throws, naming the component. */
 const refuse = (id: string, why: string): never => {
@@ -213,63 +207,10 @@ const ensureOneReadWriteBucket = (
   }
 };
 
-// The Grafana stack's own parameters, as aria-agent-caas-k8s reads them
-// (kube_prometheus_stack_settings.go, grafana_loki_settings.go,
-// grafana_tempo_settings.go, grafana_alloy_settings.go: positiveParam,
-// datasourceURL, an http(s) lokiPushUrl) and as the Kubernetes API takes the
-// namespace and StorageClass names it passes on.
-
-/** The component's `retentionDays` (the neutral `withRetentionDays`), when set, must be at least one day. */
-const ensureRetention = (self: LiveSystemComponent): void => {
-  const days = self.parameters.retentionDays;
-  if (days !== undefined && !isWholeAtLeastOne(days)) {
-    refuse(
-      self.id,
-      `retentionDays ${String(days)} is not a whole number of at least 1`,
-    );
-  }
-};
-
-const ensureStorageClass = (id: string, storageClassName: unknown): void => {
-  if (
-    storageClassName !== undefined &&
-    !(
-      typeof storageClassName === 'string' &&
-      (storageClassName.trim() === '' ||
-        isKubernetesName(storageClassName.trim()))
-    )
-  ) {
-    refuse(
-      id,
-      `storageClassName '${String(storageClassName)}' is not a Kubernetes name`,
-    );
-  }
-};
-
-/** A Grafana datasource URL: `none` (no datasource) or an absolute http(s) URL. */
-const ensureDatasource = (id: string, key: string, value: unknown): void => {
-  if (
-    value !== undefined &&
-    !(
-      typeof value === 'string' &&
-      (value.trim().toLowerCase() === 'none' || isHttpUrl(value.trim()))
-    )
-  ) {
-    refuse(
-      id,
-      `${key} '${String(value)}' is neither none nor an absolute http(s) URL`,
-    );
-  }
-};
-
 const ensureBackend = (
   self: LiveSystemComponent,
   all: readonly LiveSystemComponent[],
-  config: {namespace?: unknown; storageClassName?: unknown},
 ): void => {
-  ensureNamespace(self.id, config.namespace);
-  ensureStorageClass(self.id, config.storageClassName);
-  ensureRetention(self);
   ensureOneReadWriteBucket(self, all);
 };
 
@@ -348,21 +289,7 @@ export const KubePrometheusStack = defineOffer<
   neutral: {
     scrapeInterval: unsupported('the agent sets no scrape interval'),
   },
-  validate: (self, all, config) => {
-    ensureNamespace(self.id, config.namespace);
-    ensureStorageClass(self.id, config.storageClassName);
-    ensureRetention(self);
-    const storage: unknown = config.prometheusStorageGi;
-    if (storage !== undefined && !isWholeAtLeastOne(storage)) {
-      refuse(
-        self.id,
-        `prometheusStorageGi ${String(storage)} is not a whole number of at least 1`,
-      );
-    }
-    ensureDatasource(self.id, 'lokiUrl', config.lokiUrl);
-    ensureDatasource(self.id, 'tempoUrl', config.tempoUrl);
-    ensureGrafanaRoutes(self, all);
-  },
+  validate: (self, all) => ensureGrafanaRoutes(self, all),
 });
 
 /**
@@ -401,15 +328,7 @@ export const GrafanaAlloy = defineOffer<
   contract: Observability_CaaS_GrafanaAlloy,
   deliveryModel: 'CaaS',
   validate: (self, all, config) => {
-    ensureNamespace(self.id, config.namespace);
     if (config.lokiPushUrl !== undefined) {
-      const url: unknown = config.lokiPushUrl;
-      if (!(typeof url === 'string' && isHttpUrl(url.trim()))) {
-        refuse(
-          self.id,
-          `lokiPushUrl '${String(url)}' is not an absolute http(s) URL`,
-        );
-      }
       return;
     }
     const dependsOnLoki = self.dependencies.some(id =>
@@ -452,75 +371,6 @@ export const GrafanaTempo = defineOffer<
 // ── caas-k8s Prometheus exporters ────────────────────────────────────────────
 // Under the service `Observability.CaaS.PrometheusExporter`, which the caas-k8s
 // agent declares under the BFF component `Observability.CaaS.Monitoring`.
-
-/**
- * A queue URL as aria-agent-caas-k8s reads one (`sqsexporter.QueueFromURL`):
- * https (any case), `sqs.<region>.amazonaws.com`, a 12-digit account and a
- * queue name, no query; a fragment is ignored.
- */
-const SQS_QUEUE_URL =
-  /^[Hh][Tt][Tt][Pp][Ss]:\/\/sqs\.[a-z0-9-]+\.amazonaws\.com\/[0-9]{12}\/[A-Za-z0-9_-]{1,80}(\.fifo)?(#\S*)?$/;
-
-/** The exporter's own parameters, refused as the agent refuses them (`sqs_exporter_settings.go`). */
-const ensureSqsExporterParameters = (
-  self: LiveSystemComponent,
-  config: SqsExporterConfig,
-): void => {
-  const badUrl = (config.queueUrls ?? []).find(
-    u => !SQS_QUEUE_URL.test(u.trim()) || /%(?![0-9A-Fa-f]{2})/.test(u),
-  );
-  if (badUrl !== undefined) {
-    refuse(
-      self.id,
-      `queueUrls holds '${badUrl}', which is not https://sqs.<region>.amazonaws.com/<account>/<name>`,
-    );
-  }
-  ensureNamespace(self.id, config.namespace);
-  if ((config.imagePullSecrets ?? []).some(n => n.trim() === '')) {
-    refuse(
-      self.id,
-      'imagePullSecrets holds a blank entry, which the agent would drop: remove it',
-    );
-  }
-  const badSecret = (config.imagePullSecrets ?? []).find(
-    n => !isKubernetesName(n.trim()),
-  );
-  if (badSecret !== undefined) {
-    refuse(
-      self.id,
-      `imagePullSecrets entry '${badSecret}' is not a Secret name`,
-    );
-  }
-  if (
-    config.nodeSelector !== undefined &&
-    Object.keys(config.nodeSelector).length === 0
-  ) {
-    refuse(
-      self.id,
-      'nodeSelector is empty: the agent reads an empty selector as unset; omit it',
-    );
-  }
-  for (const [key, value] of Object.entries(config.nodeSelector ?? {})) {
-    if (typeof value !== 'string') {
-      refuse(self.id, `nodeSelector '${key}' is not a string`);
-    }
-  }
-  const interval: unknown = config.monitorIntervalSeconds;
-  if (
-    interval !== undefined &&
-    (typeof interval !== 'number' ||
-      !Number.isInteger(interval) ||
-      interval < 1)
-  ) {
-    refuse(
-      self.id,
-      `monitorIntervalSeconds ${String(interval)} is not a whole number of seconds of at least 1`,
-    );
-  }
-  if (typeof config.image === 'string' && config.image.trim() === '') {
-    refuse(self.id, "image is blank: omit it for the agent's own image");
-  }
-};
 
 /**
  * A Prometheus exporter of SQS queue depth (EKS only): a Deployment, a Service
@@ -579,7 +429,6 @@ export const SqsExporter = defineOffer<
         );
       }
     }
-    ensureSqsExporterParameters(self, config);
     const linkedQueues = self.links.filter(l =>
       all.some(c => c.id === l.componentId && c.type === SQS_QUEUE_TYPE),
     );

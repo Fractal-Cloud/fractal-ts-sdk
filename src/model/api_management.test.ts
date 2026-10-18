@@ -151,57 +151,24 @@ describe('Locked Fractal model — APIManagement', () => {
       ).not.toThrow();
     });
 
-    // The checks of this component's own parameters the agent applies too
-    // (CloudFrontConfig / CloudFront in fractal-cloud-agents), refused before
-    // anything is deployed; the redirect loop the agent would deploy.
+    // How the keys combine is checked here; a single value against the
+    // agent's contract (here: its type).
     it.each([
       [
         {redirectTo: 'https://fractal.cloud/x', aliases: ['Fractal.Cloud.']},
         "aliases holds the redirect target's own host fractal.cloud, which would redirect to itself forever",
       ],
       [
-        {redirectTo: 'https://fractal.cloud', aliases: ['not a host']},
-        "aliases holds 'not a host', not a host name",
-      ],
-      [
         {aliases: ['a.example.com']},
         'aliases need an origin (originDomain, a linked gateway or a linked bucket) or redirectTo to serve',
-      ],
-      [
-        {originDomain: 'bad_host', aliases: ['a.example.com']},
-        "originDomain 'bad_host' is not a host name",
-      ],
-      [
-        {originDomain: 'o.example.com', originDomainName: 'bad host'},
-        "originDomainName 'bad host' is not a host name",
       ],
       [
         {redirectTo: 'https://fractal.cloud', originDomain: 'o.example.com'},
         'a distribution serves redirectTo or an origin, not both',
       ],
       [
-        {originDomain: 'o.example.com', originProtocol: 'ftp'},
-        "originProtocol 'ftp' is neither https nor http",
-      ],
-      [
-        {originDomain: 'o.example.com', wafRateLimitPer5Min: 9},
-        'wafRateLimitPer5Min 9 is not a whole number from 10 to 2000000000',
-      ],
-      [
-        {originDomain: 'o.example.com', wafRateLimitPer5Min: 2_000_000_001},
-        'wafRateLimitPer5Min 2000000001 is not a whole number from 10 to 2000000000',
-      ],
-      [
-        {originDomain: 'o.example.com', originReadTimeoutSeconds: 0},
-        'originReadTimeoutSeconds 0 is not a whole number of seconds from 1 to 180',
-      ],
-      [
-        {originDomain: 'o.example.com', originKeepaliveTimeoutSeconds: 181},
-        'originKeepaliveTimeoutSeconds 181 is not a whole number of seconds from 1 to 180',
-      ],
-      [
         {originDomain: 'o.example.com', originReadTimeoutSeconds: 1.5},
-        'originReadTimeoutSeconds 1.5 is not a whole number of seconds from 1 to 180',
+        "1.5 is not the integer 'originReadTimeoutSeconds' takes",
       ],
     ])('refuses %o', (config, message) => {
       expect(() =>
@@ -211,7 +178,7 @@ describe('Locked Fractal model — APIManagement', () => {
       ).toThrow(`Live component 'edge': ${message}.`);
     });
 
-    it('accepts what the agent accepts at the bounds', () => {
+    it('leaves single values within the contract to the agent', () => {
       expect(() =>
         liveSystemWith(
           AwsCloudFront({

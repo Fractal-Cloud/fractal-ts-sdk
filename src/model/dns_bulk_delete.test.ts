@@ -91,14 +91,14 @@ describe('allowBulkDelete when not declared, or slipped past the setter', () => 
     expect('allowBulkDelete' in params).toBe(false);
   });
 
-  it('AwsRoute53HostedZone refuses a non-boolean set through a raw guardrail', () => {
+  it('AwsRoute53HostedZone refuses a non-boolean set through a raw guardrail, by its contract', () => {
     const base = DnsZoneComponent({id: 'z'}).withDomainName('fractal.cloud');
     const raw = {
       ...base,
       state: guardrail(base.state, 'allowBulkDelete', 'yes'),
     };
     expect(() => zoneLiveSystem(raw)).toThrow(
-      /Live component 'z': allowBulkDelete must be true or false, got "yes"/,
+      "Live component 'z': (value withheld) is not the boolean 'allowBulkDelete' takes.",
     );
   });
 });

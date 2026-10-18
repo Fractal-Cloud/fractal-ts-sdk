@@ -6,9 +6,12 @@ contracts the agents publish, and every hand-written part of an offer names the 
 through that generated code, so a key the agent renames or drops is a compile error here instead of
 a value nobody reads.
 
-Checking the *values* of a Live System's parameters against those contracts is the control
-plane's job: `cloud.liveSystems.deploy` asks it before submitting (section 4). The SDK does not
-re-implement those checks.
+**Value constraints come from the agents' published contracts; the SDK does not hand-check
+single parameter values; structural rules stay.** Every parameter an offer emits for its own
+offer type is checked against that contract while the Live System is built (section 3.2), and
+the control plane checks the whole Live System again before deploy (section 4). The SDK keeps no
+per-offer copy of an agent's value rules: a value constraint the SDK should enforce is added to
+the agent's contract, and reaches the SDK when the snapshot is refreshed.
 
 ## 1. Where the contracts come from
 
@@ -91,7 +94,7 @@ Dependencies and links are not generated: in the SDK they are carried by the blu
 | config keys, their types, required-ness (`ContractConfig<typeof X>`) | neutral → vendor translations and refusals, as each offer's `neutral` rules (3.1) |
 | the vendor keys a translation writes (`contractKey`, `contractKeys`, `toContractKey`) | live-system-only sub-components (e.g. the ECS task definition `<id>-task`) |
 | | re-typing a contract key for ergonomics (`ContractConfig`'s `Overrides`) |
-| | checks that involve several components (a Container App's environment, a CloudFront origin, a load balancer's subnets) |
+| value constraints of every emitted parameter (`contractConfigProblem`, run by `defineOffer`) | structural rules: several components (a Container App's environment, a CloudFront origin, a load balancer's subnets) or several parameters of one (keys that exclude or require each other), the encoding of a value, and guardrails an offer cannot honor |
 
 What keeps the hand-written side honest, at compile time:
 
@@ -124,6 +127,22 @@ Live System is built:
   Live System, naming the offer, the parameter, the component and the reason.
 - `unsupportedUnless(satisfiedBy, reason)`: refused unless the offer already does what the value
   asks (encryption at rest on S3, a private bucket); a satisfied value is not sent.
+
+### 3.2 Values: checked against the contract, never by hand
+
+`defineOffer` checks every parameter a selected offer emits for its own offer type against that
+offer's contract, after its neutral rules and before its own `validate`: the type, the closed
+vocabulary (`values`, compared case-insensitively when `valuesCaseInsensitive`, not refused when
+`valuesLevel: warn`) and the constraints (`pattern`, `minLength` / `maxLength`, `minimum` /
+`maximum`, not refused at `level: warn`), with the value shown only as the redaction rules of
+`contract_value_problem.ts` allow. An environment-secret reference is accepted for any key, and a
+key the contract does not declare is left to the `undeclared-parameters.json` check. Required keys
+are the config type's (`ContractConfig`) and the control plane's, which may supply one itself
+(IPAM fills a subnet's `cidrBlock`).
+
+An offer's own `validate` holds only structural rules: what involves other components, keys of
+one component that exclude or require each other, how the SDK encodes a value, and a guardrail it
+cannot honor. A rule on one parameter's value belongs in the agent's contract.
 
 ## 4. Validation before deploy
 

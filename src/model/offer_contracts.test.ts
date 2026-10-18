@@ -297,6 +297,11 @@ const NEUTRAL = new Map<string, ProbedNode['state']>(
  * merged offer read does not count: the agent that reconciles the component
  * may be one that ignores it.
  */
+/** Neutral keys an offer rules on although its contract declares a key of the same name, meaning something else. */
+const HOMONYM_RULES: Readonly<Record<string, readonly string[]>> = {
+  AzureServiceBus: ['encryption'],
+};
+
 const declaredKeys = (contract: OfferContract): Set<string> =>
   new Set([
     ...Object.entries(contract.params)
@@ -522,8 +527,14 @@ describe('offers and the contracts their agents publish', () => {
           p => (p.aliases ?? []).filter(a => a.deprecated).map(a => a.key),
         ),
       );
+      // A neutral key whose contract namesake means something else: Service
+      // Bus `encryption` is a customer-managed-key map, not 'at-rest' / 'none'.
+      const homonyms = HOMONYM_RULES[name] ?? [];
       const stale = Object.keys(offer.neutral ?? {}).filter(
-        k => declaredKeys(offer.contract!).has(k) && !deprecated.has(k),
+        k =>
+          declaredKeys(offer.contract!).has(k) &&
+          !deprecated.has(k) &&
+          !homonyms.includes(k),
       );
       expect(stale, `${name}: the agent reads these now`).toEqual([]);
     }

@@ -337,6 +337,13 @@ export const toKubernetesWorkloadParameters = (
       v => ({...asRecord(v.healthCheck)}),
     );
   }
+  // The contract types the rollout pace as a string (a count or a
+  // percentage, `"1"` / `"25%"`); the agent reads a count in either form.
+  for (const key of [KEY.maxSurge, KEY.maxUnavailable]) {
+    if (typeof params[key] === 'number') {
+      params[key] = String(params[key]);
+    }
+  }
   // Before the move: it would read a secretEnv that is not a map as empty.
   ensureSecretEnvReferences(params, componentId);
   moveSecretRefsToSecretEnv(params, componentId);

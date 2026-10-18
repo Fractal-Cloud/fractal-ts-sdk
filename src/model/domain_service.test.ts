@@ -346,8 +346,8 @@ describe('the Domain Service fractal on the shared AWS platform', () => {
           namespace: 'fractal',
           containerImage: 'ghcr.io/fractal-cloud/accounts:v2.21.12',
           containerPort: 8080,
-          maxSurge: 1,
-          maxUnavailable: 0,
+          maxSurge: '1', // the contract's string
+          maxUnavailable: '0',
           podDisruptionBudget: {minAvailable: 1},
           topologySpread: true,
           readinessProbe: {path: '/health/ready'},
