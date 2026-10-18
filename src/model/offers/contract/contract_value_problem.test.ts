@@ -61,6 +61,67 @@ const contract = {
 
 const SECRET = 'hunter2-S3cr3t';
 
+describe('contractValueProblem constraints (aria-spec tests/contract/SPEC.md)', () => {
+  const shapes = {
+    offerType: 'Test.PaaS.Shapes',
+    serviceTypes: ['Test.PaaS.Shapes'],
+    declaredBy: [
+      {
+        agentId: 'test-agent',
+        agentVersion: 'v1.0.0',
+        contractSchemaVersion: '2.0',
+        provider: 'AWS',
+        parameterRules: [],
+      },
+    ],
+    params: {
+      // fractal-cloud-agent-aws Storage.PaaS.AwsS3 `bucket`
+      bucket: {
+        type: 'string',
+        required: false,
+        constraints: {pattern: '[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]'},
+      },
+      aliases: {
+        type: 'array',
+        required: false,
+        constraints: {pattern: '[a-z0-9.-]+', minItems: 1, maxItems: 2},
+      },
+    },
+  } as const satisfies OfferContract;
+
+  it('matches a pattern against the whole value, not a part of it', () => {
+    expect(contractValueProblem(shapes, 'bucket', 'my-bucket')).toBeUndefined();
+    expect(
+      contractValueProblem(shapes, 'bucket', 'BAD!!!' + 'a'.repeat(20)),
+    ).toBe("'bucket' (value withheld) does not match [a-z0-9][a-z0-9.-]{1,61}[a-z0-9]");
+    expect(contractValueProblem(shapes, 'bucket', 'ok-bucket!')).toMatch(
+      /does not match/,
+    );
+  });
+
+  it('matches an array pattern against each item with a rendering', () => {
+    expect(
+      contractValueProblem(shapes, 'aliases', ['a.example.com', 'b.example.com']),
+    ).toBeUndefined();
+    expect(
+      contractValueProblem(shapes, 'aliases', ['a.example.com', 'Not A Host']),
+    ).toBe("'aliases' item 1 does not match [a-z0-9.-]+");
+    // A reference or a non-scalar item is skipped.
+    expect(
+      contractValueProblem(shapes, 'aliases', [{$envSecret: 'x'}]),
+    ).toBeUndefined();
+  });
+
+  it('bounds the number of items', () => {
+    expect(contractValueProblem(shapes, 'aliases', [])).toBe(
+      "'aliases' has fewer than 1 items",
+    );
+    expect(contractValueProblem(shapes, 'aliases', ['a', 'b', 'c'])).toBe(
+      "'aliases' has more than 2 items",
+    );
+  });
+});
+
 describe('contractValueProblem and inherited names', () => {
   it.each(['constructor', '__proto__', 'toString'])(
     'reads %s as a key the contract does not declare',

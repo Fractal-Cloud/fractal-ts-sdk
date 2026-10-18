@@ -88,9 +88,10 @@ const zoneOf = (host: string, zones: readonly string[]): string | undefined =>
 /**
  * The hosts the certificate of an emitted `TraefikGateway` component covers, or
  * undefined when Traefik does not terminate TLS (or the component is a reference,
- * whose parameters are not known here). TLS is on when `tlsSecretName` is set, or
- * when the gateway issues its own certificate: its `dnsZones` ask for TXT write
- * on the zone of one of its hosts. `tlsHosts` defaults to `host`, as the agent
+ * whose parameters are not known here). TLS is on when `tlsSecretName` is set
+ * (covering every host), or when the gateway issues its own certificate: its
+ * `dnsZones` ask for TXT write on the zone of one of its hosts, and the
+ * certificate names each host such a zone covers, not the others. `tlsHosts` defaults to `host`, as the agent
  * reads them. The ignored `tlsClusterIssuer` is no certificate source: the agent
  * requests nothing from it and only keeps serving a certificate that issuer
  * already wrote, which a Live System being built cannot know of
@@ -115,12 +116,15 @@ export const gatewayCertificateHosts = (
       : host !== undefined && (secret || issuer || zones.length > 0)
         ? [host]
         : [];
+  if (secret) {
+    return hosts;
+  }
+  // The gateway's own certificate names the hosts a zone grant with TXT write
+  // covers, and only those (aria-agent-caas-k8s `issuancePlan.Covered`).
   const names = zones.map(z => z.name);
-  const issues =
-    !secret &&
-    hosts.some(h => {
-      const zone = zoneOf(h, names);
-      return zones.some(z => z.name === zone && txtWrite(z.access));
-    });
-  return secret || issues ? hosts : undefined;
+  const covered = hosts.filter(h => {
+    const zone = zoneOf(h, names);
+    return zones.some(z => z.name === zone && txtWrite(z.access));
+  });
+  return covered.length > 0 ? covered : undefined;
 };

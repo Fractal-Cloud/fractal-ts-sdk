@@ -36,7 +36,9 @@ consumer is known to use the removed APIs). Each item links to its section below
   its new type, which the agent then creates. Nothing has to be deleted. A component
   another Live System references cannot be retyped (`409
   ComponentReferencedByAnotherLiveSystem`): remove the reference first. `OpenshiftVm`
-  also requires `name` and `image`.
+  also requires `name` and `image`. `HetznerServer`'s `region` is sent as `location`,
+  the key aria-agent-hetzner reads (the config key stays `region`; a consumer reading
+  the emitted parameters reads `location`).
 - **`EcsService` and `CloudRun` emit the types their agents reconcile**
   (`NetworkAndCompute.CaaS.ECSService` plus a `<id>-task` task definition, and
   `NetworkAndCompute.CaaS.CloudRunService`, delivery model `CaaS`). Their old
@@ -104,6 +106,15 @@ Jaeger). `contracts/key-aliases.json` is unchanged: the agents still declare
   — single parameter values are the contracts' to check"). Keys a contract requires
   are required by the offer's config type; the control plane checks them at deploy,
   and may supply one itself (IPAM fills a subnet's `cidrBlock`).
+- **Array parameters are checked as the contract spec says** (aria-spec
+  `tests/contract/SPEC.md`): a `pattern` on an array applies to each item with a
+  rendering (references and objects are skipped), and `minItems` / `maxItems` bound the
+  item count. A pattern always matches the whole value. An item's value is never shown.
+- **A gateway's own certificate covers only the hosts it can issue for.** A
+  `TraefikGateway` that issues its certificate through its DNS zone grants covers each
+  host whose zone grants TXT write, not every host once one zone does (as
+  aria-agent-caas-k8s names the covered hosts only). A CloudFront alias or a route host
+  on another zone is refused as not covered by the gateway's certificate.
 - **What the contract check found.** `AzureServiceBus` sent the neutral
   `Broker.withEncryption('at-rest')` to the agent's `encryption`, which is a
   customer-managed-key map: `'at-rest'` is now satisfied (Service Bus always encrypts
