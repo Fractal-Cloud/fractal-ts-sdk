@@ -116,7 +116,9 @@ export const contractValueProblem = (
   key: string,
   value: unknown,
 ): string | undefined => {
-  const param = contract.params[key];
+  const param = Object.hasOwn(contract.params, key)
+    ? contract.params[key]
+    : undefined;
   if (param === undefined) {
     return `${contract.offerType} declares no '${key}'`;
   }

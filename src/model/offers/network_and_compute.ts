@@ -412,6 +412,94 @@ export const OpenshiftVm = defineOffer<
   },
 });
 
+// The rules the AWS agent applies to an EKS cluster's own parameters
+// (fractal-cloud-agents aws.core networkandcompute/paas/kubernetes:
+// EksAutoModeNodePool, EksAutoModeNodePools, EksControlPlaneLogging).
+const EKS_LOG_TYPES: readonly string[] = [
+  'api',
+  'audit',
+  'authenticator',
+  'controllerManager',
+  'scheduler',
+];
+const EKS_ARCHITECTURES = ['arm64', 'amd64'];
+const EKS_BUILT_IN_POOLS = ['system', 'general-purpose'];
+const EKS_POOL_NAME = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
+const EKS_CAPACITY_TYPES = ['on-demand', 'spot'];
+
+const refuseEks = (id: string, why: string): never => {
+  throw new Error(`Eks '${id}': ${why}.`);
+};
+
+/**
+ * Node pools as the agent refuses them: a name that is blank, not a DNS-1123
+ * label, a built-in pool's or used twice, and an architecture or capacity type
+ * Karpenter does not take. A built-in name is refused outright: the agent
+ * skips such an entry without Auto Mode fields, silently.
+ */
+const ensureValidNodePools = (
+  id: string,
+  pools: readonly EksAutoModeNodePool[],
+): void => {
+  const names = new Set<string>();
+  for (const pool of pools) {
+    if (typeof pool.name !== 'string' || pool.name.trim() === '') {
+      refuseEks(id, 'a node pool needs a name');
+    }
+    if (!EKS_POOL_NAME.test(pool.name)) {
+      refuseEks(
+        id,
+        `node pool name '${pool.name}' is not a DNS-1123 label (a-z, 0-9 and '-', at most 63)`,
+      );
+    }
+    if (EKS_BUILT_IN_POOLS.includes(pool.name)) {
+      refuseEks(
+        id,
+        `node pool name '${pool.name}' is reserved for an EKS Auto Mode built-in pool`,
+      );
+    }
+    if (names.has(pool.name)) {
+      refuseEks(id, `node pool name '${pool.name}' twice`);
+    }
+    names.add(pool.name);
+    const badArch = (pool.architectures ?? []).find(
+      a => !EKS_ARCHITECTURES.includes(a),
+    );
+    if (badArch !== undefined) {
+      refuseEks(
+        id,
+        `node pool '${pool.name}' architectures holds '${badArch}' (arm64 or amd64)`,
+      );
+    }
+    const badCapacity = (pool.capacityTypes ?? []).find(
+      c => !EKS_CAPACITY_TYPES.includes(c),
+    );
+    if (badCapacity !== undefined) {
+      refuseEks(
+        id,
+        `node pool '${pool.name}' capacityTypes holds '${badCapacity}' (on-demand or spot)`,
+      );
+    }
+  }
+};
+
+/** Control-plane log types, compared case-insensitively as the agent reads them. */
+const ensureEksLogTypes = (id: string, types: readonly string[]): void => {
+  const bad = types.find(
+    t =>
+      typeof t !== 'string' ||
+      !EKS_LOG_TYPES.some(
+        known => known.toLowerCase() === t.trim().toLowerCase(),
+      ),
+  );
+  if (bad !== undefined) {
+    refuseEks(
+      id,
+      `controlPlaneLogTypes holds '${String(bad)}' (one of ${EKS_LOG_TYPES.join(', ')})`,
+    );
+  }
+};
+
 type EksConfig = ContractConfig<
   typeof NetworkAndCompute_PaaS_AwsEks,
   // Filled from the neutral withKubernetesVersion / withNetworkPolicyProvider.
@@ -464,6 +552,10 @@ export const Eks = defineOffer<
       NetworkAndCompute_PaaS_AwsEks.offerType,
       'AWS',
     )(ctx, config);
+  },
+  validate: (self, _all, config) => {
+    ensureValidNodePools(self.id, config.nodePools ?? []);
+    ensureEksLogTypes(self.id, config.controlPlaneLogTypes ?? []);
   },
 });
 export const Aks = defineOffer<

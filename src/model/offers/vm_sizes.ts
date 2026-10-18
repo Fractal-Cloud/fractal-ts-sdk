@@ -13,7 +13,7 @@ const sizeTranslation =
     example: string,
   ) =>
   (value: unknown): string => {
-    if (typeof value === 'string' && value in types) {
+    if (typeof value === 'string' && Object.hasOwn(types, value)) {
       return types[value as VmSize];
     }
     if (typeof value === 'string' && ownType.test(value)) {

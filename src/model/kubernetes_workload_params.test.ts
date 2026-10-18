@@ -241,6 +241,11 @@ describe('Workload parameters on a Kubernetes workload', () => {
     });
   });
 
+  it('moves a reference named like an inherited property, which secretEnv does not hold', () => {
+    const web = emit(w => w, {env: {constructor: secretRef('t')}});
+    expect(web.parameters.secretEnv).toEqual({constructor: {$envSecret: 't'}});
+  });
+
   it('refuses a name both in env (as a reference) and in secretEnv', () => {
     expect(() =>
       emit(w => w, {
