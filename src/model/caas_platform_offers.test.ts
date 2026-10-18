@@ -224,6 +224,38 @@ describe('TraefikGateway platform keys', () => {
     );
   });
 
+  it.each([
+    ['a TXT grant on another zone', {name: 'yanchware.com', access: {TXT: 'write'}}],
+    ['a read grant', {name: 'fractal.cloud', access: {TXT: 'read'}}],
+  ])(
+    'refuses tlsClusterIssuer with dnsZones that give no certificate (%s)',
+    (_, zone) => {
+      expect(() =>
+        createFractal({
+          id: 'platform-gateway',
+          version,
+          boundedContextId,
+          blueprint: bp => ({
+            traefik: bp.add(
+              ApiGateway({id: 'traefik'}).withDnsZones([
+                zone as {name: string; access: Record<string, 'read' | 'write'>},
+              ]),
+            ),
+          }),
+        }).toLiveSystem({
+          name: 'platform',
+          environment,
+          select: {
+            traefik: TraefikGateway({
+              host: 'api.fractal.cloud',
+              tlsClusterIssuer: 'letsencrypt',
+            }),
+          },
+        }),
+      ).toThrow(/tlsClusterIssuer is ignored by aria-agent-caas-k8s/);
+    },
+  );
+
   it('accepts tlsClusterIssuer next to the certificate source that replaces it', () => {
     const migrating = createFractal({
       id: 'platform-gateway',

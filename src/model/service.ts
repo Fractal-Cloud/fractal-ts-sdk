@@ -240,8 +240,9 @@ const isValidationResult = (body: unknown): body is ParameterValidationResult =>
 /**
  * Asks the control plane what creating (or updating) the Live System would
  * answer about its component parameters, without changing anything. Undefined
- * when the control plane offers no validation (an older one answers 404), or
- * answers with a result whose shape the SDK cannot read.
+ * when the control plane offers no validation (an older one answers 404),
+ * cannot answer (a 5xx, a network error, a timeout), or answers with a result
+ * whose shape the SDK cannot read.
  */
 const requestValidation = async (
   ls: LiveSystem,
@@ -251,13 +252,27 @@ const requestValidation = async (
   const url = exists
     ? apiUrl(cfg, `/livesystems/${liveSystemId(ls)}/validate`)
     : apiUrl(cfg, '/livesystems/validate');
-  const res = await send(cfg, () =>
-    superagent
-      .post(url)
-      .ok(r => r.status === 200 || r.status === 404 || r.status === 405)
-      .set(authHeaders(cfg))
-      .send(buildBody(ls)),
-  );
+  let res;
+  try {
+    res = await send(cfg, () =>
+      superagent
+        .post(url)
+        .ok(r => r.status === 200 || r.status === 404 || r.status === 405)
+        .set(authHeaders(cfg))
+        .send(buildBody(ls)),
+    );
+  } catch (err) {
+    // An early check the control plane could not answer (a server error, the
+    // network, a timeout) is treated like no validation: the create or update
+    // validates again. A 4xx is an answer, and is not swallowed.
+    if (
+      err instanceof FractalApiError &&
+      (err.status === undefined || err.status >= 500)
+    ) {
+      return undefined;
+    }
+    throw err;
+  }
   return res.status === 200 && isValidationResult(res.body)
     ? res.body
     : undefined;

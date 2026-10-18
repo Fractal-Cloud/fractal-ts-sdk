@@ -383,7 +383,7 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
       default: {cpu: '100m', memory: '128Mi'},
     },
     /** NAME -> {"$envSecret": "<shortName>"} */
-    secretEnv: {type: 'object', required: false},
+    secretEnv: {type: 'object', required: false, sensitive: true},
     /** SES identity ARNs (domains or addresses) the workload's role may send email as */
     sesIdentityArns: {
       type: 'array',

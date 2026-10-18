@@ -48,4 +48,15 @@ describe('gatewayCertificateHosts', () => {
       }),
     ).toEqual(['api.example.com']);
   });
+
+  // The DNS zone access vocabulary is none / read / write (DnsAccessLevel); only
+  // write lets the gateway answer a DNS-01 challenge.
+  it('reads a TXT read grant as no certificate source', () => {
+    expect(
+      gatewayCertificateHosts({
+        tlsHosts: 'api.example.com',
+        dnsZones: [{name: 'example.com', access: {TXT: 'read'}}],
+      }),
+    ).toBeUndefined();
+  });
 });
