@@ -42,11 +42,11 @@ const VALUE_TYPES = new Set([
  * unmarked (fractal-cloud-agent-azure v8.25.2,
  * `CustomWorkloads.FaaS.AzureFunction.storageAccountConnectionString`). It then
  * takes a `secretRef(...)` and its value is never shown in a refusal. A
- * collection of them (`apiKeys`, `secrets`, `connectionStrings`), a list or a
- * map, is marked too.
+ * collection of them (`apiKeys`, `secrets`, `connectionStrings`, a workload's
+ * `secretEnv` map), a list or a map, is marked too.
  */
 const SECRET_VALUE_KEY =
-  /(password|passphrase|pre.?shared.?key|private.?key|secret|secret.?value|token|api.?key|access.?key|signing.?key|connection.?string)s?$/i;
+  /(password|passphrase|pre.?shared.?key|private.?key|secret|secret.?value|secret.?env|token|api.?key|access.?key|signing.?key|connection.?string)s?$/i;
 /** Names of Kubernetes Secrets (`imagePullSecrets`): references, not secret values. */
 const SECRET_NAMES_KEY = /pull.?secrets?$/i;
 /** Value types that can hold a secret value: one, or a collection of them. */

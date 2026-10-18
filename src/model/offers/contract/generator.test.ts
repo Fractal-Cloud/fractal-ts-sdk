@@ -29,7 +29,10 @@ import {
   NetworkAndCompute_PaaS_GcpGke,
   NetworkAndCompute_PaaS_Kubernetes,
 } from '../generated/network_and_compute';
-import {CustomWorkloads_FaaS_AzureFunction} from '../generated/custom_workloads';
+import {
+  CustomWorkloads_CaaS_KubernetesWorkload,
+  CustomWorkloads_FaaS_AzureFunction,
+} from '../generated/custom_workloads';
 
 const fixture = (name: string) =>
   JSON.parse(
@@ -341,6 +344,8 @@ describe('generator', () => {
       ['connectionStrings', 'object'],
       ['tokens', 'array'],
       ['adminPasswords', 'string'],
+      // A map of secret values by environment variable name.
+      ['secretEnv', 'object'],
     ]) {
       expect(one(key, type), key).toBe(true);
     }
@@ -539,6 +544,12 @@ describe('the committed contracts', () => {
   });
 
   // fractal-cloud-agent-azure (v8.25.10) does not mark it sensitive; the SDK does.
+  it('treat the Kubernetes workload secretEnv as secret values', () => {
+    expect(
+      CustomWorkloads_CaaS_KubernetesWorkload.params.secretEnv.sensitive,
+    ).toBe(true);
+  });
+
   it('treat the Azure Function storage connection string as a secret', () => {
     const key = 'storageAccountConnectionString';
     expect(CustomWorkloads_FaaS_AzureFunction.params[key].sensitive).toBe(true);

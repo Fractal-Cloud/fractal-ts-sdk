@@ -491,6 +491,67 @@ describe('liveSystems.deploy()', () => {
     log.mockRestore();
   });
 
+  // The validate route is an early check: when it cannot answer (a server
+  // error, the network, a timeout) the deploy proceeds as without it.
+  const noRetry = createFractalCloudClient({
+    clientId: 'cid',
+    clientSecret: 'secret',
+    retry: false,
+  });
+  it.each([
+    ['a server error', {status: 500, response: {status: 500, body: {}}}],
+    ['an unreachable control plane', {code: 'ECONNREFUSED'}],
+    ['a timeout', {code: 'ECONNABORTED', timeout: 30000}],
+  ])(
+    'submits unchecked, with a warning, when validation fails with %s',
+    async (_name, failure) => {
+      for (const mode of ['fire-and-forget', 'wait'] as const) {
+        h.requests.length = 0;
+        h.state.queue = [
+          {status: 404},
+          {throws: failure},
+          {status: 404},
+          {status: 201},
+          {status: 200, body: {status: 'Active'}},
+          {status: 200, body: {status: 'Active', components: []}},
+        ];
+        const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+        await noRetry.liveSystems.deploy(liveSystem(), {
+          mode,
+          pollIntervalMs: 1,
+          timeoutMs: 5000,
+        });
+        expect(h.requests.filter(r => r.method === 'POST')).toHaveLength(2);
+        if (mode === 'wait') {
+          expect(
+            log.mock.calls.some(c =>
+              String(c[0]).includes(
+                'WARN  Live System validation unavailable, submitting',
+              ),
+            ),
+          ).toBe(true);
+        }
+        log.mockRestore();
+      }
+    },
+  );
+
+  it('still fails the deploy when validation is refused with a 4xx', async () => {
+    h.state.queue = [
+      {status: 404},
+      {
+        throws: {
+          status: 403,
+          response: {status: 403, body: {reasonCode: 'InsufficientRights'}},
+        },
+      },
+    ];
+    await expect(noRetry.liveSystems.deploy(liveSystem())).rejects.toMatchObject(
+      {status: 403},
+    );
+    expect(h.requests.map(r => r.method)).toEqual(['GET', 'POST']);
+  });
+
   it('submits unchecked, with a warning, when the control plane offers no validation', async () => {
     h.state.queue = [
       {status: 404},

@@ -17,6 +17,7 @@ import {
 } from '../network_and_compute';
 import {AzureApiManagement, GcpApiGateway} from '../api_management';
 import {EcsService} from '../custom_workloads';
+import {AwsRoute53HostedZone} from '../dns';
 
 // A translation names the agent's key through the contract: `lbScheme` is one…
 contractKey(NetworkAndCompute_IaaS_AwsLb, 'lbScheme');
@@ -52,6 +53,14 @@ EcsService({containerImage: 'registry/app:1'});
 // refuses a new gateway without it, a deployed one keeps its config.
 GcpApiGateway({apiConfig: 'openapi: 3.0.0'});
 GcpApiGateway({});
+
+// The Route 53 contract (fractal-cloud-agents v8.25.10) still declares both.
+AwsRoute53HostedZone({
+  adoptExisting: true,
+  comment: 'managed by Fractal Cloud',
+});
+// @ts-expect-error a guardrail key is the DnsZone setters', not config.
+AwsRoute53HostedZone({recordManagement: 'lax'});
 
 /** An override may only re-type a key the contract declares. */
 export type LbConfigWithScheme = ContractConfig<

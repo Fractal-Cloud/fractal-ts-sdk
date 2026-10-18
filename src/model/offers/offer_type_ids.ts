@@ -14,6 +14,7 @@
 import {APIManagement_CaaS_TraefikGateway} from './generated/api_management';
 import {CustomWorkloads_CaaS_KubernetesWorkload} from './generated/custom_workloads';
 import {NetworkAndCompute_PaaS_AzureContainerAppsEnvironment} from './generated/network_and_compute';
+import {Storage_CaaS_OpenSearch} from './generated/storage';
 
 export const KUBERNETES_WORKLOAD_OFFER_TYPE =
   CustomWorkloads_CaaS_KubernetesWorkload.offerType;
@@ -43,7 +44,6 @@ export const TRAEFIK_GATEWAY_OFFER_TYPE =
 
 /**
  * The caas-k8s OpenSearch offer. Two offer modules name it: the offer lives in
- * `storage.ts`, and `Jaeger` (`observability.ts`) requires a link to one. Spelled
- * here by hand until aria-agent-caas-k8s publishes it in its contract.
+ * `storage.ts`, and `Jaeger` (`observability.ts`) requires a link to one.
  */
-export const OPEN_SEARCH_OFFER_TYPE = 'Storage.CaaS.OpenSearch';
+export const OPEN_SEARCH_OFFER_TYPE = Storage_CaaS_OpenSearch.offerType;

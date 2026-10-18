@@ -115,6 +115,13 @@ Jaeger). `contracts/key-aliases.json` is unchanged: the agents still declare
   host whose zone grants TXT write, not every host once one zone does (as
   aria-agent-caas-k8s names the covered hosts only). A CloudFront alias or a route host
   on another zone is refused as not covered by the gateway's certificate.
+- **A validate route that cannot answer does not fail the deploy.** A 5xx, a network
+  error or a timeout from `POST /livesystems/validate` is treated like a control plane
+  without validation: `deploy` warns (`WARN Live System validation unavailable,
+  submitting`, in `wait` mode) and submits, in both modes, and `validate` returns
+  `undefined`. A 4xx is an answer and still fails the call.
+- **A workload's `secretEnv` is marked sensitive** in the generated contract, as a map
+  of secret values, so a refusal never shows it.
 - **What the contract check found.** `AzureServiceBus` sent the neutral
   `Broker.withEncryption('at-rest')` to the agent's `encryption`, which is a
   customer-managed-key map: `'at-rest'` is now satisfied (Service Bus always encrypts
