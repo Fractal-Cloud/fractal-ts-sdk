@@ -1,6 +1,6 @@
 {
   "agentId": "fractal-cloud-agent-azure",
-  "agentVersion": "v8.25.10",
+  "agentVersion": "v8.25.11",
   "offers": [
     {
       "aliasOfOfferType": null,
@@ -1564,13 +1564,13 @@
         },
         {
           "default": {},
-          "description": "Application settings as a name to value map, added after the settings the agent sets itself (AzureWebJobsStorage, FUNCTIONS_EXTENSION_VERSION, FUNCTIONS_WORKER_RUNTIME and the package settings). A change alone is not detected as drift on an existing app.",
+          "description": "Application settings as a name to value map, added to the settings the agent sets itself (AzureWebJobsStorage, FUNCTIONS_EXTENSION_VERSION, FUNCTIONS_WORKER_RUNTIME and the package settings). A declared name replaces the agent's setting of that name, compared without regard to case, so FUNCTIONS_WORKER_RUNTIME can be chosen here. A change alone is not detected as drift on an existing app.",
           "key": "appSettings",
           "type": "object"
         },
         {
           "default": {},
-          "description": "Site configuration: {applicationStack?: {nodeVersion | pythonVersion | dotnetVersion | javaVersion | powerShellVersion}, alwaysOn? (true), http2Enabled? (true), minimumTlsVersion? (1.2), ftpsState? (Disabled), healthCheckPath?, corsSettings?: {allowedOrigins, supportCredentials?}}. The first applicationStack version set picks the runtime; when none is, Node 20. On an existing app, only a runtime stack change is detected as drift.",
+          "description": "Site configuration: {applicationStack?: {nodeVersion | pythonVersion | dotnetVersion | javaVersion | powerShellVersion}, alwaysOn? (true), http2Enabled? (true), minimumTlsVersion? (1.2), ftpsState? (Disabled), healthCheckPath?, corsSettings?: {allowedOrigins, supportCredentials?}}. The first applicationStack version set picks the runtime; when none is, Node 20. dotnetVersion runs the .NET isolated worker (FUNCTIONS_WORKER_RUNTIME dotnet-isolated): the in-process model is retired (.NET 8, the last version offering it, leaves support on 2026-11-10). A deployed app running the in-process worker keeps it, with a contract warning; appSettings.FUNCTIONS_WORKER_RUNTIME chooses explicitly. On an existing app, only a runtime stack change is detected as drift.",
           "key": "configuration",
           "type": "object"
         },
@@ -1594,7 +1594,7 @@
         },
         {
           "default": "",
-          "description": "OCI artifact in an Azure Container Registry holding the function code, as '<registry>/<repository>:<tag>', pulled with the agent's managed identity. A container image is run as a Linux container function; a zip is staged to a blob and run from package. Redeployed only when the artifact's digest changes. When unset, the app is created with its runtime stack and no code.",
+          "description": "OCI artifact holding the function code, as '<registry>/<repository>:<tag>': in an Azure Container Registry, read with the agent's managed identity and pulled with the app's, or in a registry serving anonymous pulls. A container image is run as a Linux container function; a zip is staged to a blob and run from package. Redeployed only when the artifact's digest changes. When unset, the app is created with its runtime stack and no code.",
           "example": "fractalregistry.azurecr.io/functions/orders:1.4.0",
           "key": "sourceArtifact",
           "type": "string"
@@ -1603,6 +1603,7 @@
           "default": "",
           "description": "Connection string of the storage account the Functions host uses (AzureWebJobsStorage). Required for a zip sourceArtifact, which is staged to a blob in that account: such a component fails without it.",
           "key": "storageAccountConnectionString",
+          "sensitive": true,
           "type": "string"
         }
       ],

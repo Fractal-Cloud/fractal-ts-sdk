@@ -1,6 +1,6 @@
 {
   "agentId": "fractal-cloud-agent-oci",
-  "agentVersion": "v8.25.10",
+  "agentVersion": "v8.25.11",
   "offers": [
     {
       "aliasOfOfferType": null,

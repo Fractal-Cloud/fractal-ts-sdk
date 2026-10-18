@@ -543,13 +543,14 @@ describe('the committed contracts', () => {
     ).toMatchObject({aliasOf: 'NetworkAndCompute.PaaS.GcpGke'});
   });
 
-  // fractal-cloud-agent-azure (v8.25.10) does not mark it sensitive; the SDK does.
+  // aria-agent-caas-k8s (v1.8.1) does not mark it sensitive; the SDK does.
   it('treat the Kubernetes workload secretEnv as secret values', () => {
     expect(
       CustomWorkloads_CaaS_KubernetesWorkload.params.secretEnv.sensitive,
     ).toBe(true);
   });
 
+  // fractal-cloud-agent-azure marks it sensitive from v8.25.11.
   it('treat the Azure Function storage connection string as a secret', () => {
     const key = 'storageAccountConnectionString';
     expect(CustomWorkloads_FaaS_AzureFunction.params[key].sensitive).toBe(true);

@@ -365,4 +365,48 @@ describe('AwsSqsQueue review follow-ups', () => {
       /deadLetterEnabled/,
     );
   });
+
+  // The agent names the dead-letter queue `<queueName>-dlq` and always creates
+  // one, so the base name must leave room for the suffix within SQS's 80
+  // characters. The contract only warns about it; a longer name cannot deploy.
+  describe('dead-letter queue name length', () => {
+    const queueWithId = (id: string, queue = AwsSqsQueue({})) =>
+      createFractal({
+        id: 'dlq-name',
+        version: {major: 1, minor: 0, patch: 0},
+        boundedContextId,
+        blueprint: bp => ({queue: bp.add(MessagingEntity({id}))}),
+      })
+        .toLiveSystem({name: 'x', environment, select: {[id]: queue} as never})
+        .components.find(c => c.id === id)!;
+
+    it('accepts a queueName of 76 characters', () => {
+      const name = 'q'.repeat(76);
+      expect(
+        neutralQueue(e => e, AwsSqsQueue({queueName: name})).parameters
+          .queueName,
+      ).toBe(name);
+    });
+
+    it('refuses a queueName of 77 characters', () => {
+      expect(() =>
+        neutralQueue(e => e, AwsSqsQueue({queueName: 'q'.repeat(77)})),
+      ).toThrow(
+        "AwsSqsQueue 'inbox': queueName is 77 characters, but its dead-letter queue '<queueName>-dlq' must fit SQS's 80: use at most 76.",
+      );
+    });
+
+    it('refuses a component id of 77 characters when queueName is unset', () => {
+      const id = 'q'.repeat(77);
+      expect(() => queueWithId(id)).toThrow(
+        `AwsSqsQueue '${id}': the queue is named after the component id, which is 77 characters`,
+      );
+    });
+
+    it('accepts a long component id when queueName is short', () => {
+      expect(() =>
+        queueWithId('q'.repeat(77), AwsSqsQueue({queueName: 'orders'})),
+      ).not.toThrow();
+    });
+  });
 });

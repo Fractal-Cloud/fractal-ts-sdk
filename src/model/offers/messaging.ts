@@ -514,7 +514,10 @@ type SqsQueueConfig = ContractConfig<
   typeof Messaging_PaaS_AwsSqsQueue,
   never,
   {
-    /** Defaults to the component id. The dead-letter queue is `<queueName>-dlq`. */
+    /**
+     * Defaults to the component id. The dead-letter queue is `<queueName>-dlq`,
+     * so the name (or the component id) is at most 76 characters.
+     */
     queueName?: string;
     /**
      * Deliver only messages whose `eventName` attribute is one of these. Empty or
@@ -525,6 +528,39 @@ type SqsQueueConfig = ContractConfig<
     filterPolicy?: Record<string, unknown> | string;
   }
 >;
+
+/** SQS's limit on a queue name. */
+const SQS_QUEUE_NAME_MAX = 80;
+/** What the AWS agent appends to the queue name for its dead-letter queue. */
+const SQS_DLQ_SUFFIX = '-dlq';
+
+/**
+ * The AWS agent always creates a dead-letter queue named `<queueName>-dlq`
+ * (`deadLetterEnabled: false` is refused), and names the queue after the
+ * component id when `queueName` is unset. The base name must leave room for the
+ * suffix: the contract only warns about it, and a longer name cannot deploy. A
+ * name that is not a plain string (an environment-secret reference) is left to
+ * the agent.
+ */
+const ensureSqsDlqNameFits = (id: string, queueName: unknown): void => {
+  const max = SQS_QUEUE_NAME_MAX - SQS_DLQ_SUFFIX.length;
+  const named = typeof queueName === 'string' && queueName !== '';
+  const unset = queueName === undefined || queueName === '';
+  const base = named ? queueName : unset ? id : undefined;
+  if (base === undefined || base.length <= max) {
+    return;
+  }
+  const what = named
+    ? `queueName is ${base.length} characters`
+    : `the queue is named after the component id, which is ${base.length} characters`;
+  const fix = named
+    ? `use at most ${max}`
+    : `set a queueName of at most ${max}`;
+  throw new Error(
+    `AwsSqsQueue '${id}': ${what}, but its dead-letter queue '<queueName>${SQS_DLQ_SUFFIX}' ` +
+      `must fit SQS's ${SQS_QUEUE_NAME_MAX}: ${fix}.`,
+  );
+};
 
 /**
  * A standard Amazon SQS queue with a dead-letter queue (`<queueName>-dlq`,
@@ -590,9 +626,11 @@ export const AwsSqsQueue = defineOffer<
     ];
   },
   // What the contract cannot express: the queue's dependency structure, how the
-  // filters combine with it, the encoding of the comma-joined event names, and
-  // a value no contract key carries. Single values are the contract's.
+  // filters combine with it, the encoding of the comma-joined event names, a
+  // value no contract key carries, and the room the dead-letter queue's name
+  // needs. Single values are the contract's.
   validate: (self, all, config) => {
+    ensureSqsDlqNameFits(self.id, self.parameters.queueName);
     if (
       self.parameters['dlqAlarm'] !== undefined &&
       self.parameters['dlqAlarm'] !== false

@@ -39,10 +39,11 @@ const VALUE_TYPES = new Set([
 /**
  * A key named for a secret VALUE (not a secret's name, id or reference) is
  * generated `sensitive` whatever its agent says: an agent may leave one
- * unmarked (fractal-cloud-agent-azure v8.25.2,
- * `CustomWorkloads.FaaS.AzureFunction.storageAccountConnectionString`). It then
- * takes a `secretRef(...)` and its value is never shown in a refusal. A
- * collection of them (`apiKeys`, `secrets`, `connectionStrings`, a workload's
+ * unmarked (fractal-cloud-agent-azure did so for
+ * `CustomWorkloads.FaaS.AzureFunction.storageAccountConnectionString` until
+ * v8.25.11; aria-agent-caas-k8s v1.8.1 still does for the Kubernetes workload's
+ * `secretEnv`). It then takes a `secretRef(...)` and its value is never shown
+ * in a refusal. A collection of them (`apiKeys`, `secrets`, `connectionStrings`, a workload's
  * `secretEnv` map), a list or a map, is marked too.
  */
 const SECRET_VALUE_KEY =

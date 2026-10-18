@@ -1,6 +1,6 @@
 {
   "agentId": "fractal-cloud-agent-gcp",
-  "agentVersion": "v8.25.10",
+  "agentVersion": "v8.25.11",
   "offers": [
     {
       "aliasOfOfferType": null,
@@ -1286,7 +1286,7 @@
           "type": "string"
         },
         {
-          "description": "Cloud Functions (2nd gen) runtime id matching the function's source, e.g. java21, python312 or nodejs20. Required to create a function: no runtime is assumed, and a new function without it is refused. A deployed function without it keeps the runtime it runs on.",
+          "description": "Cloud Functions (2nd gen) runtime id matching the function's source, e.g. java21, python312 or nodejs24. Required to create a function: no runtime is assumed, and a new function without it is refused. A deployed function without it keeps the runtime it runs on.",
           "example": "java21",
           "key": "runtime",
           "type": "string"
@@ -1339,7 +1339,7 @@
           "type": "string"
         },
         {
-          "description": "Cloud Functions (2nd gen) runtime id matching the function's source, e.g. java21, python312 or nodejs20. Required to create a function: no runtime is assumed, and a new function without it is refused. A deployed function without it keeps the runtime it runs on.",
+          "description": "Cloud Functions (2nd gen) runtime id matching the function's source, e.g. java21, python312 or nodejs24. Required to create a function: no runtime is assumed, and a new function without it is refused. A deployed function without it keeps the runtime it runs on.",
           "example": "java21",
           "key": "runtime",
           "type": "string"

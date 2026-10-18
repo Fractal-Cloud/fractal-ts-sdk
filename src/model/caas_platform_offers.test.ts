@@ -350,6 +350,22 @@ describe('TraefikGateway platform keys', () => {
     ).toBe('https://auth.example.com:8443/verify?x=1');
   });
 
+  // aria-agent-caas-k8s v1.8.1 gives forwardAuthAddress a pattern refusing user
+  // info: a credential in the URL would land in the middleware in clear text.
+  it('refuses a credentialed forwardAuthAddress without echoing it', () => {
+    const secret = 'Zq7xK2pV9mWc';
+    let message = '';
+    try {
+      gateway({forwardAuthAddress: `https://svc:${secret}@auth.example.com/`});
+    } catch (e) {
+      message = (e as Error).message;
+    }
+    expect(message).toContain("'forwardAuthAddress'");
+    expect(message).toContain('(value withheld)');
+    expect(message).not.toContain(secret);
+    expect(message).not.toContain('auth.example.com');
+  });
+
   it('accepts an exempt id with an inner slash, as the agent does', () => {
     expect(
       gateway({

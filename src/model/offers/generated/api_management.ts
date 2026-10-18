@@ -9,7 +9,7 @@ export const APIManagement_CaaS_Ambassador = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.8.0',
+      agentVersion: 'v1.8.1',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -47,28 +47,28 @@ export const APIManagement_CaaS_Traefik = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -124,7 +124,7 @@ export const APIManagement_CaaS_TraefikGateway = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.8.0',
+      agentVersion: 'v1.8.1',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [
@@ -249,8 +249,16 @@ export const APIManagement_CaaS_TraefikGateway = {
       default: 75,
       constraints: {maximum: 2147483647, minimum: 1},
     },
-    /** When set, a global ForwardAuth middleware to this URL authenticates every route */
-    forwardAuthAddress: {type: 'string', required: false},
+    /** When set, a global ForwardAuth middleware to this URL authenticates every route. An absolute http or https URL without credentials (no user info before '@') and with well-formed % escapes */
+    forwardAuthAddress: {
+      type: 'string',
+      required: false,
+      constraints: {
+        level: 'error',
+        pattern:
+          "https?://[A-Za-z0-9._~!$&'()*+,;=:\\[\\]-]+([/?#][A-Za-z0-9._~!$&'()*+,;=:@/?#%\\[\\]-]*)?",
+      },
+    },
     /** Removed: path exemptions are gone */
     forwardAuthExcludedPrefixes: {
       type: 'string',
@@ -337,7 +345,7 @@ export const APIManagement_PaaS_ApiGateway = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -371,7 +379,7 @@ export const APIManagement_PaaS_ApiManagement = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -399,7 +407,7 @@ export const APIManagement_PaaS_AwsCloudFront = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -531,7 +539,7 @@ export const APIManagement_PaaS_AzureApiManagement = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -559,7 +567,7 @@ export const APIManagement_PaaS_CloudFront = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -691,7 +699,7 @@ export const APIManagement_PaaS_GcpApiGateway = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -725,28 +733,28 @@ export const APIManagement_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],

@@ -9,7 +9,7 @@ export const Observability_CaaS_GrafanaAlloy = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.8.0',
+      agentVersion: 'v1.8.1',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -35,7 +35,7 @@ export const Observability_CaaS_GrafanaLoki = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.8.0',
+      agentVersion: 'v1.8.1',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -68,7 +68,7 @@ export const Observability_CaaS_GrafanaTempo = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.8.0',
+      agentVersion: 'v1.8.1',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -101,28 +101,28 @@ export const Observability_CaaS_Jaeger = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -174,7 +174,7 @@ export const Observability_CaaS_KubePrometheusStack = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.8.0',
+      agentVersion: 'v1.8.1',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -222,28 +222,28 @@ export const Observability_CaaS_Prometheus = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -285,7 +285,7 @@ export const Observability_CaaS_SqsExporter = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.8.0',
+      agentVersion: 'v1.8.1',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -321,28 +321,28 @@ export const Observability_SaaS_Jaeger = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -362,28 +362,28 @@ export const Observability_SaaS_Prometheus = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.10',
+      agentVersion: 'v8.25.11',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],

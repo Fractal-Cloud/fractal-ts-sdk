@@ -1,6 +1,6 @@
 {
   "agentId": "fractal-cloud-agent-aws",
-  "agentVersion": "v8.25.10",
+  "agentVersion": "v8.25.11",
   "offers": [
     {
       "aliasOfOfferType": null,
@@ -1621,7 +1621,7 @@
           "type": "string"
         },
         {
-          "description": "OCI artifact reference (repository:tag or @digest) in the account's ECR holding the function: a container image, or a zip layer. Redeployed only when the artifact digest changes. Large zips are staged in an agent-owned S3 bucket. Required unless codeBase64 is set.",
+          "description": "OCI artifact reference (<registry>/<repository>:<tag> or @digest) holding the function: a container image, or a zip layer. Read with the account's ECR credentials from the account's ECR, and anonymously from any other registry, which must then serve anonymous pulls. A container image must be in the account's ECR, the only registry Lambda runs images from; a zip may come from either. Redeployed only when the artifact digest changes. Large zips are staged in an agent-owned S3 bucket. Required unless codeBase64 is set.",
           "key": "sourceArtifact",
           "type": "string"
         },

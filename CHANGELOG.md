@@ -9,6 +9,36 @@ The version published for a release is the GitHub release tag: `release.yml` run
 `npm version <tag>` at publish time, so `package.json` on `main` is not the source
 of truth for what is on npm.
 
+## 2.13.1
+
+### Changed — contracts re-pinned
+
+The offer definitions are generated from fractal-cloud-agents **v8.25.11** (aws, azure,
+gcp, oci) and aria-agent-caas-k8s **v1.8.1** (were v8.25.10 and v1.8.0); aria-agent-aruba
+v0.0.22 and aria-agent-openshift v0.1.0 are unchanged. No key is added, removed or
+renamed, and `contracts/key-aliases.json` is unchanged (the generator reports no stale
+entry). What changes:
+
+- `TraefikGateway` `forwardAuthAddress` must be an absolute http(s) URL **without
+  credentials** (no user info before `@`) and with well-formed `%` escapes. A URL that
+  carries a credential is refused while the Live System is built, without echoing the
+  value. Move the credential out of the URL.
+- `AzureFunction` `storageAccountConnectionString` is marked sensitive by the Azure agent
+  itself. The SDK already treated it as a secret (it takes a `secretRef(...)` and a
+  refusal never shows it), so nothing changes for callers.
+- Descriptions only: AWS `Lambda` `sourceArtifact` (any registry for a zip), Azure
+  Function `appSettings`, `siteConfig` (the .NET isolated worker) and `sourceArtifact`,
+  GCP Cloud Functions `runtime`.
+
+### Fixed — `AwsSqsQueue` refuses a name its dead-letter queue cannot fit
+
+The AWS agent always creates the queue's dead-letter queue, named `<queueName>-dlq`
+(`deadLetterEnabled: false` is refused), and names the queue after the component id
+when `queueName` is unset. SQS takes at most 80 characters, so the base name can be at
+most 76. The contract only warns about a longer `queueName`, which then cannot deploy;
+the SDK now refuses it while the Live System is built, and refuses a component id
+longer than 76 characters when no `queueName` is set, naming the fix.
+
 ## 2.13.0
 
 ### Breaking — what to change when upgrading
