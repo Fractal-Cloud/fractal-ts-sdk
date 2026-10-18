@@ -9,50 +9,63 @@ export const Storage_CaaS_CnpgCluster = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
+    /** Whether to run the Fractal-built PostgreSQL image bundling the Apache AGE graph extension, preloaded as a shared library. When unset, false. Requires PostgreSQL 17.2, the only version with a published AGE image: a new cluster on any other version is refused, and a deployed one keeps the image it runs, with a warning. Toggling it on a running cluster swaps the image with a rolling update. */
     age: {type: 'boolean', required: false, default: false},
+    /** Deprecated. Id of the Kubernetes cluster component to deploy on, read only when this component declares no dependency on a Kubernetes cluster. Declare that dependency instead. */
     containerPlatform: {type: 'string', required: false},
+    /** CPU limit of each PostgreSQL instance, as a Kubernetes quantity (cores or millicores). When unset, 1. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image. */
     cpuLimit: {type: 'string', required: false, default: '1'},
+    /** CPU requested by each PostgreSQL instance, as a Kubernetes quantity (cores, or millicores such as 500m). When unset, 500m. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image. */
     cpuRequest: {type: 'string', required: false, default: '500m'},
+    /** Name of the database created when the cluster is bootstrapped. When unset, app. Bootstrap runs once: changing it later does not create or rename a database (use a CnpgDatabase component for more). */
     database: {type: 'string', required: false, default: 'app'},
+    /** PostgreSQL role that owns the bootstrap database; CloudNativePG creates it with a generated password. When unset, app. Used only when the cluster is bootstrapped. */
     databaseOwner: {type: 'string', required: false, default: 'app'},
+    /** Whether CloudNativePG enables the postgres superuser and publishes its password in a Kubernetes secret. When unset, false. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image. */
     enableSuperuserAccess: {type: 'boolean', required: false, default: false},
+    /** Number of PostgreSQL instances in the CloudNativePG cluster: one primary, the rest streaming replicas, spread across zones when possible. When unset, 3. A change is applied to a running cluster. */
     instances: {type: 'integer', required: false, default: 3},
+    /** Memory limit of each PostgreSQL instance, as a Kubernetes quantity (e.g. 1Gi). When unset, 1Gi. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image. */
     memoryLimit: {type: 'string', required: false, default: '1Gi'},
+    /** Memory requested by each PostgreSQL instance, as a Kubernetes quantity (e.g. 512Mi). When unset, 512Mi. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image. */
     memoryRequest: {type: 'string', required: false, default: '512Mi'},
+    /** Kubernetes namespace the resources are created in; created when missing. When unset, the component id, which must then be a valid DNS-1123 label (at most 63 lowercase letters, digits and hyphens). */
     namespace: {
       type: 'string',
       required: false,
       derived: {note: 'defaults to the component id when absent'},
     },
+    /** PostgreSQL version, used as the tag of the ghcr.io/cloudnative-pg/postgresql image (e.g. 17.2). Takes precedence over 'version'; when neither is set, 17.2. A running cluster only moves within its major version: a different major is kept at the deployed one, because a major upgrade needs a migration. With age=true only 17.2 is available. */
     postgresqlVersion: {type: 'string', required: false, default: '17.2'},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {
       type: 'string',
       required: false,
@@ -62,8 +75,11 @@ export const Storage_CaaS_CnpgCluster = {
         'fractal-cloud-agent-gcp',
       ],
     },
+    /** Kubernetes storage class of the data volumes. When unset, the cluster's default storage class. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image. */
     storageClass: {type: 'string', required: false, default: ''},
+    /** Size of each instance's data volume, as a Kubernetes quantity (e.g. 10Gi). When unset, 10Gi. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image. */
     storageSize: {type: 'string', required: false, default: '10Gi'},
+    /** PostgreSQL version as declared by the blueprint component, used when 'postgresqlVersion' is not set. Applies only when the cluster is created: a running cluster keeps its deployed version unless 'postgresqlVersion' asks for another one. */
     version: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -74,46 +90,65 @@ export const Storage_CaaS_CnpgDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
-    cnpgClusterName: {type: 'string', required: true},
+    /** Component id of the CnpgCluster, in the same Live System, that hosts the database. When unset, the CnpgCluster this component depends on; with neither the database fails. It waits until that cluster is Active. */
+    cnpgClusterName: {
+      type: 'string',
+      required: false,
+      derived: {note: 'the CnpgCluster component this database depends on'},
+    },
+    /** Deprecated. Id of the Kubernetes cluster component to deploy on, read only when this component declares no dependency on a Kubernetes cluster. Declare that dependency instead. */
     containerPlatform: {type: 'string', required: false},
-    databaseName: {type: 'string', required: false, default: 'app'},
-    databaseOwner: {type: 'string', required: false, default: 'app'},
+    /** Name of the PostgreSQL database created in the CloudNativePG cluster. Required to create: a new database without one is refused; set it to the database name your application connects to. Used only when the database is created: an existing database is never changed, and one declared without it is kept, with a warning. */
+    databaseName: {type: 'string', required: false},
+    /** Existing PostgreSQL role that owns the database. When unset, the role the CnpgCluster bootstraps (that cluster's databaseOwner). Used only when the database is created: an existing database is never changed. */
+    databaseOwner: {
+      type: 'string',
+      required: false,
+      derived: {
+        note: 'the role the CnpgCluster bootstraps (its databaseOwner)',
+      },
+    },
+    /** Character encoding of the database, as PostgreSQL names it (e.g. UTF8). When unset, UTF8. Used only when the database is created: an existing database is never changed. */
     encoding: {type: 'string', required: false, default: 'UTF8'},
+    /** Collation locale (LC_COLLATE) of the database, the Database resource's localeCollate, e.g. en_US.UTF-8; it must be a locale the PostgreSQL image provides. When unset, the cluster's default. Used only when the database is created: CloudNativePG refuses to change it afterwards. */
     localeCollate: {type: 'string', required: false, default: ''},
+    /** Character classification locale (LC_CTYPE) of the database, the Database resource's localeCType; it must be a locale the PostgreSQL image provides. When unset, the cluster's default. Used only when the database is created: CloudNativePG refuses to change it afterwards. */
     localeCType: {type: 'string', required: false, default: ''},
+    /** Kubernetes namespace of the database resource. Always the namespace of its CnpgCluster: when unset, that one is used, and a different value fails the component, because the operator only adopts a database in its cluster's namespace. */
     namespace: {
       type: 'string',
       required: false,
       derived: {note: 'defaults to the component id when absent'},
     },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {
       type: 'string',
       required: false,
@@ -123,68 +158,6 @@ export const Storage_CaaS_CnpgDatabase = {
         'fractal-cloud-agent-gcp',
       ],
     },
-  },
-} as const satisfies OfferContract;
-
-export const Storage_CaaS_Elastic = {
-  offerType: 'Storage.CaaS.Elastic',
-  serviceTypes: [],
-  declaredBy: [
-    {
-      agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'AWS',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'Azure',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'GCP',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'OCI',
-      parameterRules: [],
-    },
-  ],
-  params: {
-    containerPlatform: {type: 'string', required: false},
-    cpu: {type: 'integer', required: false, default: 8},
-    elasticInstances: {type: 'integer', required: true},
-    elasticVersion: {type: 'string', required: true},
-    isApmRequired: {type: 'boolean', required: false, default: false},
-    isKibanaPubliclyExposed: {type: 'boolean', required: false, default: false},
-    isKibanaRequired: {type: 'boolean', required: false, default: true},
-    memory: {type: 'integer', required: false, default: 8},
-    namespace: {
-      type: 'string',
-      required: false,
-      derived: {note: 'defaults to the component id when absent'},
-    },
-    region: {
-      type: 'string',
-      required: false,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-      ],
-    },
-    secrets: {type: 'object', required: false, default: {}, sensitive: true},
-    storage: {type: 'string', required: true},
-    storageClassName: {type: 'string', required: false, default: ''},
   },
 } as const satisfies OfferContract;
 
@@ -194,131 +167,69 @@ export const Storage_CaaS_MinioTenant = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.6.0',
+      agentVersion: 'v1.8.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
     },
-    {
-      agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'AWS',
-      parameterRules: [],
+  ],
+  params: {
+    bucketName: {type: 'string', required: false},
+    namespace: {
+      type: 'string',
+      required: false,
+      default: 'minio',
+      constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?'},
     },
+    requestAutoCert: {type: 'boolean', required: false, default: false},
+    servers: {type: 'integer', required: false, default: 4},
+    storageClass: {type: 'string', required: false},
+    tenantName: {type: 'string', required: false},
+    volumeSize: {type: 'string', required: false, default: '10Gi'},
+    volumesPerServer: {type: 'integer', required: false, default: 4},
+  },
+} as const satisfies OfferContract;
+
+export const Storage_CaaS_OpenSearch = {
+  offerType: 'Storage.CaaS.OpenSearch',
+  serviceTypes: ['Storage.CaaS.OpenSearch'],
+  declaredBy: [
     {
-      agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentId: 'aria-agent-caas-k8s',
+      agentVersion: 'v1.8.0',
       contractSchemaVersion: '2.0',
-      provider: 'Azure',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'GCP',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'OCI',
+      provider: 'CaaS',
       parameterRules: [],
     },
   ],
   params: {
-    bucketName: {
+    /** CPU requested by each node, a Kubernetes quantity; never limited. Unset = the chart's */
+    cpu: {type: 'string', required: false},
+    /** Install OpenSearch Dashboards beside the cluster */
+    dashboards: {type: 'boolean', required: false, default: false},
+    /** Memory of each node (requested and limited), a Kubernetes quantity; the JVM heap is half of it. Unset = the chart's */
+    memory: {type: 'string', required: false},
+    namespace: {
       type: 'string',
       required: false,
-      agents: ['aria-agent-caas-k8s'],
+      default: 'opensearch',
+      constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?'},
     },
-    containerPlatform: {
-      type: 'string',
+    /** OpenSearch nodes; 1 is a single-node cluster */
+    replicas: {
+      type: 'integer',
       required: false,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
+      default: 3,
+      constraints: {maximum: 2147483647, minimum: 1},
     },
-    cpuLimit: {
-      type: 'string',
-      required: false,
-      default: '2',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    cpuRequest: {
-      type: 'string',
-      required: false,
-      default: '500m',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    memoryLimit: {
-      type: 'string',
-      required: false,
-      default: '4Gi',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    memoryRequest: {
-      type: 'string',
-      required: false,
-      default: '1Gi',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    minioVersion: {
-      type: 'string',
-      required: false,
-      default: 'RELEASE.2025-03-12T18-04-18Z',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    namespace: {type: 'string', required: false},
-    region: {
-      type: 'string',
-      required: false,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-      ],
-    },
-    requestAutoCert: {type: 'boolean', required: false},
-    servers: {type: 'integer', required: false, default: 4},
-    storageClass: {type: 'string', required: false},
-    tenantName: {
-      type: 'string',
-      required: false,
-      agents: ['aria-agent-caas-k8s'],
-    },
-    volumeSize: {type: 'string', required: false},
-    volumesPerServer: {type: 'integer', required: false, default: 4},
+    /** Volume size of each node, a Kubernetes quantity */
+    storage: {type: 'string', required: false, default: '100Gi'},
+    /** StorageClass of the nodes' volumes; unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else the cluster's default class */
+    storageClassName: {type: 'string', required: false},
+    /** Raise the nodes' vm.max_map_count with a privileged init container and memory-map the indices; off, the nodes do not use mmap and run on any node */
+    sysctlInit: {type: 'boolean', required: false, default: false},
+    /** Chart values deep-merged over the agent's, for operators */
+    values: {type: 'object', required: false},
   },
 } as const satisfies OfferContract;
 
@@ -417,39 +328,318 @@ export const Storage_PaaS_ArubaObjectStorageAccount = {
   },
 } as const satisfies OfferContract;
 
-export const Storage_PaaS_AwsRdsMySql = {
-  offerType: 'Storage.PaaS.AwsRdsMySql',
-  serviceTypes: ['Storage.PaaS.MySql'],
+export const Storage_PaaS_AwsDocumentDb = {
+  offerType: 'Storage.PaaS.AwsDocumentDb',
+  serviceTypes: ['Storage.PaaS.MongoDb'],
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
+    /** Master user name, set at creation: a letter followed by letters and digits, at most 63 characters, not admin, root or serviceadmin. Its password is held by AWS in Secrets Manager. When unset, fractaladmin. */
     administratorLogin: {
       type: 'string',
       required: false,
       default: 'fractaladmin',
     },
-    allocatedStorageGb: {type: 'number', required: false},
+    /** Days automated backups are kept, 1 to 35. When unset, 1 in a nonprod environment and 14 in prod. Declared, it is reconciled on an existing cluster. */
     backupRetentionDays: {type: 'number', required: false},
-    cloudwatchLogExports: {type: 'array', required: false},
+    /** Whether AWS refuses to delete the cluster; while true, databases on it are not dropped either. When unset, a new cluster gets false and an existing one is left as it is. */
     deletionProtection: {type: 'boolean', required: false},
+    /** Instance class of the primary and replicas (e.g. db.r6g.large). When unset, db.t4g.medium in a nonprod environment and db.r6g.large in prod (the environment's networkTier). Declared, it is reconciled on existing instances. */
     instanceClass: {type: 'string', required: false},
-    maxAcu: {type: 'number', required: false},
-    maxAllocatedStorageGb: {type: 'number', required: false},
-    minAcu: {type: 'number', required: false},
-    mode: {type: 'string', required: false, default: 'aurora-serverless'},
-    multiAz: {type: 'boolean', required: false},
-    port: {type: 'number', required: false, default: 3306},
+    /** TCP port the cluster listens on, set at creation and published to linked consumers as DB_PORT. When unset, 27017. */
+    port: {type: 'number', required: false, default: 27017},
+    /** Replica instances beside the primary, 0 to 15; replicas are added and removed every pass to match. When unset, 0 in a nonprod environment and 1 (in another zone) in prod. */
     readerCount: {type: 'number', required: false},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** DocumentDB engine version (e.g. 5.0), used when the cluster is created. When unset, 5.0. */
+    version: {type: 'string', required: false, default: '5.0'},
+  },
+} as const satisfies OfferContract;
+
+export const Storage_PaaS_AwsDocumentDbDatabase = {
+  offerType: 'Storage.PaaS.AwsDocumentDbDatabase',
+  serviceTypes: ['Storage.PaaS.MongoDbDatabase'],
+  declaredBy: [
+    {
+      agentId: 'fractal-cloud-agent-aws',
+      agentVersion: 'v8.25.10',
+      contractSchemaVersion: '2.0',
+      provider: 'AWS',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** Name of the database on the DocumentDB cluster: lower-case letters, digits and underscores, starting with a letter. admin, local, config and system names are refused. When unset, derived from the component id (prefixed with the Live System's name when the cluster is shared from another Live System). Published to linked consumers as DB_NAME. */
+    databaseName: {type: 'string', required: false},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
+    region: {type: 'string', required: false},
+  },
+} as const satisfies OfferContract;
+
+export const Storage_PaaS_AwsDynamoDb = {
+  offerType: 'Storage.PaaS.AwsDynamoDb',
+  serviceTypes: [
+    'Storage.PaaS.VendorSpecificDocumentDbms',
+    'Storage.PaaS.VendorSpecificKeyValueDbms',
+  ],
+  declaredBy: [
+    {
+      agentId: 'fractal-cloud-agent-aws',
+      agentVersion: 'v8.25.10',
+      contractSchemaVersion: '2.0',
+      provider: 'AWS',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** Capacity mode of every table of this DBMS and their indexes: PAY_PER_REQUEST (on demand) or PROVISIONED. When unset, PAY_PER_REQUEST. */
+    billingMode: {type: 'string', required: false, default: 'PAY_PER_REQUEST'},
+    /** Whether AWS refuses to delete the tables of this DBMS. When unset, on in a prod environment and off in nonprod (the environment's networkTier). An explicit value is reconciled on every table. */
+    deletionProtection: {type: 'boolean', required: false},
+    /** ARN of a customer managed KMS key or alias (arn:aws:kms:<region>:<account>:key/<id>) the tables are encrypted with. When unset, the AWS owned key. */
+    kmsKeyArn: {type: 'string', required: false},
+    /** Whether point-in-time recovery is on for every table of this DBMS. When unset, on in a prod environment and off in nonprod (the environment's networkTier). An explicit value is reconciled on every table. */
+    pointInTimeRecovery: {type: 'boolean', required: false},
+    /** Read capacity units of each table and each index, a whole number of at least 1. Used only when billingMode is PROVISIONED. When unset, 5. */
+    readCapacityUnits: {type: 'number', required: false, default: 5},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
+    region: {type: 'string', required: false},
+    /** Tags applied to every table of this DBMS, as a name to value map, beside the agent's ownership tags. When unset, only the ownership tags. */
+    tags: {type: 'object', required: false},
+    /** Write capacity units of each table and each index, a whole number of at least 1. Used only when billingMode is PROVISIONED. When unset, 5. */
+    writeCapacityUnits: {type: 'number', required: false, default: 5},
+  },
+} as const satisfies OfferContract;
+
+export const Storage_PaaS_AwsDynamoDbTable = {
+  offerType: 'Storage.PaaS.AwsDynamoDbTable',
+  serviceTypes: [
+    'Storage.PaaS.VendorSpecificDocumentDatabase',
+    'Storage.PaaS.VendorSpecificKeyValueEntity',
+  ],
+  declaredBy: [
+    {
+      agentId: 'fractal-cloud-agent-aws',
+      agentVersion: 'v8.25.10',
+      contractSchemaVersion: '2.0',
+      provider: 'AWS',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** Global secondary indexes: a list of {indexName, partitionKeyName, partitionKeyType, sortKeyName?, sortKeyType?, projectionType (ALL or KEYS_ONLY, default ALL)}. An attribute keying the table and an index must have one type. Indexes are added and removed to match, one at a time. When unset, none. */
+    globalSecondaryIndexes: {type: 'array', required: false},
+    /** Name of the partition key attribute, as your application reads and writes items by it. Required to create the table: declare it (e.g. id); no name is assumed. Cannot change once the table exists; an existing table declared without it keeps its own key, with a warning. A key-scoped link grant (keyScope.prefix) needs a string (S) partition key. */
+    partitionKeyName: {type: 'string', required: false},
+    /** Type of the partition key: S (string), N (number) or B (binary). Cannot change once the table exists. When unset, S (the only type a key-scoped link grant can scope). */
+    partitionKeyType: {type: 'string', required: false, default: 'S'},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
+    region: {type: 'string', required: false},
+    /** Name of the sort key attribute; must differ from the partition key. Cannot change once the table exists. When unset, the table has no sort key. */
+    sortKeyName: {type: 'string', required: false},
+    /** Type of the sort key: S (string), N (number) or B (binary). Used only with sortKeyName. When unset, S. */
+    sortKeyType: {type: 'string', required: false, default: 'S'},
+    /** What the table's change stream records: NEW_IMAGE, OLD_IMAGE, NEW_AND_OLD_IMAGES or KEYS_ONLY. When unset, the table has no stream. */
+    streamViewType: {type: 'string', required: false},
+    /** Name of the DynamoDB table: 3 to 255 of A-Z, a-z, 0-9, _, - and . (unique per account and region). When unset, <componentId>-<8 hex digits derived from the Live System id>, so same-named components of two Live Systems never share a table. */
+    tableName: {type: 'string', required: false},
+    /** Attribute holding each item's expiry time in epoch seconds; DynamoDB deletes expired items. When unset, TTL is disabled. */
+    ttlAttribute: {type: 'string', required: false},
+  },
+} as const satisfies OfferContract;
+
+export const Storage_PaaS_AwsElastiCache = {
+  offerType: 'Storage.PaaS.AwsElastiCache',
+  serviceTypes: ['Storage.PaaS.VendorSpecificKeyValueDbms'],
+  declaredBy: [
+    {
+      agentId: 'fractal-cloud-agent-aws',
+      agentVersion: 'v8.25.10',
+      contractSchemaVersion: '2.0',
+      provider: 'AWS',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** Name of the cache: lower-case letters, digits and single hyphens, starting with a letter, 2 to 40 characters. When unset, <componentId>-<8 hex digits derived from the Live System id>. */
+    cacheName: {type: 'string', required: false},
+    /** Valkey major version, digits only (e.g. 8). When unset, 8. */
+    engineVersion: {type: 'string', required: false, default: '8'},
+    /** ARN of a customer managed KMS key or alias the cache is encrypted at rest with. When unset, the AWS owned key. */
+    kmsKeyArn: {type: 'string', required: false},
+    /** Serverless only: ceiling on the data stored, in GB. When unset, no ceiling. */
+    maxDataStorageGb: {type: 'number', required: false},
+    /** Serverless only: ceiling on ElastiCache Processing Units consumed per second. When unset, no ceiling. */
+    maxEcpuPerSecond: {type: 'number', required: false},
+    /** Shape of the Valkey cache: serverless (scales on its own, replicated across zones) or node-based (a primary and replicaCount replicas of nodeType). Cannot change once the cache exists. When unset, serverless. */
+    mode: {type: 'string', required: false, default: 'serverless'},
+    /** Node-based only: node type of the primary and replicas (e.g. cache.r7g.large). When unset, cache.t4g.medium in a prod environment and cache.t4g.micro in nonprod (the environment's networkTier). */
+    nodeType: {type: 'string', required: false},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
+    region: {type: 'string', required: false},
+    /** Node-based only: replicas beside the primary, 0 to 5; with at least one, automatic failover is on. When unset, 1 (in a second zone) in a prod environment and 0 in nonprod. */
+    replicaCount: {type: 'number', required: false},
+    /** Days automatic snapshots are kept, 0 to 35 (0 takes none). When unset, 7 in a prod environment and 0 in nonprod (the environment's networkTier). */
+    snapshotRetentionDays: {type: 'number', required: false},
+  },
+} as const satisfies OfferContract;
+
+export const Storage_PaaS_AwsElastiCacheKeyspace = {
+  offerType: 'Storage.PaaS.AwsElastiCacheKeyspace',
+  serviceTypes: ['Storage.PaaS.VendorSpecificKeyValueEntity'],
+  declaredBy: [
+    {
+      agentId: 'fractal-cloud-agent-aws',
+      agentVersion: 'v8.25.10',
+      contractSchemaVersion: '2.0',
+      provider: 'AWS',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** Key namespace this entity owns in its cache: every linked consumer may only use keys starting with it, followed by its link's keyScope.prefix. Letters, digits and : . _ - / = + @ # { } only; must not overlap another keyspace's prefix on the same cache. When unset, <componentId>-<8 hex of the Live System id>:. */
+    keyPrefix: {type: 'string', required: false},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
+    region: {type: 'string', required: false},
+  },
+} as const satisfies OfferContract;
+
+export const Storage_PaaS_AwsRdsMySql = {
+  offerType: 'Storage.PaaS.AwsRdsMySql',
+  serviceTypes: ['Storage.PaaS.MySql'],
+  declaredBy: [
+    {
+      agentId: 'fractal-cloud-agent-aws',
+      agentVersion: 'v8.25.10',
+      contractSchemaVersion: '2.0',
+      provider: 'AWS',
+      parameterRules: [
+        {
+          cases: [
+            {
+              fix: 'Remove the other log types from cloudwatchLogExports.',
+              id: 'aurora-serverless',
+              message:
+                'RDS for MySQL in mode aurora-serverless exports only these log types: audit, error, general, slowquery, instance, iam-db-auth-error.',
+              then: {
+                restrict: [
+                  {
+                    in: [
+                      'audit',
+                      'error',
+                      'general',
+                      'slowquery',
+                      'instance',
+                      'iam-db-auth-error',
+                    ],
+                    key: 'cloudwatchLogExports',
+                  },
+                ],
+              },
+              when: {equals: 'aurora-serverless', key: 'mode'},
+            },
+            {
+              fix: 'Remove the other log types from cloudwatchLogExports.',
+              id: 'provisioned-instance',
+              message:
+                'RDS for MySQL in mode provisioned-instance exports only these log types: audit, error, general, slowquery, iam-db-auth-error.',
+              then: {
+                restrict: [
+                  {
+                    in: [
+                      'audit',
+                      'error',
+                      'general',
+                      'slowquery',
+                      'iam-db-auth-error',
+                    ],
+                    key: 'cloudwatchLogExports',
+                  },
+                ],
+              },
+              when: {equals: 'provisioned-instance', key: 'mode'},
+            },
+          ],
+          id: 'logExportsByMode',
+          kind: 'branches',
+        },
+      ],
+    },
+  ],
+  params: {
+    /** Master user name, set at creation. Its password is generated and held by RDS in Secrets Manager; the agent never sees it. At most 16 characters for MySQL. When unset, fractaladmin. */
+    administratorLogin: {
+      type: 'string',
+      required: false,
+      default: 'fractaladmin',
+      constraints: {maxLength: 16},
+    },
+    /** Initial storage in GiB, provisioned-instance mode only (Aurora storage grows by itself). When unset, a new instance gets 20 and an existing one is left as it is; declared, it is reconciled on an existing instance (grow only). */
+    allocatedStorageGb: {type: 'number', required: false},
+    /** Days automated backups are kept. When unset, 1 in a nonprod environment and 14 in prod. Declared, it is reconciled on an existing database. */
+    backupRetentionDays: {type: 'number', required: false},
+    /** Log types exported to CloudWatch Logs. provisioned-instance accepts audit, error, general, slowquery, iam-db-auth-error; aurora-serverless accepts audit, error, general, slowquery, instance, iam-db-auth-error. When unset, a new database exports nothing and an existing one is left as it is. Declared, exactly these are exported, so an empty list turns exports off. */
+    cloudwatchLogExports: {
+      type: 'array',
+      required: false,
+      values: [
+        'audit',
+        'error',
+        'general',
+        'slowquery',
+        'instance',
+        'iam-db-auth-error',
+      ],
+      valuesCaseInsensitive: true,
+    },
+    /** Whether RDS refuses to delete the database; set it to false before deleting a protected component. When unset, a new database gets false and an existing one is left as it is. */
+    deletionProtection: {type: 'boolean', required: false},
+    /** RDS instance class (e.g. db.t4g.medium) for provisioned-instance mode; aurora-serverless always uses db.serverless. When unset, db.t4g.micro in a nonprod environment and db.t4g.medium in prod (the environment's networkTier). Declared, it is reconciled on an existing instance. */
+    instanceClass: {type: 'string', required: false},
+    /** Upper Serverless v2 capacity bound in ACU, aurora-serverless mode only. When unset, 2 in a nonprod environment and 8 in prod (the environment's networkTier). Declared, it is reconciled on an existing cluster. */
+    maxAcu: {type: 'number', required: false},
+    /** Storage autoscaling ceiling in GiB, provisioned-instance mode only. When unset, a new instance gets 100 and an existing one is left as it is; declared, it is reconciled on an existing instance. */
+    maxAllocatedStorageGb: {type: 'number', required: false},
+    /** Lower Serverless v2 capacity bound in Aurora capacity units (ACU, steps of 0.5), aurora-serverless mode only. When unset, 0.5. Declared, it is reconciled on an existing cluster. */
+    minAcu: {type: 'number', required: false},
+    /** Shape of the database: aurora-serverless (an Aurora cluster with Serverless v2 writer and readers) or provisioned-instance (a single RDS instance, Multi-AZ in prod). Both publish the same connection outputs. When unset, aurora-serverless. */
+    mode: {
+      type: 'string',
+      required: false,
+      default: 'aurora-serverless',
+      values: ['aurora-serverless', 'provisioned-instance'],
+      valuesCaseInsensitive: true,
+    },
+    /** Whether a provisioned instance is Multi-AZ (a synchronous standby in a second zone); provisioned-instance mode only. When unset, false in a nonprod environment and true in prod. Declared, it is reconciled on an existing instance. */
+    multiAz: {type: 'boolean', required: false},
+    /** TCP port the database listens on, set at creation and published to linked consumers as DB_PORT. When unset, the engine's default (5432 for PostgreSQL, 3306 for MySQL). */
+    port: {type: 'number', required: false, default: 3306},
+    /** Aurora readers beyond the writer, aurora-serverless mode only; capped at 15. When unset, 0 in a nonprod environment and 1 (in a second zone) in prod. */
+    readerCount: {
+      type: 'number',
+      required: false,
+      constraints: {level: 'warn', maximum: 15},
+    },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
+    region: {type: 'string', required: false},
+    /** Whether clients must connect with TLS, through a parameter group the agent manages. When unset, a new database gets it and an existing one is left as it is. true also attaches it to an existing database on its engine's default group (applied at the next reboot); false never sets it up. */
     requireSecureTransport: {type: 'boolean', required: false},
-    storageType: {type: 'string', required: false},
+    /** Storage type, provisioned-instance mode only: gp2, gp3, io1, io2 or standard. When unset, a new instance gets gp3 and an existing one is left as it is; declared, it is reconciled on an existing instance. */
+    storageType: {
+      type: 'string',
+      required: false,
+      values: ['gp2', 'gp3', 'io1', 'io2', 'standard'],
+      valuesCaseInsensitive: true,
+    },
+    /** Engine version: a major (16 for PostgreSQL, 8.4 for MySQL) or a full version. Used at creation only; an existing database's version is never changed, only a warning is logged when it differs. When unset, the engine's default major (PostgreSQL 16, MySQL 8.4). */
     version: {type: 'string', required: false, default: '8.4'},
   },
 } as const satisfies OfferContract;
@@ -460,14 +650,16 @@ export const Storage_PaaS_AwsRdsMySqlDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
+    /** Name of the MySQL database created on the DBMS (utf8mb4), mapped to a legal MySQL name. When unset, derived from the component id (prefixed with the Live System's name when the DBMS is shared from another Live System). Published to linked consumers as DB_NAME. */
     databaseName: {type: 'string', required: false},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -478,33 +670,108 @@ export const Storage_PaaS_AwsRdsPostgres = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
-      parameterRules: [],
+      parameterRules: [
+        {
+          cases: [
+            {
+              fix: 'Remove the other log types from cloudwatchLogExports.',
+              id: 'aurora-serverless',
+              message:
+                'RDS for PostgreSQL in mode aurora-serverless exports only these log types: postgresql, instance, iam-db-auth-error.',
+              then: {
+                restrict: [
+                  {
+                    in: ['postgresql', 'instance', 'iam-db-auth-error'],
+                    key: 'cloudwatchLogExports',
+                  },
+                ],
+              },
+              when: {equals: 'aurora-serverless', key: 'mode'},
+            },
+            {
+              fix: 'Remove the other log types from cloudwatchLogExports.',
+              id: 'provisioned-instance',
+              message:
+                'RDS for PostgreSQL in mode provisioned-instance exports only these log types: postgresql, upgrade, iam-db-auth-error.',
+              then: {
+                restrict: [
+                  {
+                    in: ['postgresql', 'upgrade', 'iam-db-auth-error'],
+                    key: 'cloudwatchLogExports',
+                  },
+                ],
+              },
+              when: {equals: 'provisioned-instance', key: 'mode'},
+            },
+          ],
+          id: 'logExportsByMode',
+          kind: 'branches',
+        },
+      ],
     },
   ],
   params: {
+    /** Master user name, set at creation. Its password is generated and held by RDS in Secrets Manager; the agent never sees it. At most 16 characters for MySQL. When unset, fractaladmin. */
     administratorLogin: {
       type: 'string',
       required: false,
       default: 'fractaladmin',
+      constraints: {maxLength: 63},
     },
+    /** Initial storage in GiB, provisioned-instance mode only (Aurora storage grows by itself). When unset, a new instance gets 20 and an existing one is left as it is; declared, it is reconciled on an existing instance (grow only). */
     allocatedStorageGb: {type: 'number', required: false},
+    /** Days automated backups are kept. When unset, 1 in a nonprod environment and 14 in prod. Declared, it is reconciled on an existing database. */
     backupRetentionDays: {type: 'number', required: false},
-    cloudwatchLogExports: {type: 'array', required: false},
+    /** Log types exported to CloudWatch Logs. provisioned-instance accepts postgresql, upgrade, iam-db-auth-error; aurora-serverless accepts postgresql, instance, iam-db-auth-error. When unset, a new database exports nothing and an existing one is left as it is. Declared, exactly these are exported, so an empty list turns exports off. */
+    cloudwatchLogExports: {
+      type: 'array',
+      required: false,
+      values: ['postgresql', 'instance', 'iam-db-auth-error', 'upgrade'],
+      valuesCaseInsensitive: true,
+    },
+    /** Whether RDS refuses to delete the database; set it to false before deleting a protected component. When unset, a new database gets false and an existing one is left as it is. */
     deletionProtection: {type: 'boolean', required: false},
+    /** RDS instance class (e.g. db.t4g.medium) for provisioned-instance mode; aurora-serverless always uses db.serverless. When unset, db.t4g.micro in a nonprod environment and db.t4g.medium in prod (the environment's networkTier). Declared, it is reconciled on an existing instance. */
     instanceClass: {type: 'string', required: false},
+    /** Upper Serverless v2 capacity bound in ACU, aurora-serverless mode only. When unset, 2 in a nonprod environment and 8 in prod (the environment's networkTier). Declared, it is reconciled on an existing cluster. */
     maxAcu: {type: 'number', required: false},
+    /** Storage autoscaling ceiling in GiB, provisioned-instance mode only. When unset, a new instance gets 100 and an existing one is left as it is; declared, it is reconciled on an existing instance. */
     maxAllocatedStorageGb: {type: 'number', required: false},
+    /** Lower Serverless v2 capacity bound in Aurora capacity units (ACU, steps of 0.5), aurora-serverless mode only. When unset, 0.5. Declared, it is reconciled on an existing cluster. */
     minAcu: {type: 'number', required: false},
-    mode: {type: 'string', required: false, default: 'aurora-serverless'},
+    /** Shape of the database: aurora-serverless (an Aurora cluster with Serverless v2 writer and readers) or provisioned-instance (a single RDS instance, Multi-AZ in prod). Both publish the same connection outputs. When unset, aurora-serverless. */
+    mode: {
+      type: 'string',
+      required: false,
+      default: 'aurora-serverless',
+      values: ['aurora-serverless', 'provisioned-instance'],
+      valuesCaseInsensitive: true,
+    },
+    /** Whether a provisioned instance is Multi-AZ (a synchronous standby in a second zone); provisioned-instance mode only. When unset, false in a nonprod environment and true in prod. Declared, it is reconciled on an existing instance. */
     multiAz: {type: 'boolean', required: false},
+    /** TCP port the database listens on, set at creation and published to linked consumers as DB_PORT. When unset, the engine's default (5432 for PostgreSQL, 3306 for MySQL). */
     port: {type: 'number', required: false, default: 5432},
-    readerCount: {type: 'number', required: false},
+    /** Aurora readers beyond the writer, aurora-serverless mode only; capped at 15. When unset, 0 in a nonprod environment and 1 (in a second zone) in prod. */
+    readerCount: {
+      type: 'number',
+      required: false,
+      constraints: {level: 'warn', maximum: 15},
+    },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** Whether clients must connect with TLS, through a parameter group the agent manages. When unset, a new database gets it and an existing one is left as it is. true also attaches it to an existing database on its engine's default group (applied at the next reboot); false never sets it up. */
     requireSecureTransport: {type: 'boolean', required: false},
-    storageType: {type: 'string', required: false},
+    /** Storage type, provisioned-instance mode only: gp2, gp3, io1, io2 or standard. When unset, a new instance gets gp3 and an existing one is left as it is; declared, it is reconciled on an existing instance. */
+    storageType: {
+      type: 'string',
+      required: false,
+      values: ['gp2', 'gp3', 'io1', 'io2', 'standard'],
+      valuesCaseInsensitive: true,
+    },
+    /** Engine version: a major (16 for PostgreSQL, 8.4 for MySQL) or a full version. Used at creation only; an existing database's version is never changed, only a warning is logged when it differs. When unset, the engine's default major (PostgreSQL 16, MySQL 8.4). */
     version: {type: 'string', required: false, default: '16'},
   },
 } as const satisfies OfferContract;
@@ -515,15 +782,18 @@ export const Storage_PaaS_AwsRdsPostgresDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
+    /** Name of the PostgreSQL database created on the DBMS, mapped to a legal lower-case identifier. When unset, derived from the component id (prefixed with the Live System's name when the DBMS is shared from another Live System). Published to linked consumers as DB_NAME. */
     databaseName: {type: 'string', required: false},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** Schema linked consumers are granted access on, mapped to a legal lower-case identifier. When unset, public. */
     schema: {type: 'string', required: false, default: 'public'},
   },
 } as const satisfies OfferContract;
@@ -534,17 +804,31 @@ export const Storage_PaaS_AwsS3 = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
-    bucket: {type: 'string', required: false, default: ''},
+    /** Globally unique S3 bucket name (3 to 63 lower-case letters, digits, dots and hyphens). When unset, a unique name derived from the component id, the account and the Live System. Renaming an existing bucket is refused. */
+    bucket: {
+      type: 'string',
+      required: false,
+      default: '',
+      constraints: {pattern: '[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]'},
+    },
+    /** Whether deleting the component empties the bucket (every object, version and delete marker) first. When false, deleting a non-empty bucket is blocked and the component stays Deleting. When unset, false. */
     forceDestroy: {type: 'boolean', required: false, default: false},
-    lifecycleExpirationDays: {type: 'number', required: false},
+    /** Days after which every object (and, on a versioned bucket, every noncurrent version) expires, a positive whole number; incomplete multipart uploads are then also aborted after 1 day. When unset, nothing expires and a rule the agent set earlier is removed. */
+    lifecycleExpirationDays: {
+      type: 'number',
+      required: false,
+      constraints: {minimum: 1},
+    },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** Whether the bucket keeps object versions. Wins over versioningEnabled when both are set. When unset, false. */
     versioning: {
       type: 'boolean',
       required: false,
@@ -563,52 +847,84 @@ export const Storage_PaaS_AzureBlob = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** Default blob access tier: Hot, Cool, Cold or Premium. When unset, Hot. Ignored for kind Storage and BlockBlobStorage, which have no account-level tier. */
     accessTier: {type: 'string', required: false, default: 'Hot'},
+    /** Whether containers of this account may allow anonymous public read access. When unset, false. */
     allowBlobPublicAccess: {type: 'boolean', required: false, default: false},
+    /** Whether object replication to accounts in another Microsoft Entra tenant is allowed. When unset, false. */
     allowCrossTenantReplication: {
       type: 'boolean',
       required: false,
       default: false,
     },
+    /** Restricts copy operations to and from the account: PrivateLink (same virtual network via private link) or AAD (same Microsoft Entra tenant). When unset, copies are not restricted. A value outside the two is sent to Azure with a warning; a catalog placeholder is refused. */
     allowedCopyScope: {type: 'string', required: false},
+    /** Whether requests may authorize with the account access key (Shared Key, including account SAS). When unset, true. Set false to allow only Microsoft Entra ID authorization. */
     allowSharedKeyAccess: {type: 'boolean', required: false, default: true},
+    /** Identity-based authentication for Azure Files, as {directoryServiceOptions, defaultSharePermission, activeDirectoryProperties}. directoryServiceOptions is None, AADDS, AD or AADKERB and defaultSharePermission a share-level role name, both None when not named; activeDirectoryProperties carries the on-premises AD domain facts (domainName, domainGuid, domainSid, forestName, netBiosDomainName, azureStorageSid, samAccountName, accountType, default Computer) needed for AD. When unset, none is configured. */
     azureFilesIdentityBasedAuthentication: {type: 'object', required: false},
-    azureRegion: {type: 'string', required: false, default: 'westeurope'},
+    /** Legacy alias of region: the Azure region a new storage account is created in, e.g. northeurope. region wins when both are set. When both are unset, the region of the component's resource group, which is the Live System's (environment's) region; a new account with no region at all is refused. An existing account keeps the region it lives in: Azure cannot move it. */
+    azureRegion: {type: 'string', required: false},
+    /** Azure Backup for the account's file shares, as {vaultName, vaultResourceGroupName, vaultLocation, sku, etag, policyName, policyResourceGroupName, policyLocation, policy, policyType}. Defaults: vault <account>-backupVault and policy <account>-policy, both in the account's resource group and region, vault SKU Standard, policyType AzureStorage. policy is the policy JSON; when empty, only the vault is created. When unset, no backup is configured. */
     backup: {type: 'object', required: false},
+    /** Custom domain for the blob endpoint, as {name, useSubDomainName}. A block without a name means no custom domain; on an existing account an unset value keeps the domain it has. */
     customDomain: {type: 'object', required: false},
+    /** Whether the Azure portal authorizes with Microsoft Entra ID by default instead of the account key. When unset, false. */
     defaultToOAuthAuthentication: {
       type: 'boolean',
       required: false,
       default: false,
     },
+    /** Endpoint DNS type: Standard or AzureDnsZone (partitioned DNS zones, allowing many more accounts per subscription). When unset, Standard. Fixed when the account is created. */
     dnsEndpointType: {type: 'string', required: false, default: 'Standard'},
+    /** Encryption at rest, as {keySource, keyVaultProperties: {keyName, keyVaultUri, keyVersion}, identity: {userAssignedIdentity, federatedIdentityClientId}, requireInfrastructureEncryption, services: {blob|file|queue|table: {enabled, keyType}}}. keySource is Microsoft.Storage (default) or Microsoft.Keyvault for customer-managed keys. When unset, Microsoft-managed keys with blob and file encryption enabled. */
     encryption: {type: 'object', required: false},
+    /** Azure Edge Zone to place the account in, as {name, type}; type defaults to EdgeZone. A block without a name means no extended location. On an existing account an unset value keeps what the account has. */
     extendedLocation: {type: 'object', required: false},
+    /** File service soft delete, as {deleteRetentionEnabled, deleteRetentionDays}. Applied only for kind Storage or FileStorage. When neither field is named, the file service is left untouched; a named policy without days writes 0 days. */
     fileService: {type: 'object', required: false},
+    /** Managed identity of the account, as {type, userAssignedIdentities}: type is None, SystemAssigned, UserAssigned or 'SystemAssigned,UserAssigned' (None when the block has no type); userAssignedIdentities maps user-assigned identity resource IDs to empty objects. When unset, the account gets no managed identity. */
     identity: {type: 'object', required: false},
+    /** Account-level version immutability (WORM), as {enabled, immutabilityPolicy: {immutabilityPeriodSinceCreationInDays, state: Disabled|Unlocked|Locked, allowProtectedAppendWrites}}. Only the fields named are applied; the rest keep the account's own values. A Locked policy cannot be undone. */
     immutableStorageWithVersioning: {type: 'object', required: false},
+    /** Whether the hierarchical namespace (Data Lake Storage Gen2) is enabled. Set at creation only. When unset, a new account is created without it and an existing account keeps the namespace it was created with. */
     isHnsEnabled: {type: 'boolean', required: false},
+    /** Whether local users (used by SFTP) are enabled. When unset, Azure's default applies. */
     isLocalUserEnabled: {type: 'boolean', required: false},
+    /** Whether NFS 3.0 is enabled for blobs. Set at creation only and requires the hierarchical namespace (isHnsEnabled). When unset, it is not enabled. */
     isNfsV3Enabled: {type: 'boolean', required: false},
+    /** Whether the SFTP endpoint is enabled. Requires the hierarchical namespace (isHnsEnabled). When unset, it is not enabled. */
     isSftpEnabled: {type: 'boolean', required: false},
+    /** Access-key expiration policy, as {keyExpirationPeriodInDays}, at least 1 day. A block without a period keeps an existing account's period and gives a new account 30 days. When unset, no key policy is requested. */
     keyPolicy: {type: 'object', required: false},
+    /** Storage account kind: StorageV2, Storage, BlobStorage, BlockBlobStorage or FileStorage. When unset, StorageV2. It also picks the defaults of sku and accessTier, and whether fileService applies (only Storage and FileStorage). */
     kind: {type: 'string', required: false, default: 'StorageV2'},
+    /** Large file shares (up to 100 TiB): Enabled or Disabled. Once enabled it cannot be disabled. When unset, it is not requested. A catalog placeholder is refused. */
     largeFileSharesState: {type: 'string', required: false},
+    /** Minimum TLS version accepted by the account: TLS1_0, TLS1_1 or TLS1_2. When unset, TLS1_2. */
     minimumTlsVersion: {type: 'string', required: false, default: 'TLS1_2'},
+    /** Network firewall of the account, as {defaultAction: Allow|Deny, bypass, ipRules: [{ipAddressOrRange, action}], virtualNetworkRules: [{virtualNetworkResourceId, action, state}], resourceAccessRules: [{resourceId, tenantId}]}. Every listed rule field is required. defaultAction defaults from publicAccess; bypass (e.g. AzureServices, Logging, Metrics) and rule lists not named keep what an existing account has. When unset, only the defaultAction derived from publicAccess. */
     networkRuleSet: {type: 'object', required: false},
+    /** Default network action when networkRuleSet names none: true is Allow, false is Deny, so only bypassed Azure services and listed rules reach the account. When unset, false (Deny). */
     publicAccess: {type: 'boolean', required: false, default: false},
+    /** Whether the public endpoint is reachable at all: Enabled or Disabled. When unset, Enabled; what reaches it is then decided by the network rule set (see publicAccess). */
     publicNetworkAccess: {type: 'string', required: false, default: 'Enabled'},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** Network routing preference, as {routingChoice: MicrosoftRouting|InternetRouting (default InternetRouting), publishMicrosoftEndpoints (default false), publishInternetEndpoints (default true)}. When unset, none is requested. */
     routingPreference: {type: 'object', required: false},
+    /** Shared access signature expiration policy, as {sasExpirationPeriod, expirationAction}. The period has the form <days>.<hours>:<minutes>:<seconds>, e.g. 1.00:00:00; the action is Log or Block. A field not named keeps the account's own value; on a new account a missing period is one day and a missing action Log. When unset, no SAS policy is requested. */
     sasPolicy: {type: 'object', required: false},
+    /** Storage SKU (redundancy and performance), e.g. Standard_LRS, Standard_ZRS, Standard_GRS or Premium_LRS. When unset, Premium_LRS for kind BlockBlobStorage and Standard_LRS otherwise. */
     sku: {type: 'string', required: false, default: 'Standard_LRS'},
+    /** Whether the account accepts HTTPS only. When unset, true. */
     supportsHttpsTrafficOnly: {type: 'boolean', required: false, default: true},
   },
 } as const satisfies OfferContract;
@@ -619,15 +935,18 @@ export const Storage_PaaS_AzurePostgresDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** Character set (encoding) of the database, e.g. UTF8. When unset, UTF8. Applied when the database is created; an existing database keeps its own. */
     charset: {type: 'string', required: false, default: 'UTF8'},
+    /** Collation of the database, e.g. en_US.utf8. When unset, en_US.utf8. Applied when the database is created; an existing database keeps its own. */
     collation: {type: 'string', required: false, default: 'en_US.utf8'},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -638,47 +957,45 @@ export const Storage_PaaS_AzurePostgresDbms = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** Whether to enable the Apache AGE graph extension: adds age to azure.extensions and shared_preload_libraries, restarting the server once. CREATE EXTENSION is left to the application. When unset, false. Flexible server only. */
     age: {type: 'boolean', required: false, default: false},
+    /** Azure region of the server or cluster, e.g. northeurope. When unset, the component's region: the region key, else its resource group's region. */
     azureRegion: {type: 'string', required: false, default: ''},
+    /** Days automated backups are kept; Azure accepts 7 to 35. When unset, 10. Flexible server only. */
     backupRetentionDays: {type: 'integer', required: false, default: 10},
-    coordinatorCores: {type: 'integer', required: false, default: 2},
-    coordinatorServerEdition: {
-      type: 'string',
-      required: false,
-      default: 'GeneralPurpose',
-    },
-    coordinatorStorageGb: {type: 'integer', required: false, default: 128},
-    firewallRules: {type: 'array', required: false, default: []},
+    /** Server firewall rules, each {name, startIpAddress, endIpAddress} with IPv4 addresses. Together they may not cover 268435456 addresses (a /4) or more; such a list, or an entry that is not an IPv4 range, is refused. A server gets exactly the declared rules, and no rule is a security posture, not a missing value: the server admits no connection to its public endpoint (a private server has none; it is reached through its delegated subnet). A new public server (isPrivate false) without rules is refused: declare the ranges that must reach it, including the agent's, which creates its databases over that endpoint (the rule AllowAllAzureServicesAndResourcesWithinAzureIps, 0.0.0.0-0.0.0.0, admits every Azure address, of any tenant). A deployed public server without rules keeps the rules it has. Flexible server only. */
+    firewallRules: {type: 'array', required: false},
+    /** High availability: Disabled, ZoneRedundant or SameZone. When unset, Disabled. A Cosmos DB for PostgreSQL cluster has only on or off: HA is enabled there for every value except SameZone. */
     highAvailabilityMode: {
       type: 'string',
       required: false,
       default: 'Disabled',
     },
+    /** Whether the server is private. A private flexible server is created with public access disabled in a delegated subnet of the environment's VNet (see subnetAddressCidr); this is fixed at creation. On a Cosmos DB for PostgreSQL cluster it turns off the coordinator's public IP access. When unset, true. */
     isPrivate: {type: 'boolean', required: false, default: true},
-    nodeCount: {type: 'integer', required: false, default: 0},
-    nodeServerEdition: {
-      type: 'string',
-      required: false,
-      default: 'MemoryOptimized',
-    },
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** Replication role of the server: None, Primary, AsyncReplica or GeoAsyncReplica. When unset, Primary. Flexible server only. */
     replicationRole: {type: 'string', required: false, default: 'Primary'},
+    /** Administrator login of the server. Its generated password and the login are stored in Key Vault. When unset, fractal. Flexible server only. */
     rootUser: {type: 'string', required: false, default: 'fractal'},
-    skuName: {type: 'string', required: false, default: 'Standard_D4ds_v5'},
+    /** Compute size of the server, a General Purpose size offered in its region, e.g. Standard_D2ds_v5 or Standard_D4ds_v5 (the tier is always General Purpose). Required to create a server: a new server without it is refused, so set it to a size your region offers. A declared value resizes an existing server; when unset, an existing server keeps its size. Flexible server only. */
+    skuName: {type: 'string', required: false},
+    /** Whether storage grows automatically when nearly full: Enabled or Disabled. When unset, Enabled. Flexible server only. */
     storageAutoGrow: {type: 'string', required: false, default: 'Enabled'},
+    /** Storage size in GiB. A flexible server rounds it up to the next size Azure offers (32, 64, 128, ... 32768). On a Cosmos DB for PostgreSQL cluster it is the fallback for coordinatorStorageGb and workerStorageGb when those are 0 or less. When unset, 128. */
     storageGb: {type: 'integer', required: false, default: 128},
-    /** Delegated subnet range, e.g. 10.20.1.0/27. Leave empty to carve a free /27 inside the environment's VNet. */
+    /** Range of the delegated subnet a private flexible server is placed in, e.g. 10.20.1.0/27. When unset, or when it does not fit the environment's VNet, a free /27 is carved inside that VNet. Used only when a private server is created. */
     subnetAddressCidr: {type: 'string', required: false},
+    /** PostgreSQL major version, e.g. 16, 17 or 18. When unset, 18. An existing server or cluster is upgraded when its version is lower, never downgraded. */
     version: {type: 'string', required: false, default: '18'},
-    workersCores: {type: 'integer', required: false, default: 4},
-    workerStorageGb: {type: 'integer', required: false, default: 128},
   },
 } as const satisfies OfferContract;
 
@@ -688,17 +1005,21 @@ export const Storage_PaaS_BigTable = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Id of the instance's single cluster. Set when the instance is created only. When unset, <component id>-c1. */
     clusterId: {type: 'string', required: false},
-    nodes: {type: 'integer', required: false, default: 1},
+    /** Number of SSD nodes of the cluster, at least 1. Applied when the instance is created only: a new instance without it is refused; an existing instance keeps the nodes its cluster has. */
+    nodes: {type: 'integer', required: false},
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
-    zone: {type: 'string', required: false, default: 'europe-west1-b'},
+    /** Compute zone of the instance's cluster, a zone where Bigtable is offered, e.g. us-central1-b. Applied when the instance is created only: a new instance without it is refused; an existing instance keeps the zone its cluster is in. */
+    zone: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
 
@@ -708,15 +1029,18 @@ export const Storage_PaaS_BigTableTable = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
-    columnFamilies: {type: 'array', required: false, default: ['cf1']},
+    /** Names of the table's column families, as a non-empty list of strings. Set when the table is created only. Required to create: no family is assumed, and a new table without it is refused. */
+    columnFamilies: {type: 'array', required: false},
+    /** Id of the Bigtable instance the table is created in: the component id of the BigTable component, or the id of an existing instance in the project. */
     instanceId: {type: 'string', required: true},
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -727,7 +1051,7 @@ export const Storage_PaaS_CloudStorage = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'Storage.PaaS.GcpGcsBucket',
@@ -735,10 +1059,15 @@ export const Storage_PaaS_CloudStorage = {
     },
   ],
   params: {
+    /** Globally unique Cloud Storage bucket name (3-63 lowercase letters, digits, '-', '_' or '.'). Cannot change once the bucket exists: a rename is refused. When unset, the name the component already published, else the component id plus a stable hash of the project and Live System. */
     bucketName: {type: 'string', required: false, default: ''},
+    /** Bucket location: a region (e.g. us-central1), dual-region or multi-region (e.g. EU, US). Set at creation only. When unset, the Live System's region, else the region of the environment's GCP agent; with neither a new bucket is refused, no location is assumed. An existing bucket is not affected. */
     region: {type: 'string', required: false, default: ''},
+    /** Default storage class of the bucket: STANDARD, NEARLINE, COLDLINE or ARCHIVE. Set at creation only. When unset, STANDARD. */
     storageClass: {type: 'string', required: false, default: 'STANDARD'},
+    /** Whether access is governed by IAM only (uniform bucket-level access), with object ACLs disabled. Set at creation, and re-sent when versioning changes. When unset, true. */
     uniformBucketLevelAccess: {type: 'boolean', required: false, default: true},
+    /** Whether object versioning is on. Reconciled on an existing bucket. When unset, false. */
     versioningEnabled: {type: 'boolean', required: false, default: false},
   },
 } as const satisfies OfferContract;
@@ -749,15 +1078,18 @@ export const Storage_PaaS_Collection = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Id of the Firestore database the collection lives in, e.g. the component id of a Firestore component. When unset, (default), the project's default database. */
     database: {type: 'string', required: false, default: '(default)'},
+    /** Collection path inside the database, without a leading slash, e.g. users or users/alice/orders. Nothing is created: Firestore creates a collection on its first write, and the component only publishes the path. When unset, the component id. */
     path: {type: 'string', required: false},
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -774,16 +1106,20 @@ export const Storage_PaaS_CosmosDbAccount = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** Backup policy, as {policyType, storageRedundancy, intervalInMinutes, retentionIntervalInHours}. policyType is Periodic (default) or Continuous; the other three apply to Periodic only and default to Geo, 240 minutes and 8 hours. When unset or empty, that Periodic policy. */
     backupPolicy: {type: 'object', required: false, default: {}},
+    /** Upper limit on the total provisioned throughput of the account, in RU/s, across all its databases and containers. -1 means no limit. When unset, -1. */
     maxTotalThroughput: {type: 'integer', required: false, default: -1},
+    /** Whether the account's public endpoint is reachable: Enabled or Disabled. When unset, Disabled. */
     publicNetworkAccess: {type: 'string', required: false, default: 'Disabled'},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -794,23 +1130,30 @@ export const Storage_PaaS_CosmosDbCassandra = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** Apache Cassandra version of the managed instance cluster, e.g. 3.11 or 4.0. When unset, 3.11. Applied only when the cluster is created; an existing cluster is not updated. */
     cassandraVersion: {type: 'string', required: false, default: '3.11'},
-    delegatedManagementSubnetId: {type: 'string', required: false, default: ''},
+    /** Full resource ID of the subnet the cluster's management plane is injected into, delegated to Azure Managed Instance for Apache Cassandra. Required to create a cluster: a new cluster without it is refused, so delegate a subnet of your VNet to the service and set its ID. Applied only when the cluster is created; an existing cluster is not updated. */
+    delegatedManagementSubnetId: {type: 'string', required: false},
+    /** Interval between automatic backups, in hours. When unset, 24. Applied only when the cluster is created; an existing cluster is not updated. */
     hoursBetweenBackups: {type: 'integer', required: false, default: 24},
+    /** Whether Cassandra audit logging is enabled. When unset, true. Applied only when the cluster is created; an existing cluster is not updated. */
     isCassandraAuditLoggingEnabled: {
       type: 'boolean',
       required: false,
       default: true,
     },
+    /** Whether the cluster is created deallocated (compute stopped). When unset, false. Applied only when the cluster is created; an existing cluster is not updated. */
     isDeallocated: {type: 'boolean', required: false, default: false},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** Whether clients authenticate with Cassandra users (true) or not at all (false). When unset, true. The generated initial admin password is stored in the environment's secret store. Applied only when the cluster is created; an existing cluster is not updated. */
     useCassandraAuthentication: {
       type: 'boolean',
       required: false,
@@ -825,15 +1168,18 @@ export const Storage_PaaS_CosmosDbGremlinDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** Autoscale maximum throughput of the database in RU/s; it wins over throughput when greater than 0. When unset, 2000. Applied when the database is created; only the SQL database also updates an existing database's throughput. */
     maxThroughput: {type: 'integer', required: false, default: 2000},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** Manual (fixed) throughput of the database in RU/s. Used only when maxThroughput is 0 or less; a value of 0 or less then falls back to autoscale with a 2000 RU/s maximum. When unset, -1 (not used). */
     throughput: {type: 'integer', required: false, default: -1},
   },
 } as const satisfies OfferContract;
@@ -844,15 +1190,18 @@ export const Storage_PaaS_CosmosDbMongoDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** Autoscale maximum throughput of the database in RU/s; it wins over throughput when greater than 0. When unset, 2000. Applied when the database is created; only the SQL database also updates an existing database's throughput. */
     maxThroughput: {type: 'integer', required: false, default: 2000},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** Manual (fixed) throughput of the database in RU/s. Used only when maxThroughput is 0 or less; a value of 0 or less then falls back to autoscale with a 2000 RU/s maximum. When unset, -1 (not used). */
     throughput: {type: 'integer', required: false, default: -1},
   },
 } as const satisfies OfferContract;
@@ -863,46 +1212,50 @@ export const Storage_PaaS_CosmosDbPostgreSqlDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
-    age: {type: 'boolean', required: false, default: false},
+    /** Azure region of the server or cluster, e.g. northeurope. When unset, the component's region: the region key, else its resource group's region. */
     azureRegion: {type: 'string', required: false, default: ''},
-    backupRetentionDays: {type: 'integer', required: false, default: 10},
+    /** vCores of the coordinator node. When unset, 2. Cosmos DB for PostgreSQL cluster only. */
     coordinatorCores: {type: 'integer', required: false, default: 2},
+    /** Compute edition of the coordinator, e.g. GeneralPurpose or MemoryOptimized. When unset, GeneralPurpose. Cosmos DB for PostgreSQL cluster only. */
     coordinatorServerEdition: {
       type: 'string',
       required: false,
       default: 'GeneralPurpose',
     },
+    /** Coordinator storage in GiB; 0 or less uses storageGb. When unset, 128. Applied when the cluster is created. Cosmos DB for PostgreSQL cluster only. */
     coordinatorStorageGb: {type: 'integer', required: false, default: 128},
-    firewallRules: {type: 'array', required: false, default: []},
+    /** High availability: Disabled, ZoneRedundant or SameZone. When unset, Disabled. A Cosmos DB for PostgreSQL cluster has only on or off: HA is enabled there for every value except SameZone. */
     highAvailabilityMode: {
       type: 'string',
       required: false,
       default: 'Disabled',
     },
+    /** Whether the server is private. A private flexible server is created with public access disabled in a delegated subnet of the environment's VNet (see subnetAddressCidr); this is fixed at creation. On a Cosmos DB for PostgreSQL cluster it turns off the coordinator's public IP access. When unset, true. */
     isPrivate: {type: 'boolean', required: false, default: true},
+    /** Number of worker nodes; 0 is a single-node cluster whose coordinator also holds the shards. When unset, 0. Cosmos DB for PostgreSQL cluster only. */
     nodeCount: {type: 'integer', required: false, default: 0},
+    /** Compute edition of the worker nodes, e.g. MemoryOptimized or GeneralPurpose. When unset, MemoryOptimized. Cosmos DB for PostgreSQL cluster only. */
     nodeServerEdition: {
       type: 'string',
       required: false,
       default: 'MemoryOptimized',
     },
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
-    replicationRole: {type: 'string', required: false, default: 'Primary'},
-    rootUser: {type: 'string', required: false, default: 'fractal'},
-    skuName: {type: 'string', required: false, default: 'Standard_D4ds_v5'},
-    storageAutoGrow: {type: 'string', required: false, default: 'Enabled'},
+    /** Storage size in GiB. A flexible server rounds it up to the next size Azure offers (32, 64, 128, ... 32768). On a Cosmos DB for PostgreSQL cluster it is the fallback for coordinatorStorageGb and workerStorageGb when those are 0 or less. When unset, 128. */
     storageGb: {type: 'integer', required: false, default: 128},
-    /** Delegated subnet range, e.g. 10.20.1.0/27. Leave empty to carve a free /27 inside the environment's VNet. */
-    subnetAddressCidr: {type: 'string', required: false},
+    /** PostgreSQL major version, e.g. 16, 17 or 18. When unset, 18. An existing server or cluster is upgraded when its version is lower, never downgraded. */
     version: {type: 'string', required: false, default: '18'},
+    /** vCores of each worker node. When unset, 4. Cosmos DB for PostgreSQL cluster only. */
     workersCores: {type: 'integer', required: false, default: 4},
+    /** Storage of each worker node in GiB; 0 or less uses storageGb. When unset, 128. Applied when the cluster is created. Cosmos DB for PostgreSQL cluster only. */
     workerStorageGb: {type: 'integer', required: false, default: 128},
   },
 } as const satisfies OfferContract;
@@ -913,46 +1266,50 @@ export const Storage_PaaS_CosmosDbPostgresSqlCluster = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
-    age: {type: 'boolean', required: false, default: false},
+    /** Azure region of the server or cluster, e.g. northeurope. When unset, the component's region: the region key, else its resource group's region. */
     azureRegion: {type: 'string', required: false, default: ''},
-    backupRetentionDays: {type: 'integer', required: false, default: 10},
+    /** vCores of the coordinator node. When unset, 2. Cosmos DB for PostgreSQL cluster only. */
     coordinatorCores: {type: 'integer', required: false, default: 2},
+    /** Compute edition of the coordinator, e.g. GeneralPurpose or MemoryOptimized. When unset, GeneralPurpose. Cosmos DB for PostgreSQL cluster only. */
     coordinatorServerEdition: {
       type: 'string',
       required: false,
       default: 'GeneralPurpose',
     },
+    /** Coordinator storage in GiB; 0 or less uses storageGb. When unset, 128. Applied when the cluster is created. Cosmos DB for PostgreSQL cluster only. */
     coordinatorStorageGb: {type: 'integer', required: false, default: 128},
-    firewallRules: {type: 'array', required: false, default: []},
+    /** High availability: Disabled, ZoneRedundant or SameZone. When unset, Disabled. A Cosmos DB for PostgreSQL cluster has only on or off: HA is enabled there for every value except SameZone. */
     highAvailabilityMode: {
       type: 'string',
       required: false,
       default: 'Disabled',
     },
+    /** Whether the server is private. A private flexible server is created with public access disabled in a delegated subnet of the environment's VNet (see subnetAddressCidr); this is fixed at creation. On a Cosmos DB for PostgreSQL cluster it turns off the coordinator's public IP access. When unset, true. */
     isPrivate: {type: 'boolean', required: false, default: true},
+    /** Number of worker nodes; 0 is a single-node cluster whose coordinator also holds the shards. When unset, 0. Cosmos DB for PostgreSQL cluster only. */
     nodeCount: {type: 'integer', required: false, default: 0},
+    /** Compute edition of the worker nodes, e.g. MemoryOptimized or GeneralPurpose. When unset, MemoryOptimized. Cosmos DB for PostgreSQL cluster only. */
     nodeServerEdition: {
       type: 'string',
       required: false,
       default: 'MemoryOptimized',
     },
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
-    replicationRole: {type: 'string', required: false, default: 'Primary'},
-    rootUser: {type: 'string', required: false, default: 'fractal'},
-    skuName: {type: 'string', required: false, default: 'Standard_D4ds_v5'},
-    storageAutoGrow: {type: 'string', required: false, default: 'Enabled'},
+    /** Storage size in GiB. A flexible server rounds it up to the next size Azure offers (32, 64, 128, ... 32768). On a Cosmos DB for PostgreSQL cluster it is the fallback for coordinatorStorageGb and workerStorageGb when those are 0 or less. When unset, 128. */
     storageGb: {type: 'integer', required: false, default: 128},
-    /** Delegated subnet range, e.g. 10.20.1.0/27. Leave empty to carve a free /27 inside the environment's VNet. */
-    subnetAddressCidr: {type: 'string', required: false},
+    /** PostgreSQL major version, e.g. 16, 17 or 18. When unset, 18. An existing server or cluster is upgraded when its version is lower, never downgraded. */
     version: {type: 'string', required: false, default: '18'},
+    /** vCores of each worker node. When unset, 4. Cosmos DB for PostgreSQL cluster only. */
     workersCores: {type: 'integer', required: false, default: 4},
+    /** Storage of each worker node in GiB; 0 or less uses storageGb. When unset, 128. Applied when the cluster is created. Cosmos DB for PostgreSQL cluster only. */
     workerStorageGb: {type: 'integer', required: false, default: 128},
   },
 } as const satisfies OfferContract;
@@ -963,15 +1320,18 @@ export const Storage_PaaS_CosmosDbSqlDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** Autoscale maximum throughput of the database in RU/s; it wins over throughput when greater than 0. When unset, 2000. Applied when the database is created; only the SQL database also updates an existing database's throughput. */
     maxThroughput: {type: 'integer', required: false, default: 2000},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** Manual (fixed) throughput of the database in RU/s. Used only when maxThroughput is 0 or less; a value of 0 or less then falls back to autoscale with a 2000 RU/s maximum. When unset, -1 (not used). */
     throughput: {type: 'integer', required: false, default: -1},
   },
 } as const satisfies OfferContract;
@@ -982,15 +1342,18 @@ export const Storage_PaaS_CosmosDbTable = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** Autoscale maximum throughput of the database in RU/s; it wins over throughput when greater than 0. When unset, 2000. Applied when the database is created; only the SQL database also updates an existing database's throughput. */
     maxThroughput: {type: 'integer', required: false, default: 2000},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** Manual (fixed) throughput of the database in RU/s. Used only when maxThroughput is 0 or less; a value of 0 or less then falls back to autoscale with a 2000 RU/s maximum. When unset, -1 (not used). */
     throughput: {type: 'integer', required: false, default: -1},
   },
 } as const satisfies OfferContract;
@@ -1001,16 +1364,19 @@ export const Storage_PaaS_DataflowJob = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Id of a Dataflow job launched outside Fractal, which this component records as projects/<project>/locations/<region>/jobs/<jobId>. The agent does not launch or cancel jobs; while unset the component stays Instantiating. */
     jobId: {type: 'string', required: false, default: ''},
-    location: {type: 'string', required: false, default: 'europe-west1'},
-    region: {type: 'string', required: false, default: 'europe-west1'},
+    /** Legacy spelling of region, read only when region is unset. */
+    location: {type: 'string', required: false},
+    /** Region the job runs in, e.g. us-central1. When unset, location, else the Live System's region, else the region of the environment's GCP agent (else the region the agent is deployed in), else the location already recorded; with none of these the job is refused, no region is assumed. */
+    region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
 
@@ -1020,23 +1386,26 @@ export const Storage_PaaS_FileShare = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
-    accessTier: {
-      type: 'string',
-      required: false,
-      default: 'TransactionOptimized',
-    },
+    /** Share access tier: TransactionOptimized, Hot, Cool or Premium. When unset, Premium on a FileStorage account and TransactionOptimized otherwise. Ignored on a storage account of kind Storage. */
+    accessTier: {type: 'string', required: false},
+    /** Protocol of the share: SMB or NFS (NFS needs a FileStorage account). When unset, SMB, except on a storage account of kind Storage, where none is sent. Fixed when the share is created. */
     enabledProtocols: {type: 'string', required: false, default: 'SMB'},
+    /** Share metadata as name-value string pairs. When unset or empty, no metadata is sent. */
     metadata: {type: 'object', required: false},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** Root squash of an NFS share: NoRootSquash, RootSquash or AllSquash. When unset, none is sent. */
     rootSquash: {type: 'string', required: false, default: ''},
-    shareQuota: {type: 'integer', required: false, default: 5120},
+    /** Maximum size of the share, in GiB. When unset, 100 on a FileStorage account, 102400 when the storage account enables largeFileSharesState, and 5120 otherwise. */
+    shareQuota: {type: 'integer', required: false},
+    /** Stored access policies of the share, each {id, accessPolicy: {startTime, expiryTime, permission}}. Times are ISO-8601 date-times with offset, e.g. 2026-01-01T00:00:00Z, and both are required; permission is a string of SAS permission letters, e.g. rl. When unset, none. */
     signedIdentifiers: {type: 'array', required: false},
   },
 } as const satisfies OfferContract;
@@ -1047,23 +1416,26 @@ export const Storage_PaaS_FileStorage = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
-    accessTier: {
-      type: 'string',
-      required: false,
-      default: 'TransactionOptimized',
-    },
+    /** Share access tier: TransactionOptimized, Hot, Cool or Premium. When unset, Premium on a FileStorage account and TransactionOptimized otherwise. Ignored on a storage account of kind Storage. */
+    accessTier: {type: 'string', required: false},
+    /** Protocol of the share: SMB or NFS (NFS needs a FileStorage account). When unset, SMB, except on a storage account of kind Storage, where none is sent. Fixed when the share is created. */
     enabledProtocols: {type: 'string', required: false, default: 'SMB'},
+    /** Share metadata as name-value string pairs. When unset or empty, no metadata is sent. */
     metadata: {type: 'object', required: false},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** Root squash of an NFS share: NoRootSquash, RootSquash or AllSquash. When unset, none is sent. */
     rootSquash: {type: 'string', required: false, default: ''},
-    shareQuota: {type: 'integer', required: false, default: 5120},
+    /** Maximum size of the share, in GiB. When unset, 100 on a FileStorage account, 102400 when the storage account enables largeFileSharesState, and 5120 otherwise. */
+    shareQuota: {type: 'integer', required: false},
+    /** Stored access policies of the share, each {id, accessPolicy: {startTime, expiryTime, permission}}. Times are ISO-8601 date-times with offset, e.g. 2026-01-01T00:00:00Z, and both are required; permission is a string of SAS permission letters, e.g. rl. When unset, none. */
     signedIdentifiers: {type: 'array', required: false},
   },
 } as const satisfies OfferContract;
@@ -1074,15 +1446,18 @@ export const Storage_PaaS_Firestore = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
-    location: {type: 'string', required: false, default: 'europe-west1'},
-    region: {type: 'string', required: false, default: 'europe-west1'},
+    /** Legacy spelling of region, read only when region is unset. */
+    location: {type: 'string', required: false},
+    /** Firestore location of the database: a region (e.g. us-central1) or a multi-region (e.g. eur3, nam5). Set when the database is created only. When unset, location, else the Live System's region, else the region of the environment's GCP agent (else the region the agent is deployed in), else the location a deployed database recorded; with none of these the database is refused, no location is assumed. */
+    region: {type: 'string', required: false},
+    /** Database mode: FIRESTORE_NATIVE or DATASTORE_MODE. Set when the database is created only. When unset, FIRESTORE_NATIVE. */
     type: {type: 'string', required: false, default: 'FIRESTORE_NATIVE'},
   },
 } as const satisfies OfferContract;
@@ -1093,17 +1468,22 @@ export const Storage_PaaS_GcpGcsBucket = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Globally unique Cloud Storage bucket name (3-63 lowercase letters, digits, '-', '_' or '.'). Cannot change once the bucket exists: a rename is refused. When unset, the name the component already published, else the component id plus a stable hash of the project and Live System. */
     bucketName: {type: 'string', required: false, default: ''},
+    /** Bucket location: a region (e.g. us-central1), dual-region or multi-region (e.g. EU, US). Set at creation only. When unset, the Live System's region, else the region of the environment's GCP agent; with neither a new bucket is refused, no location is assumed. An existing bucket is not affected. */
     region: {type: 'string', required: false, default: ''},
+    /** Default storage class of the bucket: STANDARD, NEARLINE, COLDLINE or ARCHIVE. Set at creation only. When unset, STANDARD. */
     storageClass: {type: 'string', required: false, default: 'STANDARD'},
+    /** Whether access is governed by IAM only (uniform bucket-level access), with object ACLs disabled. Set at creation, and re-sent when versioning changes. When unset, true. */
     uniformBucketLevelAccess: {type: 'boolean', required: false, default: true},
+    /** Whether object versioning is on. Reconciled on an existing bucket. When unset, false. */
     versioningEnabled: {type: 'boolean', required: false, default: false},
   },
 } as const satisfies OfferContract;
@@ -1114,25 +1494,22 @@ export const Storage_PaaS_GcpMySqlDbms = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Initial data disk size in GB; storage auto-resize is on, so the disk grows past it. When unset, 100. */
     instanceDataDiskSizeGb: {type: 'integer', required: false, default: 100},
-    instanceEdition: {
-      type: 'string',
-      required: false,
-      default: 'ENTERPRISE_PLUS',
-    },
-    instanceTier: {
-      type: 'string',
-      required: false,
-      default: 'db-perf-optimized-N-4',
-    },
+    /** Cloud SQL edition: ENTERPRISE or ENTERPRISE_PLUS, matching instanceTier (the db-perf-optimized-N series needs ENTERPRISE_PLUS, which not every region offers). Applied when the instance is created. Required to create: no edition is assumed, and a new instance without it is refused; a deployed instance declared without it keeps its edition, with a warning. */
+    instanceEdition: {type: 'string', required: false},
+    /** Cloud SQL machine tier, offered in the instance's region and matching instanceEdition, e.g. db-custom-2-8192 (ENTERPRISE) or db-perf-optimized-N-4 (ENTERPRISE_PLUS). Applied when the instance is created. Required to create: no tier is assumed, and a new instance without it is refused; a deployed instance declared without it keeps its tier, with a warning. */
+    instanceTier: {type: 'string', required: false},
+    /** Whether the instance also gets a public IPv4 address. When unset, false: reachable only on its private address. */
     ipv4Enabled: {type: 'boolean', required: false, default: false},
+    /** Name of the VPC network, in the deployment project, the instance gets its private IP address on. When unset, the environment's spoke network; with no spoke, or when the instance is created in a project other than the environment's, the instance is refused and the network must be declared. */
     network: {
       type: 'string',
       required: false,
@@ -1144,11 +1521,13 @@ export const Storage_PaaS_GcpMySqlDbms = {
     peeringNetworkAddress: {type: 'string', required: false},
     /** Prefix length of the private-services range. */
     peeringNetworkPrefix: {type: 'integer', required: false, default: 22},
+    /** GCP region of the Cloud SQL instance, e.g. us-central1. When unset, the Live System's region, else the region of the environment's GCP agent (else the region the agent is deployed in); with none of the three a new instance is refused, no region is assumed. Applied when the instance is created. */
     region: {
       type: 'string',
       required: false,
       derived: {note: "defaults to the environment's region when absent"},
     },
+    /** Cloud SQL TLS mode for client connections: ENCRYPTED_ONLY, TRUSTED_CLIENT_CERTIFICATE_REQUIRED or ALLOW_UNENCRYPTED_AND_ENCRYPTED. When unset, ENCRYPTED_ONLY, which refuses plaintext connections. */
     sslMode: {type: 'string', required: false, default: 'ENCRYPTED_ONLY'},
   },
 } as const satisfies OfferContract;
@@ -1159,20 +1538,24 @@ export const Storage_PaaS_GcpPostgresDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Character set of the database. Set when the database is created only. When unset, UTF8. */
     charset: {type: 'string', required: false, default: 'UTF8'},
+    /** Collation of the database. Set when the database is created only. When unset, en_US.UTF8. */
     collation: {type: 'string', required: false, default: 'en_US.UTF8'},
+    /** When true, the agent stores a connection JSON for the instance's postgres admin user and this database (private IP, port 5432) as the environment secret fractal-deployer-postgresql-connection-string, and keeps it current. When unset, false. */
     createPostgresCredentials: {
       type: 'boolean',
       required: false,
       default: false,
     },
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1183,14 +1566,20 @@ export const Storage_PaaS_GcpPostgresDbms = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Cloud SQL edition: ENTERPRISE or ENTERPRISE_PLUS, matching instanceTier (the db-perf-optimized-N series needs ENTERPRISE_PLUS, which not every region offers). Applied when the instance is created. Required to create: no edition is assumed, and a new instance without it is refused; a deployed instance declared without it keeps its edition, with a warning. */
+    instanceEdition: {type: 'string', required: false},
+    /** Cloud SQL machine tier, offered in the instance's region and matching instanceEdition, e.g. db-custom-2-8192 (ENTERPRISE) or db-perf-optimized-N-4 (ENTERPRISE_PLUS). Applied when the instance is created. Required to create: no tier is assumed, and a new instance without it is refused; a deployed instance declared without it keeps its tier, with a warning. */
+    instanceTier: {type: 'string', required: false},
+    /** Whether the instance also gets a public IPv4 address. When unset, false: reachable only on its private address. */
     ipv4Enabled: {type: 'boolean', required: false, default: false},
+    /** Name of the VPC network, in the deployment project, the instance gets its private IP address on. When unset, the environment's spoke network; with no spoke, or when the instance is created in a project other than the environment's, the instance is refused and the network must be declared. */
     network: {
       type: 'string',
       required: false,
@@ -1202,11 +1591,13 @@ export const Storage_PaaS_GcpPostgresDbms = {
     peeringNetworkAddress: {type: 'string', required: false},
     /** Prefix length of the private-services range. */
     peeringNetworkPrefix: {type: 'integer', required: false, default: 22},
+    /** GCP region of the Cloud SQL instance, e.g. us-central1. When unset, the Live System's region, else the region of the environment's GCP agent (else the region the agent is deployed in); with none of the three a new instance is refused, no region is assumed. Applied when the instance is created. */
     region: {
       type: 'string',
       required: false,
       derived: {note: "defaults to the environment's region when absent"},
     },
+    /** Cloud SQL TLS mode for client connections: ENCRYPTED_ONLY, TRUSTED_CLIENT_CERTIFICATE_REQUIRED or ALLOW_UNENCRYPTED_AND_ENCRYPTED. When unset, ENCRYPTED_ONLY, which refuses plaintext connections. */
     sslMode: {type: 'string', required: false, default: 'ENCRYPTED_ONLY'},
   },
 } as const satisfies OfferContract;
@@ -1241,50 +1632,56 @@ export const Storage_PaaS_PostgreSqlDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Character set (encoding) of the database, e.g. UTF8. When unset, UTF8. Applied when the database is created; an existing database keeps its own. */
     charset: {
       type: 'string',
       required: false,
       default: 'UTF8',
       agents: ['fractal-cloud-agent-azure', 'fractal-cloud-agent-gcp'],
     },
+    /** Collation of the database, e.g. en_US.utf8. When unset, en_US.utf8. Applied when the database is created; an existing database keeps its own. */
     collation: {
       type: 'string',
       required: false,
       agents: ['fractal-cloud-agent-azure', 'fractal-cloud-agent-gcp'],
     },
+    /** When true, the agent stores a connection JSON for the instance's postgres admin user and this database (private IP, port 5432) as the environment secret fractal-deployer-postgresql-connection-string, and keeps it current. When unset, false. */
     createPostgresCredentials: {
       type: 'boolean',
       required: false,
       default: false,
       agents: ['fractal-cloud-agent-gcp'],
     },
+    /** Name of the PostgreSQL database created on the DBMS, mapped to a legal lower-case identifier. When unset, derived from the component id (prefixed with the Live System's name when the DBMS is shared from another Live System). Published to linked consumers as DB_NAME. */
     databaseName: {
       type: 'string',
       required: false,
       agents: ['fractal-cloud-agent-aws'],
     },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** Schema linked consumers are granted access on, mapped to a legal lower-case identifier. When unset, public. */
     schema: {
       type: 'string',
       required: false,
@@ -1300,15 +1697,52 @@ export const Storage_PaaS_PostgreSqlDbms = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'Storage.PaaS.AwsRdsPostgres',
-      parameterRules: [],
+      parameterRules: [
+        {
+          cases: [
+            {
+              fix: 'Remove the other log types from cloudwatchLogExports.',
+              id: 'aurora-serverless',
+              message:
+                'RDS for PostgreSQL in mode aurora-serverless exports only these log types: postgresql, instance, iam-db-auth-error.',
+              then: {
+                restrict: [
+                  {
+                    in: ['postgresql', 'instance', 'iam-db-auth-error'],
+                    key: 'cloudwatchLogExports',
+                  },
+                ],
+              },
+              when: {equals: 'aurora-serverless', key: 'mode'},
+            },
+            {
+              fix: 'Remove the other log types from cloudwatchLogExports.',
+              id: 'provisioned-instance',
+              message:
+                'RDS for PostgreSQL in mode provisioned-instance exports only these log types: postgresql, upgrade, iam-db-auth-error.',
+              then: {
+                restrict: [
+                  {
+                    in: ['postgresql', 'upgrade', 'iam-db-auth-error'],
+                    key: 'cloudwatchLogExports',
+                  },
+                ],
+              },
+              when: {equals: 'provisioned-instance', key: 'mode'},
+            },
+          ],
+          id: 'logExportsByMode',
+          kind: 'branches',
+        },
+      ],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'Storage.PaaS.AzurePostgresDbms',
@@ -1316,7 +1750,7 @@ export const Storage_PaaS_PostgreSqlDbms = {
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'Storage.PaaS.GcpPostgresDbms',
@@ -1324,117 +1758,133 @@ export const Storage_PaaS_PostgreSqlDbms = {
     },
   ],
   params: {
+    /** Master user name, set at creation. Its password is generated and held by RDS in Secrets Manager; the agent never sees it. At most 16 characters for MySQL. When unset, fractaladmin. */
     administratorLogin: {
       type: 'string',
       required: false,
       default: 'fractaladmin',
+      constraints: {maxLength: 63},
       agents: ['fractal-cloud-agent-aws'],
     },
+    /** Whether to enable the Apache AGE graph extension: adds age to azure.extensions and shared_preload_libraries, restarting the server once. CREATE EXTENSION is left to the application. When unset, false. Flexible server only. */
     age: {
       type: 'boolean',
       required: false,
       default: false,
       agents: ['fractal-cloud-agent-azure'],
     },
+    /** Initial storage in GiB, provisioned-instance mode only (Aurora storage grows by itself). When unset, a new instance gets 20 and an existing one is left as it is; declared, it is reconciled on an existing instance (grow only). */
     allocatedStorageGb: {
       type: 'number',
       required: false,
       agents: ['fractal-cloud-agent-aws'],
     },
+    /** Azure region of the server or cluster, e.g. northeurope. When unset, the component's region: the region key, else its resource group's region. */
     azureRegion: {
       type: 'string',
       required: false,
       default: '',
       agents: ['fractal-cloud-agent-azure'],
     },
+    /** Days automated backups are kept. When unset, 1 in a nonprod environment and 14 in prod. Declared, it is reconciled on an existing database. */
     backupRetentionDays: {
       type: 'number',
       required: false,
       agents: ['fractal-cloud-agent-aws', 'fractal-cloud-agent-azure'],
     },
+    /** Log types exported to CloudWatch Logs. provisioned-instance accepts postgresql, upgrade, iam-db-auth-error; aurora-serverless accepts postgresql, instance, iam-db-auth-error. When unset, a new database exports nothing and an existing one is left as it is. Declared, exactly these are exported, so an empty list turns exports off. */
     cloudwatchLogExports: {
       type: 'array',
       required: false,
+      values: ['postgresql', 'instance', 'iam-db-auth-error', 'upgrade'],
+      valuesCaseInsensitive: true,
       agents: ['fractal-cloud-agent-aws'],
     },
-    coordinatorCores: {
-      type: 'integer',
-      required: false,
-      default: 2,
-      agents: ['fractal-cloud-agent-azure'],
-    },
-    coordinatorServerEdition: {
-      type: 'string',
-      required: false,
-      default: 'GeneralPurpose',
-      agents: ['fractal-cloud-agent-azure'],
-    },
-    coordinatorStorageGb: {
-      type: 'integer',
-      required: false,
-      default: 128,
-      agents: ['fractal-cloud-agent-azure'],
-    },
+    /** Whether RDS refuses to delete the database; set it to false before deleting a protected component. When unset, a new database gets false and an existing one is left as it is. */
     deletionProtection: {
       type: 'boolean',
       required: false,
       agents: ['fractal-cloud-agent-aws'],
     },
+    /** Server firewall rules, each {name, startIpAddress, endIpAddress} with IPv4 addresses. Together they may not cover 268435456 addresses (a /4) or more; such a list, or an entry that is not an IPv4 range, is refused. A server gets exactly the declared rules, and no rule is a security posture, not a missing value: the server admits no connection to its public endpoint (a private server has none; it is reached through its delegated subnet). A new public server (isPrivate false) without rules is refused: declare the ranges that must reach it, including the agent's, which creates its databases over that endpoint (the rule AllowAllAzureServicesAndResourcesWithinAzureIps, 0.0.0.0-0.0.0.0, admits every Azure address, of any tenant). A deployed public server without rules keeps the rules it has. Flexible server only. */
     firewallRules: {
       type: 'array',
       required: false,
-      default: [],
       agents: ['fractal-cloud-agent-azure'],
     },
+    /** High availability: Disabled, ZoneRedundant or SameZone. When unset, Disabled. A Cosmos DB for PostgreSQL cluster has only on or off: HA is enabled there for every value except SameZone. */
     highAvailabilityMode: {
       type: 'string',
       required: false,
       default: 'Disabled',
       agents: ['fractal-cloud-agent-azure'],
     },
+    /** RDS instance class (e.g. db.t4g.medium) for provisioned-instance mode; aurora-serverless always uses db.serverless. When unset, db.t4g.micro in a nonprod environment and db.t4g.medium in prod (the environment's networkTier). Declared, it is reconciled on an existing instance. */
     instanceClass: {
       type: 'string',
       required: false,
       agents: ['fractal-cloud-agent-aws'],
     },
+    /** Cloud SQL edition: ENTERPRISE or ENTERPRISE_PLUS, matching instanceTier (the db-perf-optimized-N series needs ENTERPRISE_PLUS, which not every region offers). Applied when the instance is created. Required to create: no edition is assumed, and a new instance without it is refused; a deployed instance declared without it keeps its edition, with a warning. */
+    instanceEdition: {
+      type: 'string',
+      required: false,
+      agents: ['fractal-cloud-agent-gcp'],
+    },
+    /** Cloud SQL machine tier, offered in the instance's region and matching instanceEdition, e.g. db-custom-2-8192 (ENTERPRISE) or db-perf-optimized-N-4 (ENTERPRISE_PLUS). Applied when the instance is created. Required to create: no tier is assumed, and a new instance without it is refused; a deployed instance declared without it keeps its tier, with a warning. */
+    instanceTier: {
+      type: 'string',
+      required: false,
+      agents: ['fractal-cloud-agent-gcp'],
+    },
+    /** Whether the instance also gets a public IPv4 address. When unset, false: reachable only on its private address. */
     ipv4Enabled: {
       type: 'boolean',
       required: false,
       default: false,
       agents: ['fractal-cloud-agent-gcp'],
     },
+    /** Whether the server is private. A private flexible server is created with public access disabled in a delegated subnet of the environment's VNet (see subnetAddressCidr); this is fixed at creation. On a Cosmos DB for PostgreSQL cluster it turns off the coordinator's public IP access. When unset, true. */
     isPrivate: {
       type: 'boolean',
       required: false,
       default: true,
       agents: ['fractal-cloud-agent-azure'],
     },
+    /** Upper Serverless v2 capacity bound in ACU, aurora-serverless mode only. When unset, 2 in a nonprod environment and 8 in prod (the environment's networkTier). Declared, it is reconciled on an existing cluster. */
     maxAcu: {
       type: 'number',
       required: false,
       agents: ['fractal-cloud-agent-aws'],
     },
+    /** Storage autoscaling ceiling in GiB, provisioned-instance mode only. When unset, a new instance gets 100 and an existing one is left as it is; declared, it is reconciled on an existing instance. */
     maxAllocatedStorageGb: {
       type: 'number',
       required: false,
       agents: ['fractal-cloud-agent-aws'],
     },
+    /** Lower Serverless v2 capacity bound in Aurora capacity units (ACU, steps of 0.5), aurora-serverless mode only. When unset, 0.5. Declared, it is reconciled on an existing cluster. */
     minAcu: {
       type: 'number',
       required: false,
       agents: ['fractal-cloud-agent-aws'],
     },
+    /** Shape of the database: aurora-serverless (an Aurora cluster with Serverless v2 writer and readers) or provisioned-instance (a single RDS instance, Multi-AZ in prod). Both publish the same connection outputs. When unset, aurora-serverless. */
     mode: {
       type: 'string',
       required: false,
       default: 'aurora-serverless',
+      values: ['aurora-serverless', 'provisioned-instance'],
+      valuesCaseInsensitive: true,
       agents: ['fractal-cloud-agent-aws'],
     },
+    /** Whether a provisioned instance is Multi-AZ (a synchronous standby in a second zone); provisioned-instance mode only. When unset, false in a nonprod environment and true in prod. Declared, it is reconciled on an existing instance. */
     multiAz: {
       type: 'boolean',
       required: false,
       agents: ['fractal-cloud-agent-aws'],
     },
+    /** Name of the VPC network, in the deployment project, the instance gets its private IP address on. When unset, the environment's spoke network; with no spoke, or when the instance is created in a project other than the environment's, the instance is refused and the network must be declared. */
     network: {
       type: 'string',
       required: false,
@@ -1442,18 +1892,6 @@ export const Storage_PaaS_PostgreSqlDbms = {
         note: "defaults to the environment's spoke network when absent",
       },
       agents: ['fractal-cloud-agent-gcp'],
-    },
-    nodeCount: {
-      type: 'integer',
-      required: false,
-      default: 0,
-      agents: ['fractal-cloud-agent-azure'],
-    },
-    nodeServerEdition: {
-      type: 'string',
-      required: false,
-      default: 'MemoryOptimized',
-      agents: ['fractal-cloud-agent-azure'],
     },
     /** Network address of the private-services range, e.g. 10.20.8.0. Not needed when the network already has a private-services range, or in spoke mode, where the environment's range is used; required otherwise. */
     peeringNetworkAddress: {
@@ -1468,86 +1906,88 @@ export const Storage_PaaS_PostgreSqlDbms = {
       default: 22,
       agents: ['fractal-cloud-agent-gcp'],
     },
+    /** TCP port the database listens on, set at creation and published to linked consumers as DB_PORT. When unset, the engine's default (5432 for PostgreSQL, 3306 for MySQL). */
     port: {
       type: 'number',
       required: false,
       default: 5432,
       agents: ['fractal-cloud-agent-aws'],
     },
+    /** Aurora readers beyond the writer, aurora-serverless mode only; capped at 15. When unset, 0 in a nonprod environment and 1 (in a second zone) in prod. */
     readerCount: {
       type: 'number',
       required: false,
+      constraints: {level: 'warn', maximum: 15},
       agents: ['fractal-cloud-agent-aws'],
     },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** Replication role of the server: None, Primary, AsyncReplica or GeoAsyncReplica. When unset, Primary. Flexible server only. */
     replicationRole: {
       type: 'string',
       required: false,
       default: 'Primary',
       agents: ['fractal-cloud-agent-azure'],
     },
+    /** Whether clients must connect with TLS, through a parameter group the agent manages. When unset, a new database gets it and an existing one is left as it is. true also attaches it to an existing database on its engine's default group (applied at the next reboot); false never sets it up. */
     requireSecureTransport: {
       type: 'boolean',
       required: false,
       agents: ['fractal-cloud-agent-aws'],
     },
+    /** Administrator login of the server. Its generated password and the login are stored in Key Vault. When unset, fractal. Flexible server only. */
     rootUser: {
       type: 'string',
       required: false,
       default: 'fractal',
       agents: ['fractal-cloud-agent-azure'],
     },
+    /** Compute size of the server, a General Purpose size offered in its region, e.g. Standard_D2ds_v5 or Standard_D4ds_v5 (the tier is always General Purpose). Required to create a server: a new server without it is refused, so set it to a size your region offers. A declared value resizes an existing server; when unset, an existing server keeps its size. Flexible server only. */
     skuName: {
       type: 'string',
       required: false,
-      default: 'Standard_D4ds_v5',
       agents: ['fractal-cloud-agent-azure'],
     },
+    /** Cloud SQL TLS mode for client connections: ENCRYPTED_ONLY, TRUSTED_CLIENT_CERTIFICATE_REQUIRED or ALLOW_UNENCRYPTED_AND_ENCRYPTED. When unset, ENCRYPTED_ONLY, which refuses plaintext connections. */
     sslMode: {
       type: 'string',
       required: false,
       default: 'ENCRYPTED_ONLY',
       agents: ['fractal-cloud-agent-gcp'],
     },
+    /** Whether storage grows automatically when nearly full: Enabled or Disabled. When unset, Enabled. Flexible server only. */
     storageAutoGrow: {
       type: 'string',
       required: false,
       default: 'Enabled',
       agents: ['fractal-cloud-agent-azure'],
     },
+    /** Storage size in GiB. A flexible server rounds it up to the next size Azure offers (32, 64, 128, ... 32768). On a Cosmos DB for PostgreSQL cluster it is the fallback for coordinatorStorageGb and workerStorageGb when those are 0 or less. When unset, 128. */
     storageGb: {
       type: 'integer',
       required: false,
       default: 128,
       agents: ['fractal-cloud-agent-azure'],
     },
+    /** Storage type, provisioned-instance mode only: gp2, gp3, io1, io2 or standard. When unset, a new instance gets gp3 and an existing one is left as it is; declared, it is reconciled on an existing instance. */
     storageType: {
       type: 'string',
       required: false,
+      values: ['gp2', 'gp3', 'io1', 'io2', 'standard'],
+      valuesCaseInsensitive: true,
       agents: ['fractal-cloud-agent-aws'],
     },
-    /** Delegated subnet range, e.g. 10.20.1.0/27. Leave empty to carve a free /27 inside the environment's VNet. */
+    /** Range of the delegated subnet a private flexible server is placed in, e.g. 10.20.1.0/27. When unset, or when it does not fit the environment's VNet, a free /27 is carved inside that VNet. Used only when a private server is created. */
     subnetAddressCidr: {
       type: 'string',
       required: false,
       agents: ['fractal-cloud-agent-azure'],
     },
+    /** Engine version: a major (16 for PostgreSQL, 8.4 for MySQL) or a full version. Used at creation only; an existing database's version is never changed, only a warning is logged when it differs. When unset, the engine's default major (PostgreSQL 16, MySQL 8.4). */
     version: {
       type: 'string',
       required: false,
       agents: ['fractal-cloud-agent-aws', 'fractal-cloud-agent-azure'],
-    },
-    workersCores: {
-      type: 'integer',
-      required: false,
-      default: 4,
-      agents: ['fractal-cloud-agent-azure'],
-    },
-    workerStorageGb: {
-      type: 'integer',
-      required: false,
-      default: 128,
-      agents: ['fractal-cloud-agent-azure'],
     },
   },
 } as const satisfies OfferContract;
@@ -1558,34 +1998,109 @@ export const Storage_PaaS_Rds = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'Storage.PaaS.AwsRdsPostgres',
-      parameterRules: [],
+      parameterRules: [
+        {
+          cases: [
+            {
+              fix: 'Remove the other log types from cloudwatchLogExports.',
+              id: 'aurora-serverless',
+              message:
+                'RDS for PostgreSQL in mode aurora-serverless exports only these log types: postgresql, instance, iam-db-auth-error.',
+              then: {
+                restrict: [
+                  {
+                    in: ['postgresql', 'instance', 'iam-db-auth-error'],
+                    key: 'cloudwatchLogExports',
+                  },
+                ],
+              },
+              when: {equals: 'aurora-serverless', key: 'mode'},
+            },
+            {
+              fix: 'Remove the other log types from cloudwatchLogExports.',
+              id: 'provisioned-instance',
+              message:
+                'RDS for PostgreSQL in mode provisioned-instance exports only these log types: postgresql, upgrade, iam-db-auth-error.',
+              then: {
+                restrict: [
+                  {
+                    in: ['postgresql', 'upgrade', 'iam-db-auth-error'],
+                    key: 'cloudwatchLogExports',
+                  },
+                ],
+              },
+              when: {equals: 'provisioned-instance', key: 'mode'},
+            },
+          ],
+          id: 'logExportsByMode',
+          kind: 'branches',
+        },
+      ],
     },
   ],
   params: {
+    /** Master user name, set at creation. Its password is generated and held by RDS in Secrets Manager; the agent never sees it. At most 16 characters for MySQL. When unset, fractaladmin. */
     administratorLogin: {
       type: 'string',
       required: false,
       default: 'fractaladmin',
+      constraints: {maxLength: 63},
     },
+    /** Initial storage in GiB, provisioned-instance mode only (Aurora storage grows by itself). When unset, a new instance gets 20 and an existing one is left as it is; declared, it is reconciled on an existing instance (grow only). */
     allocatedStorageGb: {type: 'number', required: false},
+    /** Days automated backups are kept. When unset, 1 in a nonprod environment and 14 in prod. Declared, it is reconciled on an existing database. */
     backupRetentionDays: {type: 'number', required: false},
-    cloudwatchLogExports: {type: 'array', required: false},
+    /** Log types exported to CloudWatch Logs. provisioned-instance accepts postgresql, upgrade, iam-db-auth-error; aurora-serverless accepts postgresql, instance, iam-db-auth-error. When unset, a new database exports nothing and an existing one is left as it is. Declared, exactly these are exported, so an empty list turns exports off. */
+    cloudwatchLogExports: {
+      type: 'array',
+      required: false,
+      values: ['postgresql', 'instance', 'iam-db-auth-error', 'upgrade'],
+      valuesCaseInsensitive: true,
+    },
+    /** Whether RDS refuses to delete the database; set it to false before deleting a protected component. When unset, a new database gets false and an existing one is left as it is. */
     deletionProtection: {type: 'boolean', required: false},
+    /** RDS instance class (e.g. db.t4g.medium) for provisioned-instance mode; aurora-serverless always uses db.serverless. When unset, db.t4g.micro in a nonprod environment and db.t4g.medium in prod (the environment's networkTier). Declared, it is reconciled on an existing instance. */
     instanceClass: {type: 'string', required: false},
+    /** Upper Serverless v2 capacity bound in ACU, aurora-serverless mode only. When unset, 2 in a nonprod environment and 8 in prod (the environment's networkTier). Declared, it is reconciled on an existing cluster. */
     maxAcu: {type: 'number', required: false},
+    /** Storage autoscaling ceiling in GiB, provisioned-instance mode only. When unset, a new instance gets 100 and an existing one is left as it is; declared, it is reconciled on an existing instance. */
     maxAllocatedStorageGb: {type: 'number', required: false},
+    /** Lower Serverless v2 capacity bound in Aurora capacity units (ACU, steps of 0.5), aurora-serverless mode only. When unset, 0.5. Declared, it is reconciled on an existing cluster. */
     minAcu: {type: 'number', required: false},
-    mode: {type: 'string', required: false, default: 'aurora-serverless'},
+    /** Shape of the database: aurora-serverless (an Aurora cluster with Serverless v2 writer and readers) or provisioned-instance (a single RDS instance, Multi-AZ in prod). Both publish the same connection outputs. When unset, aurora-serverless. */
+    mode: {
+      type: 'string',
+      required: false,
+      default: 'aurora-serverless',
+      values: ['aurora-serverless', 'provisioned-instance'],
+      valuesCaseInsensitive: true,
+    },
+    /** Whether a provisioned instance is Multi-AZ (a synchronous standby in a second zone); provisioned-instance mode only. When unset, false in a nonprod environment and true in prod. Declared, it is reconciled on an existing instance. */
     multiAz: {type: 'boolean', required: false},
+    /** TCP port the database listens on, set at creation and published to linked consumers as DB_PORT. When unset, the engine's default (5432 for PostgreSQL, 3306 for MySQL). */
     port: {type: 'number', required: false, default: 5432},
-    readerCount: {type: 'number', required: false},
+    /** Aurora readers beyond the writer, aurora-serverless mode only; capped at 15. When unset, 0 in a nonprod environment and 1 (in a second zone) in prod. */
+    readerCount: {
+      type: 'number',
+      required: false,
+      constraints: {level: 'warn', maximum: 15},
+    },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** Whether clients must connect with TLS, through a parameter group the agent manages. When unset, a new database gets it and an existing one is left as it is. true also attaches it to an existing database on its engine's default group (applied at the next reboot); false never sets it up. */
     requireSecureTransport: {type: 'boolean', required: false},
-    storageType: {type: 'string', required: false},
+    /** Storage type, provisioned-instance mode only: gp2, gp3, io1, io2 or standard. When unset, a new instance gets gp3 and an existing one is left as it is; declared, it is reconciled on an existing instance. */
+    storageType: {
+      type: 'string',
+      required: false,
+      values: ['gp2', 'gp3', 'io1', 'io2', 'standard'],
+      valuesCaseInsensitive: true,
+    },
+    /** Engine version: a major (16 for PostgreSQL, 8.4 for MySQL) or a full version. Used at creation only; an existing database's version is never changed, only a warning is logged when it differs. When unset, the engine's default major (PostgreSQL 16, MySQL 8.4). */
     version: {type: 'string', required: false, default: '16'},
   },
 } as const satisfies OfferContract;
@@ -1596,7 +2111,7 @@ export const Storage_PaaS_S3 = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'Storage.PaaS.AwsS3',
@@ -1604,10 +2119,24 @@ export const Storage_PaaS_S3 = {
     },
   ],
   params: {
-    bucket: {type: 'string', required: false, default: ''},
+    /** Globally unique S3 bucket name (3 to 63 lower-case letters, digits, dots and hyphens). When unset, a unique name derived from the component id, the account and the Live System. Renaming an existing bucket is refused. */
+    bucket: {
+      type: 'string',
+      required: false,
+      default: '',
+      constraints: {pattern: '[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]'},
+    },
+    /** Whether deleting the component empties the bucket (every object, version and delete marker) first. When false, deleting a non-empty bucket is blocked and the component stays Deleting. When unset, false. */
     forceDestroy: {type: 'boolean', required: false, default: false},
-    lifecycleExpirationDays: {type: 'number', required: false},
+    /** Days after which every object (and, on a versioned bucket, every noncurrent version) expires, a positive whole number; incomplete multipart uploads are then also aborted after 1 day. When unset, nothing expires and a rule the agent set earlier is removed. */
+    lifecycleExpirationDays: {
+      type: 'number',
+      required: false,
+      constraints: {minimum: 1},
+    },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** Whether the bucket keeps object versions. Wins over versioningEnabled when both are set. When unset, false. */
     versioning: {
       type: 'boolean',
       required: false,
@@ -1623,7 +2152,7 @@ export const Storage_PaaS_StorageAccount = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'Storage.PaaS.AzureBlob',
@@ -1631,45 +2160,77 @@ export const Storage_PaaS_StorageAccount = {
     },
   ],
   params: {
+    /** Default blob access tier: Hot, Cool, Cold or Premium. When unset, Hot. Ignored for kind Storage and BlockBlobStorage, which have no account-level tier. */
     accessTier: {type: 'string', required: false, default: 'Hot'},
+    /** Whether containers of this account may allow anonymous public read access. When unset, false. */
     allowBlobPublicAccess: {type: 'boolean', required: false, default: false},
+    /** Whether object replication to accounts in another Microsoft Entra tenant is allowed. When unset, false. */
     allowCrossTenantReplication: {
       type: 'boolean',
       required: false,
       default: false,
     },
+    /** Restricts copy operations to and from the account: PrivateLink (same virtual network via private link) or AAD (same Microsoft Entra tenant). When unset, copies are not restricted. A value outside the two is sent to Azure with a warning; a catalog placeholder is refused. */
     allowedCopyScope: {type: 'string', required: false},
+    /** Whether requests may authorize with the account access key (Shared Key, including account SAS). When unset, true. Set false to allow only Microsoft Entra ID authorization. */
     allowSharedKeyAccess: {type: 'boolean', required: false, default: true},
+    /** Identity-based authentication for Azure Files, as {directoryServiceOptions, defaultSharePermission, activeDirectoryProperties}. directoryServiceOptions is None, AADDS, AD or AADKERB and defaultSharePermission a share-level role name, both None when not named; activeDirectoryProperties carries the on-premises AD domain facts (domainName, domainGuid, domainSid, forestName, netBiosDomainName, azureStorageSid, samAccountName, accountType, default Computer) needed for AD. When unset, none is configured. */
     azureFilesIdentityBasedAuthentication: {type: 'object', required: false},
-    azureRegion: {type: 'string', required: false, default: 'westeurope'},
+    /** Legacy alias of region: the Azure region a new storage account is created in, e.g. northeurope. region wins when both are set. When both are unset, the region of the component's resource group, which is the Live System's (environment's) region; a new account with no region at all is refused. An existing account keeps the region it lives in: Azure cannot move it. */
+    azureRegion: {type: 'string', required: false},
+    /** Azure Backup for the account's file shares, as {vaultName, vaultResourceGroupName, vaultLocation, sku, etag, policyName, policyResourceGroupName, policyLocation, policy, policyType}. Defaults: vault <account>-backupVault and policy <account>-policy, both in the account's resource group and region, vault SKU Standard, policyType AzureStorage. policy is the policy JSON; when empty, only the vault is created. When unset, no backup is configured. */
     backup: {type: 'object', required: false},
+    /** Custom domain for the blob endpoint, as {name, useSubDomainName}. A block without a name means no custom domain; on an existing account an unset value keeps the domain it has. */
     customDomain: {type: 'object', required: false},
+    /** Whether the Azure portal authorizes with Microsoft Entra ID by default instead of the account key. When unset, false. */
     defaultToOAuthAuthentication: {
       type: 'boolean',
       required: false,
       default: false,
     },
+    /** Endpoint DNS type: Standard or AzureDnsZone (partitioned DNS zones, allowing many more accounts per subscription). When unset, Standard. Fixed when the account is created. */
     dnsEndpointType: {type: 'string', required: false, default: 'Standard'},
+    /** Encryption at rest, as {keySource, keyVaultProperties: {keyName, keyVaultUri, keyVersion}, identity: {userAssignedIdentity, federatedIdentityClientId}, requireInfrastructureEncryption, services: {blob|file|queue|table: {enabled, keyType}}}. keySource is Microsoft.Storage (default) or Microsoft.Keyvault for customer-managed keys. When unset, Microsoft-managed keys with blob and file encryption enabled. */
     encryption: {type: 'object', required: false},
+    /** Azure Edge Zone to place the account in, as {name, type}; type defaults to EdgeZone. A block without a name means no extended location. On an existing account an unset value keeps what the account has. */
     extendedLocation: {type: 'object', required: false},
+    /** File service soft delete, as {deleteRetentionEnabled, deleteRetentionDays}. Applied only for kind Storage or FileStorage. When neither field is named, the file service is left untouched; a named policy without days writes 0 days. */
     fileService: {type: 'object', required: false},
+    /** Managed identity of the account, as {type, userAssignedIdentities}: type is None, SystemAssigned, UserAssigned or 'SystemAssigned,UserAssigned' (None when the block has no type); userAssignedIdentities maps user-assigned identity resource IDs to empty objects. When unset, the account gets no managed identity. */
     identity: {type: 'object', required: false},
+    /** Account-level version immutability (WORM), as {enabled, immutabilityPolicy: {immutabilityPeriodSinceCreationInDays, state: Disabled|Unlocked|Locked, allowProtectedAppendWrites}}. Only the fields named are applied; the rest keep the account's own values. A Locked policy cannot be undone. */
     immutableStorageWithVersioning: {type: 'object', required: false},
+    /** Whether the hierarchical namespace (Data Lake Storage Gen2) is enabled. Set at creation only. When unset, a new account is created without it and an existing account keeps the namespace it was created with. */
     isHnsEnabled: {type: 'boolean', required: false},
+    /** Whether local users (used by SFTP) are enabled. When unset, Azure's default applies. */
     isLocalUserEnabled: {type: 'boolean', required: false},
+    /** Whether NFS 3.0 is enabled for blobs. Set at creation only and requires the hierarchical namespace (isHnsEnabled). When unset, it is not enabled. */
     isNfsV3Enabled: {type: 'boolean', required: false},
+    /** Whether the SFTP endpoint is enabled. Requires the hierarchical namespace (isHnsEnabled). When unset, it is not enabled. */
     isSftpEnabled: {type: 'boolean', required: false},
+    /** Access-key expiration policy, as {keyExpirationPeriodInDays}, at least 1 day. A block without a period keeps an existing account's period and gives a new account 30 days. When unset, no key policy is requested. */
     keyPolicy: {type: 'object', required: false},
+    /** Storage account kind: StorageV2, Storage, BlobStorage, BlockBlobStorage or FileStorage. When unset, StorageV2. It also picks the defaults of sku and accessTier, and whether fileService applies (only Storage and FileStorage). */
     kind: {type: 'string', required: false, default: 'StorageV2'},
+    /** Large file shares (up to 100 TiB): Enabled or Disabled. Once enabled it cannot be disabled. When unset, it is not requested. A catalog placeholder is refused. */
     largeFileSharesState: {type: 'string', required: false},
+    /** Minimum TLS version accepted by the account: TLS1_0, TLS1_1 or TLS1_2. When unset, TLS1_2. */
     minimumTlsVersion: {type: 'string', required: false, default: 'TLS1_2'},
+    /** Network firewall of the account, as {defaultAction: Allow|Deny, bypass, ipRules: [{ipAddressOrRange, action}], virtualNetworkRules: [{virtualNetworkResourceId, action, state}], resourceAccessRules: [{resourceId, tenantId}]}. Every listed rule field is required. defaultAction defaults from publicAccess; bypass (e.g. AzureServices, Logging, Metrics) and rule lists not named keep what an existing account has. When unset, only the defaultAction derived from publicAccess. */
     networkRuleSet: {type: 'object', required: false},
+    /** Default network action when networkRuleSet names none: true is Allow, false is Deny, so only bypassed Azure services and listed rules reach the account. When unset, false (Deny). */
     publicAccess: {type: 'boolean', required: false, default: false},
+    /** Whether the public endpoint is reachable at all: Enabled or Disabled. When unset, Enabled; what reaches it is then decided by the network rule set (see publicAccess). */
     publicNetworkAccess: {type: 'string', required: false, default: 'Enabled'},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** Network routing preference, as {routingChoice: MicrosoftRouting|InternetRouting (default InternetRouting), publishMicrosoftEndpoints (default false), publishInternetEndpoints (default true)}. When unset, none is requested. */
     routingPreference: {type: 'object', required: false},
+    /** Shared access signature expiration policy, as {sasExpirationPeriod, expirationAction}. The period has the form <days>.<hours>:<minutes>:<seconds>, e.g. 1.00:00:00; the action is Log or Block. A field not named keeps the account's own value; on a new account a missing period is one day and a missing action Log. When unset, no SAS policy is requested. */
     sasPolicy: {type: 'object', required: false},
+    /** Storage SKU (redundancy and performance), e.g. Standard_LRS, Standard_ZRS, Standard_GRS or Premium_LRS. When unset, Premium_LRS for kind BlockBlobStorage and Standard_LRS otherwise. */
     sku: {type: 'string', required: false, default: 'Standard_LRS'},
+    /** Whether the account accepts HTTPS only. When unset, true. */
     supportsHttpsTrafficOnly: {type: 'boolean', required: false, default: true},
   },
 } as const satisfies OfferContract;
@@ -1680,28 +2241,36 @@ export const Storage_PaaS_StorageBlobContainer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** Encryption scope new blobs in the container use by default. When unset, $account-encryption-key, the storage account's own encryption. */
     defaultEncryptionScope: {
       type: 'string',
       required: false,
       default: '$account-encryption-key',
     },
+    /** Whether writes are forced to use defaultEncryptionScope, refusing a per-blob scope. When unset, false. */
     denyEncryptionScopeOverride: {
       type: 'boolean',
       required: false,
       default: false,
     },
+    /** NFS 3.0 all-squash: map every client user to the anonymous user. Only true is sent, and it requires a storage account with NFS 3.0 enabled; false or unset leaves it off. */
     enableNfsV3AllSquash: {type: 'boolean', required: false},
+    /** NFS 3.0 root-squash: map the client root user to the anonymous user. Only true is sent, and it requires a storage account with NFS 3.0 enabled; false or unset leaves it off. */
     enableNfsV3RootSquash: {type: 'boolean', required: false},
+    /** Container-level version immutability (WORM), as {enabled}. Sent only when enabled is named; the storage account must support version-level immutability. When unset, nothing is requested. */
     immutableStorageWithVersioning: {type: 'object', required: false},
+    /** Container metadata as name-value string pairs. When unset or empty, no metadata is sent. */
     metadata: {type: 'object', required: false},
+    /** Anonymous read access: None, Blob (blobs only) or Container (blobs and listing). When unset, None. Anything but None also needs allowBlobPublicAccess on the storage account. */
     publicAccess: {type: 'string', required: false, default: 'None'},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1712,36 +2281,39 @@ export const Storage_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
+    /** Reference to a secret defined on the environment, written {"$envSecret": "<shortName>"}. The environment owns the value: the component only resolves and publishes it, and deleting the component leaves the secret in place. Preferred over 'secretValue'; when both are set, this one wins. Fails when no environment secret has that short name. */
     secret: {type: 'object', required: false, sensitive: true},
+    /** Name under which 'secretValue' is stored in the environment secret store. When unset, the component id. Ignored when 'secret' references an environment secret, which keeps its own name. Changing it writes a new secret and revokes the readers' grants on the old one. */
     secretName: {type: 'string', required: false, default: ''},
+    /** Raw secret value (legacy) that the component stores in the environment secret store under 'secretName', granting read access to the custom workloads linked to it. Required when 'secret' is not set; deleting the component deletes the stored secret. */
     secretValue: {type: 'string', required: false, sensitive: true},
   },
 } as const satisfies OfferContract;

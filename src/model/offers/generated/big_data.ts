@@ -3,159 +3,29 @@
 // (npm run contracts:generate). See docs/offer-contracts.md.
 import type {OfferContract} from '../contract/offer_contract';
 
-export const BigData_CaaS_MinioTenant = {
-  offerType: 'BigData.CaaS.MinioTenant',
-  serviceTypes: [],
-  declaredBy: [
-    {
-      agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'AWS',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'Azure',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'GCP',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'OCI',
-      parameterRules: [],
-    },
-  ],
-  params: {
-    containerPlatform: {type: 'string', required: false},
-    cpuLimit: {type: 'string', required: false, default: '2'},
-    cpuRequest: {type: 'string', required: false, default: '500m'},
-    memoryLimit: {type: 'string', required: false, default: '4Gi'},
-    memoryRequest: {type: 'string', required: false, default: '1Gi'},
-    minioVersion: {
-      type: 'string',
-      required: false,
-      default: 'RELEASE.2025-03-12T18-04-18Z',
-    },
-    namespace: {
-      type: 'string',
-      required: false,
-      derived: {note: 'defaults to the component id when absent'},
-    },
-    region: {
-      type: 'string',
-      required: false,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-      ],
-    },
-    requestAutoCert: {type: 'boolean', required: false, default: true},
-    servers: {type: 'integer', required: false, default: 4},
-    storageClass: {type: 'string', required: false, default: ''},
-    volumeSize: {type: 'string', required: false, default: '100Gi'},
-    volumesPerServer: {type: 'integer', required: false, default: 4},
-  },
-} as const satisfies OfferContract;
-
 export const BigData_CaaS_SparkCluster = {
   offerType: 'BigData.CaaS.SparkCluster',
   serviceTypes: ['BigData.CaaS.SparkCluster'],
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.6.0',
+      agentVersion: 'v1.8.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
     },
-    {
-      agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'AWS',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'Azure',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'GCP',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'OCI',
-      parameterRules: [],
-    },
   ],
   params: {
-    containerPlatform: {
-      type: 'string',
-      required: false,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
     driverCores: {type: 'string', required: false, default: '1'},
     driverMemory: {type: 'string', required: false, default: '1g'},
-    executorCores: {type: 'string', required: false},
+    executorCores: {type: 'string', required: false, default: '1'},
     executorInstances: {type: 'integer', required: false, default: 2},
-    executorMemory: {type: 'string', required: false},
-    image: {type: 'string', required: false},
-    namespace: {type: 'string', required: false},
-    region: {
+    executorMemory: {type: 'string', required: false, default: '1g'},
+    image: {type: 'string', required: false, default: 'apache/spark:3.5.0'},
+    namespace: {
       type: 'string',
       required: false,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-      ],
-    },
-    sparkOperatorName: {
-      type: 'string',
-      required: true,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    sparkVersion: {
-      type: 'string',
-      required: false,
-      default: '3.5.3',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
+      constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?'},
     },
   },
 } as const satisfies OfferContract;
@@ -166,233 +36,22 @@ export const BigData_CaaS_SparkJob = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.6.0',
+      agentVersion: 'v1.8.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
     },
-    {
-      agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'AWS',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'Azure',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'GCP',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'OCI',
-      parameterRules: [],
-    },
   ],
   params: {
-    arguments: {
-      type: 'array',
-      required: false,
-      default: [],
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    concurrencyPolicy: {
+    image: {type: 'string', required: false, default: 'apache/spark:3.5.0'},
+    jarUri: {type: 'string', required: false, default: ''},
+    mainClass: {type: 'string', required: false, default: ''},
+    namespace: {
       type: 'string',
       required: false,
-      default: 'Forbid',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    containerPlatform: {
-      type: 'string',
-      required: false,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    driverCores: {
-      type: 'string',
-      required: false,
-      default: '1',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    driverMemory: {
-      type: 'string',
-      required: false,
-      default: '1g',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    executorCores: {
-      type: 'string',
-      required: false,
-      default: '2',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    executorInstances: {
-      type: 'integer',
-      required: false,
-      default: 2,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    executorMemory: {
-      type: 'string',
-      required: false,
-      default: '2g',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    image: {type: 'string', required: false},
-    jarUri: {
-      type: 'string',
-      required: false,
-      default: '',
-      agents: ['aria-agent-caas-k8s'],
-    },
-    mainApplicationFile: {
-      type: 'string',
-      required: true,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    mainClass: {type: 'string', required: false},
-    maxRetries: {
-      type: 'integer',
-      required: false,
-      default: 3,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    mode: {
-      type: 'string',
-      required: false,
-      default: 'cluster',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    namespace: {type: 'string', required: false},
-    region: {
-      type: 'string',
-      required: false,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-      ],
-    },
-    restartPolicy: {
-      type: 'string',
-      required: false,
-      default: 'Never',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
+      constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?'},
     },
     schedule: {type: 'string', required: false, default: ''},
-    sparkConf: {
-      type: 'object',
-      required: false,
-      default: {},
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    sparkOperatorName: {
-      type: 'string',
-      required: true,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    sparkVersion: {
-      type: 'string',
-      required: false,
-      default: '3.5.3',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    type: {
-      type: 'string',
-      required: false,
-      default: 'Java',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
   },
 } as const satisfies OfferContract;
 
@@ -402,155 +61,21 @@ export const BigData_CaaS_SparkMlExperiment = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.6.0',
+      agentVersion: 'v1.8.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'AWS',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'Azure',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'GCP',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
     artifactRoot: {type: 'string', required: false},
-    backendStoreUri: {
+    namespace: {
       type: 'string',
       required: false,
-      default: 'sqlite:///mlflow/mlflow.db',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
+      default: 'mlflow',
+      constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?'},
     },
-    containerPlatform: {
-      type: 'string',
-      required: false,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    cpuLimit: {
-      type: 'string',
-      required: false,
-      default: '1',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    cpuRequest: {
-      type: 'string',
-      required: false,
-      default: '250m',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    memoryLimit: {
-      type: 'string',
-      required: false,
-      default: '1Gi',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    memoryRequest: {
-      type: 'string',
-      required: false,
-      default: '512Mi',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    mlflowVersion: {
-      type: 'string',
-      required: false,
-      default: '2.21.3',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    namespace: {type: 'string', required: false},
-    region: {
-      type: 'string',
-      required: false,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-      ],
-    },
-    replicas: {
-      type: 'integer',
-      required: false,
-      default: 2,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    servicePort: {
-      type: 'integer',
-      required: false,
-      default: 5000,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    trackingUri: {
-      type: 'string',
-      required: false,
-      agents: ['aria-agent-caas-k8s'],
-    },
+    trackingUri: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
 
@@ -560,111 +85,20 @@ export const BigData_CaaS_SparkOperator = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.6.0',
+      agentVersion: 'v1.8.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
     },
-    {
-      agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'AWS',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'Azure',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'GCP',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'OCI',
-      parameterRules: [],
-    },
   ],
   params: {
-    containerPlatform: {
+    namespace: {
       type: 'string',
       required: false,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
+      default: 'spark-operator',
+      constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?'},
     },
-    enableMetrics: {
-      type: 'boolean',
-      required: false,
-      default: true,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    enableWebhook: {
-      type: 'boolean',
-      required: false,
-      default: true,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    namespace: {type: 'string', required: false},
-    operatorVersion: {
-      type: 'string',
-      required: false,
-      default: '2.5.0',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    region: {
-      type: 'string',
-      required: false,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-      ],
-    },
-    sparkVersion: {
-      type: 'string',
-      required: false,
-      default: '3.5.3',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    webhookEnabled: {
-      type: 'boolean',
-      required: false,
-      default: true,
-      agents: ['aria-agent-caas-k8s'],
-    },
+    webhookEnabled: {type: 'boolean', required: false, default: true},
   },
 } as const satisfies OfferContract;
 
@@ -674,138 +108,13 @@ export const BigData_CaaS_SparkUnityCatalog = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.6.0',
+      agentVersion: 'v1.8.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
     },
-    {
-      agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'AWS',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'Azure',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'GCP',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'OCI',
-      parameterRules: [],
-    },
   ],
-  params: {
-    containerPlatform: {
-      type: 'string',
-      required: false,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    cpuLimit: {
-      type: 'string',
-      required: false,
-      default: '1',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    cpuRequest: {
-      type: 'string',
-      required: false,
-      default: '250m',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    memoryLimit: {
-      type: 'string',
-      required: false,
-      default: '1Gi',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    memoryRequest: {
-      type: 'string',
-      required: false,
-      default: '512Mi',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    namespace: {
-      type: 'string',
-      required: false,
-      derived: {note: 'defaults to the component id when absent'},
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    region: {
-      type: 'string',
-      required: false,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-      ],
-    },
-    replicas: {
-      type: 'integer',
-      required: false,
-      default: 2,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-    unityCatalogVersion: {
-      type: 'string',
-      required: false,
-      default: '0.3.0',
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-        'fractal-cloud-agent-oci',
-      ],
-    },
-  },
+  params: {},
 } as const satisfies OfferContract;
 
 export const BigData_PaaS_AwsDatabricks = {
@@ -814,16 +123,20 @@ export const BigData_PaaS_AwsDatabricks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
+    /** Databricks account id (a UUID) the workspace is created in, copied from the Databricks account console after subscribing through AWS Marketplace; the agent cannot derive it. Required on the first reconcile; afterwards the id published in the accountId output field is used. */
     accountId: {type: 'string', required: false},
-    credentialsId: {type: 'string', required: true},
+    /** Id of the credential configuration (the cross-account IAM role Databricks uses) registered in the Databricks account, from the account console or the Account API. Required to create: a new workspace is refused without it; there is no default. */
+    credentialsId: {type: 'string', required: false},
+    /** Id of a network configuration registered in the Databricks account, to deploy the workspace into a customer-managed VPC. When unset, Databricks creates and manages the VPC. */
     networkId: {type: 'string', required: false, default: ''},
+    /** Databricks pricing tier of the workspace: standard, premium or enterprise (case-insensitive). The agent does not change the tier of an existing workspace and fails when it differs. When unset, premium. */
     pricingTier: {
       type: 'string',
       required: false,
@@ -831,8 +144,10 @@ export const BigData_PaaS_AwsDatabricks = {
       values: ['standard', 'premium', 'enterprise'],
       valuesCaseInsensitive: true,
     },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
-    storageConfigurationId: {type: 'string', required: true},
+    /** Id of the storage configuration (the S3 root bucket of the workspace) registered in the Databricks account, from the account console or the Account API. Required to create: a new workspace is refused without it; there is no default. */
+    storageConfigurationId: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
 
@@ -842,17 +157,22 @@ export const BigData_PaaS_AwsDatabricksCluster = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
+    /** Minutes of inactivity after which the cluster terminates. When unset, 60. */
     autoTerminationMinutes: {type: 'integer', required: false, default: 60},
+    /** Name of the Databricks cluster, which the agent finds it by. When unset, the component id. */
     clusterName: {type: 'string', required: false, default: ''},
+    /** Databricks access mode of the cluster (data_security_mode), e.g. SINGLE_USER or USER_ISOLATION. An unknown value falls back to SINGLE_USER with a warning. When unset, SINGLE_USER. */
     dataSecurityMode: {type: 'string', required: false, default: 'SINGLE_USER'},
+    /** Maven artifacts installed on the cluster, each as group:artifact:version coordinates. When unset, none. */
     mavenLibraries: {type: 'array', required: false, default: []},
+    /** Upper bound of the autoscaling worker range; ignored when numWorkers or singleNode is set. When neither bound is declared, 8. */
     maxWorkers: {
       type: 'integer',
       required: false,
@@ -860,6 +180,7 @@ export const BigData_PaaS_AwsDatabricksCluster = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
+    /** Lower bound of the autoscaling worker range; ignored when numWorkers or singleNode is set. When neither bound is declared, 1. */
     minWorkers: {
       type: 'integer',
       required: false,
@@ -867,7 +188,15 @@ export const BigData_PaaS_AwsDatabricksCluster = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
-    nodeTypeId: {type: 'string', required: true},
+    /** Databricks node type of the driver and workers (an EC2 instance type, e.g. m5d.large). When unset, the agent discovers it: a new cluster gets the smallest general-purpose node type the workspace offers with enough cores for a Spark driver, and an existing cluster keeps its own. A discovery that finds none is refused, naming this key. */
+    nodeTypeId: {
+      type: 'string',
+      required: false,
+      derived: {
+        note: "discovered from the workspace when omitted: the smallest general-purpose node type fit for a Spark driver for a new cluster, the existing cluster's own node type otherwise",
+      },
+    },
+    /** Fixed number of workers. Wins over minWorkers and maxWorkers. When unset (or zero or less), the cluster autoscales from minWorkers to maxWorkers. */
     numWorkers: {
       type: 'integer',
       required: false,
@@ -875,12 +204,24 @@ export const BigData_PaaS_AwsDatabricksCluster = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
+    /** PyPI packages installed on the cluster, each a pip requirement (e.g. pandas==2.2.2). When unset, none. */
     pypiLibraries: {type: 'array', required: false, default: []},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** Whether the cluster runs a driver only, with no workers (the agent adds the Spark settings Databricks requires for that). Wins over the worker counts. When unset, false. */
     singleNode: {type: 'boolean', required: false, default: false},
+    /** User or service principal the cluster is dedicated to, used by single-user access modes (the default). When unset, the principal the agent authenticates to the workspace as. */
     singleUserName: {type: 'string', required: false},
+    /** Spark configuration properties of the cluster, as a name to value map. When unset, none beyond what the agent sets itself. */
     sparkConf: {type: 'object', required: false, default: {}},
-    sparkVersion: {type: 'string', required: true},
+    /** Databricks runtime version key (e.g. 15.4.x-scala2.12). When unset, the agent discovers it: a new cluster gets the newest general-purpose LTS runtime the workspace offers and an existing cluster keeps its own runtime. A discovery that finds none is refused, naming this key. Changing it edits and restarts the cluster. */
+    sparkVersion: {
+      type: 'string',
+      required: false,
+      derived: {
+        note: "discovered from the workspace when omitted: the newest general-purpose LTS runtime for a new cluster, the existing cluster's own runtime otherwise",
+      },
+    },
   },
 } as const satisfies OfferContract;
 
@@ -890,7 +231,7 @@ export const BigData_PaaS_AwsDatabricksJob = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -960,6 +301,7 @@ export const BigData_PaaS_AwsDatabricksJob = {
     },
   ],
   params: {
+    /** Kind of artifact named by artifactUri: python_wheel runs it as a Python wheel task, notebook runs the job by taskType and its artifact key instead. When unset, a job with an artifactUri is a Python wheel job. */
     artifactType: {
       type: 'string',
       required: false,
@@ -967,11 +309,15 @@ export const BigData_PaaS_AwsDatabricksJob = {
       values: ['python_wheel', 'notebook'],
       valuesLevel: 'warn',
     },
+    /** http(s) URL of the Python wheel the job runs; the agent downloads it and uploads it to the workspace on every reconcile. Setting it makes the job a Python wheel job unless artifactType says otherwise, and then entryPoint is required. Only http(s) URLs are supported: any other value, a bare reference or an oci:// URI included, fails the job naming artifactUri. */
     artifactUri: {type: 'string', required: false, default: ''},
+    /** Quartz cron expression the job runs on, evaluated in UTC (seconds first: '0 0 2 * * ?' is 02:00 every day). When unset, the job has no schedule and runs only when triggered. */
     cronSchedule: {type: 'string', required: false, default: ''},
     /** the function the wheel exposes */
     entryPoint: {type: 'string', required: false},
+    /** Arguments passed to entryPoint of a Python wheel job, as a list of strings in order. When unset, none. */
     entryPointArgs: {type: 'array', required: false, default: []},
+    /** Legacy flag, ignored: the job runs on the cluster it depends on, or on a new cluster started for each run when it depends on none. A value contradicting that placement is reported as a warning; the placement applied is published as the clusterPlacement output. */
     existingCluster: {
       type: 'boolean',
       required: false,
@@ -980,21 +326,24 @@ export const BigData_PaaS_AwsDatabricksJob = {
         note: 'the job runs on the cluster it depends on, or on a cluster started for each run when it depends on none',
       },
     },
-    /** the URI of the JAR that holds the main class (SPARK_JAR) */
+    /** URI of the JAR that holds mainClassName, installed as the library of a SPARK_JAR job's task (a workspace path, a /Volumes path, or a cloud-storage URI the workspace can read). When unset, the JAR must already be on the cluster. Refused on a job that is not a SPARK_JAR job. */
     jarUri: {type: 'string', required: false, default: ''},
+    /** Name of the job in the Databricks workspace; the agent finds its job by this name on every reconcile, so renaming it creates a new job. When unset, the component id. */
     jobName: {
       type: 'string',
       required: false,
       derived: {note: 'defaults to the component id'},
     },
-    /** the fully qualified main class of the JAR */
+    /** Fully qualified main class a SPARK_JAR job runs; 'parameters' are passed to its main method. The JAR holding it must already be available on the cluster. */
     mainClassName: {type: 'string', required: false},
+    /** How many times Databricks retries a failed run of the task. When unset or 0, a failed run is not retried. */
     maxRetries: {
       type: 'integer',
       required: false,
       default: 0,
       constraints: {level: 'warn', minimum: 0},
     },
+    /** Upper bound of the autoscaling worker range of the per-run cluster, used when numWorkers is unset or zero or less. When unset, 8 (or minWorkers when that is higher). */
     maxWorkers: {
       type: 'integer',
       required: false,
@@ -1002,6 +351,7 @@ export const BigData_PaaS_AwsDatabricksJob = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
+    /** Lower bound of the autoscaling worker range of the per-run cluster, used when numWorkers is unset or zero or less. When unset, 1 (or maxWorkers when that is lower). */
     minWorkers: {
       type: 'integer',
       required: false,
@@ -1009,6 +359,7 @@ export const BigData_PaaS_AwsDatabricksJob = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
+    /** Databricks node type of the per-run cluster's driver and workers, as listed by the workspace. When unset, an existing job keeps the node type it runs on; a new one gets the newest-generation, smallest general-purpose node type of at least 4 cores the workspace offers and the account has capacity for, and is refused when none is found. */
     nodeTypeId: {
       type: 'string',
       required: false,
@@ -1018,6 +369,7 @@ export const BigData_PaaS_AwsDatabricksJob = {
     },
     /** the workspace path of the notebook the job runs */
     notebookPath: {type: 'string', required: false},
+    /** Fixed number of workers of the cluster started for each run (used only when the job depends on no cluster). Zero or less, or unset with no minWorkers / maxWorkers, autoscales from 1 to 8 workers. Ignored when singleNode is true. */
     numWorkers: {
       type: 'integer',
       required: false,
@@ -1025,22 +377,29 @@ export const BigData_PaaS_AwsDatabricksJob = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
+    /** Python package name inside the wheel, used by a Python wheel job. When unset, the component id. */
     packageName: {
       type: 'string',
       required: false,
       derived: {note: 'defaults to the component id'},
     },
+    /** Arguments for the task, as a list of strings. A PYTHON or SPARK_JAR job receives them as command-line arguments in order; a NOTEBOOK job receives the entries written key=value as notebook parameters and ignores the rest. Not used by a Python wheel job, which reads entryPointArgs. */
     parameters: {type: 'array', required: false, default: []},
     /** the path of the Python file the job runs */
     pythonFile: {type: 'string', required: false},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** When true, the per-run cluster is a driver only, with Spark running locally on it and no redundancy; meant for test environments. Overrides numWorkers, minWorkers and maxWorkers. */
     singleNode: {type: 'boolean', required: false, default: false},
+    /** Databricks Runtime version key of the per-run cluster, as listed by the workspace. Used only when the job depends on no cluster. When unset, an existing job keeps the runtime it runs on; a new one gets the newest general-purpose LTS runtime the workspace offers, and is refused naming sparkVersion when none is found. */
     sparkVersion: {
       type: 'string',
       required: false,
-      default: '14.3.x-scala2.12',
+      derived: {
+        note: 'discovered from the workspace when undeclared: the newest general-purpose LTS Databricks Runtime it offers',
+      },
     },
-    /** which artifact Databricks executes */
+    /** Which artifact Databricks executes: NOTEBOOK (notebookPath), PYTHON (pythonFile) or SPARK_JAR (mainClassName), matched without regard to case. When unset, derived only when exactly one of those three keys is set; with none or several set the job is refused. Ignored for a Python wheel job (artifactUri / artifactType python_wheel). */
     taskType: {
       type: 'string',
       required: false,
@@ -1060,15 +419,18 @@ export const BigData_PaaS_AwsDatabricksMlflow = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
+    /** Storage location of the experiment's artifacts (e.g. an s3:// or dbfs:/ URI). When unset, the workspace's default artifact location. Cannot change once the experiment exists. */
     artifactLocation: {type: 'string', required: false, default: ''},
+    /** MLflow experiment name, an absolute workspace path (e.g. /Shared/<name>); a bare name is placed under /Shared/. When unset, /Shared/<componentId>. */
     experimentName: {type: 'string', required: false, default: ''},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1079,17 +441,31 @@ export const BigData_PaaS_AwsS3Datalake = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
-    bucket: {type: 'string', required: false, default: ''},
+    /** Globally unique S3 bucket name (3 to 63 lower-case letters, digits, dots and hyphens). When unset, a unique name derived from the component id, the account and the Live System. Renaming an existing bucket is refused. */
+    bucket: {
+      type: 'string',
+      required: false,
+      default: '',
+      constraints: {pattern: '[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]'},
+    },
+    /** Whether deleting the component empties the bucket (every object, version and delete marker) first. When false, deleting a non-empty bucket is blocked and the component stays Deleting. When unset, false. */
     forceDestroy: {type: 'boolean', required: false, default: false},
-    lifecycleExpirationDays: {type: 'number', required: false},
+    /** Days after which every object (and, on a versioned bucket, every noncurrent version) expires, a positive whole number; incomplete multipart uploads are then also aborted after 1 day. When unset, nothing expires and a rule the agent set earlier is removed. */
+    lifecycleExpirationDays: {
+      type: 'number',
+      required: false,
+      constraints: {minimum: 1},
+    },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** Whether the bucket keeps object versions. Wins over versioningEnabled when both are set. When unset, false. */
     versioning: {
       type: 'boolean',
       required: false,
@@ -1105,16 +481,20 @@ export const BigData_PaaS_AzureDatabricks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** Secure Cluster Connectivity: when true, cluster nodes get no public IP. Changed in place on an existing workspace. When unset, true. */
     enableNoPublicIp: {type: 'boolean', required: false, default: true},
+    /** Name of the managed resource group Azure creates for the workspace's data-plane resources, outside the Live System's resource group. When unset, databricks-rg-<component id>. Fixed at creation: changing it later has no effect on an existing workspace. */
     managedResourceGroupName: {type: 'string', required: false, default: ''},
+    /** Azure Databricks pricing tier (SKU) of the workspace, e.g. standard or premium; compared case-insensitively and changed in place on an existing workspace. Premium is required by the MLflow experiment offer and Unity Catalog. When unset, premium. */
     pricingTier: {type: 'string', required: false, default: 'premium'},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1125,17 +505,22 @@ export const BigData_PaaS_AzureDatabricksCluster = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** Minutes of inactivity after which Databricks terminates the cluster. Sent on create and on every edit, but a change alone does not trigger an edit. The agent restarts a terminated cluster on its next reconcile. When unset, 60. */
     autoTerminationMinutes: {type: 'integer', required: false, default: 60},
+    /** Name of the Databricks cluster in the workspace. The agent finds the cluster by this name, so changing it makes the agent look for, and create, a cluster under the new name. When unset or blank, the component id. */
     clusterName: {type: 'string', required: false, default: ''},
+    /** Databricks access mode, as the Databricks API enum name (case-sensitive), e.g. SINGLE_USER, USER_ISOLATION or DATA_SECURITY_MODE_DEDICATED. An unrecognized value falls back to SINGLE_USER with a warning. A change edits the running cluster. When unset, SINGLE_USER. */
     dataSecurityMode: {type: 'string', required: false, default: 'SINGLE_USER'},
+    /** Maven libraries installed on the cluster, as group:artifact:version coordinates. Installed only when the agent creates the cluster; later changes are not applied to an existing cluster. */
     mavenLibraries: {type: 'array', required: false, default: []},
+    /** Autoscale ceiling (worker nodes), used when numWorkers is not greater than zero. When only minWorkers is set, the higher of 8 and minWorkers. */
     maxWorkers: {
       type: 'integer',
       required: false,
@@ -1143,6 +528,7 @@ export const BigData_PaaS_AzureDatabricksCluster = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
+    /** Autoscale floor (worker nodes), used when numWorkers is not greater than zero. When only maxWorkers is set, the lower of 1 and maxWorkers. */
     minWorkers: {
       type: 'integer',
       required: false,
@@ -1150,7 +536,15 @@ export const BigData_PaaS_AzureDatabricksCluster = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
-    nodeTypeId: {type: 'string', required: true},
+    /** Databricks node type (Azure VM size) of the driver and workers, e.g. Standard_D4ds_v5. A declared value is used verbatim and a change edits the running cluster. When unset, an existing cluster keeps its node type; a new cluster gets the smallest non-deprecated general-purpose node type the workspace offers in its region with enough cores for a Spark driver, and the component fails if none is found. */
+    nodeTypeId: {
+      type: 'string',
+      required: false,
+      derived: {
+        note: "an existing cluster's own node type, else the smallest general-purpose node type the workspace offers with enough cores for a Spark driver",
+      },
+    },
+    /** Fixed number of worker nodes; wins over minWorkers and maxWorkers when greater than zero. Zero or less means autoscale over the default range (1 to 8). When no worker count is declared, a new cluster autoscales from 1 to 8 workers and an existing one keeps its shape. Ignored when singleNode is true. */
     numWorkers: {
       type: 'integer',
       required: false,
@@ -1158,12 +552,24 @@ export const BigData_PaaS_AzureDatabricksCluster = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
+    /** PyPI packages installed on the cluster, as pip requirement strings, e.g. pandas==2.2.2. Installed only when the agent creates the cluster; later changes are not applied to an existing cluster. */
     pypiLibraries: {type: 'array', required: false, default: []},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** When true, the cluster runs a driver only, with Spark in local mode, whatever the worker counts say; the agent adds the single-node Spark settings and tags Databricks requires. When unset, false. */
     singleNode: {type: 'boolean', required: false, default: false},
+    /** User or service principal a single-user (dedicated) cluster is assigned to; used only when dataSecurityMode is SINGLE_USER, DATA_SECURITY_MODE_DEDICATED, LEGACY_SINGLE_USER or LEGACY_SINGLE_USER_STANDARD. When unset, the existing cluster's assignee, else the principal the agent authenticates to the workspace as; if neither is found the cluster is created without one. */
     singleUserName: {type: 'string', required: false},
+    /** Spark configuration of the cluster as key/value pairs, e.g. spark.sql.shuffle.partitions. The agent adds the single-node settings and the settings of linked Event Hubs, then edits the cluster whenever its Spark configuration differs from the result, so keys set outside the blueprint are removed. */
     sparkConf: {type: 'object', required: false, default: {}},
-    sparkVersion: {type: 'string', required: true},
+    /** Databricks Runtime version key, e.g. 15.4.x-scala2.12. A declared value is used verbatim and a change edits (restarts) the running cluster. When unset, an existing cluster keeps the runtime it runs; a new cluster gets the newest general-purpose LTS runtime the workspace offers, and the component fails if none is found. */
+    sparkVersion: {
+      type: 'string',
+      required: false,
+      derived: {
+        note: "an existing cluster's own runtime, else the newest general-purpose LTS runtime the workspace offers",
+      },
+    },
   },
 } as const satisfies OfferContract;
 
@@ -1173,7 +579,7 @@ export const BigData_PaaS_AzureDatabricksJob = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [
@@ -1243,6 +649,7 @@ export const BigData_PaaS_AzureDatabricksJob = {
     },
   ],
   params: {
+    /** Kind of artifact named by artifactUri: python_wheel runs it as a Python wheel task, notebook runs the job by taskType and its artifact key instead. When unset, a job with an artifactUri is a Python wheel job. */
     artifactType: {
       type: 'string',
       required: false,
@@ -1250,11 +657,15 @@ export const BigData_PaaS_AzureDatabricksJob = {
       values: ['python_wheel', 'notebook'],
       valuesLevel: 'warn',
     },
+    /** http(s) URL of the Python wheel the job runs; the agent downloads it and uploads it to the workspace on every reconcile. Setting it makes the job a Python wheel job unless artifactType says otherwise, and then entryPoint is required. Only http(s) URLs are supported: any other value, a bare reference or an oci:// URI included, fails the job naming artifactUri. */
     artifactUri: {type: 'string', required: false, default: ''},
+    /** Quartz cron expression the job runs on, evaluated in UTC (seconds first: '0 0 2 * * ?' is 02:00 every day). When unset, the job has no schedule and runs only when triggered. */
     cronSchedule: {type: 'string', required: false, default: ''},
     /** the function the wheel exposes */
     entryPoint: {type: 'string', required: false},
+    /** Arguments passed to entryPoint of a Python wheel job, as a list of strings in order. When unset, none. */
     entryPointArgs: {type: 'array', required: false, default: []},
+    /** Legacy flag, ignored: the job runs on the cluster it depends on, or on a new cluster started for each run when it depends on none. A value contradicting that placement is reported as a warning; the placement applied is published as the clusterPlacement output. */
     existingCluster: {
       type: 'boolean',
       required: false,
@@ -1263,21 +674,24 @@ export const BigData_PaaS_AzureDatabricksJob = {
         note: 'the job runs on the cluster it depends on, or on a cluster started for each run when it depends on none',
       },
     },
-    /** the URI of the JAR that holds the main class (SPARK_JAR) */
+    /** URI of the JAR that holds mainClassName, installed as the library of a SPARK_JAR job's task (a workspace path, a /Volumes path, or a cloud-storage URI the workspace can read). When unset, the JAR must already be on the cluster. Refused on a job that is not a SPARK_JAR job. */
     jarUri: {type: 'string', required: false, default: ''},
+    /** Name of the job in the Databricks workspace; the agent finds its job by this name on every reconcile, so renaming it creates a new job. When unset, the component id. */
     jobName: {
       type: 'string',
       required: false,
       derived: {note: 'defaults to the component id'},
     },
-    /** the fully qualified main class of the JAR */
+    /** Fully qualified main class a SPARK_JAR job runs; 'parameters' are passed to its main method. The JAR holding it must already be available on the cluster. */
     mainClassName: {type: 'string', required: false},
+    /** How many times Databricks retries a failed run of the task. When unset or 0, a failed run is not retried. */
     maxRetries: {
       type: 'integer',
       required: false,
       default: 0,
       constraints: {level: 'warn', minimum: 0},
     },
+    /** Upper bound of the autoscaling worker range of the per-run cluster, used when numWorkers is unset or zero or less. When unset, 8 (or minWorkers when that is higher). */
     maxWorkers: {
       type: 'integer',
       required: false,
@@ -1285,6 +699,7 @@ export const BigData_PaaS_AzureDatabricksJob = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
+    /** Lower bound of the autoscaling worker range of the per-run cluster, used when numWorkers is unset or zero or less. When unset, 1 (or maxWorkers when that is lower). */
     minWorkers: {
       type: 'integer',
       required: false,
@@ -1292,6 +707,7 @@ export const BigData_PaaS_AzureDatabricksJob = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
+    /** Databricks node type of the per-run cluster's driver and workers, as listed by the workspace. When unset, an existing job keeps the node type it runs on; a new one gets the newest-generation, smallest general-purpose node type of at least 4 cores the workspace offers and the account has capacity for, and is refused when none is found. */
     nodeTypeId: {
       type: 'string',
       required: false,
@@ -1301,6 +717,7 @@ export const BigData_PaaS_AzureDatabricksJob = {
     },
     /** the workspace path of the notebook the job runs */
     notebookPath: {type: 'string', required: false},
+    /** Fixed number of workers of the cluster started for each run (used only when the job depends on no cluster). Zero or less, or unset with no minWorkers / maxWorkers, autoscales from 1 to 8 workers. Ignored when singleNode is true. */
     numWorkers: {
       type: 'integer',
       required: false,
@@ -1308,22 +725,29 @@ export const BigData_PaaS_AzureDatabricksJob = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
+    /** Python package name inside the wheel, used by a Python wheel job. When unset, the component id. */
     packageName: {
       type: 'string',
       required: false,
       derived: {note: 'defaults to the component id'},
     },
+    /** Arguments for the task, as a list of strings. A PYTHON or SPARK_JAR job receives them as command-line arguments in order; a NOTEBOOK job receives the entries written key=value as notebook parameters and ignores the rest. Not used by a Python wheel job, which reads entryPointArgs. */
     parameters: {type: 'array', required: false, default: []},
     /** the path of the Python file the job runs */
     pythonFile: {type: 'string', required: false},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** When true, the per-run cluster is a driver only, with Spark running locally on it and no redundancy; meant for test environments. Overrides numWorkers, minWorkers and maxWorkers. */
     singleNode: {type: 'boolean', required: false, default: false},
+    /** Databricks Runtime version key of the per-run cluster, as listed by the workspace. Used only when the job depends on no cluster. When unset, an existing job keeps the runtime it runs on; a new one gets the newest general-purpose LTS runtime the workspace offers, and is refused naming sparkVersion when none is found. */
     sparkVersion: {
       type: 'string',
       required: false,
-      default: '14.3.x-scala2.12',
+      derived: {
+        note: 'discovered from the workspace when undeclared: the newest general-purpose LTS Databricks Runtime it offers',
+      },
     },
-    /** which artifact Databricks executes */
+    /** Which artifact Databricks executes: NOTEBOOK (notebookPath), PYTHON (pythonFile) or SPARK_JAR (mainClassName), matched without regard to case. When unset, derived only when exactly one of those three keys is set; with none or several set the job is refused. Ignored for a Python wheel job (artifactUri / artifactType python_wheel). */
     taskType: {
       type: 'string',
       required: false,
@@ -1343,15 +767,18 @@ export const BigData_PaaS_AzureDatabricksMlflow = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** URI where MLflow stores the experiment's artifacts, e.g. a dbfs:/ or abfss:// path. When unset, the workspace's default artifact store. Immutable after creation: a different value on an existing experiment fails the component. */
     artifactLocation: {type: 'string', required: false, default: ''},
+    /** MLflow experiment name, an absolute workspace path such as /Shared/churn-model; a name without a leading / is placed under /Shared/. When unset or blank, /Shared/<component id>. An existing experiment of that name is adopted. */
     experimentName: {type: 'string', required: false, default: ''},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1362,52 +789,84 @@ export const BigData_PaaS_AzureDatalake = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** Default blob access tier: Hot, Cool, Cold or Premium. When unset, Hot. Ignored for kind Storage and BlockBlobStorage, which have no account-level tier. */
     accessTier: {type: 'string', required: false, default: 'Hot'},
+    /** Whether containers of this account may allow anonymous public read access. When unset, false. */
     allowBlobPublicAccess: {type: 'boolean', required: false, default: false},
+    /** Whether object replication to accounts in another Microsoft Entra tenant is allowed. When unset, false. */
     allowCrossTenantReplication: {
       type: 'boolean',
       required: false,
       default: false,
     },
+    /** Restricts copy operations to and from the account: PrivateLink (same virtual network via private link) or AAD (same Microsoft Entra tenant). When unset, copies are not restricted. A value outside the two is sent to Azure with a warning; a catalog placeholder is refused. */
     allowedCopyScope: {type: 'string', required: false},
+    /** Whether requests may authorize with the account access key (Shared Key, including account SAS). When unset, true. Set false to allow only Microsoft Entra ID authorization. */
     allowSharedKeyAccess: {type: 'boolean', required: false, default: true},
+    /** Identity-based authentication for Azure Files, as {directoryServiceOptions, defaultSharePermission, activeDirectoryProperties}. directoryServiceOptions is None, AADDS, AD or AADKERB and defaultSharePermission a share-level role name, both None when not named; activeDirectoryProperties carries the on-premises AD domain facts (domainName, domainGuid, domainSid, forestName, netBiosDomainName, azureStorageSid, samAccountName, accountType, default Computer) needed for AD. When unset, none is configured. */
     azureFilesIdentityBasedAuthentication: {type: 'object', required: false},
-    azureRegion: {type: 'string', required: false, default: 'westeurope'},
+    /** Legacy alias of region: the Azure region a new storage account is created in, e.g. northeurope. region wins when both are set. When both are unset, the region of the component's resource group, which is the Live System's (environment's) region; a new account with no region at all is refused. An existing account keeps the region it lives in: Azure cannot move it. */
+    azureRegion: {type: 'string', required: false},
+    /** Azure Backup for the account's file shares, as {vaultName, vaultResourceGroupName, vaultLocation, sku, etag, policyName, policyResourceGroupName, policyLocation, policy, policyType}. Defaults: vault <account>-backupVault and policy <account>-policy, both in the account's resource group and region, vault SKU Standard, policyType AzureStorage. policy is the policy JSON; when empty, only the vault is created. When unset, no backup is configured. */
     backup: {type: 'object', required: false},
+    /** Custom domain for the blob endpoint, as {name, useSubDomainName}. A block without a name means no custom domain; on an existing account an unset value keeps the domain it has. */
     customDomain: {type: 'object', required: false},
+    /** Whether the Azure portal authorizes with Microsoft Entra ID by default instead of the account key. When unset, false. */
     defaultToOAuthAuthentication: {
       type: 'boolean',
       required: false,
       default: false,
     },
+    /** Endpoint DNS type: Standard or AzureDnsZone (partitioned DNS zones, allowing many more accounts per subscription). When unset, Standard. Fixed when the account is created. */
     dnsEndpointType: {type: 'string', required: false, default: 'Standard'},
+    /** Encryption at rest, as {keySource, keyVaultProperties: {keyName, keyVaultUri, keyVersion}, identity: {userAssignedIdentity, federatedIdentityClientId}, requireInfrastructureEncryption, services: {blob|file|queue|table: {enabled, keyType}}}. keySource is Microsoft.Storage (default) or Microsoft.Keyvault for customer-managed keys. When unset, Microsoft-managed keys with blob and file encryption enabled. */
     encryption: {type: 'object', required: false},
+    /** Azure Edge Zone to place the account in, as {name, type}; type defaults to EdgeZone. A block without a name means no extended location. On an existing account an unset value keeps what the account has. */
     extendedLocation: {type: 'object', required: false},
+    /** File service soft delete, as {deleteRetentionEnabled, deleteRetentionDays}. Applied only for kind Storage or FileStorage. When neither field is named, the file service is left untouched; a named policy without days writes 0 days. */
     fileService: {type: 'object', required: false},
+    /** Managed identity of the account, as {type, userAssignedIdentities}: type is None, SystemAssigned, UserAssigned or 'SystemAssigned,UserAssigned' (None when the block has no type); userAssignedIdentities maps user-assigned identity resource IDs to empty objects. When unset, the account gets no managed identity. */
     identity: {type: 'object', required: false},
+    /** Account-level version immutability (WORM), as {enabled, immutabilityPolicy: {immutabilityPeriodSinceCreationInDays, state: Disabled|Unlocked|Locked, allowProtectedAppendWrites}}. Only the fields named are applied; the rest keep the account's own values. A Locked policy cannot be undone. */
     immutableStorageWithVersioning: {type: 'object', required: false},
-    isHnsEnabled: {type: 'boolean', required: false},
+    /** Whether the hierarchical namespace (Data Lake Storage Gen2) is enabled. Set at creation only. When unset, a new account is created with it, as an ADLS Gen2 data lake requires; an existing account keeps the namespace it was created with. */
+    isHnsEnabled: {type: 'boolean', required: false, default: true},
+    /** Whether local users (used by SFTP) are enabled. When unset, Azure's default applies. */
     isLocalUserEnabled: {type: 'boolean', required: false},
+    /** Whether NFS 3.0 is enabled for blobs. Set at creation only and requires the hierarchical namespace (isHnsEnabled). When unset, it is not enabled. */
     isNfsV3Enabled: {type: 'boolean', required: false},
+    /** Whether the SFTP endpoint is enabled. Requires the hierarchical namespace (isHnsEnabled). When unset, it is not enabled. */
     isSftpEnabled: {type: 'boolean', required: false},
+    /** Access-key expiration policy, as {keyExpirationPeriodInDays}, at least 1 day. A block without a period keeps an existing account's period and gives a new account 30 days. When unset, no key policy is requested. */
     keyPolicy: {type: 'object', required: false},
+    /** Storage account kind: StorageV2, Storage, BlobStorage, BlockBlobStorage or FileStorage. When unset, StorageV2. It also picks the defaults of sku and accessTier, and whether fileService applies (only Storage and FileStorage). */
     kind: {type: 'string', required: false, default: 'StorageV2'},
+    /** Large file shares (up to 100 TiB): Enabled or Disabled. Once enabled it cannot be disabled. When unset, it is not requested. A catalog placeholder is refused. */
     largeFileSharesState: {type: 'string', required: false},
+    /** Minimum TLS version accepted by the account: TLS1_0, TLS1_1 or TLS1_2. When unset, TLS1_2. */
     minimumTlsVersion: {type: 'string', required: false, default: 'TLS1_2'},
+    /** Network firewall of the account, as {defaultAction: Allow|Deny, bypass, ipRules: [{ipAddressOrRange, action}], virtualNetworkRules: [{virtualNetworkResourceId, action, state}], resourceAccessRules: [{resourceId, tenantId}]}. Every listed rule field is required. defaultAction defaults from publicAccess; bypass (e.g. AzureServices, Logging, Metrics) and rule lists not named keep what an existing account has. When unset, only the defaultAction derived from publicAccess. */
     networkRuleSet: {type: 'object', required: false},
+    /** Default network action when networkRuleSet names none: true is Allow, false is Deny, so only bypassed Azure services and listed rules reach the account. When unset, false (Deny). */
     publicAccess: {type: 'boolean', required: false, default: false},
+    /** Whether the public endpoint is reachable at all: Enabled or Disabled. When unset, Enabled; what reaches it is then decided by the network rule set (see publicAccess). */
     publicNetworkAccess: {type: 'string', required: false, default: 'Enabled'},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** Network routing preference, as {routingChoice: MicrosoftRouting|InternetRouting (default InternetRouting), publishMicrosoftEndpoints (default false), publishInternetEndpoints (default true)}. When unset, none is requested. */
     routingPreference: {type: 'object', required: false},
+    /** Shared access signature expiration policy, as {sasExpirationPeriod, expirationAction}. The period has the form <days>.<hours>:<minutes>:<seconds>, e.g. 1.00:00:00; the action is Log or Block. A field not named keeps the account's own value; on a new account a missing period is one day and a missing action Log. When unset, no SAS policy is requested. */
     sasPolicy: {type: 'object', required: false},
+    /** Storage SKU (redundancy and performance), e.g. Standard_LRS, Standard_ZRS, Standard_GRS or Premium_LRS. When unset, Premium_LRS for kind BlockBlobStorage and Standard_LRS otherwise. */
     sku: {type: 'string', required: false, default: 'Standard_LRS'},
+    /** Whether the account accepts HTTPS only. When unset, true. */
     supportsHttpsTrafficOnly: {type: 'boolean', required: false, default: true},
   },
 } as const satisfies OfferContract;
@@ -1418,7 +877,7 @@ export const BigData_PaaS_CloudStorage = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'BigData.PaaS.GcpDatalake',
@@ -1426,10 +885,15 @@ export const BigData_PaaS_CloudStorage = {
     },
   ],
   params: {
+    /** Globally unique Cloud Storage bucket name (3-63 lowercase letters, digits, '-', '_' or '.'). Cannot change once the bucket exists: a rename is refused. When unset, the name the component already published, else the component id plus a stable hash of the project and Live System. */
     bucketName: {type: 'string', required: false, default: ''},
+    /** Bucket location: a region (e.g. us-central1), dual-region or multi-region (e.g. EU, US). Set at creation only. When unset, the Live System's region, else the region of the environment's GCP agent; with neither a new bucket is refused, no location is assumed. An existing bucket is not affected. */
     region: {type: 'string', required: false, default: ''},
+    /** Default storage class of the bucket: STANDARD, NEARLINE, COLDLINE or ARCHIVE. Set at creation only. When unset, STANDARD. */
     storageClass: {type: 'string', required: false, default: 'STANDARD'},
+    /** Whether access is governed by IAM only (uniform bucket-level access), with object ACLs disabled. Set at creation, and re-sent when versioning changes. When unset, true. */
     uniformBucketLevelAccess: {type: 'boolean', required: false, default: true},
+    /** Whether object versioning is on. Reconciled on an existing bucket. When unset, false. */
     versioningEnabled: {type: 'boolean', required: false, default: false},
   },
 } as const satisfies OfferContract;
@@ -1440,66 +904,73 @@ export const BigData_PaaS_Databricks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Databricks account id (a UUID) the workspace is created in, copied from the Databricks account console after subscribing through AWS Marketplace; the agent cannot derive it. Required on the first reconcile; afterwards the id published in the accountId output field is used. */
     accountId: {
       type: 'string',
       required: false,
       agents: ['fractal-cloud-agent-aws', 'fractal-cloud-agent-gcp'],
     },
+    /** Id of the credential configuration (the cross-account IAM role Databricks uses) registered in the Databricks account, from the account console or the Account API. Required to create: a new workspace is refused without it; there is no default. */
     credentialsId: {
       type: 'string',
-      required: true,
+      required: false,
       agents: ['fractal-cloud-agent-aws'],
     },
+    /** Secure Cluster Connectivity: when true, cluster nodes get no public IP. Changed in place on an existing workspace. When unset, true. */
     enableNoPublicIp: {
       type: 'boolean',
       required: false,
       default: true,
       agents: ['fractal-cloud-agent-azure'],
     },
+    /** Name of the managed resource group Azure creates for the workspace's data-plane resources, outside the Live System's resource group. When unset, databricks-rg-<component id>. Fixed at creation: changing it later has no effect on an existing workspace. */
     managedResourceGroupName: {
       type: 'string',
       required: false,
       default: '',
       agents: ['fractal-cloud-agent-azure'],
     },
+    /** Id of a network configuration registered in the Databricks account, to deploy the workspace into a customer-managed VPC. When unset, Databricks creates and manages the VPC. */
     networkId: {
       type: 'string',
       required: false,
       default: '',
       agents: ['fractal-cloud-agent-aws', 'fractal-cloud-agent-gcp'],
     },
+    /** Databricks pricing tier of the workspace: standard, premium or enterprise (case-insensitive). The agent does not change the tier of an existing workspace and fails when it differs. When unset, premium. */
     pricingTier: {
       type: 'string',
       required: false,
-      default: 'premium',
       values: ['standard', 'premium', 'enterprise'],
       valuesCaseInsensitive: true,
     },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** Id of the storage configuration (the S3 root bucket of the workspace) registered in the Databricks account, from the account console or the Account API. Required to create: a new workspace is refused without it; there is no default. */
     storageConfigurationId: {
       type: 'string',
-      required: true,
+      required: false,
       agents: ['fractal-cloud-agent-aws'],
     },
   },
@@ -1511,31 +982,36 @@ export const BigData_PaaS_DatabricksCluster = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Minutes of inactivity after which the cluster terminates. When unset, 60. */
     autoTerminationMinutes: {type: 'integer', required: false, default: 60},
+    /** Name of the Databricks cluster, which the agent finds it by. When unset, the component id. */
     clusterName: {type: 'string', required: false, default: ''},
+    /** Databricks access mode of the cluster (data_security_mode), e.g. SINGLE_USER or USER_ISOLATION. An unknown value falls back to SINGLE_USER with a warning. When unset, SINGLE_USER. */
     dataSecurityMode: {type: 'string', required: false, default: 'SINGLE_USER'},
+    /** Maven artifacts installed on the cluster, each as group:artifact:version coordinates. When unset, none. */
     mavenLibraries: {type: 'array', required: false, default: []},
+    /** Upper bound of the autoscaling worker range; ignored when numWorkers or singleNode is set. When neither bound is declared, 8. */
     maxWorkers: {
       type: 'integer',
       required: false,
@@ -1543,6 +1019,7 @@ export const BigData_PaaS_DatabricksCluster = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
+    /** Lower bound of the autoscaling worker range; ignored when numWorkers or singleNode is set. When neither bound is declared, 1. */
     minWorkers: {
       type: 'integer',
       required: false,
@@ -1550,7 +1027,9 @@ export const BigData_PaaS_DatabricksCluster = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
-    nodeTypeId: {type: 'string', required: true},
+    /** Databricks node type of the driver and workers (an EC2 instance type, e.g. m5d.large). When unset, the agent discovers it: a new cluster gets the smallest general-purpose node type the workspace offers with enough cores for a Spark driver, and an existing cluster keeps its own. A discovery that finds none is refused, naming this key. */
+    nodeTypeId: {type: 'string', required: false},
+    /** Fixed number of workers. Wins over minWorkers and maxWorkers. When unset (or zero or less), the cluster autoscales from minWorkers to maxWorkers. */
     numWorkers: {
       type: 'integer',
       required: false,
@@ -1558,12 +1037,18 @@ export const BigData_PaaS_DatabricksCluster = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
+    /** PyPI packages installed on the cluster, each a pip requirement (e.g. pandas==2.2.2). When unset, none. */
     pypiLibraries: {type: 'array', required: false, default: []},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** Whether the cluster runs a driver only, with no workers (the agent adds the Spark settings Databricks requires for that). Wins over the worker counts. When unset, false. */
     singleNode: {type: 'boolean', required: false, default: false},
+    /** User or service principal the cluster is dedicated to, used by single-user access modes (the default). When unset, the principal the agent authenticates to the workspace as. */
     singleUserName: {type: 'string', required: false},
+    /** Spark configuration properties of the cluster, as a name to value map. When unset, none beyond what the agent sets itself. */
     sparkConf: {type: 'object', required: false, default: {}},
-    sparkVersion: {type: 'string', required: true},
+    /** Databricks runtime version key (e.g. 15.4.x-scala2.12). When unset, the agent discovers it: a new cluster gets the newest general-purpose LTS runtime the workspace offers and an existing cluster keeps its own runtime. A discovery that finds none is refused, naming this key. Changing it edits and restarts the cluster. */
+    sparkVersion: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
 
@@ -1573,7 +1058,7 @@ export const BigData_PaaS_DatabricksJob = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -1643,7 +1128,7 @@ export const BigData_PaaS_DatabricksJob = {
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [
@@ -1713,7 +1198,7 @@ export const BigData_PaaS_DatabricksJob = {
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [
@@ -1783,6 +1268,7 @@ export const BigData_PaaS_DatabricksJob = {
     },
   ],
   params: {
+    /** Kind of artifact named by artifactUri: python_wheel runs it as a Python wheel task, notebook runs the job by taskType and its artifact key instead. When unset, a job with an artifactUri is a Python wheel job. */
     artifactType: {
       type: 'string',
       required: false,
@@ -1790,11 +1276,15 @@ export const BigData_PaaS_DatabricksJob = {
       values: ['python_wheel', 'notebook'],
       valuesLevel: 'warn',
     },
+    /** http(s) URL of the Python wheel the job runs; the agent downloads it and uploads it to the workspace on every reconcile. Setting it makes the job a Python wheel job unless artifactType says otherwise, and then entryPoint is required. Only http(s) URLs are supported: any other value, a bare reference or an oci:// URI included, fails the job naming artifactUri. */
     artifactUri: {type: 'string', required: false, default: ''},
+    /** Quartz cron expression the job runs on, evaluated in UTC (seconds first: '0 0 2 * * ?' is 02:00 every day). When unset, the job has no schedule and runs only when triggered. */
     cronSchedule: {type: 'string', required: false, default: ''},
     /** the function the wheel exposes */
     entryPoint: {type: 'string', required: false},
+    /** Arguments passed to entryPoint of a Python wheel job, as a list of strings in order. When unset, none. */
     entryPointArgs: {type: 'array', required: false, default: []},
+    /** Legacy flag, ignored: the job runs on the cluster it depends on, or on a new cluster started for each run when it depends on none. A value contradicting that placement is reported as a warning; the placement applied is published as the clusterPlacement output. */
     existingCluster: {
       type: 'boolean',
       required: false,
@@ -1803,21 +1293,24 @@ export const BigData_PaaS_DatabricksJob = {
         note: 'the job runs on the cluster it depends on, or on a cluster started for each run when it depends on none',
       },
     },
-    /** the URI of the JAR that holds the main class (SPARK_JAR) */
+    /** URI of the JAR that holds mainClassName, installed as the library of a SPARK_JAR job's task (a workspace path, a /Volumes path, or a cloud-storage URI the workspace can read). When unset, the JAR must already be on the cluster. Refused on a job that is not a SPARK_JAR job. */
     jarUri: {type: 'string', required: false, default: ''},
+    /** Name of the job in the Databricks workspace; the agent finds its job by this name on every reconcile, so renaming it creates a new job. When unset, the component id. */
     jobName: {
       type: 'string',
       required: false,
       derived: {note: 'defaults to the component id'},
     },
-    /** the fully qualified main class of the JAR */
+    /** Fully qualified main class a SPARK_JAR job runs; 'parameters' are passed to its main method. The JAR holding it must already be available on the cluster. */
     mainClassName: {type: 'string', required: false},
+    /** How many times Databricks retries a failed run of the task. When unset or 0, a failed run is not retried. */
     maxRetries: {
       type: 'integer',
       required: false,
       default: 0,
       constraints: {level: 'warn', minimum: 0},
     },
+    /** Upper bound of the autoscaling worker range of the per-run cluster, used when numWorkers is unset or zero or less. When unset, 8 (or minWorkers when that is higher). */
     maxWorkers: {
       type: 'integer',
       required: false,
@@ -1825,6 +1318,7 @@ export const BigData_PaaS_DatabricksJob = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
+    /** Lower bound of the autoscaling worker range of the per-run cluster, used when numWorkers is unset or zero or less. When unset, 1 (or maxWorkers when that is lower). */
     minWorkers: {
       type: 'integer',
       required: false,
@@ -1832,6 +1326,7 @@ export const BigData_PaaS_DatabricksJob = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
+    /** Databricks node type of the per-run cluster's driver and workers, as listed by the workspace. When unset, an existing job keeps the node type it runs on; a new one gets the newest-generation, smallest general-purpose node type of at least 4 cores the workspace offers and the account has capacity for, and is refused when none is found. */
     nodeTypeId: {
       type: 'string',
       required: false,
@@ -1841,6 +1336,7 @@ export const BigData_PaaS_DatabricksJob = {
     },
     /** the workspace path of the notebook the job runs */
     notebookPath: {type: 'string', required: false},
+    /** Fixed number of workers of the cluster started for each run (used only when the job depends on no cluster). Zero or less, or unset with no minWorkers / maxWorkers, autoscales from 1 to 8 workers. Ignored when singleNode is true. */
     numWorkers: {
       type: 'integer',
       required: false,
@@ -1848,22 +1344,29 @@ export const BigData_PaaS_DatabricksJob = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
+    /** Python package name inside the wheel, used by a Python wheel job. When unset, the component id. */
     packageName: {
       type: 'string',
       required: false,
       derived: {note: 'defaults to the component id'},
     },
+    /** Arguments for the task, as a list of strings. A PYTHON or SPARK_JAR job receives them as command-line arguments in order; a NOTEBOOK job receives the entries written key=value as notebook parameters and ignores the rest. Not used by a Python wheel job, which reads entryPointArgs. */
     parameters: {type: 'array', required: false, default: []},
     /** the path of the Python file the job runs */
     pythonFile: {type: 'string', required: false},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** When true, the per-run cluster is a driver only, with Spark running locally on it and no redundancy; meant for test environments. Overrides numWorkers, minWorkers and maxWorkers. */
     singleNode: {type: 'boolean', required: false, default: false},
+    /** Databricks Runtime version key of the per-run cluster, as listed by the workspace. Used only when the job depends on no cluster. When unset, an existing job keeps the runtime it runs on; a new one gets the newest general-purpose LTS runtime the workspace offers, and is refused naming sparkVersion when none is found. */
     sparkVersion: {
       type: 'string',
       required: false,
-      default: '14.3.x-scala2.12',
+      derived: {
+        note: 'discovered from the workspace when undeclared: the newest general-purpose LTS Databricks Runtime it offers',
+      },
     },
-    /** which artifact Databricks executes */
+    /** Which artifact Databricks executes: NOTEBOOK (notebookPath), PYTHON (pythonFile) or SPARK_JAR (mainClassName), matched without regard to case. When unset, derived only when exactly one of those three keys is set; with none or several set the job is refused. Ignored for a Python wheel job (artifactUri / artifactType python_wheel). */
     taskType: {
       type: 'string',
       required: false,
@@ -1883,29 +1386,32 @@ export const BigData_PaaS_DatabricksMlflowExperiment = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Storage location of the experiment's artifacts (e.g. an s3:// or dbfs:/ URI). When unset, the workspace's default artifact location. Cannot change once the experiment exists. */
     artifactLocation: {type: 'string', required: false, default: ''},
-    experimentName: {type: 'string', required: false, default: ''},
+    /** MLflow experiment name, an absolute workspace path (e.g. /Shared/<name>); a bare name is placed under /Shared/. When unset, /Shared/<componentId>. */
+    experimentName: {type: 'string', required: true},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1916,22 +1422,25 @@ export const BigData_PaaS_GcpDatabricks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
-    accountId: {type: 'string', required: false, default: ''},
+    /** Id of the Databricks account the workspace is created in, as shown in the Databricks account console after subscribing through GCP Marketplace. Fractal cannot derive it: a new workspace without it is refused. A workspace that reconciled once keeps the id it published. */
+    accountId: {type: 'string', required: false},
+    /** Id of a Databricks network configuration (customer-managed VPC) of the same account and region, registered in the Databricks account console; not a GCP network path. Set at creation only. When unset, Databricks creates and manages the workspace network. */
     networkId: {type: 'string', required: false, default: ''},
+    /** Databricks pricing tier: standard, premium or enterprise. Set at creation only: a new workspace without it is refused; a running workspace keeps its tier and is never changed. */
     pricingTier: {
       type: 'string',
       required: false,
-      default: 'premium',
       values: ['standard', 'premium', 'enterprise'],
       valuesCaseInsensitive: true,
     },
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1942,17 +1451,22 @@ export const BigData_PaaS_GcpDatabricksCluster = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Minutes of inactivity after which the cluster stops; 0 disables auto-termination. When unset, 60. */
     autoTerminationMinutes: {type: 'integer', required: false, default: 60},
+    /** Name of the cluster in the workspace; the agent finds the cluster by it. When unset, the component id. */
     clusterName: {type: 'string', required: false, default: ''},
+    /** Databricks data security (access) mode, e.g. SINGLE_USER, USER_ISOLATION or NONE. An unknown value falls back to SINGLE_USER with a warning. A change is reconciled and restarts the cluster. When unset, SINGLE_USER. */
     dataSecurityMode: {type: 'string', required: false, default: 'SINGLE_USER'},
+    /** Maven libraries installed on the cluster, as groupId:artifactId:version coordinates. Installed when the cluster is created only. When unset, none. */
     mavenLibraries: {type: 'array', required: false, default: []},
+    /** Autoscaling ceiling, used when numWorkers is unset. When unset, 8. */
     maxWorkers: {
       type: 'integer',
       required: false,
@@ -1960,6 +1474,7 @@ export const BigData_PaaS_GcpDatabricksCluster = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
+    /** Autoscaling floor, used when numWorkers is unset. When unset, 1. */
     minWorkers: {
       type: 'integer',
       required: false,
@@ -1967,7 +1482,15 @@ export const BigData_PaaS_GcpDatabricksCluster = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
-    nodeTypeId: {type: 'string', required: true},
+    /** Databricks node type of the driver and workers, e.g. n2-highmem-4. If absent when the cluster is created, the agent picks the smallest general-purpose node type the workspace offers with enough cores for a driver; on later reconciles the running cluster's node type is kept. */
+    nodeTypeId: {
+      type: 'string',
+      required: false,
+      derived: {
+        note: "discovered when absent: the smallest general-purpose node type the workspace offers with enough cores for a driver at creation, the running cluster's node type after",
+      },
+    },
+    /** Fixed number of workers. Zero or less, or unset, means the cluster autoscales between minWorkers and maxWorkers. */
     numWorkers: {
       type: 'integer',
       required: false,
@@ -1975,12 +1498,24 @@ export const BigData_PaaS_GcpDatabricksCluster = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
+    /** PyPI packages installed on the cluster, as pip requirement strings, e.g. pandas==2.2.2. Installed when the cluster is created only. When unset, none. */
     pypiLibraries: {type: 'array', required: false, default: []},
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
+    /** When true, the cluster is a lone driver running Spark locally, with no redundancy; meant for test environments. When unset, false. */
     singleNode: {type: 'boolean', required: false, default: false},
+    /** User or service principal the cluster is dedicated to, used only in a single-user access mode. When unset, the principal the agent authenticates to the workspace as. */
     singleUserName: {type: 'string', required: false},
+    /** Spark configuration properties as a map of strings, e.g. {"spark.executor.memory": "4g"}. A change is reconciled and restarts the cluster. When unset, none. */
     sparkConf: {type: 'object', required: false, default: {}},
-    sparkVersion: {type: 'string', required: true},
+    /** Databricks runtime version key, e.g. 15.4.x-scala2.12. A change restarts the cluster on the new runtime. If absent when the cluster is created, the agent picks the workspace's newest general-purpose LTS runtime; on later reconciles the running cluster's runtime is kept. */
+    sparkVersion: {
+      type: 'string',
+      required: false,
+      derived: {
+        note: "discovered when absent: the workspace's newest general-purpose LTS runtime at creation, the running cluster's runtime after",
+      },
+    },
   },
 } as const satisfies OfferContract;
 
@@ -1990,7 +1525,7 @@ export const BigData_PaaS_GcpDatabricksJob = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [
@@ -2060,6 +1595,7 @@ export const BigData_PaaS_GcpDatabricksJob = {
     },
   ],
   params: {
+    /** Kind of artifact named by artifactUri: python_wheel runs it as a Python wheel task, notebook runs the job by taskType and its artifact key instead. When unset, a job with an artifactUri is a Python wheel job. */
     artifactType: {
       type: 'string',
       required: false,
@@ -2067,11 +1603,15 @@ export const BigData_PaaS_GcpDatabricksJob = {
       values: ['python_wheel', 'notebook'],
       valuesLevel: 'warn',
     },
+    /** http(s) URL of the Python wheel the job runs; the agent downloads it and uploads it to the workspace on every reconcile. Setting it makes the job a Python wheel job unless artifactType says otherwise, and then entryPoint is required. Only http(s) URLs are supported: any other value, a bare reference or an oci:// URI included, fails the job naming artifactUri. */
     artifactUri: {type: 'string', required: false, default: ''},
+    /** Quartz cron expression the job runs on, evaluated in UTC (seconds first: '0 0 2 * * ?' is 02:00 every day). When unset, the job has no schedule and runs only when triggered. */
     cronSchedule: {type: 'string', required: false, default: ''},
     /** the function the wheel exposes */
     entryPoint: {type: 'string', required: false},
+    /** Arguments passed to entryPoint of a Python wheel job, as a list of strings in order. When unset, none. */
     entryPointArgs: {type: 'array', required: false, default: []},
+    /** Legacy flag, ignored: the job runs on the cluster it depends on, or on a new cluster started for each run when it depends on none. A value contradicting that placement is reported as a warning; the placement applied is published as the clusterPlacement output. */
     existingCluster: {
       type: 'boolean',
       required: false,
@@ -2080,21 +1620,24 @@ export const BigData_PaaS_GcpDatabricksJob = {
         note: 'the job runs on the cluster it depends on, or on a cluster started for each run when it depends on none',
       },
     },
-    /** the URI of the JAR that holds the main class (SPARK_JAR) */
+    /** URI of the JAR that holds mainClassName, installed as the library of a SPARK_JAR job's task (a workspace path, a /Volumes path, or a cloud-storage URI the workspace can read). When unset, the JAR must already be on the cluster. Refused on a job that is not a SPARK_JAR job. */
     jarUri: {type: 'string', required: false, default: ''},
+    /** Name of the job in the Databricks workspace; the agent finds its job by this name on every reconcile, so renaming it creates a new job. When unset, the component id. */
     jobName: {
       type: 'string',
       required: false,
       derived: {note: 'defaults to the component id'},
     },
-    /** the fully qualified main class of the JAR */
+    /** Fully qualified main class a SPARK_JAR job runs; 'parameters' are passed to its main method. The JAR holding it must already be available on the cluster. */
     mainClassName: {type: 'string', required: false},
+    /** How many times Databricks retries a failed run of the task. When unset or 0, a failed run is not retried. */
     maxRetries: {
       type: 'integer',
       required: false,
       default: 0,
       constraints: {level: 'warn', minimum: 0},
     },
+    /** Upper bound of the autoscaling worker range of the per-run cluster, used when numWorkers is unset or zero or less. When unset, 8 (or minWorkers when that is higher). */
     maxWorkers: {
       type: 'integer',
       required: false,
@@ -2102,6 +1645,7 @@ export const BigData_PaaS_GcpDatabricksJob = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
+    /** Lower bound of the autoscaling worker range of the per-run cluster, used when numWorkers is unset or zero or less. When unset, 1 (or maxWorkers when that is lower). */
     minWorkers: {
       type: 'integer',
       required: false,
@@ -2109,6 +1653,7 @@ export const BigData_PaaS_GcpDatabricksJob = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
+    /** Databricks node type of the per-run cluster's driver and workers, as listed by the workspace. When unset, an existing job keeps the node type it runs on; a new one gets the newest-generation, smallest general-purpose node type of at least 4 cores the workspace offers and the account has capacity for, and is refused when none is found. */
     nodeTypeId: {
       type: 'string',
       required: false,
@@ -2118,6 +1663,7 @@ export const BigData_PaaS_GcpDatabricksJob = {
     },
     /** the workspace path of the notebook the job runs */
     notebookPath: {type: 'string', required: false},
+    /** Fixed number of workers of the cluster started for each run (used only when the job depends on no cluster). Zero or less, or unset with no minWorkers / maxWorkers, autoscales from 1 to 8 workers. Ignored when singleNode is true. */
     numWorkers: {
       type: 'integer',
       required: false,
@@ -2125,22 +1671,29 @@ export const BigData_PaaS_GcpDatabricksJob = {
         note: 'undeclared (or zero or less), a driver with workers autoscaling from minWorkers (1) to maxWorkers (8); singleNode true runs a driver only',
       },
     },
+    /** Python package name inside the wheel, used by a Python wheel job. When unset, the component id. */
     packageName: {
       type: 'string',
       required: false,
       derived: {note: 'defaults to the component id'},
     },
+    /** Arguments for the task, as a list of strings. A PYTHON or SPARK_JAR job receives them as command-line arguments in order; a NOTEBOOK job receives the entries written key=value as notebook parameters and ignores the rest. Not used by a Python wheel job, which reads entryPointArgs. */
     parameters: {type: 'array', required: false, default: []},
     /** the path of the Python file the job runs */
     pythonFile: {type: 'string', required: false},
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
+    /** When true, the per-run cluster is a driver only, with Spark running locally on it and no redundancy; meant for test environments. Overrides numWorkers, minWorkers and maxWorkers. */
     singleNode: {type: 'boolean', required: false, default: false},
+    /** Databricks Runtime version key of the per-run cluster, as listed by the workspace. Used only when the job depends on no cluster. When unset, an existing job keeps the runtime it runs on; a new one gets the newest general-purpose LTS runtime the workspace offers, and is refused naming sparkVersion when none is found. */
     sparkVersion: {
       type: 'string',
       required: false,
-      default: '14.3.x-scala2.12',
+      derived: {
+        note: 'discovered from the workspace when undeclared: the newest general-purpose LTS Databricks Runtime it offers',
+      },
     },
-    /** which artifact Databricks executes */
+    /** Which artifact Databricks executes: NOTEBOOK (notebookPath), PYTHON (pythonFile) or SPARK_JAR (mainClassName), matched without regard to case. When unset, derived only when exactly one of those three keys is set; with none or several set the job is refused. Ignored for a Python wheel job (artifactUri / artifactType python_wheel). */
     taskType: {
       type: 'string',
       required: false,
@@ -2160,15 +1713,18 @@ export const BigData_PaaS_GcpDatabricksMlflow = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Where the experiment's run artifacts are stored, e.g. gs://<bucket>/<path> or a dbfs:/ path. Set at creation only: an existing experiment keeps its location, with a warning. When unset, the workspace's default artifact store. */
     artifactLocation: {type: 'string', required: false, default: ''},
-    experimentName: {type: 'string', required: false, default: ''},
+    /** Name of the MLflow experiment in the workspace, an absolute workspace path such as /Shared/<experiment>. The agent finds the experiment by it. */
+    experimentName: {type: 'string', required: true},
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -2179,17 +1735,22 @@ export const BigData_PaaS_GcpDatalake = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Globally unique Cloud Storage bucket name (3-63 lowercase letters, digits, '-', '_' or '.'). Cannot change once the bucket exists: a rename is refused. When unset, the name the component already published, else the component id plus a stable hash of the project and Live System. */
     bucketName: {type: 'string', required: false, default: ''},
+    /** Bucket location: a region (e.g. us-central1), dual-region or multi-region (e.g. EU, US). Set at creation only. When unset, the Live System's region, else the region of the environment's GCP agent; with neither a new bucket is refused, no location is assumed. An existing bucket is not affected. */
     region: {type: 'string', required: false, default: ''},
+    /** Default storage class of the bucket: STANDARD, NEARLINE, COLDLINE or ARCHIVE. Set at creation only. When unset, STANDARD. */
     storageClass: {type: 'string', required: false, default: 'STANDARD'},
+    /** Whether access is governed by IAM only (uniform bucket-level access), with object ACLs disabled. Set at creation, and re-sent when versioning changes. When unset, true. */
     uniformBucketLevelAccess: {type: 'boolean', required: false, default: true},
+    /** Whether object versioning is on. Reconciled on an existing bucket. When unset, false. */
     versioningEnabled: {type: 'boolean', required: false, default: false},
   },
 } as const satisfies OfferContract;
@@ -2200,7 +1761,7 @@ export const BigData_PaaS_S3 = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'BigData.PaaS.AwsS3Datalake',
@@ -2208,10 +1769,24 @@ export const BigData_PaaS_S3 = {
     },
   ],
   params: {
-    bucket: {type: 'string', required: false, default: ''},
+    /** Globally unique S3 bucket name (3 to 63 lower-case letters, digits, dots and hyphens). When unset, a unique name derived from the component id, the account and the Live System. Renaming an existing bucket is refused. */
+    bucket: {
+      type: 'string',
+      required: false,
+      default: '',
+      constraints: {pattern: '[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]'},
+    },
+    /** Whether deleting the component empties the bucket (every object, version and delete marker) first. When false, deleting a non-empty bucket is blocked and the component stays Deleting. When unset, false. */
     forceDestroy: {type: 'boolean', required: false, default: false},
-    lifecycleExpirationDays: {type: 'number', required: false},
+    /** Days after which every object (and, on a versioned bucket, every noncurrent version) expires, a positive whole number; incomplete multipart uploads are then also aborted after 1 day. When unset, nothing expires and a rule the agent set earlier is removed. */
+    lifecycleExpirationDays: {
+      type: 'number',
+      required: false,
+      constraints: {minimum: 1},
+    },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** Whether the bucket keeps object versions. Wins over versioningEnabled when both are set. When unset, false. */
     versioning: {
       type: 'boolean',
       required: false,
@@ -2308,7 +1883,7 @@ export const BigData_PaaS_StorageAccount = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'BigData.PaaS.AzureDatalake',
@@ -2316,45 +1891,77 @@ export const BigData_PaaS_StorageAccount = {
     },
   ],
   params: {
+    /** Default blob access tier: Hot, Cool, Cold or Premium. When unset, Hot. Ignored for kind Storage and BlockBlobStorage, which have no account-level tier. */
     accessTier: {type: 'string', required: false, default: 'Hot'},
+    /** Whether containers of this account may allow anonymous public read access. When unset, false. */
     allowBlobPublicAccess: {type: 'boolean', required: false, default: false},
+    /** Whether object replication to accounts in another Microsoft Entra tenant is allowed. When unset, false. */
     allowCrossTenantReplication: {
       type: 'boolean',
       required: false,
       default: false,
     },
+    /** Restricts copy operations to and from the account: PrivateLink (same virtual network via private link) or AAD (same Microsoft Entra tenant). When unset, copies are not restricted. A value outside the two is sent to Azure with a warning; a catalog placeholder is refused. */
     allowedCopyScope: {type: 'string', required: false},
+    /** Whether requests may authorize with the account access key (Shared Key, including account SAS). When unset, true. Set false to allow only Microsoft Entra ID authorization. */
     allowSharedKeyAccess: {type: 'boolean', required: false, default: true},
+    /** Identity-based authentication for Azure Files, as {directoryServiceOptions, defaultSharePermission, activeDirectoryProperties}. directoryServiceOptions is None, AADDS, AD or AADKERB and defaultSharePermission a share-level role name, both None when not named; activeDirectoryProperties carries the on-premises AD domain facts (domainName, domainGuid, domainSid, forestName, netBiosDomainName, azureStorageSid, samAccountName, accountType, default Computer) needed for AD. When unset, none is configured. */
     azureFilesIdentityBasedAuthentication: {type: 'object', required: false},
-    azureRegion: {type: 'string', required: false, default: 'westeurope'},
+    /** Legacy alias of region: the Azure region a new storage account is created in, e.g. northeurope. region wins when both are set. When both are unset, the region of the component's resource group, which is the Live System's (environment's) region; a new account with no region at all is refused. An existing account keeps the region it lives in: Azure cannot move it. */
+    azureRegion: {type: 'string', required: false},
+    /** Azure Backup for the account's file shares, as {vaultName, vaultResourceGroupName, vaultLocation, sku, etag, policyName, policyResourceGroupName, policyLocation, policy, policyType}. Defaults: vault <account>-backupVault and policy <account>-policy, both in the account's resource group and region, vault SKU Standard, policyType AzureStorage. policy is the policy JSON; when empty, only the vault is created. When unset, no backup is configured. */
     backup: {type: 'object', required: false},
+    /** Custom domain for the blob endpoint, as {name, useSubDomainName}. A block without a name means no custom domain; on an existing account an unset value keeps the domain it has. */
     customDomain: {type: 'object', required: false},
+    /** Whether the Azure portal authorizes with Microsoft Entra ID by default instead of the account key. When unset, false. */
     defaultToOAuthAuthentication: {
       type: 'boolean',
       required: false,
       default: false,
     },
+    /** Endpoint DNS type: Standard or AzureDnsZone (partitioned DNS zones, allowing many more accounts per subscription). When unset, Standard. Fixed when the account is created. */
     dnsEndpointType: {type: 'string', required: false, default: 'Standard'},
+    /** Encryption at rest, as {keySource, keyVaultProperties: {keyName, keyVaultUri, keyVersion}, identity: {userAssignedIdentity, federatedIdentityClientId}, requireInfrastructureEncryption, services: {blob|file|queue|table: {enabled, keyType}}}. keySource is Microsoft.Storage (default) or Microsoft.Keyvault for customer-managed keys. When unset, Microsoft-managed keys with blob and file encryption enabled. */
     encryption: {type: 'object', required: false},
+    /** Azure Edge Zone to place the account in, as {name, type}; type defaults to EdgeZone. A block without a name means no extended location. On an existing account an unset value keeps what the account has. */
     extendedLocation: {type: 'object', required: false},
+    /** File service soft delete, as {deleteRetentionEnabled, deleteRetentionDays}. Applied only for kind Storage or FileStorage. When neither field is named, the file service is left untouched; a named policy without days writes 0 days. */
     fileService: {type: 'object', required: false},
+    /** Managed identity of the account, as {type, userAssignedIdentities}: type is None, SystemAssigned, UserAssigned or 'SystemAssigned,UserAssigned' (None when the block has no type); userAssignedIdentities maps user-assigned identity resource IDs to empty objects. When unset, the account gets no managed identity. */
     identity: {type: 'object', required: false},
+    /** Account-level version immutability (WORM), as {enabled, immutabilityPolicy: {immutabilityPeriodSinceCreationInDays, state: Disabled|Unlocked|Locked, allowProtectedAppendWrites}}. Only the fields named are applied; the rest keep the account's own values. A Locked policy cannot be undone. */
     immutableStorageWithVersioning: {type: 'object', required: false},
-    isHnsEnabled: {type: 'boolean', required: false},
+    /** Whether the hierarchical namespace (Data Lake Storage Gen2) is enabled. Set at creation only. When unset, a new account is created with it, as an ADLS Gen2 data lake requires; an existing account keeps the namespace it was created with. */
+    isHnsEnabled: {type: 'boolean', required: false, default: true},
+    /** Whether local users (used by SFTP) are enabled. When unset, Azure's default applies. */
     isLocalUserEnabled: {type: 'boolean', required: false},
+    /** Whether NFS 3.0 is enabled for blobs. Set at creation only and requires the hierarchical namespace (isHnsEnabled). When unset, it is not enabled. */
     isNfsV3Enabled: {type: 'boolean', required: false},
+    /** Whether the SFTP endpoint is enabled. Requires the hierarchical namespace (isHnsEnabled). When unset, it is not enabled. */
     isSftpEnabled: {type: 'boolean', required: false},
+    /** Access-key expiration policy, as {keyExpirationPeriodInDays}, at least 1 day. A block without a period keeps an existing account's period and gives a new account 30 days. When unset, no key policy is requested. */
     keyPolicy: {type: 'object', required: false},
+    /** Storage account kind: StorageV2, Storage, BlobStorage, BlockBlobStorage or FileStorage. When unset, StorageV2. It also picks the defaults of sku and accessTier, and whether fileService applies (only Storage and FileStorage). */
     kind: {type: 'string', required: false, default: 'StorageV2'},
+    /** Large file shares (up to 100 TiB): Enabled or Disabled. Once enabled it cannot be disabled. When unset, it is not requested. A catalog placeholder is refused. */
     largeFileSharesState: {type: 'string', required: false},
+    /** Minimum TLS version accepted by the account: TLS1_0, TLS1_1 or TLS1_2. When unset, TLS1_2. */
     minimumTlsVersion: {type: 'string', required: false, default: 'TLS1_2'},
+    /** Network firewall of the account, as {defaultAction: Allow|Deny, bypass, ipRules: [{ipAddressOrRange, action}], virtualNetworkRules: [{virtualNetworkResourceId, action, state}], resourceAccessRules: [{resourceId, tenantId}]}. Every listed rule field is required. defaultAction defaults from publicAccess; bypass (e.g. AzureServices, Logging, Metrics) and rule lists not named keep what an existing account has. When unset, only the defaultAction derived from publicAccess. */
     networkRuleSet: {type: 'object', required: false},
+    /** Default network action when networkRuleSet names none: true is Allow, false is Deny, so only bypassed Azure services and listed rules reach the account. When unset, false (Deny). */
     publicAccess: {type: 'boolean', required: false, default: false},
+    /** Whether the public endpoint is reachable at all: Enabled or Disabled. When unset, Enabled; what reaches it is then decided by the network rule set (see publicAccess). */
     publicNetworkAccess: {type: 'string', required: false, default: 'Enabled'},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** Network routing preference, as {routingChoice: MicrosoftRouting|InternetRouting (default InternetRouting), publishMicrosoftEndpoints (default false), publishInternetEndpoints (default true)}. When unset, none is requested. */
     routingPreference: {type: 'object', required: false},
+    /** Shared access signature expiration policy, as {sasExpirationPeriod, expirationAction}. The period has the form <days>.<hours>:<minutes>:<seconds>, e.g. 1.00:00:00; the action is Log or Block. A field not named keeps the account's own value; on a new account a missing period is one day and a missing action Log. When unset, no SAS policy is requested. */
     sasPolicy: {type: 'object', required: false},
+    /** Storage SKU (redundancy and performance), e.g. Standard_LRS, Standard_ZRS, Standard_GRS or Premium_LRS. When unset, Premium_LRS for kind BlockBlobStorage and Standard_LRS otherwise. */
     sku: {type: 'string', required: false, default: 'Standard_LRS'},
+    /** Whether the account accepts HTTPS only. When unset, true. */
     supportsHttpsTrafficOnly: {type: 'boolean', required: false, default: true},
   },
 } as const satisfies OfferContract;
@@ -2365,36 +1972,39 @@ export const BigData_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
+    /** Reference to a secret defined on the environment, written {"$envSecret": "<shortName>"}. The environment owns the value: the component only resolves and publishes it, and deleting the component leaves the secret in place. Preferred over 'secretValue'; when both are set, this one wins. Fails when no environment secret has that short name. */
     secret: {type: 'object', required: false, sensitive: true},
+    /** Name under which 'secretValue' is stored in the environment secret store. When unset, the component id. Ignored when 'secret' references an environment secret, which keeps its own name. Changing it writes a new secret and revokes the readers' grants on the old one. */
     secretName: {type: 'string', required: false, default: ''},
+    /** Raw secret value (legacy) that the component stores in the environment secret store under 'secretName', granting read access to the custom workloads linked to it. Required when 'secret' is not set; deleting the component deletes the stored secret. */
     secretValue: {type: 'string', required: false, sensitive: true},
   },
 } as const satisfies OfferContract;

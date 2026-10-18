@@ -3,75 +3,13 @@
 // (npm run contracts:generate). See docs/offer-contracts.md.
 import type {OfferContract} from '../contract/offer_contract';
 
-export const Observability_CaaS_Elastic = {
-  offerType: 'Observability.CaaS.Elastic',
-  serviceTypes: [],
-  declaredBy: [
-    {
-      agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'AWS',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'Azure',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'GCP',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'OCI',
-      parameterRules: [],
-    },
-  ],
-  params: {
-    containerPlatform: {type: 'string', required: false},
-    cpu: {type: 'integer', required: false, default: 8},
-    elasticInstances: {type: 'integer', required: true},
-    elasticVersion: {type: 'string', required: true},
-    isApmRequired: {type: 'boolean', required: false, default: false},
-    isKibanaPubliclyExposed: {type: 'boolean', required: false, default: false},
-    isKibanaRequired: {type: 'boolean', required: false, default: true},
-    memory: {type: 'integer', required: false, default: 8},
-    namespace: {
-      type: 'string',
-      required: false,
-      derived: {note: 'defaults to the component id when absent'},
-    },
-    region: {
-      type: 'string',
-      required: false,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-      ],
-    },
-    secrets: {type: 'object', required: false, default: {}, sensitive: true},
-    storage: {type: 'string', required: true},
-    storageClassName: {type: 'string', required: false, default: ''},
-  },
-} as const satisfies OfferContract;
-
 export const Observability_CaaS_GrafanaAlloy = {
   offerType: 'Observability.CaaS.GrafanaAlloy',
   serviceTypes: ['Observability.CaaS.Alloy'],
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.6.0',
+      agentVersion: 'v1.8.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -80,7 +18,12 @@ export const Observability_CaaS_GrafanaAlloy = {
   params: {
     /** Loki push URL; unset = the pushUrl of the Observability.CaaS.GrafanaLoki component this one depends on */
     lokiPushUrl: {type: 'string', required: false},
-    namespace: {type: 'string', required: false, default: 'monitoring'},
+    namespace: {
+      type: 'string',
+      required: false,
+      default: 'monitoring',
+      constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?'},
+    },
     /** Chart values deep-merged over the agent's, for operators */
     values: {type: 'object', required: false},
   },
@@ -92,16 +35,26 @@ export const Observability_CaaS_GrafanaLoki = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.6.0',
+      agentVersion: 'v1.8.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
     },
   ],
   params: {
-    namespace: {type: 'string', required: false, default: 'monitoring'},
+    namespace: {
+      type: 'string',
+      required: false,
+      default: 'monitoring',
+      constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?'},
+    },
     /** Days logs are kept; the bucket's lifecycle should match */
-    retentionDays: {type: 'integer', required: false, default: 14},
+    retentionDays: {
+      type: 'integer',
+      required: false,
+      default: 14,
+      constraints: {maximum: 2147483647, minimum: 1},
+    },
     /** StorageClass of a volume for Loki's write-ahead log; unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else ephemeral */
     storageClassName: {type: 'string', required: false},
     /** Chart values deep-merged over the agent's, for operators */
@@ -115,16 +68,26 @@ export const Observability_CaaS_GrafanaTempo = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.6.0',
+      agentVersion: 'v1.8.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
     },
   ],
   params: {
-    namespace: {type: 'string', required: false, default: 'monitoring'},
+    namespace: {
+      type: 'string',
+      required: false,
+      default: 'monitoring',
+      constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?'},
+    },
     /** Days traces are kept; the bucket's lifecycle should match */
-    retentionDays: {type: 'integer', required: false, default: 7},
+    retentionDays: {
+      type: 'integer',
+      required: false,
+      default: 7,
+      constraints: {maximum: 2147483647, minimum: 1},
+    },
     /** StorageClass of a volume for Tempo's write-ahead log; unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else ephemeral */
     storageClassName: {type: 'string', required: false},
     /** Chart values deep-merged over the agent's, for operators */
@@ -138,40 +101,43 @@ export const Observability_CaaS_Jaeger = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
+    /** Deprecated: id of the Kubernetes cluster component to deploy into. Used only when the component declares no dependency on a Kubernetes cluster; declare that dependency instead. */
     containerPlatform: {type: 'string', required: false},
+    /** Kubernetes namespace Jaeger is deployed into, where its OpenSearch trace store places Jaeger's credentials Secret. When unset, the component id, which must then be a valid DNS-1123 label (at most 63 lowercase letters, digits and hyphens). */
     namespace: {
       type: 'string',
       required: false,
       derived: {note: 'defaults to the component id when absent'},
     },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {
       type: 'string',
       required: false,
@@ -181,8 +147,24 @@ export const Observability_CaaS_Jaeger = {
         'fractal-cloud-agent-gcp',
       ],
     },
-    storageClassName: {type: 'string', required: false, default: ''},
-    storageSettings: {type: 'object', required: false, default: {}},
+    /** Retired: the storage class of the private Elasticsearch trace store Jaeger generated. Refused on a new Jaeger, warned on a deployed one. */
+    storageClassName: {
+      type: 'string',
+      required: false,
+      deprecated: {
+        level: 'warn',
+        note: 'Jaeger no longer generates a trace store: link it to a Storage.CaaS.OpenSearch component with {access: read-write} and size that component instead',
+      },
+    },
+    /** Retired: the private Elasticsearch trace store Jaeger generated. Refused on a new Jaeger, warned on a deployed one. */
+    storageSettings: {
+      type: 'object',
+      required: false,
+      deprecated: {
+        level: 'warn',
+        note: 'Jaeger no longer generates a trace store: link it to a Storage.CaaS.OpenSearch component with {access: read-write} and size that component instead',
+      },
+    },
   },
 } as const satisfies OfferContract;
 
@@ -192,7 +174,7 @@ export const Observability_CaaS_KubePrometheusStack = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.6.0',
+      agentVersion: 'v1.8.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -205,11 +187,26 @@ export const Observability_CaaS_KubePrometheusStack = {
     alertRules: {type: 'object', required: false},
     /** Grafana's Loki datasource; unset = the GrafanaLoki service in this namespace, none = no datasource */
     lokiUrl: {type: 'string', required: false},
-    namespace: {type: 'string', required: false, default: 'monitoring'},
+    namespace: {
+      type: 'string',
+      required: false,
+      default: 'monitoring',
+      constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?'},
+    },
     /** Size of Prometheus' volume, with storageClassName */
-    prometheusStorageGi: {type: 'integer', required: false, default: 50},
+    prometheusStorageGi: {
+      type: 'integer',
+      required: false,
+      default: 50,
+      constraints: {maximum: 2147483647, minimum: 1},
+    },
     /** Days Prometheus keeps metrics */
-    retentionDays: {type: 'integer', required: false, default: 15},
+    retentionDays: {
+      type: 'integer',
+      required: false,
+      default: 15,
+      constraints: {maximum: 2147483647, minimum: 1},
+    },
     /** StorageClass of Prometheus' volume; unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else ephemeral */
     storageClassName: {type: 'string', required: false},
     /** Grafana's Tempo datasource; unset = the GrafanaTempo service in this namespace, none = no datasource */
@@ -225,41 +222,51 @@ export const Observability_CaaS_Prometheus = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
+    /** Host name or address, without scheme or path, the stack is reached through: its external URLs become https://<host>/prometheus/, https://<host>/alertmanager/ and https://<host>/grafana/, and they are published as its outputs. When unset, the address of the API gateway the component links to, once it can route; with neither, the stack is reachable in-cluster only and publishes its in-cluster addresses. */
+    apiGatewayUrl: {
+      type: 'string',
+      required: false,
+      derived: {
+        note: 'the address of the API gateway the component links to, when it can route',
+      },
+    },
+    /** Deprecated: id of the Kubernetes cluster component to install into. Used only when the component declares no dependency on a Kubernetes cluster; declare that dependency instead. */
     containerPlatform: {type: 'string', required: false},
-    grafanaConfigSecretId: {type: 'string', required: false, default: ''},
+    /** Kubernetes namespace the Prometheus, Alertmanager and Grafana stack is installed into. When unset, the component id, which must then be a valid DNS-1123 label (at most 63 lowercase letters, digits and hyphens). */
     namespace: {
       type: 'string',
       required: false,
       derived: {note: 'defaults to the component id when absent'},
     },
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {
       type: 'string',
       required: false,
@@ -278,7 +285,7 @@ export const Observability_CaaS_SqsExporter = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.6.0',
+      agentVersion: 'v1.8.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -289,52 +296,22 @@ export const Observability_CaaS_SqsExporter = {
     image: {type: 'string', required: false},
     /** Comma-separated Secrets in the namespace to pull the image with; the agent's own image is private */
     imagePullSecrets: {type: 'string', required: false},
-    monitorIntervalSeconds: {type: 'integer', required: false, default: 30},
-    namespace: {type: 'string', required: false, default: 'monitoring'},
+    monitorIntervalSeconds: {
+      type: 'integer',
+      required: false,
+      default: 30,
+      constraints: {maximum: 2147483647, minimum: 1},
+    },
+    namespace: {
+      type: 'string',
+      required: false,
+      default: 'monitoring',
+      constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?'},
+    },
     /** Pod nodeSelector; none by default */
     nodeSelector: {type: 'object', required: false},
     /** Comma-separated queue URLs watched besides the linked Messaging.PaaS.AwsSqsQueue components */
     queueUrls: {type: 'string', required: false},
-  },
-} as const satisfies OfferContract;
-
-export const Observability_SaaS_Elastic = {
-  offerType: 'Observability.SaaS.Elastic',
-  serviceTypes: [],
-  declaredBy: [
-    {
-      agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'AWS',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'Azure',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'GCP',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
-      contractSchemaVersion: '2.0',
-      provider: 'OCI',
-      parameterRules: [],
-    },
-  ],
-  params: {
-    kibanaUri: {type: 'string', required: true},
-    operatorVersion: {type: 'string', required: true},
-    version: {type: 'string', required: true},
   },
 } as const satisfies OfferContract;
 
@@ -344,36 +321,38 @@ export const Observability_SaaS_Jaeger = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
-    frontendUri: {type: 'string', required: true},
-    version: {type: 'string', required: true},
+    /** URL of the externally hosted Jaeger UI. Nothing is provisioned: the value is published as this component's frontend URI for other components and users to find. */
+    frontendUri: {type: 'string', required: false},
+    /** Version of the externally hosted Jaeger, published as-is alongside the frontend URI. Informational only. */
+    version: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
 
@@ -383,35 +362,37 @@ export const Observability_SaaS_Prometheus = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
-    apiGatewayUrl: {type: 'string', required: true},
-    grafanaConfigSecretId: {type: 'string', required: true},
+    /** Base URL (scheme and host, no trailing slash) of the externally hosted monitoring stack. Nothing is provisioned: the component publishes <url>/prometheus, <url>/alertmanager and <url>/grafana as its endpoints. Required to create: a component that published no endpoints yet is refused without it; one that did keeps them, with a warning. */
+    apiGatewayUrl: {type: 'string', required: false},
+    /** Name of the environment secret holding the Grafana configuration, published as-is in this component's outputs for consumers to resolve; the agent does not read the secret. Required to create: a component that published no endpoints yet is refused without it; one that did keeps its own, with a warning. */
+    grafanaConfigSecretId: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;

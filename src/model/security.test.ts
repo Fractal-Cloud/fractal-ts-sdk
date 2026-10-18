@@ -152,30 +152,45 @@ describe('Security domain', () => {
     ).toThrow(/does not satisfy/);
   });
 
-  it('Azure Entra External ID satisfies the same IdP blueprint (no fractal change)', () => {
-    const ls = authorFractal(false)
-      .specialize()
-      .withUserDirectory('acme')
-      .toLiveSystem({
+  // fractal-cloud-agents v8.25.10 reads no password policy, session duration
+  // or user directory on Entra External ID: the blueprint's guardrails are
+  // refused rather than sent unread.
+  it('Azure Entra External ID refuses the guardrails its agent no longer reads', () => {
+    expect(() =>
+      authorFractal(false).toLiveSystem({
         name: 'acme-security',
         environment,
         select: {
           'app-mesh': Ocelot({}),
-          'app-idp': EntraExternalId({
-            tenantName: 'acmeexternal',
-            resourceGroup: 'acme-rg',
-          }),
+          'app-idp': EntraExternalId({tenantName: 'acmeexternal'}),
         },
-      });
+      }),
+    ).toThrow(
+      "Offer Security.PaaS.AzureEntraExternalId, selected for 'app-idp', cannot honor withPasswordPolicy ('passwordPolicy')",
+    );
+  });
 
-    const byId = Object.fromEntries(ls.components.map(c => [c.id, c]));
-    expect(byId['app-idp'].type).toBe('Security.PaaS.AzureEntraExternalId');
-    expect(byId['app-idp'].provider).toBe('Azure');
-    // vendor plumbing from the offer config
-    expect(byId['app-idp'].parameters.tenantName).toBe('acmeexternal');
-    expect(byId['app-idp'].parameters.resourceGroup).toBe('acme-rg');
-    // the SAME agnostic guardrail flows in — proves the blueprint is unchanged
-    expect(byId['app-idp'].parameters.mfaConfiguration).toBe('ON');
+  it('Azure Entra External ID takes the MFA guardrail and the tenant', () => {
+    const ls = createFractal({
+      id: 'entra',
+      version: {major: 1, minor: 0, patch: 0},
+      boundedContextId,
+      blueprint: bp => ({
+        idp: bp.add(
+          IdentityProvider({id: 'app-idp'}).withMfaConfiguration('ON'),
+        ),
+      }),
+    }).toLiveSystem({
+      name: 'acme-security',
+      environment,
+      select: {'app-idp': EntraExternalId({tenantName: 'acmeexternal'})},
+    });
+    const idp = ls.components.find(c => c.id === 'app-idp')!;
+    expect(idp.type).toBe('Security.PaaS.AzureEntraExternalId');
+    expect(idp.parameters).toMatchObject({
+      tenantName: 'acmeexternal',
+      mfaConfiguration: 'ON',
+    });
   });
 
   it('a workload links to the IdP — one app client per link', () => {

@@ -15,9 +15,17 @@ import {isSecretRef} from '../../secret';
  * keys itself before deploy.
  *
  * A key the contract does not declare is left alone here (see
- * contracts/undeclared-parameters.json), and an environment-secret reference
- * is accepted for any key: the agent resolves it before reading the value.
+ * contracts/undeclared-parameters.json), an environment-secret reference is
+ * accepted for any key (the agent resolves it before reading the value), and a
+ * blank string is read as unset, as the agents read it.
  */
+/**
+ * A blank string for a string key: the agents read it as unset (the catalog
+ * ships every unset key as ''), so it is not held to the key's pattern.
+ */
+const isBlankText = (value: unknown, type: string | undefined): boolean =>
+  type === 'string' && typeof value === 'string' && value.trim() === '';
+
 export const contractConfigProblem = (
   contract: OfferContract,
   parameters: Readonly<Record<string, unknown>>,
@@ -26,6 +34,7 @@ export const contractConfigProblem = (
     if (
       value === undefined ||
       isSecretRef(value) ||
+      isBlankText(value, contract.params[key]?.type) ||
       !Object.hasOwn(contract.params, key)
     ) {
       continue;

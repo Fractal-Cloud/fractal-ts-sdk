@@ -414,8 +414,8 @@ export const OpenshiftVm = defineOffer<
 
 type EksConfig = ContractConfig<
   typeof NetworkAndCompute_PaaS_AwsEks,
-  // Filled from the neutral withKubernetesVersion / withNetworkPolicyProvider.
-  'kubernetesVersion' | 'networkPolicyProvider',
+  // Filled from the neutral withKubernetesVersion.
+  'kubernetesVersion',
   {
     /**
      * Custom EKS Auto Mode NodePools, e.g. Graviton on-demand
@@ -449,6 +449,13 @@ export const Eks = defineOffer<
   contract: NetworkAndCompute_PaaS_AwsEks,
   provider: 'AWS',
   deliveryModel: 'PaaS',
+  neutral: {
+    // fractal-cloud-agents v8.25.10 no longer declares it: EKS Auto Mode
+    // enforces network policies with its own VPC CNI.
+    networkPolicyProvider: unsupported(
+      'the agent declares no network policy provider for EKS Auto Mode',
+    ),
+  },
   instantiate: (ctx, config) => {
     if (
       config.nodePools !== undefined &&

@@ -65,7 +65,7 @@ describe('TraefikGateway', () => {
       'ForwardAuth settings without forwardAuthAddress do nothing',
     ],
     [
-      {forwardAuthExcludedPrefixes: ['/health']},
+      {forwardAuthExcludedPrefixes: '/health'},
       'forwardAuthExcludedPrefixes was removed: the agent no longer reads it and a path never exempts a route. Exempt workloads with forwardAuthExemptComponentIds',
     ],
     [

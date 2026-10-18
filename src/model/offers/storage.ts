@@ -10,6 +10,7 @@ import {applyNeutralRules} from '../apply_neutral_rules';
 import {toContractKey, unsupported, unsupportedUnless} from './neutral_rules';
 import {
   Storage_CaaS_MinioTenant,
+  Storage_CaaS_OpenSearch,
   Storage_CaaS_OpenshiftPersistentVolume,
   Storage_PaaS_ArubaMySqlDbms,
   Storage_PaaS_AwsRdsMySql,
@@ -34,7 +35,6 @@ import type {
 } from '../core';
 import type {AwsRdsDbmsConfig} from './aws_rds_dbms_config';
 import type {OpenSearchConfig} from './open_search_config';
-import {OPEN_SEARCH_OFFER_TYPE} from './offer_type_ids';
 import {searchLinkRefusal} from '../components/search_link_refusal';
 
 /**
@@ -582,18 +582,12 @@ export const StorageOpenSearch = defineOffer<
   OpenSearchConfig
 >({
   satisfies: 'Storage.Search',
-  offerType: OPEN_SEARCH_OFFER_TYPE,
+  contract: Storage_CaaS_OpenSearch,
   deliveryModel: 'CaaS',
-  validate: (self, all, config) => {
+  validate: (self, all) => {
     const refuse = (why: string): never => {
       throw new Error(`Live component '${self.id}': ${why}.`);
     };
-    if (
-      config.replicas !== undefined &&
-      (!Number.isInteger(config.replicas) || config.replicas < 1)
-    ) {
-      refuse(`replicas ${config.replicas} is not a whole number of at least 1`);
-    }
     for (const consumer of all) {
       for (const link of consumer.links) {
         if (link.componentId !== self.id) {

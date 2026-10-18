@@ -24,15 +24,175 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.6.0',
+      agentVersion: 'v1.8.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
-      parameterRules: [],
+      parameterRules: [
+        {
+          cases: [
+            {
+              id: 'hpa',
+              then: {
+                rules: [
+                  {
+                    id: 'hpa-min-max',
+                    kind: 'lessThanOrEqual',
+                    lower: '/autoscaling/minReplicas',
+                    upper: '/autoscaling/maxReplicas',
+                  },
+                ],
+              },
+              when: {
+                allOf: [
+                  {key: '/autoscaling/maxReplicas', present: true},
+                  {not: {in: [0], key: '/autoscaling/maxReplicas'}},
+                ],
+              },
+            },
+          ],
+          id: 'hpa-floor-within-ceiling',
+          kind: 'branches',
+        },
+        {
+          cases: [
+            {
+              id: 'hpa-replicas-zero',
+              then: {forbidden: ['autoscaling']},
+              when: {
+                allOf: [
+                  {equals: 0, key: 'replicas'},
+                  {
+                    allOf: [
+                      {key: '/autoscaling/maxReplicas', present: true},
+                      {not: {in: [0], key: '/autoscaling/maxReplicas'}},
+                    ],
+                  },
+                  {
+                    anyOf: [
+                      {key: '/autoscaling/minReplicas', present: false},
+                      {in: [0], key: '/autoscaling/minReplicas'},
+                    ],
+                  },
+                ],
+              },
+            },
+            {
+              id: 'flat-hpa-replicas-zero',
+              then: {forbidden: ['maxReplicas']},
+              when: {
+                allOf: [
+                  {equals: 0, key: 'replicas'},
+                  {key: 'autoscaling', present: false},
+                  {key: 'maxReplicas', present: true},
+                  {not: {in: [0], key: 'maxReplicas'}},
+                ],
+              },
+            },
+          ],
+          fix: 'Remove autoscaling, or set replicas or autoscaling.minReplicas to 1 or more.',
+          id: 'hpa-needs-replicas',
+          kind: 'branches',
+          message:
+            'replicas 0 scales the workload to zero, which autoscaling cannot do: its minimum is at least 1.',
+        },
+        {
+          cases: [
+            {
+              id: 'rollout-zero',
+              then: {forbidden: ['maxSurge']},
+              when: {
+                allOf: [
+                  {in: ['0', '0%'], key: 'maxSurge'},
+                  {in: ['0', '0%'], key: 'maxUnavailable'},
+                ],
+              },
+            },
+          ],
+          fix: 'Set maxSurge or maxUnavailable above 0.',
+          id: 'rollout-progress',
+          kind: 'branches',
+          message:
+            'maxSurge and maxUnavailable cannot both be 0: the rollout could never make progress.',
+        },
+        {
+          cases: [
+            {
+              id: 'healthcheck-read',
+              then: {required: ['/healthCheck/path']},
+              when: {
+                allOf: [
+                  {key: 'healthCheck', present: true},
+                  {
+                    anyOf: [
+                      {key: 'readinessProbe', present: false},
+                      {key: 'livenessProbe', present: false},
+                    ],
+                  },
+                ],
+              },
+            },
+          ],
+          fix: 'Set healthCheck.path, for example to /healthz, or set readinessProbe and livenessProbe instead.',
+          id: 'healthcheck-path',
+          kind: 'branches',
+          message:
+            'healthCheck stands in for the missing readiness or liveness probe, so it needs the path to probe.',
+        },
+        {
+          cases: [
+            {
+              id: 'pre-stop',
+              then: {
+                rules: [
+                  {
+                    fix: 'Increase terminationGracePeriodSeconds or decrease preStopSleepSeconds.',
+                    id: 'pre-stop-grace',
+                    kind: 'lessThanOrEqual',
+                    lower: 'preStopSleepSeconds',
+                    message:
+                      'preStopSleepSeconds must be shorter than terminationGracePeriodSeconds, or the process is killed before it can drain.',
+                    strict: true,
+                    upper: 'terminationGracePeriodSeconds',
+                  },
+                ],
+              },
+              when: {not: {in: [0], key: 'preStopSleepSeconds'}},
+            },
+          ],
+          id: 'pre-stop-within-grace',
+          kind: 'branches',
+        },
+      ],
     },
   ],
   params: {
     /** {minReplicas, maxReplicas, targetCpuUtilization}: an HPA when maxReplicas > 0 */
-    autoscaling: {type: 'object', required: false},
+    autoscaling: {
+      type: 'object',
+      required: false,
+      constraints: {
+        properties: {
+          config: {
+            maxReplicas: {
+              constraints: {maximum: 2147483647, minimum: 0},
+              type: 'integer',
+            },
+            minReplicas: {
+              constraints: {level: 'warn', maximum: 2147483647, minimum: 0},
+              type: 'integer',
+              typeLevel: 'warn',
+            },
+            targetCpuUtilization: {
+              constraints: {level: 'warn', maximum: 100, minimum: 0},
+              description:
+                'CPU utilization percentage the HPA keeps; 0 or unset is 70',
+              type: 'integer',
+              typeLevel: 'warn',
+            },
+          },
+        },
+      },
+    },
     containerImage: {
       type: 'string',
       required: false,
@@ -48,31 +208,169 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
     dnsZones: {type: 'array', required: false},
     env: {type: 'object', required: false, default: {}},
     /** alias: {path, port} for readiness and liveness */
-    healthCheck: {type: 'object', required: false},
+    healthCheck: {
+      type: 'object',
+      required: false,
+      constraints: {
+        level: 'warn',
+        properties: {
+          config: {
+            failureThreshold: {
+              constraints: {level: 'warn', maximum: 2147483647, minimum: 0},
+              type: 'integer',
+              typeLevel: 'warn',
+            },
+            initialDelaySeconds: {
+              constraints: {level: 'warn', maximum: 2147483647, minimum: 0},
+              type: 'integer',
+              typeLevel: 'warn',
+            },
+            path: {
+              constraints: {level: 'warn', pattern: '/[ -~]*'},
+              example: '/healthz',
+              type: 'string',
+              typeLevel: 'warn',
+            },
+            periodSeconds: {
+              constraints: {level: 'warn', maximum: 2147483647, minimum: 0},
+              type: 'integer',
+              typeLevel: 'warn',
+            },
+            port: {
+              constraints: {level: 'warn', maximum: 65535, minimum: 0},
+              type: 'integer',
+              typeLevel: 'warn',
+            },
+            timeoutSeconds: {
+              constraints: {level: 'warn', maximum: 2147483647, minimum: 0},
+              type: 'integer',
+              typeLevel: 'warn',
+            },
+          },
+        },
+      },
+    },
     helmChart: {type: 'string', required: false, default: ''},
     helmRepo: {type: 'string', required: false, default: ''},
     helmValues: {type: 'object', required: false, default: {}},
     helmVersion: {type: 'string', required: false, default: ''},
     imagePullSecrets: {type: 'array', required: false, default: []},
     /** {path, port, initialDelaySeconds, periodSeconds, timeoutSeconds, failureThreshold} */
-    livenessProbe: {type: 'object', required: false},
+    livenessProbe: {
+      type: 'object',
+      required: false,
+      constraints: {
+        properties: {
+          config: {
+            failureThreshold: {
+              constraints: {maximum: 2147483647, minimum: 0},
+              type: 'integer',
+            },
+            initialDelaySeconds: {
+              constraints: {maximum: 2147483647, minimum: 0},
+              type: 'integer',
+            },
+            path: {
+              constraints: {pattern: '/[ -~]*'},
+              example: '/healthz',
+              required: true,
+              type: 'string',
+            },
+            periodSeconds: {
+              constraints: {maximum: 2147483647, minimum: 0},
+              type: 'integer',
+            },
+            port: {constraints: {maximum: 65535, minimum: 0}, type: 'integer'},
+            timeoutSeconds: {
+              constraints: {maximum: 2147483647, minimum: 0},
+              type: 'integer',
+            },
+          },
+        },
+      },
+    },
     manifestUri: {type: 'string', required: false},
     /** alias of autoscaling.maxReplicas */
     maxReplicas: {type: 'integer', required: false},
-    maxSurge: {type: 'string', required: false, default: '1'},
-    maxUnavailable: {type: 'string', required: false, default: '0'},
+    maxSurge: {
+      type: 'string',
+      required: false,
+      default: '1',
+      constraints: {level: 'warn', pattern: '[0-9]{1,9}|(?:100|[1-9]?[0-9])%'},
+    },
+    maxUnavailable: {
+      type: 'string',
+      required: false,
+      default: '0',
+      constraints: {level: 'warn', pattern: '[0-9]{1,9}|(?:100|[1-9]?[0-9])%'},
+    },
     memory: {type: 'string', required: false, default: '128Mi'},
     /** alias of resourceLimits.memory */
     memoryLimit: {type: 'string', required: false},
     /** alias of resourceRequests.memory */
     memoryRequest: {type: 'string', required: false},
-    namespace: {type: 'string', required: false, default: 'default'},
+    namespace: {
+      type: 'string',
+      required: false,
+      default: 'default',
+      constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?'},
+    },
     nodeSelector: {type: 'object', required: false},
     /** {minAvailable}; default minAvailable 1 when more than one replica, 0 disables */
-    podDisruptionBudget: {type: 'object', required: false},
-    preStopSleepSeconds: {type: 'integer', required: false, default: 0},
+    podDisruptionBudget: {
+      type: 'object',
+      required: false,
+      constraints: {
+        properties: {
+          config: {
+            minAvailable: {
+              constraints: {maximum: 2147483647, minimum: 0},
+              type: 'integer',
+            },
+          },
+        },
+      },
+    },
+    preStopSleepSeconds: {
+      type: 'integer',
+      required: false,
+      default: 0,
+      constraints: {maximum: 2147483647, minimum: 0},
+    },
     /** {path, port, initialDelaySeconds, periodSeconds, timeoutSeconds, failureThreshold} */
-    readinessProbe: {type: 'object', required: false},
+    readinessProbe: {
+      type: 'object',
+      required: false,
+      constraints: {
+        properties: {
+          config: {
+            failureThreshold: {
+              constraints: {maximum: 2147483647, minimum: 0},
+              type: 'integer',
+            },
+            initialDelaySeconds: {
+              constraints: {maximum: 2147483647, minimum: 0},
+              type: 'integer',
+            },
+            path: {
+              constraints: {pattern: '/[ -~]*'},
+              example: '/healthz',
+              required: true,
+              type: 'string',
+            },
+            periodSeconds: {
+              constraints: {maximum: 2147483647, minimum: 0},
+              type: 'integer',
+            },
+            port: {constraints: {maximum: 65535, minimum: 0}, type: 'integer'},
+            timeoutSeconds: {
+              constraints: {maximum: 2147483647, minimum: 0},
+              type: 'integer',
+            },
+          },
+        },
+      },
+    },
     replicas: {type: 'integer', required: false, default: 1},
     resourceLimits: {
       type: 'object',
@@ -87,15 +385,88 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
     /** NAME -> {"$envSecret": "<shortName>"} */
     secretEnv: {type: 'object', required: false},
     /** SES identity ARNs (domains or addresses) the workload's role may send email as */
-    sesIdentityArns: {type: 'array', required: false},
+    sesIdentityArns: {
+      type: 'array',
+      required: false,
+      constraints: {
+        pattern:
+          'arn:aws[a-z-]*:ses:[a-z0-9-]+:[0-9]{12}:identity/[ -)+-.0->@-~]+',
+      },
+    },
     /** {service, access: read | read-write, kmsKeyArn?}: the workload's role reads (and writes) Parameter Store under /fractal/<service>/; kmsKeyArn is the customer-managed key of its SecureStrings (none for the AWS-managed aws/ssm key) */
-    ssmParameters: {type: 'object', required: false},
+    ssmParameters: {
+      type: 'object',
+      required: false,
+      constraints: {
+        properties: {
+          config: {
+            access: {
+              required: true,
+              type: 'string',
+              values: ['read', 'read-write'],
+              valuesCaseInsensitive: true,
+            },
+            kmsKeyArn: {
+              constraints: {
+                pattern:
+                  'arn:aws[a-z-]*:kms:[a-z0-9-]+:[0-9]{12}:key/[0-9a-f-]+',
+              },
+              example:
+                'arn:aws:kms:eu-central-1:123456789012:key/0a1b2c3d-4e5f-6789-abcd-ef0123456789',
+              type: 'string',
+            },
+            service: {
+              constraints: {
+                pattern:
+                  '[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.\\.[A-Za-z0-9_.-]+',
+              },
+              example: 'orders',
+              required: true,
+              type: 'string',
+            },
+          },
+        },
+      },
+    },
     /** {path, port, initialDelaySeconds, periodSeconds, timeoutSeconds, failureThreshold} */
-    startupProbe: {type: 'object', required: false},
+    startupProbe: {
+      type: 'object',
+      required: false,
+      constraints: {
+        properties: {
+          config: {
+            failureThreshold: {
+              constraints: {maximum: 2147483647, minimum: 0},
+              type: 'integer',
+            },
+            initialDelaySeconds: {
+              constraints: {maximum: 2147483647, minimum: 0},
+              type: 'integer',
+            },
+            path: {
+              constraints: {pattern: '/[ -~]*'},
+              example: '/healthz',
+              required: true,
+              type: 'string',
+            },
+            periodSeconds: {
+              constraints: {maximum: 2147483647, minimum: 0},
+              type: 'integer',
+            },
+            port: {constraints: {maximum: 65535, minimum: 0}, type: 'integer'},
+            timeoutSeconds: {
+              constraints: {maximum: 2147483647, minimum: 0},
+              type: 'integer',
+            },
+          },
+        },
+      },
+    },
     terminationGracePeriodSeconds: {
       type: 'integer',
       required: false,
       default: 30,
+      constraints: {maximum: 2147483647, minimum: 0},
     },
     /** zone spread; default on when more than one replica */
     topologySpread: {type: 'boolean', required: false},
@@ -156,23 +527,34 @@ export const CustomWorkloads_FaaS_AwsLambda = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
+    /** Deprecated: the function's zip package, base64-encoded. Used only when sourceArtifact is unset; requires handler. Prefer sourceArtifact. */
     codeBase64: {type: 'string', required: false},
+    /** Environment variables of the function, as a name to value map. */
     environment: {type: 'object', required: false, default: {}},
+    /** Name of the Lambda function. When unset, the component id. */
     functionName: {type: 'string', required: false, default: ''},
+    /** Function entry point in the runtime's handler format (e.g. com.example.Handler::handleRequest, app.handler). Required for a zip-packaged function, which fails without it; ignored for a container image. */
     handler: {type: 'string', required: false},
+    /** Memory of the function in MB (Lambda allows 128 to 10240). When unset, 128. */
     memoryMb: {type: 'integer', required: false, default: 128},
+    /** How the sourceArtifact is deployed: image or zip. When unset, detected from the artifact's manifest. */
     packageType: {type: 'string', required: false, default: ''},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
+    /** ARN of the IAM role the function runs as (arn:aws:iam::<account>:role/<name>). When unset, the environment's Lambda execution role; the function fails when neither exists. */
     roleArn: {type: 'string', required: false},
-    runtime: {type: 'string', required: false, default: 'java21'},
+    /** Lambda runtime identifier matching the language of the function's code (e.g. java21, python3.12, nodejs20.x). Required for a zip-packaged function: no runtime is assumed, and a new zip function without it is refused; an existing function declared without it keeps its own runtime. Ignored for a container image. */
+    runtime: {type: 'string', required: false},
+    /** OCI artifact reference (repository:tag or @digest) in the account's ECR holding the function: a container image, or a zip layer. Redeployed only when the artifact digest changes. Large zips are staged in an agent-owned S3 bucket. Required unless codeBase64 is set. */
     sourceArtifact: {type: 'string', required: false},
+    /** Maximum run time of one invocation, in seconds (Lambda allows up to 900). When unset, 3. */
     timeoutSeconds: {type: 'integer', required: false, default: 3},
   },
 } as const satisfies OfferContract;
@@ -183,20 +565,28 @@ export const CustomWorkloads_FaaS_AzureFunction = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** App Service plan the app runs on: {name? (asp-default), pricingPlan? (e.g. BASIC_B1, STANDARD_S1, PREMIUM_P1V3, as a string or {name}), numberOfWorkers? (1), operatingSystem? (Linux; any other value is Windows), zoneRedundancyEnabled? (false), azureRegion? (the app's region), azureResourceGroup? ({name, region}), tags?}. When unset, plan asp-default, BASIC_B1 with 1 worker, Linux, in the Live System's resource group and the app's region (its region, else its resource group's). A container-image function needs a Linux plan. An existing app keeps the plan it is bound to; a plan can be shared by several apps. */
     appServicePlan: {type: 'object', required: false, default: {}},
+    /** Application settings as a name to value map, added after the settings the agent sets itself (AzureWebJobsStorage, FUNCTIONS_EXTENSION_VERSION, FUNCTIONS_WORKER_RUNTIME and the package settings). A change alone is not detected as drift on an existing app. */
     appSettings: {type: 'object', required: false, default: {}},
+    /** Site configuration: {applicationStack?: {nodeVersion | pythonVersion | dotnetVersion | javaVersion | powerShellVersion}, alwaysOn? (true), http2Enabled? (true), minimumTlsVersion? (1.2), ftpsState? (Disabled), healthCheckPath?, corsSettings?: {allowedOrigins, supportCredentials?}}. The first applicationStack version set picks the runtime; when none is, Node 20. On an existing app, only a runtime stack change is detected as drift. */
     configuration: {type: 'object', required: false, default: {}},
+    /** Managed identity of the app as {type}, type an Azure managed identity type such as 'SystemAssigned' or 'None'. When unset, SystemAssigned, which a container-image function uses to pull from the registry. The identity's principal ID is published as the principalId output. */
     identity: {type: 'object', required: false, default: {}},
+    /** Overrides how sourceArtifact is classified: 'image' or 'zip'. When unset, detected from the artifact's manifest. 'zip' on an artifact that is a container image fails the component. */
     packageType: {type: 'string', required: false, default: ''},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+    /** OCI artifact in an Azure Container Registry holding the function code, as '<registry>/<repository>:<tag>', pulled with the agent's managed identity. A container image is run as a Linux container function; a zip is staged to a blob and run from package. Redeployed only when the artifact's digest changes. When unset, the app is created with its runtime stack and no code. */
     sourceArtifact: {type: 'string', required: false, default: ''},
+    /** Connection string of the storage account the Functions host uses (AzureWebJobsStorage). Required for a zip sourceArtifact, which is staged to a blob in that account: such a component fails without it. */
     storageAccountConnectionString: {
       type: 'string',
       required: false,
@@ -212,19 +602,26 @@ export const CustomWorkloads_FaaS_GcpFunction = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
-    entryPoint: {type: 'string', required: true},
-    location: {type: 'string', required: false, default: 'europe-west1'},
-    region: {type: 'string', required: false, default: 'europe-west1'},
-    runtime: {type: 'string', required: false, default: 'java21'},
-    sourceArtifact: {type: 'string', required: true},
+    /** Function the runtime invokes: for Java the fully qualified class name, for Python or Node.js the function name. Required to create a function; a deployed function without it keeps the entry point it was built with. */
+    entryPoint: {type: 'string', required: false},
+    /** Legacy spelling of region, read only when region is unset. */
+    location: {type: 'string', required: false},
+    /** Region the function is deployed in, e.g. us-central1. When unset, location, else the Live System's region, else the region of the environment's GCP agent (else the region the agent is deployed in), else the location a deployed function recorded; with none of these the function is refused, no region is assumed. */
+    region: {type: 'string', required: false},
+    /** Cloud Functions (2nd gen) runtime id matching the function's source, e.g. java21, python312 or nodejs20. Required to create a function: no runtime is assumed, and a new function without it is refused. A deployed function without it keeps the runtime it runs on. */
+    runtime: {type: 'string', required: false},
+    /** OCI artifact reference of the function's source zip, e.g. europe-docker.pkg.dev/<project>/<repository>/<function>:<tag>. The agent copies the zip to a staging bucket it owns and redeploys only when the artifact digest changes; a container image is refused. The legacy sourceBucket + sourceObject pair is accepted in its place. Required to create a function; a deployed function without a source is kept as it is. */
+    sourceArtifact: {type: 'string', required: false},
+    /** Deprecated: name of the Cloud Storage bucket (without gs://) holding a source zip staged outside Fractal. Read only when sourceArtifact is unset, with sourceObject; an existing function deployed this way is never updated. */
     sourceBucket: {type: 'string', required: false},
+    /** Deprecated: object name of the source zip in sourceBucket, e.g. functions/hello-http.zip. Read only when sourceArtifact is unset. */
     sourceObject: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -235,7 +632,7 @@ export const CustomWorkloads_FaaS_GoogleFunction = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'CustomWorkloads.FaaS.GcpFunction',
@@ -243,13 +640,67 @@ export const CustomWorkloads_FaaS_GoogleFunction = {
     },
   ],
   params: {
-    entryPoint: {type: 'string', required: true},
-    location: {type: 'string', required: false, default: 'europe-west1'},
-    region: {type: 'string', required: false, default: 'europe-west1'},
-    runtime: {type: 'string', required: false, default: 'java21'},
-    sourceArtifact: {type: 'string', required: true},
+    /** Function the runtime invokes: for Java the fully qualified class name, for Python or Node.js the function name. Required to create a function; a deployed function without it keeps the entry point it was built with. */
+    entryPoint: {type: 'string', required: false},
+    /** Legacy spelling of region, read only when region is unset. */
+    location: {type: 'string', required: false},
+    /** Region the function is deployed in, e.g. us-central1. When unset, location, else the Live System's region, else the region of the environment's GCP agent (else the region the agent is deployed in), else the location a deployed function recorded; with none of these the function is refused, no region is assumed. */
+    region: {type: 'string', required: false},
+    /** Cloud Functions (2nd gen) runtime id matching the function's source, e.g. java21, python312 or nodejs20. Required to create a function: no runtime is assumed, and a new function without it is refused. A deployed function without it keeps the runtime it runs on. */
+    runtime: {type: 'string', required: false},
+    /** OCI artifact reference of the function's source zip, e.g. europe-docker.pkg.dev/<project>/<repository>/<function>:<tag>. The agent copies the zip to a staging bucket it owns and redeploys only when the artifact digest changes; a container image is refused. The legacy sourceBucket + sourceObject pair is accepted in its place. Required to create a function; a deployed function without a source is kept as it is. */
+    sourceArtifact: {type: 'string', required: false},
+    /** Deprecated: name of the Cloud Storage bucket (without gs://) holding a source zip staged outside Fractal. Read only when sourceArtifact is unset, with sourceObject; an existing function deployed this way is never updated. */
     sourceBucket: {type: 'string', required: false},
+    /** Deprecated: object name of the source zip in sourceBucket, e.g. functions/hello-http.zip. Read only when sourceArtifact is unset. */
     sourceObject: {type: 'string', required: false},
+  },
+} as const satisfies OfferContract;
+
+export const CustomWorkloads_IaaS_Workload = {
+  offerType: 'CustomWorkloads.IaaS.Workload',
+  serviceTypes: [],
+  declaredBy: [
+    {
+      agentId: 'fractal-cloud-agent-aws',
+      agentVersion: 'v8.25.10',
+      contractSchemaVersion: '2.0',
+      provider: 'AWS',
+      parameterRules: [],
+    },
+    {
+      agentId: 'fractal-cloud-agent-azure',
+      agentVersion: 'v8.25.10',
+      contractSchemaVersion: '2.0',
+      provider: 'Azure',
+      parameterRules: [],
+    },
+    {
+      agentId: 'fractal-cloud-agent-gcp',
+      agentVersion: 'v8.25.10',
+      contractSchemaVersion: '2.0',
+      provider: 'GCP',
+      parameterRules: [],
+    },
+    {
+      agentId: 'fractal-cloud-agent-oci',
+      agentVersion: 'v8.25.10',
+      contractSchemaVersion: '2.0',
+      provider: 'OCI',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
+    region: {
+      type: 'string',
+      required: false,
+      agents: [
+        'fractal-cloud-agent-aws',
+        'fractal-cloud-agent-azure',
+        'fractal-cloud-agent-gcp',
+      ],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -259,13 +710,14 @@ export const CustomWorkloads_PaaS_AwsEcsService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -276,23 +728,31 @@ export const CustomWorkloads_PaaS_AzureContainerApp = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** CPU cores for the container (e.g. 0.25, 0.5, 1). When unset, 0.5. Must be a combination with memory that Azure Container Apps accepts. */
     cpu: {type: 'number', required: false, default: 0.5},
+    /** When true, the app is published on a public FQDN with no authentication in front of it. When unset, false: ingress is internal to the Container Apps environment. */
     externalIngress: {type: 'boolean', required: false, default: false},
-    image: {type: 'string', required: false, default: ''},
+    /** Container image reference to run, e.g. 'registry/repository:tag'. Required to create: a deployed one declared without it keeps the image it runs. A change is applied as a new revision. */
+    image: {type: 'string', required: false},
+    /** Legacy spelling of 'region', read only when 'region' is blank. */
     location: {type: 'string', required: false, default: ''},
+    /** Maximum number of replicas. When unset, 10. */
     maxReplicas: {type: 'integer', required: false, default: 10},
+    /** Memory for the container as an Azure quantity string, e.g. '1Gi' or '0.5Gi'. When unset, 1Gi. Must match the cpu value per Azure Container Apps' allowed combinations. */
     memory: {type: 'string', required: false, default: '1Gi'},
+    /** Minimum number of replicas. When unset, 0: the app scales to zero when idle. */
     minReplicas: {type: 'integer', required: false, default: 0},
+    /** Port the container listens on; the ingress target port. When unset, 8080. */
     port: {type: 'integer', required: false, default: 8080},
+    /** Azure location the app is created in (e.g. 'westeurope'). When unset, 'location', else the legacy 'azureRegion', else the region of the Live System's resource group. Applied when the app is created. */
     region: {type: 'string', required: false, default: ''},
-    resourceGroup: {type: 'string', required: false, default: ''},
   },
 } as const satisfies OfferContract;
 
@@ -305,22 +765,30 @@ export const CustomWorkloads_PaaS_AzureContainerInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** CPU cores requested for the container (fractions allowed). When unset, 1. Changing it deletes and recreates the container group. */
     cpu: {type: 'number', required: false, default: 1},
+    /** DNS label for the public IP, giving the FQDN '<label>.<region>.azurecontainer.io'. Used only when publicIp is true. Applied when the container group is created. */
     dnsNameLabel: {type: 'string', required: false, default: ''},
-    image: {type: 'string', required: false, default: ''},
+    /** Container image reference to run, e.g. 'registry/repository:tag'. Required to create: a deployed one declared without it keeps the image it runs. Changing it deletes and recreates the container group. */
+    image: {type: 'string', required: false},
+    /** Azure location the container group is created in (e.g. 'westeurope'). When unset, the component's region: 'region', else the legacy 'azureRegion', else its resource group's region. Applied when the container group is created. */
     location: {type: 'string', required: false, default: ''},
+    /** Memory requested for the container, in GB. When unset, 1.5. Changing it deletes and recreates the container group. */
     memoryInGB: {type: 'number', required: false, default: 1.5},
+    /** TCP port the container listens on and the group exposes. When unset, 8080. Applied when the container group is created. */
     port: {type: 'integer', required: false, default: 8080},
+    /** When true, the container group gets a public IP address; otherwise a private one. Applied when the container group is created. */
     publicIp: {type: 'boolean', required: false, default: false},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
-    resourceGroup: {type: 'string', required: false, default: ''},
+    /** Container group restart policy: Always, OnFailure or Never (case-sensitive). Any other value means Always. Applied when the container group is created. */
     restartPolicy: {type: 'string', required: false, default: 'Always'},
   },
 } as const satisfies OfferContract;
@@ -331,13 +799,14 @@ export const CustomWorkloads_PaaS_GcpCloudRun = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -351,54 +820,84 @@ export const CustomWorkloads_PaaS_WebApp = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
   ],
   params: {
+    /** App Service plan the app runs on: {name? (asp-default), pricingPlan? (e.g. BASIC_B1, STANDARD_S1, PREMIUM_P1V3, as a string or {name}), numberOfWorkers? (1), operatingSystem? (Linux; any other value is Windows), zoneRedundancyEnabled? (false), azureRegion? (the app's region), azureResourceGroup? ({name, region}), tags?}. When unset, plan asp-default, BASIC_B1 with 1 worker, Linux, in the Live System's resource group and the app's region (its region, else its resource group's). An existing app keeps the plan it is bound to. */
     appServicePlan: {type: 'object', required: false, default: {}},
+    /** Legacy alias of region: the region a new App Service plan is created in when appServicePlan declares no azureRegion. When unset, region, else the resource group's region. A web app always runs in its plan's region (Azure refuses any other), and an existing plan never moves. */
     azureRegion: {type: 'string', required: false, default: ''},
-    branchName: {type: 'string', required: false, default: ''},
+    /** the git branch the workload deploys from */
+    branchName: {type: 'string', required: false},
+    /** Key Vault certificates for the custom domains: [{keyVaultId, name, passwordSecretId?, region?, tags?}], keyVaultId the vault's ARM ID, name the Key Vault secret holding the certificate, passwordSecretId an environment secret with the PFX password (empty password when unset). Imported into the app's resource group; certificates no longer listed are removed. */
     certificates: {type: 'array', required: false, default: []},
+    /** Short name of the environment's CI/CD profile for the workload. Read and not used by this offer. */
     ciCdProfileShortName: {type: 'string', required: false, default: ''},
-    clientAffinityEnabled: {type: 'boolean', required: false, default: false},
+    /** When true, ARR affinity cookies keep a client on one instance. When unset, Azure's default. Applied when the web app is created; later changes are not applied to an existing app. */
+    clientAffinityEnabled: {type: 'boolean', required: false},
+    /** When true, the app asks clients for a TLS certificate, as set by clientCertMode. When unset, Azure's default (off). Applied when the web app is created; later changes are not applied to an existing app. */
     clientCertEnabled: {type: 'boolean', required: false, default: false},
+    /** Comma-separated request paths exempt from client certificate authentication. Applied when the web app is created; later changes are not applied to an existing app. */
     clientCertExclusionPaths: {type: 'string', required: false, default: ''},
+    /** Client certificate mode when clientCertEnabled is true: Required, Optional or OptionalInteractiveUser. When unset, Azure's default. Applied when the web app is created; later changes are not applied to an existing app. */
     clientCertMode: {type: 'string', required: false, default: ''},
+    /** Creates the app as a clone of another: Azure cloningInfo {sourceWebAppId, sourceWebAppLocation?, overwrite?, cloneCustomHostNames?, cloneSourceControl?, appSettingsOverrides?, hostingEnvironment?, configureLoadBalancing?, trafficManagerProfileId?, trafficManagerProfileName?, correlationId?}. Used only when the web app is created. */
     cloningInfo: {type: 'object', required: false, default: {}},
+    /** Site configuration as a map of Azure siteConfig properties, e.g. appSettings (name to value map), connectionStrings, alwaysOn (true), http20Enabled (true), ftpsState (Disabled), minTlsVersion (1.2), healthCheckPath, corsSettings, ipSecurityRestrictions, linuxFxVersion. Applied when the web app is created; later changes are not applied to an existing app. */
     configuration: {type: 'object', required: false, default: {}},
-    containerSize: {type: 'integer', required: false, default: 0},
+    /** Size of the function container, in MB (Azure siteConfig containerSize). When unset, Azure's default. Applied when the web app is created; later changes are not applied to an existing app. */
+    containerSize: {type: 'integer', required: false},
+    /** Host names bound to the web app with SNI TLS, using the certificates. Bindings of host names no longer listed are deleted; the default azurewebsites.net host name is never touched. */
     customDomains: {type: 'array', required: false, default: []},
+    /** Identifier Azure uses to verify the custom domains assigned to the app (the asuid TXT record value). Applied when the web app is created; later changes are not applied to an existing app. */
     customDomainVerificationId: {type: 'string', required: false, default: ''},
+    /** Daily memory-time quota in GB-seconds, for apps on a dynamic (consumption) plan; 0 means no quota. Applied when the web app is created; later changes are not applied to an existing app. */
     dailyMemoryTimeQuota: {type: 'integer', required: false, default: 0},
-    enabled: {type: 'boolean', required: false, default: false},
+    /** Whether the site is enabled; false creates it stopped. When unset, the site is enabled (Azure's default). Applied when the web app is created; later changes are not applied to an existing app. */
+    enabled: {type: 'boolean', required: false},
+    /** ARM resource ID of the App Service Environment that hosts the app. When unset, the multi-tenant service. Applied when the web app is created; later changes are not applied to an existing app. */
     hostingEnvironmentProfileId: {type: 'string', required: false, default: ''},
+    /** When true, the app's public host names are disabled and it is reachable only through API Management. When unset, Azure's default (false). Applied when the web app is created; later changes are not applied to an existing app. */
     hostNamesDisabled: {type: 'boolean', required: false, default: false},
+    /** When true, plain HTTP requests are redirected to HTTPS. When unset, true. Applied when the web app is created; later changes are not applied to an existing app. */
     httpsOnly: {type: 'boolean', required: false, default: true},
+    /** When true, the app runs in a Hyper-V sandbox (Windows containers). When unset, Azure's default (false). Applied when the web app is created; later changes are not applied to an existing app. */
     hyperV: {type: 'boolean', required: false, default: false},
+    /** Secret holding the passphrase of the private SSH deploy key. Read and not used by this offer. */
     privateSSHKeyPassphraseSecretId: {
       type: 'string',
       required: false,
       default: '',
     },
+    /** Secret holding the private SSH deploy key of the repository. Read and not used by this offer. */
     privateSSHKeySecretId: {type: 'string', required: false, default: ''},
-    publishingUsername: {
-      type: 'string',
-      required: false,
-      default: 'Fractal Cloud',
-    },
+    /** Publishing user name of the site configuration. When unset, Azure's default. Applied when the web app is created; later changes are not applied to an existing app. */
+    publishingUsername: {type: 'string', required: false},
+    /** Site redundancy mode: None, Manual, Failover, ActiveActive or GeoRedundant. When unset, Azure's default. Applied when the web app is created; later changes are not applied to an existing app. */
     redundancyMode: {type: 'string', required: false, default: ''},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
-    repoId: {type: 'string', required: false, default: ''},
-    reserved: {type: 'boolean', required: false, default: false},
+    /** the full name (owner/name) of the git repository the workload deploys from */
+    repoId: {type: 'string', required: false},
+    /** Azure's reserved flag: true for a Linux app. The plan's operating system is set by appServicePlan.operatingSystem. When unset, Azure's default. Applied when the web app is created; later changes are not applied to an existing app. */
+    reserved: {type: 'boolean', required: false},
+    /** Azure roles granted to the app's user-assigned managed identity: [{name, scope, roleType?}], name a role name, scope an ARM resource ID, roleType BuiltInRole when unset. Ocelot roles are skipped. Assigned on every reconcile. */
     roles: {type: 'array', required: false, default: []},
+    /** When true, the SCM (Kudu) site is stopped together with the app. When unset, Azure's default (false). Applied when the web app is created; later changes are not applied to an existing app. */
     scmSiteAlsoStopped: {type: 'boolean', required: false, default: false},
-    sshRepositoryURI: {type: 'string', required: false, default: ''},
+    /** the SSH URI of the git repository the workload deploys from */
+    sshRepositoryURI: {type: 'string', required: false},
+    /** When true, the app requires a customer-provided storage account. When unset, Azure's default (false). Applied when the web app is created; later changes are not applied to an existing app. */
     storageAccountRequired: {type: 'boolean', required: false, default: false},
+    /** ARM resource ID of the subnet the app joins for regional VNet integration (/subscriptions/.../virtualNetworks/<vnet>/subnets/<subnet>). When unset, no VNet integration. Applied when the web app is created; later changes are not applied to an existing app. */
     virtualNetworkSubnetId: {type: 'string', required: false, default: ''},
+    /** Name of the secret holding the workload's service-mesh client ID. Read and not used by this offer. */
     workloadSecretIdKey: {type: 'string', required: false, default: ''},
+    /** Name of the secret holding the workload's service-mesh client secret. Read and not used by this offer. */
     workloadSecretPasswordKey: {type: 'string', required: false, default: ''},
   },
 } as const satisfies OfferContract;
@@ -409,36 +908,39 @@ export const CustomWorkloads_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.2',
+      agentVersion: 'v8.25.10',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
+    /** Reference to a secret defined on the environment, written {"$envSecret": "<shortName>"}. The environment owns the value: the component only resolves and publishes it, and deleting the component leaves the secret in place. Preferred over 'secretValue'; when both are set, this one wins. Fails when no environment secret has that short name. */
     secret: {type: 'object', required: false, sensitive: true},
+    /** Name under which 'secretValue' is stored in the environment secret store. When unset, the component id. Ignored when 'secret' references an environment secret, which keeps its own name. Changing it writes a new secret and revokes the readers' grants on the old one. */
     secretName: {type: 'string', required: false, default: ''},
+    /** Raw secret value (legacy) that the component stores in the environment secret store under 'secretName', granting read access to the custom workloads linked to it. Required when 'secret' is not set; deleting the component deletes the stored secret. */
     secretValue: {type: 'string', required: false, sensitive: true},
   },
 } as const satisfies OfferContract;

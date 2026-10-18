@@ -72,6 +72,23 @@ describe('contractValueProblem and inherited names', () => {
   );
 });
 
+describe('contractValueProblem and keys only some agents read', () => {
+  it('refuses a key that another agent declaring the offer ignores, naming both', () => {
+    const shared = {
+      offerType: 'Test.CaaS.Shared',
+      serviceTypes: ['Test.CaaS.Shared'],
+      declaredBy: [
+        {agentId: 'a', agentVersion: 'v1', contractSchemaVersion: '2.0', provider: 'CaaS', parameterRules: []},
+        {agentId: 'b', agentVersion: 'v1', contractSchemaVersion: '2.0', provider: 'CaaS', parameterRules: []},
+      ],
+      params: {onlyA: {type: 'integer', required: false, agents: ['a']}},
+    } as const satisfies OfferContract;
+    expect(contractValueProblem(shared, 'onlyA', 1)).toBe(
+      "'onlyA' is read only by a; b also reconciles Test.CaaS.Shared and ignores it",
+    );
+  });
+});
+
 describe('contractValueProblem never echoes a secret', () => {
   it.each([
     ['marked', 42],

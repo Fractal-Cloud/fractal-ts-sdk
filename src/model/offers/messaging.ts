@@ -297,10 +297,8 @@ export const KafkaTopic = defineOffer<
       'Kafka has no dead-letter queue',
     ),
     maxDeliveryAttempts: unsupported('Kafka has no delivery-attempt limit'),
-    messageRetentionHours: toContractKey(
-      Messaging_CaaS_KafkaTopic,
-      'retentionMs',
-      v => Number(v) * 3_600_000,
+    messageRetentionHours: unsupported(
+      'aria-agent-caas-k8s sets no retention on a topic',
     ),
     partitionCount: toContractKey(Messaging_CaaS_KafkaTopic, 'partitions'),
   },

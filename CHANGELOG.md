@@ -46,9 +46,42 @@ consumer is known to use the removed APIs). Each item links to its section below
   `mailType: 'TRANSACTIONAL'` or `'MARKETING'`.
 - **`LoadBalancer` declares its subnets** (`subnets: [...]`) for `AwsLb`, `AzureLb` and
   `GcpGlb`.
+- **Config keys the agents dropped, as of the contracts this release is generated from**
+  (fractal-cloud-agents v8.25.10, aria-agent-caas-k8s v1.8.0; see "Changed — contracts
+  refreshed"), are no longer accepted, and the neutral guardrails that reached them are
+  refused naming the offer:
+  - the Java agents no longer reconcile the CaaS Spark and Kafka offers, so only what
+    aria-agent-caas-k8s reads remains: `CaaSSparkCluster` loses `sparkOperatorName`,
+    `CaaSSparkJob` `mainApplicationFile`, `sparkOperatorName`, `type`, `mode`,
+    `arguments`, `sparkConf`, the driver / executor sizing and the restart keys,
+    `KafkaTopic` `clusterName`; `withSparkVersion` (cluster), `withMaxRetries` (job)
+    and `withMessageRetentionHours` (topic) are refused;
+  - `EntraExternalId` loses `resourceGroup` and `location`, and refuses
+    `withPasswordPolicy`, `withSessionDuration` and `userDirectoryName`;
+  - `Eks` refuses `withNetworkPolicyProvider`; `AzureContainerApp` loses
+    `resourceGroup`; `AzureNsg` `description`, `AzureSubnet` `vnetName`, `GcpSubnet`
+    `networkName`, `Gke` `roles` / `windowsAdminUsername`, the Azure Postgres DBMS
+    Citus keys and `Prometheus` `grafanaConfigSecretId` are gone.
 - **Offer configs come from the agents' contracts**: keys no agent reads are no longer
   accepted, and some keys were renamed to the agents' spelling (see "Changed — offer
   configs are generated from the agents' published contracts").
+
+### Changed — contracts refreshed
+
+The offer definitions are generated from fractal-cloud-agents **v8.25.10** (aws, azure,
+gcp, oci) and aria-agent-caas-k8s **v1.8.0** (were v8.25.2 and v1.6.0); aria-agent-aruba
+v0.0.22 and aria-agent-openshift v0.1.0 are unchanged. These contracts carry the value
+constraints the SDK now checks before deploy (CloudFront, SES, SQS, SNS, S3, RDS ranges,
+patterns and vocabularies; caas-k8s namespaces and counts). `StorageOpenSearch` is now
+defined from its published contract (`Storage.CaaS.OpenSearch`; config gains
+`sysctlInit`). The Elastic contracts are gone, as the offer is. The new keys
+(`size` on the VMs, OCI `compartment`, `ocpus` / `memoryInGBs`, GCP Postgres
+`instanceEdition` / `instanceTier`, `Prometheus` `apiGatewayUrl`) are config keys; a
+neutral `withSize` is still sent under the vendor key, which also takes a vendor
+machine type. `Jaeger` keeps refusing `storageSettings` / `storageClassName`: the
+contract marks them deprecated at warning level only (the agent refuses them on a new
+Jaeger). `contracts/key-aliases.json` is unchanged: the agents still declare
+`diableLocalAuth` and `versioningEnabled` as separate parameters.
 
 ### Fixed — release review
 
@@ -390,10 +423,12 @@ its contract type); and the `K8sWorkload` probe, rollout, autoscaling, disruptio
 grace-period, `ssmParameters` and `sesIdentityArns` values. A `secretEnv` value that
 is not a `secretRef(...)` reference is still refused, without echoing it.
 
-**Known gap.** Most of these constraints are not in the contracts the SDK is generated
-from yet (the AWS agent declares several of them on its main branch, unreleased), and
-the control plane validates in `report` mode by default. Until the agents publish
-them, such a value is refused by the agent at deploy rather than at `toLiveSystem()`.
+**Known gap.** The contracts this release is generated from carry many of these
+constraints (see "Changed — contracts refreshed"), not all: aria-agent-caas-k8s declares
+no constraint on `forwardAuthAddress` (a URL with user info included), host names,
+CIDRs, Secret names, storage classes or URLs, several patterns only at warning level,
+and fractal-cloud-agents none on EKS `controlPlaneLogTypes` or DNS `recordManagement`.
+Such a value is refused by the agent at deploy rather than at `toLiveSystem()`.
 
 ### Breaking — a load balancer declares its subnets
 

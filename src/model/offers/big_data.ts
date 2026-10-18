@@ -90,15 +90,15 @@ export const GcpDatabricksCluster = defineOffer<
 // catalogue offer id the caas-k8s handler registry is keyed on.
 export const CaaSSparkCluster = defineOffer<
   'BigData.ComputeCluster',
-  ContractConfig<typeof BigData_CaaS_SparkCluster, 'sparkVersion'>
+  ContractConfig<typeof BigData_CaaS_SparkCluster>
 >({
   satisfies: 'BigData.ComputeCluster',
   contract: BigData_CaaS_SparkCluster,
   deliveryModel: 'CaaS',
   neutral: {
-    // Read only by the Java agents' Spark offers: refused (with the agents
-    // named) while aria-agent-caas-k8s, which may reconcile it, ignores it.
-    sparkVersion: toContractKey(BigData_CaaS_SparkCluster, 'sparkVersion'),
+    // aria-agent-caas-k8s, the only agent reconciling the offer, runs the
+    // Spark of the image it is given.
+    sparkVersion: unsupported("the Spark version is the image's"),
     autoTerminationMinutes: unsupported(
       'a Spark-on-Kubernetes cluster is sized by its driver and executors',
     ),
@@ -157,15 +157,13 @@ export const GcpDatabricksJob = defineOffer<
 // Symbol vs wire value: see CaaSSparkCluster above.
 export const CaaSSparkJob = defineOffer<
   'BigData.DataProcessingJob',
-  ContractConfig<typeof BigData_CaaS_SparkJob, 'maxRetries'>
+  ContractConfig<typeof BigData_CaaS_SparkJob>
 >({
   satisfies: 'BigData.DataProcessingJob',
   contract: BigData_CaaS_SparkJob,
   deliveryModel: 'CaaS',
   neutral: {
-    // Read only by the Java agents' Spark offers: refused (with the agents
-    // named) while aria-agent-caas-k8s, which may reconcile it, ignores it.
-    maxRetries: toContractKey(BigData_CaaS_SparkJob, 'maxRetries'),
+    maxRetries: unsupported('aria-agent-caas-k8s sets no retry count'),
     cronSchedule: toContractKey(BigData_CaaS_SparkJob, 'schedule'),
     jobName: unsupported('the job is named after the component'),
     taskType: unsupported(
