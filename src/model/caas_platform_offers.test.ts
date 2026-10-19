@@ -366,6 +366,18 @@ describe('TraefikGateway platform keys', () => {
     expect(message).not.toContain('auth.example.com');
   });
 
+  // The agent's pattern carries no anchors; the contract check matches it against
+  // the whole value, so a clean URL later in the string cannot carry a
+  // credentialed one through.
+  it('refuses a credentialed forwardAuthAddress followed by a clean URL', () => {
+    expect(() =>
+      gateway({
+        forwardAuthAddress:
+          'https://user:pw@evil.com/ https://good.example.com/verify',
+      })
+    ).toThrow(/'forwardAuthAddress'/);
+  });
+
   it('accepts an exempt id with an inner slash, as the agent does', () => {
     expect(
       gateway({
