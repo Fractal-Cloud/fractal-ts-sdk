@@ -12,7 +12,12 @@ import {
   SecretReader,
 } from './offers/contract/fixtures/secret_access_offers';
 import {CloudRun, EcsService} from './offers/custom_workloads';
-import {secretRef} from './secret';
+import {isSecretRef, secretRef} from './secret';
+import type {OfferContract} from './offers/contract/offer_contract';
+import {
+  NetworkAndCompute_CaaS_ECSService,
+  NetworkAndCompute_CaaS_ECSTaskDefinition,
+} from './offers/generated/network_and_compute';
 
 const boundedContextId = {id: 'secrets'};
 const environment = {};
@@ -50,18 +55,66 @@ describe('withEnvironmentSecrets', () => {
     expect(offer.config).toEqual({environmentSecretShortNames: ['b']});
   });
 
-  it('refuses a blank or repeated short name', () => {
-    expect(() => SecretReader({}).withEnvironmentSecrets([' '])).toThrow(
-      'withEnvironmentSecrets takes environment-secret short names; got " "',
+  it('refuses a blank or repeated short name without echoing it', () => {
+    const refusal = (f: () => unknown): string => {
+      try {
+        f();
+      } catch (e) {
+        return (e as Error).message;
+      }
+      throw new Error('not refused');
+    };
+    const blank = refusal(() =>
+      SecretReader({}).withEnvironmentSecrets(['ok', {raw: 'hunter2'} as never]),
     );
-    expect(() => SecretReader({}).withEnvironmentSecrets(['a', 'a'])).toThrow(
-      "withEnvironmentSecrets names 'a' twice",
+    expect(blank).not.toContain('hunter2');
+    const repeated = refusal(() =>
+      SecretReader({}).withEnvironmentSecrets(['hunter2', 'hunter2']),
+    );
+    expect(repeated).toBe(
+      'CustomWorkloads.FaaS.SecretReader environmentSecretShortNames: items 0 ' +
+        'and 1 name the same secret (value withheld).',
+    );
+    expect(
+      refusal(() => SecretReader({}).withEnvironmentSecrets(['a', ' '])),
+    ).toBe(
+      'CustomWorkloads.FaaS.SecretReader environmentSecretShortNames: item 1 ' +
+        'is not an environment-secret short name (value withheld).',
     );
   });
 
-  it('is absent from an offer whose contract cannot access secrets', () => {
-    expect('withEnvironmentSecrets' in PlainFunction({})).toBe(false);
-    expect('withEnvironmentSecrets' in SecretReader({})).toBe(true);
+  it('checks the raw config key as the method does', () => {
+    expect(() =>
+      SecretReader({environmentSecretShortNames: ['a', 'a']}),
+    ).toThrow('items 0 and 1 name the same secret');
+    expect(() =>
+      SecretReader({environmentSecretShortNames: 'a' as never}),
+    ).toThrow('takes a list of environment-secret short names');
+  });
+
+  it('refuses by name, never as a missing function, on an offer that cannot access secrets', () => {
+    const plain = PlainFunction({}) as unknown as {
+      withEnvironmentSecrets: (n: string[]) => unknown;
+    };
+    expect(() => plain.withEnvironmentSecrets(['a'])).toThrow(
+      'CustomWorkloads.FaaS.Plain cannot access environment secrets: its ' +
+        'contract publishes no canAccessSecrets',
+    );
+    expect(() =>
+      PlainFunction({environmentSecretShortNames: ['a']} as never),
+    ).toThrow('cannot access environment secrets');
+  });
+
+  it('EcsService: its two contracts agree on secret access', () => {
+    // EcsService takes its config from both contracts but gates at runtime on
+    // the service's: a release flagging one only would split the type gate
+    // from the runtime one.
+    expect(
+      (NetworkAndCompute_CaaS_ECSService as OfferContract).canAccessSecrets,
+    ).toBe(
+      (NetworkAndCompute_CaaS_ECSTaskDefinition as OfferContract)
+        .canAccessSecrets,
+    );
   });
 
   it('refuses an offer that drops the selection when it instantiates', () => {
@@ -125,6 +178,24 @@ describe('env and secretEnv on a container environment', () => {
         select: {web: CloudRun({})},
       }),
     ).toThrow("'LOG_LEVEL' is in both env and secretEnv");
+  });
+
+  it('reads a reference as exactly the tag', () => {
+    expect(isSecretRef(secretRef('a'))).toBe(true);
+    expect(isSecretRef({$envSecret: 'a', raw: 'hunter2'})).toBe(false);
+    expect(isSecretRef({$envSecret: 1})).toBe(false);
+  });
+
+  it('refuses a reference carrying anything beside the tag', () => {
+    for (const select of [{web: EcsService({})}, {web: CloudRun({})}]) {
+      expect(() =>
+        workloadFractal({
+          DB_PASSWORD: {$envSecret: 'db-password', raw: 'hunter2'},
+        }).toLiveSystem({name: 'ls', environment, select}),
+      ).toThrow(
+        "secretEnv 'DB_PASSWORD' is not an environment-secret reference",
+      );
+    }
   });
 
   it('refuses a raw value in secretEnv', () => {

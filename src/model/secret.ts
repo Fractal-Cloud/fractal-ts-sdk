@@ -21,8 +21,14 @@ export const secretRef = (shortName: string): SecretRef => ({
   $envSecret: shortName,
 });
 
-/** Type guard: is a param / link-setting value an environment-secret reference? */
+/**
+ * Type guard: is a param / link-setting value an environment-secret reference?
+ * Exactly `{$envSecret: <shortName>}`: a tagged object carrying anything else
+ * could smuggle a raw value next to the tag, so it is not a reference.
+ */
 export const isSecretRef = (v: unknown): v is SecretRef =>
   typeof v === 'object' &&
   v !== null &&
+  !Array.isArray(v) &&
+  Object.keys(v).length === 1 &&
   typeof (v as {$envSecret?: unknown}).$envSecret === 'string';

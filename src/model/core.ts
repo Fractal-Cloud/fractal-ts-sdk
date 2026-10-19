@@ -176,22 +176,36 @@ export const defineOffer = <C extends string, Cfg>(
   const offerType: string = spec.contract
     ? spec.contract.offerType
     : (spec.offerType as string);
+  // The selection is checked however it arrives, through
+  // withEnvironmentSecrets or as the raw config key.
+  const selectionFor = (shortNames: unknown): string[] => {
+    if (spec.contract?.canAccessSecrets !== true) {
+      throw new Error(
+        `${offerType} cannot access environment secrets: its contract ` +
+          `publishes no canAccessSecrets, so ${ENVIRONMENT_SECRET_SHORT_NAMES_KEY} ` +
+          'cannot be set.',
+      );
+    }
+    return environmentSecretShortNames(offerType, shortNames);
+  };
   const construct = (
     config: Cfg,
   ): Offer<C, Cfg> & EnvironmentSecretsSelection<C, Cfg> => {
-    const offer = constructOffer(config);
-    if (spec.contract?.canAccessSecrets !== true) {
-      return offer as Offer<C, Cfg> & EnvironmentSecretsSelection<C, Cfg>;
+    const selected = (config as Record<string, unknown> | undefined)?.[
+      ENVIRONMENT_SECRET_SHORT_NAMES_KEY
+    ];
+    if (selected !== undefined) {
+      selectionFor(selected);
     }
+    // Present on every offer, so an offer whose config type admits a selection
+    // its own contract does not (a composite offer drawing its config from
+    // several contracts) refuses by name instead of failing as no function.
     return {
-      ...offer,
+      ...constructOffer(config),
       withEnvironmentSecrets: (shortNames: readonly string[]) =>
         construct({
           ...(config as Record<string, unknown>),
-          [ENVIRONMENT_SECRET_SHORT_NAMES_KEY]: environmentSecretShortNames(
-            offerType,
-            shortNames,
-          ),
+          [ENVIRONMENT_SECRET_SHORT_NAMES_KEY]: selectionFor(shortNames),
         } as Cfg),
     } as Offer<C, Cfg> & EnvironmentSecretsSelection<C, Cfg>;
   };
