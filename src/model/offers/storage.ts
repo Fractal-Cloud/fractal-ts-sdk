@@ -148,13 +148,20 @@ export const AwsS3 = defineOffer<
  */
 export const AzureBlob = defineOffer<
   'Storage.ObjectStorage',
-  ContractConfig<typeof Storage_PaaS_AzureBlob, 'encryption' | 'publicAccess'>
+  ContractConfig<typeof Storage_PaaS_AzureBlob, 'publicAccess'>
 >({
   satisfies: 'Storage.ObjectStorage',
   contract: Storage_PaaS_AzureBlob,
   provider: 'Azure',
   deliveryModel: 'PaaS',
   neutral: {
+    // The contract's `encryption` is the agent's customer-managed-key object,
+    // not the neutral 'at-rest' / 'none'; Azure Storage always encrypts at
+    // rest. A customer-managed key is the offer's own `encryption` config.
+    encryption: unsupportedUnless(
+      v => v === 'at-rest',
+      "Azure Storage always encrypts at rest; a customer-managed key is set with AzureBlob's own encryption",
+    ),
     retentionDays: unsupported('the agent sets no retention'),
     storageClass: unsupported('the tier is set by accessTier'),
     tags: unsupported('the agent applies no tags to it'),

@@ -47,6 +47,7 @@ import * as storageContracts from './offers/generated/storage';
 import {secretRef} from './secret';
 import type {LiveSystemComponent, Offer} from './core';
 import type {OfferContract} from './offers/contract/offer_contract';
+import {contractConfigProblem} from './offers/contract/contract_config_problem';
 import type {NeutralRule} from './neutral_rule';
 import {neutralSetterName} from './apply_neutral_rules';
 
@@ -298,13 +299,15 @@ const NEUTRAL = new Map<string, ProbedNode['state']>(
 /**
  * Neutral keys an offer keeps a rule for although its contract declares a key
  * of the same name, each for a reason:
- * - Service Bus `encryption` is a customer-managed-key map, not 'at-rest' / 'none';
+ * - Azure Storage and Service Bus `encryption` is a customer-managed-key map,
+ *   not 'at-rest' / 'none';
  * - a VM's `size` (fractal-cloud-agents v8.25.10) takes only the neutral sizes,
  *   while `withSize` also takes the vendor's own machine type, which the SDK
  *   sends under the vendor key (`instanceType`, `vmSize`, `machineType`,
  *   `shape`), as it sends a neutral size mapped by offers/vm_sizes.ts.
  */
 const HOMONYM_RULES: Readonly<Record<string, readonly string[]>> = {
+  AzureBlob: ['encryption'],
   AzureServiceBus: ['encryption'],
   Ec2Instance: ['size'],
   AzureVm: ['size'],
@@ -462,6 +465,28 @@ describe('offers and the contracts their agents publish', () => {
         'it with unsupported), or, only with a written reason, list it in ' +
         `contracts/undeclared-parameters.json:\n${JSON.stringify(actual, null, 2)}`,
     ).toEqual(allowed);
+  });
+
+  // A neutral key the contract also declares reaches the agent under that
+  // name, so its value must be one the agent takes: the neutral
+  // withEncryption('at-rest') once reached Azure Storage's customer-managed-key
+  // `encryption` object this way.
+  it('emits neutral values the contract of each emitted type accepts', () => {
+    const problems: Record<string, string> = {};
+    for (const [name, offer] of OFFERS) {
+      if (offer.contract === undefined) {
+        continue;
+      }
+      for (const component of emitted(name, offer)) {
+        const contract = CONTRACTS.get(component.type);
+        const problem =
+          contract && contractConfigProblem(contract, component.parameters);
+        if (problem) {
+          problems[`${name} ${component.type}`] = problem;
+        }
+      }
+    }
+    expect(problems).toEqual({});
   });
 
   it('refuses every neutral parameter an offer cannot honor', () => {
