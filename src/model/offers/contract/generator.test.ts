@@ -469,6 +469,107 @@ describe('generator', () => {
     });
   });
 
+  describe('canAccessSecrets', () => {
+    const KEY = 'environmentSecretShortNames';
+    const SECRETS_PARAM = {
+      key: KEY,
+      type: 'array',
+      description: 'Short names of the environment secrets this component may access.',
+    };
+    // As fractal-cloud-agents publishes it since #966: every offer says true or false.
+    const agent = (
+      agentId: string,
+      canAccessSecrets: unknown,
+      params: unknown[],
+    ) => ({
+      schemaVersion: '2.0',
+      agentId,
+      agentVersion: 'v1.0.0',
+      offers: [
+        {
+          offerType: 'CustomWorkloads.CaaS.Runner',
+          provider: 'AWS',
+          serviceTypes: ['CustomWorkloads.CaaS.Runner'],
+          params: [{key: 'image', type: 'string'}, ...params],
+          canAccessSecrets,
+        },
+      ],
+    });
+
+    it('renders a flagged offer with the flag and the key', async () => {
+      const files = await generate([
+        agent('fractal-cloud-agent-aws', true, [SECRETS_PARAM]),
+      ]);
+      const module = files.get('custom_workloads.ts')!;
+      expect(module).toContain(
+        "  serviceTypes: ['CustomWorkloads.CaaS.Runner'],\n  canAccessSecrets: true,\n",
+      );
+      expect(module).toContain(
+        "environmentSecretShortNames: {type: 'array', required: false},",
+      );
+    });
+
+    it('leaves the flag out when false or not declared', async () => {
+      for (const flag of [false, null, undefined]) {
+        const [offer] = buildModel([agent('fractal-cloud-agent-aws', flag, [])]);
+        expect(offer.canAccessSecrets).toBe(false);
+      }
+      const files = await generate([agent('fractal-cloud-agent-aws', false, [])]);
+      expect(files.get('custom_workloads.ts')).not.toContain('canAccessSecrets');
+    });
+
+    it('flags an offer several agents declare only when all of them do', () => {
+      const flagged = agent('fractal-cloud-agent-aws', true, [SECRETS_PARAM]);
+      const plain = agent('aria-agent-caas-k8s', false, []);
+      for (const order of [
+        [flagged, plain],
+        [plain, flagged],
+      ]) {
+        const [offer] = buildModel(order);
+        expect(offer.canAccessSecrets).toBe(false);
+        // Only some agents read the key, so it is not offered as config.
+        expect(offer.params.get(KEY).agents).toEqual(['fractal-cloud-agent-aws']);
+      }
+      const both = buildModel([
+        flagged,
+        agent('aria-agent-caas-k8s', true, [SECRETS_PARAM]),
+      ]);
+      expect(both[0].canAccessSecrets).toBe(true);
+    });
+
+    it('refuses a flag without the key, the key without the flag, or a bad shape', () => {
+      expect(() =>
+        buildModel([agent('fractal-cloud-agent-aws', true, [])]),
+      ).toThrow(
+        "fractal-cloud-agent-aws CustomWorkloads.CaaS.Runner can access secrets but declares no 'environmentSecretShortNames'",
+      );
+      expect(() =>
+        buildModel([agent('fractal-cloud-agent-aws', false, [SECRETS_PARAM])]),
+      ).toThrow(
+        "declares 'environmentSecretShortNames' without canAccessSecrets",
+      );
+      expect(() =>
+        buildModel([
+          agent('fractal-cloud-agent-aws', true, [{key: KEY, type: 'string'}]),
+        ]),
+      ).toThrow("environmentSecretShortNames has type 'string', not 'array'");
+      expect(() =>
+        buildModel([
+          agent('fractal-cloud-agent-aws', 'yes', [SECRETS_PARAM]),
+        ]),
+      ).toThrow('canAccessSecrets is "yes", not a boolean');
+    });
+
+    it('validates every agent even after one already left the offer unflagged', () => {
+      expect(() =>
+        buildModel([
+          agent('aria-agent-caas-k8s', false, []),
+          agent('fractal-cloud-agent-aws', true, []),
+        ]),
+      ).toThrow('can access secrets but declares no');
+    });
+  });
+
   it('names modules and constants after the offer type', () => {
     expect(contractIdentifier('NetworkAndCompute.IaaS.AwsLb')).toBe(
       'NetworkAndCompute_IaaS_AwsLb',

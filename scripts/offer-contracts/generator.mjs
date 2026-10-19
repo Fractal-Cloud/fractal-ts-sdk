@@ -53,6 +53,14 @@ const SECRET_NAMES_KEY = /pull.?secrets?$/i;
 /** Value types that can hold a secret value: one, or a collection of them. */
 const SECRET_VALUE_TYPES = new Set(['string', 'object', 'array']);
 
+/**
+ * The component parameter an offer that can access environment secrets
+ * (`canAccessSecrets`) declares: the short names of the secrets it may read.
+ * The flag and the key go together; a producer that publishes one without the
+ * other is reported, as ARIA refuses it.
+ */
+const ENVIRONMENT_SECRETS_KEY = 'environmentSecretShortNames';
+
 /** Older type spellings, normalized to the contract vocabulary. */
 const TYPE_SPELLINGS = {map: 'object', list: 'array', int: 'integer'};
 
@@ -285,6 +293,36 @@ const applyKeyAliases = (offers, keyAliases) => {
 };
 
 /**
+ * Whether one agent's offer can access environment secrets. Absent (or `null`)
+ * is "not declared", read as `false`.
+ */
+const readSecretAccess = (agentId, offer) => {
+  const flag = offer.canAccessSecrets ?? false;
+  if (typeof flag !== 'boolean') {
+    fail(
+      `${agentId} ${offer.offerType}.canAccessSecrets is ${JSON.stringify(flag)}, not a boolean`,
+    );
+  }
+  const key = (offer.params ?? []).find(p => p.key === ENVIRONMENT_SECRETS_KEY);
+  if (flag && key === undefined) {
+    fail(
+      `${agentId} ${offer.offerType} can access secrets but declares no '${ENVIRONMENT_SECRETS_KEY}'`,
+    );
+  }
+  if (!flag && key !== undefined) {
+    fail(
+      `${agentId} ${offer.offerType} declares '${ENVIRONMENT_SECRETS_KEY}' without canAccessSecrets`,
+    );
+  }
+  if (key !== undefined && (TYPE_SPELLINGS[key.type] ?? key.type) !== 'array') {
+    fail(
+      `${agentId} ${offer.offerType}.${ENVIRONMENT_SECRETS_KEY} has type '${key.type}', not 'array'`,
+    );
+  }
+  return flag;
+};
+
+/**
  * Merges every projection into one model: offer type → contract. Deterministic
  * whatever the projection order: agents, offers and keys are sorted.
  */
@@ -304,6 +342,7 @@ export const buildModel = (projections, keyAliases = []) => {
         declaredBy: [],
         serviceTypes: new Set(),
         params: new Map(),
+        canAccessSecrets: true,
       };
       if (entry.declaredBy.some(d => d.agentId === projection.agentId)) {
         fail(`${projection.agentId} declares ${offerType} twice`);
@@ -316,6 +355,10 @@ export const buildModel = (projections, keyAliases = []) => {
         ...(offer.aliasOfOfferType ? {aliasOf: offer.aliasOfOfferType} : {}),
         parameterRules: offer.parameterRules ?? [],
       });
+      // An offer several agents declare can access secrets only when every
+      // one of them says so: any of them may be the one that reconciles it.
+      const canAccessSecrets = readSecretAccess(projection.agentId, offer);
+      entry.canAccessSecrets = entry.canAccessSecrets && canAccessSecrets;
       for (const serviceType of offer.serviceTypes ?? []) {
         entry.serviceTypes.add(serviceType);
       }
@@ -385,6 +428,7 @@ const renderContract = offer => {
     `export const ${contractIdentifier(offer.offerType)} = {\n` +
     `  offerType: ${literal(offer.offerType)},\n` +
     `  serviceTypes: ${literal([...offer.serviceTypes].sort())},\n` +
+    (offer.canAccessSecrets ? '  canAccessSecrets: true,\n' : '') +
     `  declaredBy: [\n${declaredBy}  ],\n` +
     `  params: {\n${params.map(([k, p]) => renderParameter(k, p, allAgents)).join('')}  },\n` +
     '} as const satisfies OfferContract;\n'

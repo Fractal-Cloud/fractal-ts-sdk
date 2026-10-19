@@ -98,6 +98,7 @@ export type {ContractValueType} from './offers/contract/contract_value_type';
 export type {ContractValue} from './offers/contract/contract_value';
 export type {ContractParameters} from './offers/contract/contract_parameters';
 export type {ContractConfig} from './offers/contract/contract_config';
+export type {EnvironmentSecretsSelection} from './offers/environment_secrets_selection';
 
 // Offer catalogue (concrete — vendor or vendor-neutral)
 export * from './offers/network_and_compute';

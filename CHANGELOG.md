@@ -9,6 +9,29 @@ The version published for a release is the GitHub release tag: `release.yml` run
 `npm version <tag>` at publish time, so `package.json` on `main` is not the source
 of truth for what is on npm.
 
+## Unreleased
+
+### Added — `withEnvironmentSecrets` on offers that can access environment secrets
+
+An agent contract may flag an offer `canAccessSecrets` and declare the component parameter
+`environmentSecretShortNames` with it (fractal-cloud-agents #966, not yet in a release the
+snapshot pins). The generator now carries the flag (`OfferContract.canAccessSecrets`), and a
+flagged offer gets `withEnvironmentSecrets(shortNames)`:
+
+    select: {api: EcsService({}).withEnvironmentSecrets(['db-password'])}
+
+It sends `environmentSecretShortNames`. It exists only on flagged offers, so calling it on any
+other offer is a compile error. Blank or repeated short names are refused. Until the snapshot
+is re-pinned to an agent release that publishes the flag, no shipped offer has the method.
+
+### Fixed — `EcsService` and `CloudRun` take `withEnv` and `withSecretEnv`
+
+The ECS task definition and Cloud Run service contracts declare `environment` (variable name
+to a value or to `{"$envSecret": "<shortName>"}`), but the SDK refused both setters as
+"declares no container environment / container secrets". Both now become `environment`.
+A variable set in both is refused, and so is a `withSecretEnv` value that is not a
+`secretRef(...)`.
+
 ## 2.13.1
 
 ### Changed — contracts re-pinned
