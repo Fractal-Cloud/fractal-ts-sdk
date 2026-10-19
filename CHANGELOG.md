@@ -39,6 +39,22 @@ most 76. The contract only warns about a longer `queueName`, which then cannot d
 the SDK now refuses it while the Live System is built, and refuses a component id
 longer than 76 characters when no `queueName` is set, naming the fix.
 
+### Fixed — `withEncryption('at-rest')` on `AzureBlob` is satisfied, not sent
+
+`AzureBlob` sent the neutral `ObjectStorage.withEncryption('at-rest')` to the Azure
+agent's `encryption`, which is the storage account's customer-managed-key object, so
+the Live System was refused with `(value withheld) is not the object 'encryption'
+takes`, naming no fix. Azure Storage always encrypts at rest, so `'at-rest'` is now
+satisfied and not sent, as on `AwsS3`, `GcsBucket`, `AzureServiceBus` and
+`GcpPubSub`; `'none'` is refused while the Live System is built, naming the fix.
+
+A customer-managed key is set with the offer's own `encryption` config
+(`AzureBlob({encryption: {keySource: 'Microsoft.Keyvault', keyVaultProperties: ...}})`),
+which `AzureServiceBus` now also takes in its config type. No other offer of a
+component with `withEncryption` sends it to a key of another shape: a new check
+instantiates every offer with every neutral setter and validates each emitted value
+against the agent's contract.
+
 ## 2.13.0
 
 ### Breaking — what to change when upgrading

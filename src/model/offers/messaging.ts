@@ -143,7 +143,7 @@ export const AzureServiceBus = defineOffer<
   'Messaging.Broker',
   ContractConfig<
     typeof Messaging_PaaS_AzureServiceBus,
-    'encryption',
+    never,
     {
       /** Namespace SKU; defaults to Standard. See {@link AzureServiceBusSkuTier}. */
       skuTier?: AzureServiceBusSkuTier;
@@ -156,10 +156,11 @@ export const AzureServiceBus = defineOffer<
   deliveryModel: 'PaaS',
   neutral: {
     // The contract's `encryption` is the agent's customer-managed-key map, not
-    // the neutral 'at-rest' / 'none'; Service Bus always encrypts at rest.
+    // the neutral 'at-rest' / 'none'; Service Bus always encrypts at rest. A
+    // customer-managed key is the offer's own `encryption` config.
     encryption: unsupportedUnless(
       v => v === 'at-rest',
-      'Service Bus always encrypts at rest; its encryption parameter configures a customer-managed key',
+      "Service Bus always encrypts at rest; a customer-managed key is set with AzureServiceBus's own encryption",
     ),
   },
   validate: refuseBasicNamespaceWithTopics,
