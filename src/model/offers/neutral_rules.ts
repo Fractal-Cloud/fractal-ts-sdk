@@ -6,6 +6,7 @@ import type {NeutralRule} from '../neutral_rule';
 import type {OfferContract} from './contract/offer_contract';
 import {contractKey} from './contract/contract_key';
 import {contractValueProblem} from './contract/contract_value_problem';
+import {isSecretRef} from '../secret';
 
 /** Refuses a translated value the contract would not accept. */
 const checked = (
@@ -67,6 +68,55 @@ export const toContractKeys = <
         );
       }
       return checked(contract, out);
+    },
+  };
+};
+
+const asEntries = (what: string, v: unknown): Record<string, unknown> => {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) {
+    throw new Error(`${what} is not a map of variable names`);
+  }
+  return v as Record<string, unknown>;
+};
+
+/**
+ * A container environment the agent reads as one object key (`environment`:
+ * variable name to a value or an environment-secret reference): the
+ * workload's `env` and `secretEnv` are merged into it, and a variable both set
+ * is refused. `secretEnv` carries references only, never a raw value.
+ */
+export const toContainerEnvironment = <
+  C extends OfferContract,
+  K extends keyof C['params'] & string,
+>(
+  contract: C,
+  key: K,
+  source: 'env' | 'secretEnv',
+): NeutralRule => {
+  const vendorKey = contractKey(contract, key);
+  return {
+    kind: 'translate',
+    apply: value => {
+      const entries = asEntries(source, value);
+      if (source === 'secretEnv') {
+        const raw = Object.keys(entries).find(k => !isSecretRef(entries[k]));
+        if (raw !== undefined) {
+          throw new Error(
+            `secretEnv '${raw}' is not an environment-secret reference; use secretRef('<shortName>')`,
+          );
+        }
+      }
+      return checked(contract, {[vendorKey]: {...entries}});
+    },
+    merge: (current, next) => {
+      const merged = {...asEntries(vendorKey, current)};
+      for (const [name, v] of Object.entries(asEntries(source, next))) {
+        if (Object.hasOwn(merged, name)) {
+          throw new Error(`'${name}' is in both env and secretEnv`);
+        }
+        merged[name] = v;
+      }
+      return checked(contract, {[vendorKey]: merged})[vendorKey];
     },
   };
 };

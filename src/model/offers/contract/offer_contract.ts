@@ -11,6 +11,12 @@ import type {ContractParameter} from './contract_parameter';
 export type OfferContract = {
   readonly offerType: string;
   readonly serviceTypes: readonly string[];
+  /**
+   * The offer's components may access environment secrets: every declaring
+   * agent publishes `canAccessSecrets` and the `environmentSecretShortNames`
+   * parameter that selects them. Absent: they may not.
+   */
+  readonly canAccessSecrets?: true;
   /** Every agent that declares the offer; more than one for self-hosted CaaS offers. */
   readonly declaredBy: readonly ContractDeclaration[];
   readonly params: {readonly [key: string]: ContractParameter};

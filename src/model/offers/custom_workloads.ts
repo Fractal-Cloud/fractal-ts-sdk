@@ -18,7 +18,12 @@ import {
   ecsMemoryMiB,
   memoryGi,
 } from './resource_quantities';
-import {toContractKey, toContractKeys, unsupported} from './neutral_rules';
+import {
+  toContainerEnvironment,
+  toContractKey,
+  toContractKeys,
+  unsupported,
+} from './neutral_rules';
 import {
   CustomWorkloads_CaaS_KubernetesWorkload,
   CustomWorkloads_CaaS_OpenshiftWorkload,
@@ -108,8 +113,16 @@ export const EcsService = defineOffer<
     replicas: toContractKey(NetworkAndCompute_CaaS_ECSService, 'desiredCount'),
     autoscaling: unsupportedOnEcs('autoscaling'),
     maxReplicas: unsupportedOnEcs('autoscaling'),
-    env: unsupportedOnEcs('container environment'),
-    secretEnv: unsupportedOnEcs('container secrets'),
+    env: toContainerEnvironment(
+      NetworkAndCompute_CaaS_ECSTaskDefinition,
+      'environment',
+      'env',
+    ),
+    secretEnv: toContainerEnvironment(
+      NetworkAndCompute_CaaS_ECSTaskDefinition,
+      'environment',
+      'secretEnv',
+    ),
     healthCheck: unsupportedOnEcs('health check'),
     readinessProbe: unsupportedOnEcs('health check'),
     livenessProbe: unsupportedOnEcs('health check'),
@@ -204,8 +217,16 @@ export const CloudRun = defineOffer<
       NetworkAndCompute_CaaS_CloudRunService,
       'maxInstances',
     ),
-    env: unsupportedOnCloudRun('container environment'),
-    secretEnv: unsupportedOnCloudRun('container secrets'),
+    env: toContainerEnvironment(
+      NetworkAndCompute_CaaS_CloudRunService,
+      'environment',
+      'env',
+    ),
+    secretEnv: toContainerEnvironment(
+      NetworkAndCompute_CaaS_CloudRunService,
+      'environment',
+      'secretEnv',
+    ),
     healthCheck: unsupportedOnCloudRun('health check'),
     readinessProbe: unsupportedOnCloudRun('health check'),
     livenessProbe: unsupportedOnCloudRun('health check'),

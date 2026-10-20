@@ -10,6 +10,11 @@ export type NeutralRule =
       readonly kind: 'translate';
       /** The contract keys and values the neutral value becomes; `undefined` values are skipped. */
       readonly apply: (value: unknown) => Readonly<Record<string, unknown>>;
+      /**
+       * Combines this value with the one an earlier neutral parameter already
+       * wrote to the same key. Absent: the earlier one wins.
+       */
+      readonly merge?: (current: unknown, next: unknown) => unknown;
     }
   | {
       readonly kind: 'unsupported';

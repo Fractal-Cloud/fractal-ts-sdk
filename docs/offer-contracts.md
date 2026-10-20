@@ -82,6 +82,12 @@ per offer type, named after it (`NetworkAndCompute.IaaS.AwsLb` → `NetworkAndCo
 - **Merging never widens an offer.** An optional key only some of the declaring agents read is not
   a config key (`ContractParameters`), and a neutral translation into one is refused, naming the
   agents. A key some agent requires stays, since that agent cannot work without it.
+- **`canAccessSecrets`.** An offer every declaring agent publishes with `canAccessSecrets: true`
+  is generated with `canAccessSecrets: true`; otherwise the member is absent. The flag and the
+  `environmentSecretShortNames` parameter (type `array`) go together, as ARIA requires: an agent
+  that publishes one without the other fails the generator. A flagged offer's config carries the
+  key, and its constructor's result has `withEnvironmentSecrets(shortNames)`, which sets it; no
+  other offer has either, so selecting secrets for it does not compile.
 - Generated modules hold data only; unused contracts are tree-shaken from the bundle.
 
 Dependencies and links are not generated: in the SDK they are carried by the blueprint.

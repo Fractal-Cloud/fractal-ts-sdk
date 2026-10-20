@@ -20,7 +20,9 @@ const isSet = (v: unknown): boolean => v !== undefined;
  * open neutral one and is refused against a locked one, as the lock would
  * otherwise guard a value nobody reads. When two neutral parameters translate
  * to the same key, the rule listed first wins (e.g. a Container App's
- * `autoscaling` range over its `replicas`). An unsupported parameter is refused.
+ * `autoscaling` range over its `replicas`), unless the later rule merges into
+ * it (a workload's `env` and `secretEnv`, both its container environment). An
+ * unsupported parameter is refused.
  */
 export const applyNeutralRules = (args: {
   offerType: string;
@@ -76,7 +78,19 @@ export const applyNeutralRules = (args: {
       ]);
     }
     for (const [vendorKey, vendorValue] of Object.entries(vendorValues)) {
-      if (!isSet(vendorValue) || translated.has(vendorKey)) {
+      if (!isSet(vendorValue)) {
+        continue;
+      }
+      if (translated.has(vendorKey)) {
+        if (rule.merge !== undefined) {
+          try {
+            params[vendorKey] = rule.merge(params[vendorKey], vendorValue);
+          } catch (e) {
+            throw refused(e instanceof Error ? e.message : String(e), [
+              `give ${setter} a value ${args.offerType} accepts`,
+            ]);
+          }
+        }
         continue;
       }
       if (isSet(config[vendorKey]) || isSet(params[vendorKey])) {

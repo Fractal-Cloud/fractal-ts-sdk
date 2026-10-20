@@ -22,6 +22,11 @@ import type {OfferContract} from './offers/contract/offer_contract';
 import type {NeutralRule} from './neutral_rule';
 import {applyNeutralRules} from './apply_neutral_rules';
 import {isRouteSettings, mergeRouteSettings} from './route_link_merge';
+import type {EnvironmentSecretsSelection} from './offers/environment_secrets_selection';
+import {
+  ENVIRONMENT_SECRET_SHORT_NAMES_KEY,
+  environmentSecretShortNames,
+} from './offers/environment_secret_short_names';
 
 // ── Catalogue value types ────────────────────────────────────────────────────
 // Vendors only. `CaaS`/`SaaS` are NOT vendors — they are delivery models below.
@@ -144,6 +149,9 @@ export type Offer<C extends string = string, Cfg = unknown> = {
  * contract does not declare a rule: translate it to the contract keys the
  * agent reads, or refuse it (`offers/neutral_rules.ts`). The rules run before
  * `instantiate`, on the component's own parameters.
+ *
+ * An offer whose contract can access environment secrets also gets
+ * `withEnvironmentSecrets` (see `EnvironmentSecretsSelection`).
  */
 export const defineOffer = <C extends string, Cfg>(
   spec: {
@@ -168,7 +176,40 @@ export const defineOffer = <C extends string, Cfg>(
   const offerType: string = spec.contract
     ? spec.contract.offerType
     : (spec.offerType as string);
-  const construct = (config: Cfg): Offer<C, Cfg> => ({
+  // The selection is checked however it arrives, through
+  // withEnvironmentSecrets or as the raw config key.
+  const selectionFor = (shortNames: unknown): string[] => {
+    if (spec.contract?.canAccessSecrets !== true) {
+      throw new Error(
+        `${offerType} cannot access environment secrets: its contract ` +
+          `publishes no canAccessSecrets, so ${ENVIRONMENT_SECRET_SHORT_NAMES_KEY} ` +
+          'cannot be set.',
+      );
+    }
+    return environmentSecretShortNames(offerType, shortNames);
+  };
+  const construct = (
+    config: Cfg,
+  ): Offer<C, Cfg> & EnvironmentSecretsSelection<C, Cfg> => {
+    const selected = (config as Record<string, unknown> | undefined)?.[
+      ENVIRONMENT_SECRET_SHORT_NAMES_KEY
+    ];
+    if (selected !== undefined) {
+      selectionFor(selected);
+    }
+    // Present on every offer, so an offer whose config type admits a selection
+    // its own contract does not (a composite offer drawing its config from
+    // several contracts) refuses by name instead of failing as no function.
+    return {
+      ...constructOffer(config),
+      withEnvironmentSecrets: (shortNames: readonly string[]) =>
+        construct({
+          ...(config as Record<string, unknown>),
+          [ENVIRONMENT_SECRET_SHORT_NAMES_KEY]: selectionFor(shortNames),
+        } as Cfg),
+    } as Offer<C, Cfg> & EnvironmentSecretsSelection<C, Cfg>;
+  };
+  const constructOffer = (config: Cfg): Offer<C, Cfg> => ({
     satisfies: spec.satisfies,
     offerType,
     provider: spec.provider,
@@ -209,7 +250,7 @@ export const defineOffer = <C extends string, Cfg>(
             }),
           }
         : raw;
-      return spec.instantiate
+      const emitted = spec.instantiate
         ? spec.instantiate(ctx, config)
         : [
             {
@@ -226,6 +267,23 @@ export const defineOffer = <C extends string, Cfg>(
               links: ctx.links,
             },
           ];
+      // A secret selection a custom `instantiate` drops would deploy a
+      // component without the access it was given, silently.
+      const selected = (config as Record<string, unknown> | undefined)?.[
+        ENVIRONMENT_SECRET_SHORT_NAMES_KEY
+      ];
+      if (
+        selected !== undefined &&
+        !emitted.some(c =>
+          Object.hasOwn(c.parameters, ENVIRONMENT_SECRET_SHORT_NAMES_KEY),
+        )
+      ) {
+        throw new Error(
+          `Offer '${offerType}' selected for '${raw.id}' emits no component ` +
+            `carrying its ${ENVIRONMENT_SECRET_SHORT_NAMES_KEY}.`,
+        );
+      }
+      return emitted;
     },
   });
   return Object.assign(construct, {
