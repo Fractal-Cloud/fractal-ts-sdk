@@ -1,9 +1,10 @@
 {
   "agentId": "fractal-cloud-agent-oci",
-  "agentVersion": "v8.25.11",
+  "agentVersion": "v8.28.0",
   "offers": [
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "AI.SaaS.Unmanaged",
       "params": [
         {
@@ -30,6 +31,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "APIManagement.CaaS.Traefik",
       "params": [
         {
@@ -104,7 +106,7 @@
         },
         {
           "default": {},
-          "description": "Distributed tracing, as {jaeger: {collectorEndpoint, localAgentPort, localAgentUrlPath}}. When jaeger is set without a collectorEndpoint, the endpoint is taken from the Jaeger component this gateway links to with link type JaegerTracing, and the component fails when there is no such link. When unset, tracing is off.",
+          "description": "Distributed tracing, as {jaeger: {collectorEndpoint, localAgentPort, localAgentUrlPath}}. Traefik sends traces over OpenTelemetry (OTLP over HTTP) to that endpoint. When jaeger is set without a collectorEndpoint, the endpoint is the Jaeger component this gateway links to with link type JaegerTracing, on localAgentPort (default 4318) and localAgentUrlPath (default /v1/traces), and the component fails when there is no such link. Only an OTLP traces endpoint (a path ending in /v1/traces, not on a Jaeger v1 port 14268 / 6831 / 6832) is used as declared; any other endpoint is sent to the same host's OTLP receiver (http://<host>:4318/v1/traces), and the remap is published in contractWarnings. An endpoint without a scheme is read as http://. The collector must accept OTLP over HTTP, as Jaeger v2 does. When unset, tracing is off.",
           "key": "tracing",
           "type": "object"
         }
@@ -114,6 +116,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "APIManagement.SaaS.Unmanaged",
       "params": [
         {
@@ -140,6 +143,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.SaaS.Unmanaged",
       "params": [
         {
@@ -166,13 +170,21 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "CustomWorkloads.IaaS.Workload",
-      "params": [],
+      "params": [
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        }
+      ],
       "provider": "OCI",
       "providerResources": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "CustomWorkloads.SaaS.Unmanaged",
       "params": [
         {
@@ -199,6 +211,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.CaaS.KafkaUser",
       "params": [
         {
@@ -234,6 +247,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.SaaS.Unmanaged",
       "params": [
         {
@@ -260,6 +274,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.IaaS.OciComputeInstance",
       "params": [
         {
@@ -276,6 +291,11 @@
           "type": "object"
         },
         {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
           "description": "Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' (\"system\" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent.",
           "key": "identity",
           "type": "object"
@@ -330,6 +350,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.IaaS.OciInstance",
       "params": [
         {
@@ -346,6 +367,11 @@
           "type": "object"
         },
         {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
           "description": "Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' (\"system\" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent.",
           "key": "identity",
           "type": "object"
@@ -400,6 +426,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.OciLoadBalancer",
       "params": [
         {
@@ -436,6 +463,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.OciNetworkSecurityGroup",
       "params": [
         {
@@ -468,6 +496,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.OciSecurityList",
       "params": [
         {
@@ -500,6 +529,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.OciSubnet",
       "params": [
         {
@@ -524,6 +554,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.OciVcn",
       "params": [
         {
@@ -542,6 +573,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.Kubernetes",
       "params": [
         {
@@ -562,6 +594,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.OKE",
       "params": [
         {
@@ -582,6 +615,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.PaaS.OciContainerInstance",
       "params": [
         {
@@ -608,6 +642,11 @@
           "description": "What OCI does when the container exits: ALWAYS, NEVER or ON_FAILURE (case insensitive). Any other value is refused. When unset, ALWAYS. Applied at creation only.",
           "key": "containerRestartPolicy",
           "type": "string"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Container image the instance runs, as a full image reference (registry/repository:tag). Required to create: a running instance declared without it keeps the image it runs. Changing it deletes and recreates the instance.",
@@ -637,6 +676,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.SaaS.Unmanaged",
       "params": [
         {
@@ -663,6 +703,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Observability.CaaS.Jaeger",
       "params": [
         {
@@ -702,6 +743,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Observability.CaaS.Prometheus",
       "params": [
         {
@@ -732,6 +774,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Observability.SaaS.Jaeger",
       "params": [
         {
@@ -750,6 +793,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Observability.SaaS.Prometheus",
       "params": [
         {
@@ -768,6 +812,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Security.CaaS.Ocelot",
       "params": [
         {
@@ -821,6 +866,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Security.SaaS.Unmanaged",
       "params": [
         {
@@ -847,6 +893,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.CaaS.CnpgCluster",
       "params": [
         {
@@ -945,6 +992,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.CaaS.CnpgDatabase",
       "params": [
         {
@@ -1009,6 +1057,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.SaaS.Unmanaged",
       "params": [
         {

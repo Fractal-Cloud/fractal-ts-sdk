@@ -47,28 +47,28 @@ export const APIManagement_CaaS_Traefik = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -113,7 +113,7 @@ export const APIManagement_CaaS_Traefik = {
     tlsCertificates: {type: 'array', required: false, default: []},
     /** TLS options of the entry points, as {supportedTlsVersions, supportedCiphers}: supportedTlsVersions lists TLS_1_0, TLS_1_1, TLS_1_2 or TLS_1_3 (the lowest becomes the minimum version; any other value fails the component), supportedCiphers lists cipher-suite names as Go's crypto/tls spells them (e.g. TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256). Each half left unset keeps its default: TLS 1.2 and 1.3, with a fixed list of ECDHE and TLS 1.3 AES-GCM / ChaCha20 suites. */
     tlsSettings: {type: 'object', required: false, default: {}},
-    /** Distributed tracing, as {jaeger: {collectorEndpoint, localAgentPort, localAgentUrlPath}}. When jaeger is set without a collectorEndpoint, the endpoint is taken from the Jaeger component this gateway links to with link type JaegerTracing, and the component fails when there is no such link. When unset, tracing is off. */
+    /** Distributed tracing, as {jaeger: {collectorEndpoint, localAgentPort, localAgentUrlPath}}. Traefik sends traces over OpenTelemetry (OTLP over HTTP) to that endpoint. When jaeger is set without a collectorEndpoint, the endpoint is the Jaeger component this gateway links to with link type JaegerTracing, on localAgentPort (default 4318) and localAgentUrlPath (default /v1/traces), and the component fails when there is no such link. Only an OTLP traces endpoint (a path ending in /v1/traces, not on a Jaeger v1 port 14268 / 6831 / 6832) is used as declared; any other endpoint is sent to the same host's OTLP receiver (http://<host>:4318/v1/traces), and the remap is published in contractWarnings. An endpoint without a scheme is read as http://. The collector must accept OTLP over HTTP, as Jaeger v2 does. When unset, tracing is off. */
     tracing: {type: 'object', required: false, default: {}},
   },
 } as const satisfies OfferContract;
@@ -345,7 +345,7 @@ export const APIManagement_PaaS_ApiGateway = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -379,7 +379,7 @@ export const APIManagement_PaaS_ApiManagement = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -407,7 +407,7 @@ export const APIManagement_PaaS_AwsCloudFront = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -539,7 +539,7 @@ export const APIManagement_PaaS_AzureApiManagement = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -567,7 +567,7 @@ export const APIManagement_PaaS_CloudFront = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -699,7 +699,7 @@ export const APIManagement_PaaS_GcpApiGateway = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -733,28 +733,28 @@ export const APIManagement_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],

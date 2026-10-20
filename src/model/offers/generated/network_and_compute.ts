@@ -9,13 +9,13 @@ export const NetworkAndCompute_CaaS_CloudRunService = {
     'NetworkAndCompute.CaaS.CloudRunWorkload',
     'NetworkAndCompute.PaaS.Workload',
   ],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
-      aliasOf: 'NetworkAndCompute.PaaS.CloudRun',
       parameterRules: [],
     },
   ],
@@ -26,6 +26,8 @@ export const NetworkAndCompute_CaaS_CloudRunService = {
     cpu: {type: 'string', required: false},
     /** Environment variables of the container: name to a string, number or boolean, or to an environment-secret reference {"$envSecret": "<shortName>"}, which is passed as the cloud's secret reference and never as the raw value. Changing it rolls out a new revision. */
     environment: {type: 'object', required: false},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Full container image reference the service runs, e.g. europe-docker.pkg.dev/<project>/<repository>/<image>:<tag>. A change deploys a new revision. Required to create a service; a deployed service without it keeps the image it runs. */
     image: {type: 'string', required: false},
     /** Who may reach the service: all (the internet), internal (the VPC and the project), or internal-and-cloud-load-balancing (also an external Application Load Balancer). Any other value is refused for a new service. Required to create a service; a deployed service without it keeps the value it runs with. A change to this key alone does not update an existing service; it is applied with the next update. */
@@ -52,10 +54,11 @@ export const NetworkAndCompute_CaaS_CloudRunService = {
 export const NetworkAndCompute_CaaS_ECSService = {
   offerType: 'NetworkAndCompute.CaaS.ECSService',
   serviceTypes: ['NetworkAndCompute.CaaS.ECSWorkload'],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -66,6 +69,8 @@ export const NetworkAndCompute_CaaS_ECSService = {
     assignPublicIp: {type: 'boolean', required: false, default: false},
     /** Number of tasks the ECS service keeps running. When unset, 1. */
     desiredCount: {type: 'integer', required: false, default: 1},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** ECS launch type of the service: FARGATE or EC2. Applied when the service is created; changing it later does not change an existing service. When unset, FARGATE. */
     launchType: {type: 'string', required: false, default: 'FARGATE'},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
@@ -76,10 +81,11 @@ export const NetworkAndCompute_CaaS_ECSService = {
 export const NetworkAndCompute_CaaS_ECSTaskDefinition = {
   offerType: 'NetworkAndCompute.CaaS.ECSTaskDefinition',
   serviceTypes: ['NetworkAndCompute.CaaS.ECSWorkload'],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -96,6 +102,8 @@ export const NetworkAndCompute_CaaS_ECSTaskDefinition = {
     cpu: {type: 'string', required: false, default: '256'},
     /** Environment variables of the container: name to a string, number or boolean, or to an environment-secret reference {"$envSecret": "<shortName>"}, which is passed as the cloud's secret reference and never as the raw value. Changing it rolls out a new revision. */
     environment: {type: 'object', required: false},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Task execution role. Granted read on the secrets 'environment' references. When unset and secrets are referenced, an agent-owned role is created and used. */
     executionRoleArn: {type: 'string', required: false, default: ''},
     /** Task memory in MiB, as a string (e.g. 512, 1024, 2048). Must be a combination with cpu that Fargate accepts. When unset, 512. */
@@ -349,10 +357,11 @@ export const NetworkAndCompute_IaaS_ArubaVpnTunnel = {
 export const NetworkAndCompute_IaaS_AwsEc2Instance = {
   offerType: 'NetworkAndCompute.IaaS.AwsEc2Instance',
   serviceTypes: ['NetworkAndCompute.IaaS.VirtualMachine'],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -363,6 +372,8 @@ export const NetworkAndCompute_IaaS_AwsEc2Instance = {
     amiId: {type: 'string', required: false, default: ''},
     /** Whether the instance gets a public IPv4 address at launch. When unset, false. */
     associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Legacy: name of an existing IAM instance profile to launch with; identity.instanceProfile wins when both are set. When neither is set, the agent creates a role and instance profile for the instance when a link needs a grant. */
     iamInstanceProfile: {type: 'string', required: false, default: ''},
     /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
@@ -393,7 +404,7 @@ export const NetworkAndCompute_IaaS_AwsLb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -427,7 +438,7 @@ export const NetworkAndCompute_IaaS_AwsLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.IaaS.AwsLb',
@@ -462,7 +473,7 @@ export const NetworkAndCompute_IaaS_AwsSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -486,7 +497,7 @@ export const NetworkAndCompute_IaaS_AwsSubnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -508,7 +519,7 @@ export const NetworkAndCompute_IaaS_AwsVpc = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -534,7 +545,7 @@ export const NetworkAndCompute_IaaS_AzureLb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -568,7 +579,7 @@ export const NetworkAndCompute_IaaS_AzureLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureLb',
@@ -603,7 +614,7 @@ export const NetworkAndCompute_IaaS_AzureNetworkSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureNsg',
@@ -628,7 +639,7 @@ export const NetworkAndCompute_IaaS_AzureNsg = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -652,7 +663,7 @@ export const NetworkAndCompute_IaaS_AzureSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureNsg',
@@ -677,7 +688,7 @@ export const NetworkAndCompute_IaaS_AzureSubnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -694,10 +705,11 @@ export const NetworkAndCompute_IaaS_AzureSubnet = {
 export const NetworkAndCompute_IaaS_AzureVirtualMachine = {
   offerType: 'NetworkAndCompute.IaaS.AzureVirtualMachine',
   serviceTypes: [],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureVm',
@@ -707,6 +719,8 @@ export const NetworkAndCompute_IaaS_AzureVirtualMachine = {
   params: {
     /** When true, the VM's network interface gets a new public IP. Applied when the VM is created. When unset, false: the VM has a private IP only. */
     associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
     /** Linux marketplace image as a URN 'publisher:offer:sku[:version]' (version 'latest' or omitted for the latest). Required to create a VM: a new VM without it is refused. Applied when the VM is created; changing it later does not rebuild the VM, and a deployed VM declared without it keeps its image, with a warning. */
@@ -744,7 +758,7 @@ export const NetworkAndCompute_IaaS_AzureVirtualNetwork = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureVnet',
@@ -762,10 +776,11 @@ export const NetworkAndCompute_IaaS_AzureVirtualNetwork = {
 export const NetworkAndCompute_IaaS_AzureVm = {
   offerType: 'NetworkAndCompute.IaaS.AzureVm',
   serviceTypes: ['NetworkAndCompute.IaaS.VirtualMachine'],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -774,6 +789,8 @@ export const NetworkAndCompute_IaaS_AzureVm = {
   params: {
     /** When true, the VM's network interface gets a new public IP. Applied when the VM is created. When unset, false: the VM has a private IP only. */
     associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
     /** Linux marketplace image as a URN 'publisher:offer:sku[:version]' (version 'latest' or omitted for the latest). Required to create a VM: a new VM without it is refused. Applied when the VM is created; changing it later does not rebuild the VM, and a deployed VM declared without it keeps its image, with a warning. */
@@ -811,7 +828,7 @@ export const NetworkAndCompute_IaaS_AzureVnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -828,10 +845,11 @@ export const NetworkAndCompute_IaaS_AzureVnet = {
 export const NetworkAndCompute_IaaS_EC2 = {
   offerType: 'NetworkAndCompute.IaaS.EC2',
   serviceTypes: [],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.IaaS.AwsEc2Instance',
@@ -843,6 +861,8 @@ export const NetworkAndCompute_IaaS_EC2 = {
     amiId: {type: 'string', required: false, default: ''},
     /** Whether the instance gets a public IPv4 address at launch. When unset, false. */
     associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Legacy: name of an existing IAM instance profile to launch with; identity.instanceProfile wins when both are set. When neither is set, the agent creates a role and instance profile for the instance when a link needs a grant. */
     iamInstanceProfile: {type: 'string', required: false, default: ''},
     /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
@@ -870,10 +890,11 @@ export const NetworkAndCompute_IaaS_EC2 = {
 export const NetworkAndCompute_IaaS_GcpComputeInstance = {
   offerType: 'NetworkAndCompute.IaaS.GcpComputeInstance',
   serviceTypes: [],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -882,6 +903,8 @@ export const NetworkAndCompute_IaaS_GcpComputeInstance = {
   params: {
     /** Whether the instance gets an ephemeral external IPv4 address. Reconciled on an existing instance too (the address is added or removed). When unset, false: private only. */
     associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
     /** Boot disk source image, as an image or image-family path (a family resolves to its latest image). Applied when the instance is created only: a new VM without it is refused; an existing VM keeps the image it was created from. */
@@ -917,7 +940,7 @@ export const NetworkAndCompute_IaaS_GcpFirewall = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -943,7 +966,7 @@ export const NetworkAndCompute_IaaS_GcpGlb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -969,7 +992,7 @@ export const NetworkAndCompute_IaaS_GcpLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -995,7 +1018,7 @@ export const NetworkAndCompute_IaaS_GcpSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpFirewall',
@@ -1022,7 +1045,7 @@ export const NetworkAndCompute_IaaS_GcpSubnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1039,10 +1062,11 @@ export const NetworkAndCompute_IaaS_GcpSubnet = {
 export const NetworkAndCompute_IaaS_GcpVirtualMachine = {
   offerType: 'NetworkAndCompute.IaaS.GcpVirtualMachine',
   serviceTypes: [],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpComputeInstance',
@@ -1052,6 +1076,8 @@ export const NetworkAndCompute_IaaS_GcpVirtualMachine = {
   params: {
     /** Whether the instance gets an ephemeral external IPv4 address. Reconciled on an existing instance too (the address is added or removed). When unset, false: private only. */
     associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
     /** Boot disk source image, as an image or image-family path (a family resolves to its latest image). Applied when the instance is created only: a new VM without it is refused; an existing VM keeps the image it was created from. */
@@ -1084,10 +1110,11 @@ export const NetworkAndCompute_IaaS_GcpVirtualMachine = {
 export const NetworkAndCompute_IaaS_GcpVm = {
   offerType: 'NetworkAndCompute.IaaS.GcpVm',
   serviceTypes: ['NetworkAndCompute.IaaS.VirtualMachine'],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpComputeInstance',
@@ -1097,6 +1124,8 @@ export const NetworkAndCompute_IaaS_GcpVm = {
   params: {
     /** Whether the instance gets an ephemeral external IPv4 address. Reconciled on an existing instance too (the address is added or removed). When unset, false: private only. */
     associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
     /** Boot disk source image, as an image or image-family path (a family resolves to its latest image). Applied when the instance is created only: a new VM without it is refused; an existing VM keeps the image it was created from. */
@@ -1132,7 +1161,7 @@ export const NetworkAndCompute_IaaS_GcpVpc = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1158,7 +1187,7 @@ export const NetworkAndCompute_IaaS_GlobalLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1181,10 +1210,11 @@ export const NetworkAndCompute_IaaS_GlobalLoadBalancer = {
 export const NetworkAndCompute_IaaS_OciComputeInstance = {
   offerType: 'NetworkAndCompute.IaaS.OciComputeInstance',
   serviceTypes: [],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1201,6 +1231,8 @@ export const NetworkAndCompute_IaaS_OciComputeInstance = {
     },
     /** OCI compartment the component's resource is created in, as {parentId, name, description?}: parentId is the OCID of the parent compartment or tenancy, name the compartment's name. The compartment is looked up under parentId and created there when absent (description defaults to 'Standard compartment'). Required for a new component; nothing is assumed. A deployed component without it is kept in the compartment its resource lives in, with a warning. Offers that run on a Kubernetes cluster do not read it. */
     compartment: {type: 'object', required: false},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
     /** OCID of the image the instance boots from (ocid1.image...). Required to create: a new instance without it is refused; a deployed one keeps its image, with a warning. Applied when the instance is created; changing it does not rebuild an existing one. */
@@ -1228,10 +1260,11 @@ export const NetworkAndCompute_IaaS_OciComputeInstance = {
 export const NetworkAndCompute_IaaS_OciInstance = {
   offerType: 'NetworkAndCompute.IaaS.OciInstance',
   serviceTypes: [],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1248,6 +1281,8 @@ export const NetworkAndCompute_IaaS_OciInstance = {
     },
     /** OCI compartment the component's resource is created in, as {parentId, name, description?}: parentId is the OCID of the parent compartment or tenancy, name the compartment's name. The compartment is looked up under parentId and created there when absent (description defaults to 'Standard compartment'). Required for a new component; nothing is assumed. A deployed component without it is kept in the compartment its resource lives in, with a warning. Offers that run on a Kubernetes cluster do not read it. */
     compartment: {type: 'object', required: false},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
     /** OCID of the image the instance boots from (ocid1.image...). Required to create: a new instance without it is refused; a deployed one keeps its image, with a warning. Applied when the instance is created; changing it does not rebuild an existing one. */
@@ -1278,7 +1313,7 @@ export const NetworkAndCompute_IaaS_OciLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1304,7 +1339,7 @@ export const NetworkAndCompute_IaaS_OciNetworkSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1330,7 +1365,7 @@ export const NetworkAndCompute_IaaS_OciSecurityList = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1356,7 +1391,7 @@ export const NetworkAndCompute_IaaS_OciSubnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1378,7 +1413,7 @@ export const NetworkAndCompute_IaaS_OciVcn = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1436,7 +1471,7 @@ export const NetworkAndCompute_IaaS_SecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureNsg',
@@ -1444,7 +1479,7 @@ export const NetworkAndCompute_IaaS_SecurityGroup = {
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpFirewall',
@@ -1482,10 +1517,11 @@ export const NetworkAndCompute_IaaS_SecurityGroup = {
 export const NetworkAndCompute_IaaS_VirtualMachine = {
   offerType: 'NetworkAndCompute.IaaS.VirtualMachine',
   serviceTypes: [],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpComputeInstance',
@@ -1495,6 +1531,8 @@ export const NetworkAndCompute_IaaS_VirtualMachine = {
   params: {
     /** Whether the instance gets an ephemeral external IPv4 address. Reconciled on an existing instance too (the address is added or removed). When unset, false: private only. */
     associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
     /** Boot disk source image, as an image or image-family path (a family resolves to its latest image). Applied when the instance is created only: a new VM without it is refused; an existing VM keeps the image it was created from. */
@@ -1530,7 +1568,7 @@ export const NetworkAndCompute_IaaS_VNet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureVnet',
@@ -1551,7 +1589,7 @@ export const NetworkAndCompute_PaaS_AKS = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.PaaS.AzureAks',
@@ -1605,10 +1643,11 @@ export const NetworkAndCompute_PaaS_ArubaContainerRegistry = {
 export const NetworkAndCompute_PaaS_AwsEc2Instance = {
   offerType: 'NetworkAndCompute.PaaS.AwsEc2Instance',
   serviceTypes: [],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.IaaS.AwsEc2Instance',
@@ -1620,6 +1659,8 @@ export const NetworkAndCompute_PaaS_AwsEc2Instance = {
     amiId: {type: 'string', required: false, default: ''},
     /** Whether the instance gets a public IPv4 address at launch. When unset, false. */
     associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Legacy: name of an existing IAM instance profile to launch with; identity.instanceProfile wins when both are set. When neither is set, the agent creates a role and instance profile for the instance when a link needs a grant. */
     iamInstanceProfile: {type: 'string', required: false, default: ''},
     /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
@@ -1650,7 +1691,7 @@ export const NetworkAndCompute_PaaS_AwsEks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -1906,7 +1947,7 @@ export const NetworkAndCompute_PaaS_AwsLb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.IaaS.AwsLb',
@@ -1941,7 +1982,7 @@ export const NetworkAndCompute_PaaS_AwsRoute53HostedZone = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -2010,7 +2051,7 @@ export const NetworkAndCompute_PaaS_AzureAks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -2049,7 +2090,7 @@ export const NetworkAndCompute_PaaS_AzureAppService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -2067,7 +2108,7 @@ export const NetworkAndCompute_PaaS_AzureContainerAppsEnvironment = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -2100,7 +2141,7 @@ export const NetworkAndCompute_PaaS_AzureContainerInstanceService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -2118,7 +2159,7 @@ export const NetworkAndCompute_PaaS_AzureDnsZone = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -2201,39 +2242,15 @@ export const NetworkAndCompute_PaaS_CloudRun = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
-    /** Maximum concurrent requests per instance (1-1000). Required to create a service; a deployed service without it keeps the value it runs with. A change to this key alone does not update an existing service; it is applied with the next update. */
-    concurrency: {type: 'integer', required: false},
-    /** CPU limit of each instance, in Kubernetes quantity form (1, 2, 4, 6 or 8, or below 1 in millicores, e.g. 1000m). Required to create a service; a deployed service without it keeps the value it runs with. */
-    cpu: {type: 'string', required: false},
-    /** Environment variables of the container: name to a string, number or boolean, or to an environment-secret reference {"$envSecret": "<shortName>"}, which is passed as the cloud's secret reference and never as the raw value. Changing it rolls out a new revision. */
-    environment: {type: 'object', required: false},
-    /** Full container image reference the service runs, e.g. europe-docker.pkg.dev/<project>/<repository>/<image>:<tag>. A change deploys a new revision. Required to create a service; a deployed service without it keeps the image it runs. */
-    image: {type: 'string', required: false},
-    /** Who may reach the service: all (the internet), internal (the VPC and the project), or internal-and-cloud-load-balancing (also an external Application Load Balancer). Any other value is refused for a new service. Required to create a service; a deployed service without it keeps the value it runs with. A change to this key alone does not update an existing service; it is applied with the next update. */
-    ingress: {
-      type: 'string',
-      required: false,
-      values: ['all', 'internal', 'internal-and-cloud-load-balancing'],
-    },
-    /** Maximum number of instances, at least minInstances. Required to create a service; a deployed service without it keeps the value it runs with. */
-    maxInstances: {type: 'integer', required: false},
-    /** Memory limit of each instance, in Kubernetes quantity form, e.g. 512Mi or 2Gi. Required to create a service; a deployed service without it keeps the value it runs with. */
-    memory: {type: 'string', required: false},
-    /** Minimum number of instances kept running; 0 lets the service scale to zero. Required to create a service; a deployed service without it keeps the value it runs with. */
-    minInstances: {type: 'integer', required: false},
-    /** Container port Cloud Run sends requests to (1-65535), the port the image listens on. Required to create a service; a deployed service without it keeps the value it runs with. A change to this key alone does not update an existing service; it is applied with the next update. */
-    port: {type: 'integer', required: false},
     /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
-    /** Service account the revision runs as. Granted secretAccessor on the secrets 'environment' references. When unset, a new service runs as an account the agent creates in the deployment project, holding no roles beyond those grants. An account in another project that the agent cannot read is ignored with a contract warning. */
-    serviceAccountEmail: {type: 'string', required: false, default: ''},
   },
 } as const satisfies OfferContract;
 
@@ -2243,7 +2260,7 @@ export const NetworkAndCompute_PaaS_DnsZone = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -2263,7 +2280,7 @@ export const NetworkAndCompute_PaaS_ECS = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -2281,7 +2298,7 @@ export const NetworkAndCompute_PaaS_EKS = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.PaaS.AwsEks',
@@ -2538,7 +2555,7 @@ export const NetworkAndCompute_PaaS_GcpDnsZone = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -2607,7 +2624,7 @@ export const NetworkAndCompute_PaaS_GcpGke = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -2663,7 +2680,7 @@ export const NetworkAndCompute_PaaS_GcpGlb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -2686,10 +2703,11 @@ export const NetworkAndCompute_PaaS_GcpGlb = {
 export const NetworkAndCompute_PaaS_GcpVm = {
   offerType: 'NetworkAndCompute.PaaS.GcpVm',
   serviceTypes: [],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpComputeInstance',
@@ -2699,6 +2717,8 @@ export const NetworkAndCompute_PaaS_GcpVm = {
   params: {
     /** Whether the instance gets an ephemeral external IPv4 address. Reconciled on an existing instance too (the address is added or removed). When unset, false: private only. */
     associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
     /** Boot disk source image, as an image or image-family path (a family resolves to its latest image). Applied when the instance is created only: a new VM without it is refused; an existing VM keeps the image it was created from. */
@@ -2734,7 +2754,7 @@ export const NetworkAndCompute_PaaS_GKE = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.PaaS.GcpGke',
@@ -2798,7 +2818,7 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
     },
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.PaaS.AwsEks',
@@ -2806,7 +2826,7 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.PaaS.AzureAks',
@@ -2814,7 +2834,7 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.PaaS.GcpGke',
@@ -2822,7 +2842,7 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -3252,10 +3272,11 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
 export const NetworkAndCompute_PaaS_OciContainerInstance = {
   offerType: 'NetworkAndCompute.PaaS.OciContainerInstance',
   serviceTypes: [],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -3280,6 +3301,8 @@ export const NetworkAndCompute_PaaS_OciContainerInstance = {
       required: false,
       default: 'ALWAYS',
     },
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Container image the instance runs, as a full image reference (registry/repository:tag). Required to create: a running instance declared without it keeps the image it runs. Changing it deletes and recreates the instance. */
     imageUrl: {type: 'string', required: false},
     /** Memory of the container instance in GB. When unset, 2. Changing it deletes and recreates the instance. */
@@ -3297,7 +3320,7 @@ export const NetworkAndCompute_PaaS_OKE = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -3315,28 +3338,28 @@ export const NetworkAndCompute_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],

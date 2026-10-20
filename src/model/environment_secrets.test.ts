@@ -92,17 +92,23 @@ describe('withEnvironmentSecrets', () => {
     ).toThrow('takes a list of environment-secret short names');
   });
 
-  it('refuses by name, never as a missing function, on an offer that cannot access secrets', () => {
-    const plain = PlainFunction({}) as unknown as {
-      withEnvironmentSecrets: (n: string[]) => unknown;
-    };
-    expect(() => plain.withEnvironmentSecrets(['a'])).toThrow(
+  it('is only on an offer whose contract can access secrets', () => {
+    const plain = PlainFunction({});
+    expect('withEnvironmentSecrets' in plain).toBe(false);
+    const flagged = SecretReader({});
+    expect('withEnvironmentSecrets' in flagged).toBe(true);
+    expect(flagged.withEnvironmentSecrets(['a']).config).toEqual({
+      environmentSecretShortNames: ['a'],
+    });
+  });
+
+  it('refuses the raw config key on an offer that cannot access secrets', () => {
+    expect(() =>
+      PlainFunction({environmentSecretShortNames: ['a']} as never),
+    ).toThrow(
       'CustomWorkloads.FaaS.Plain cannot access environment secrets: its ' +
         'contract publishes no canAccessSecrets',
     );
-    expect(() =>
-      PlainFunction({environmentSecretShortNames: ['a']} as never),
-    ).toThrow('cannot access environment secrets');
   });
 
   it('EcsService: its two contracts agree on secret access', () => {

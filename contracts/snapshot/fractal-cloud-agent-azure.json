@@ -1,9 +1,10 @@
 {
   "agentId": "fractal-cloud-agent-azure",
-  "agentVersion": "v8.25.11",
+  "agentVersion": "v8.28.0",
   "offers": [
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "AI.SaaS.Unmanaged",
       "params": [
         {
@@ -30,6 +31,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "APIManagement.CaaS.Traefik",
       "params": [
         {
@@ -110,7 +112,7 @@
         },
         {
           "default": {},
-          "description": "Distributed tracing, as {jaeger: {collectorEndpoint, localAgentPort, localAgentUrlPath}}. When jaeger is set without a collectorEndpoint, the endpoint is taken from the Jaeger component this gateway links to with link type JaegerTracing, and the component fails when there is no such link. When unset, tracing is off.",
+          "description": "Distributed tracing, as {jaeger: {collectorEndpoint, localAgentPort, localAgentUrlPath}}. Traefik sends traces over OpenTelemetry (OTLP over HTTP) to that endpoint. When jaeger is set without a collectorEndpoint, the endpoint is the Jaeger component this gateway links to with link type JaegerTracing, on localAgentPort (default 4318) and localAgentUrlPath (default /v1/traces), and the component fails when there is no such link. Only an OTLP traces endpoint (a path ending in /v1/traces, not on a Jaeger v1 port 14268 / 6831 / 6832) is used as declared; any other endpoint is sent to the same host's OTLP receiver (http://<host>:4318/v1/traces), and the remap is published in contractWarnings. An endpoint without a scheme is read as http://. The collector must accept OTLP over HTTP, as Jaeger v2 does. When unset, tracing is off.",
           "key": "tracing",
           "type": "object"
         }
@@ -120,6 +122,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "APIManagement.PaaS.ApiManagement",
       "params": [
         {
@@ -162,6 +165,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "APIManagement.PaaS.AzureApiManagement",
       "params": [
         {
@@ -207,6 +211,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "APIManagement.SaaS.Unmanaged",
       "params": [
         {
@@ -233,6 +238,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.AzureDatabricks",
       "params": [
         {
@@ -267,6 +273,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "BigData.PaaS.AzureDatabricksCluster",
       "params": [
         {
@@ -286,6 +293,11 @@
           "description": "Databricks access mode, as the Databricks API enum name (case-sensitive), e.g. SINGLE_USER, USER_ISOLATION or DATA_SECURITY_MODE_DEDICATED. An unrecognized value falls back to SINGLE_USER with a warning. A change edits the running cluster. When unset, SINGLE_USER.",
           "key": "dataSecurityMode",
           "type": "string"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "default": [],
@@ -372,6 +384,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "BigData.PaaS.AzureDatabricksJob",
       "parameterRules": [
         {
@@ -523,6 +536,11 @@
           "type": "array"
         },
         {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
           "deprecated": {
             "level": "warn",
             "note": "the job runs on the cluster it depends on, or on a cluster started for each run when it depends on none"
@@ -671,6 +689,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.AzureDatabricksMlflow",
       "params": [
         {
@@ -699,6 +718,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.AzureDatalake",
       "params": [
         {
@@ -889,6 +909,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.Databricks",
       "params": [
         {
@@ -920,6 +941,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "BigData.PaaS.DatabricksCluster",
       "params": [
         {
@@ -939,6 +961,11 @@
           "description": "Databricks access mode, as the Databricks API enum name (case-sensitive), e.g. SINGLE_USER, USER_ISOLATION or DATA_SECURITY_MODE_DEDICATED. An unrecognized value falls back to SINGLE_USER with a warning. A change edits the running cluster. When unset, SINGLE_USER.",
           "key": "dataSecurityMode",
           "type": "string"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "default": [],
@@ -1020,6 +1047,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "BigData.PaaS.DatabricksJob",
       "parameterRules": [
         {
@@ -1171,6 +1199,11 @@
           "type": "array"
         },
         {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
           "deprecated": {
             "level": "warn",
             "note": "the job runs on the cluster it depends on, or on a cluster started for each run when it depends on none"
@@ -1316,6 +1349,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.DatabricksMlflowExperiment",
       "params": [
         {
@@ -1341,6 +1375,7 @@
     },
     {
       "aliasOfOfferType": "BigData.PaaS.AzureDatalake",
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.StorageAccount",
       "params": [
         {
@@ -1528,6 +1563,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.SaaS.Unmanaged",
       "params": [
         {
@@ -1554,6 +1590,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "CustomWorkloads.FaaS.AzureFunction",
       "params": [
         {
@@ -1570,9 +1607,14 @@
         },
         {
           "default": {},
-          "description": "Site configuration: {applicationStack?: {nodeVersion | pythonVersion | dotnetVersion | javaVersion | powerShellVersion}, alwaysOn? (true), http2Enabled? (true), minimumTlsVersion? (1.2), ftpsState? (Disabled), healthCheckPath?, corsSettings?: {allowedOrigins, supportCredentials?}}. The first applicationStack version set picks the runtime; when none is, Node 20. dotnetVersion runs the .NET isolated worker (FUNCTIONS_WORKER_RUNTIME dotnet-isolated): the in-process model is retired (.NET 8, the last version offering it, leaves support on 2026-11-10). A deployed app running the in-process worker keeps it, with a contract warning; appSettings.FUNCTIONS_WORKER_RUNTIME chooses explicitly. On an existing app, only a runtime stack change is detected as drift.",
+          "description": "Site configuration: {applicationStack?: {nodeVersion | pythonVersion | dotnetVersion | javaVersion | powerShellVersion}, alwaysOn? (true), http2Enabled? (true), minimumTlsVersion? (1.2), ftpsState? (Disabled), healthCheckPath?, corsSettings?: {allowedOrigins, supportCredentials?}}. The first applicationStack version set picks the runtime; when none is, Node 20. dotnetVersion runs the .NET isolated worker (FUNCTIONS_WORKER_RUNTIME dotnet-isolated): the in-process model is retired (.NET 8, the last version offering it, leaves support on 2026-11-10). A deployed app running the in-process worker keeps it, with a contract warning. A new app whose zip package was built for the in-process worker gets it, with a contract warning; one whose worker its artifact does not show gets the isolated worker, with a contract warning. appSettings.FUNCTIONS_WORKER_RUNTIME chooses explicitly. On an existing app, only a runtime stack change is detected as drift.",
           "key": "configuration",
           "type": "object"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "default": {},
@@ -1624,8 +1666,14 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "CustomWorkloads.IaaS.Workload",
       "params": [
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
         {
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
@@ -1638,6 +1686,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "CustomWorkloads.PaaS.AzureContainerApp",
       "params": [
         {
@@ -1645,6 +1694,11 @@
           "description": "CPU cores for the container (e.g. 0.25, 0.5, 1). When unset, 0.5. Must be a combination with memory that Azure Container Apps accepts.",
           "key": "cpu",
           "type": "number"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "default": false,
@@ -1709,6 +1763,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "CustomWorkloads.PaaS.AzureContainerInstance",
       "params": [
         {
@@ -1722,6 +1777,11 @@
           "description": "DNS label for the public IP, giving the FQDN '<label>.<region>.azurecontainer.io'. Used only when publicIp is true. Applied when the container group is created.",
           "key": "dnsNameLabel",
           "type": "string"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Container image reference to run, e.g. 'registry/repository:tag'. Required to create: a deployed one declared without it keeps the image it runs. Changing it deletes and recreates the container group.",
@@ -1775,6 +1835,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "CustomWorkloads.PaaS.WebApp",
       "params": [
         {
@@ -1869,6 +1930,11 @@
           "description": "Whether the site is enabled; false creates it stopped. When unset, the site is enabled (Azure's default). Applied when the web app is created; later changes are not applied to an existing app.",
           "key": "enabled",
           "type": "boolean"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "default": false,
@@ -1995,6 +2061,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "CustomWorkloads.SaaS.Unmanaged",
       "params": [
         {
@@ -2021,6 +2088,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.CaaS.KafkaUser",
       "params": [
         {
@@ -2062,6 +2130,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.AzureServiceBus",
       "params": [
         {
@@ -2125,6 +2194,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.AzureServiceBusTopic",
       "params": [
         {
@@ -2211,6 +2281,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.EventHubInstance",
       "params": [
         {
@@ -2260,6 +2331,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.EventHubNamespace",
       "params": [
         {
@@ -2345,6 +2417,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.Relay",
       "params": [
         {
@@ -2361,6 +2434,7 @@
     },
     {
       "aliasOfOfferType": "Messaging.PaaS.AzureServiceBus",
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.ServiceBus",
       "params": [
         {
@@ -2421,6 +2495,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.ServiceBusQueue",
       "params": [
         {
@@ -2537,6 +2612,7 @@
     },
     {
       "aliasOfOfferType": "Messaging.PaaS.AzureServiceBusTopic",
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.ServiceBusTopic",
       "params": [
         {
@@ -2620,6 +2696,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.SaaS.Unmanaged",
       "params": [
         {
@@ -2646,6 +2723,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.AzureLb",
       "params": [
         {
@@ -2688,6 +2766,7 @@
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.AzureLb",
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.AzureLoadBalancer",
       "params": [
         {
@@ -2727,6 +2806,7 @@
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.AzureNsg",
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.AzureNetworkSecurityGroup",
       "params": [
         {
@@ -2761,6 +2841,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.AzureNsg",
       "params": [
         {
@@ -2798,6 +2879,7 @@
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.AzureNsg",
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.AzureSecurityGroup",
       "params": [
         {
@@ -2832,6 +2914,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.AzureSubnet",
       "params": [
         {
@@ -2860,6 +2943,7 @@
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.AzureVm",
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.IaaS.AzureVirtualMachine",
       "params": [
         {
@@ -2867,6 +2951,11 @@
           "description": "When true, the VM's network interface gets a new public IP. Applied when the VM is created. When unset, false: the VM has a private IP only.",
           "key": "associatePublicIp",
           "type": "boolean"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' (\"system\" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent.",
@@ -2936,6 +3025,7 @@
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.AzureVnet",
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.AzureVirtualNetwork",
       "params": [
         {
@@ -2959,6 +3049,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.IaaS.AzureVm",
       "params": [
         {
@@ -2966,6 +3057,11 @@
           "description": "When true, the VM's network interface gets a new public IP. Applied when the VM is created. When unset, false: the VM has a private IP only.",
           "key": "associatePublicIp",
           "type": "boolean"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' (\"system\" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent.",
@@ -3041,6 +3137,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.AzureVnet",
       "params": [
         {
@@ -3067,6 +3164,7 @@
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.AzureNsg",
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.SecurityGroup",
       "params": [
         {
@@ -3101,6 +3199,7 @@
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.AzureVnet",
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.VNet",
       "params": [
         {
@@ -3124,6 +3223,7 @@
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.PaaS.AzureAks",
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.AKS",
       "params": [
         {
@@ -3206,6 +3306,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.AzureAks",
       "params": [
         {
@@ -3291,6 +3392,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.AzureAppService",
       "params": [
         {
@@ -3308,6 +3410,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.AzureContainerAppsEnvironment",
       "params": [
         {
@@ -3346,6 +3449,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.AzureContainerInstanceService",
       "params": [
         {
@@ -3363,6 +3467,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.AzureDnsZone",
       "params": [
         {
@@ -3501,6 +3606,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.DnsZone",
       "params": [
         {
@@ -3520,6 +3626,7 @@
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.PaaS.AzureAks",
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.Kubernetes",
       "params": [
         {
@@ -3602,6 +3709,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.SaaS.Unmanaged",
       "params": [
         {
@@ -3628,6 +3736,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Observability.CaaS.Jaeger",
       "params": [
         {
@@ -3673,6 +3782,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Observability.CaaS.Prometheus",
       "params": [
         {
@@ -3709,6 +3819,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Observability.SaaS.Jaeger",
       "params": [
         {
@@ -3727,6 +3838,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Observability.SaaS.Prometheus",
       "params": [
         {
@@ -3745,6 +3857,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Security.CaaS.Ocelot",
       "params": [
         {
@@ -3804,6 +3917,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Security.PaaS.AzureEntraExternalId",
       "params": [
         {
@@ -3834,6 +3948,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Security.SaaS.Unmanaged",
       "params": [
         {
@@ -3860,6 +3975,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.CaaS.CnpgCluster",
       "params": [
         {
@@ -3964,6 +4080,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.CaaS.CnpgDatabase",
       "params": [
         {
@@ -4034,6 +4151,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.AzureBlob",
       "params": [
         {
@@ -4224,6 +4342,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.AzurePostgresDatabase",
       "params": [
         {
@@ -4252,6 +4371,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.AzurePostgresDbms",
       "params": [
         {
@@ -4349,6 +4469,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.CosmosDbAccount",
       "params": [
         {
@@ -4392,6 +4513,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.CosmosDbCassandra",
       "params": [
         {
@@ -4443,6 +4565,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.CosmosDbGremlinDatabase",
       "params": [
         {
@@ -4471,6 +4594,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.CosmosDbMongoDatabase",
       "params": [
         {
@@ -4499,6 +4623,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.CosmosDbPostgreSqlDatabase",
       "params": [
         {
@@ -4584,6 +4709,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.CosmosDbPostgresSqlCluster",
       "params": [
         {
@@ -4669,6 +4795,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.CosmosDbSqlDatabase",
       "params": [
         {
@@ -4694,6 +4821,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.CosmosDbTable",
       "params": [
         {
@@ -4722,6 +4850,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.FileShare",
       "params": [
         {
@@ -4767,6 +4896,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.FileStorage",
       "params": [
         {
@@ -4815,6 +4945,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.PostgreSqlDatabase",
       "params": [
         {
@@ -4840,6 +4971,7 @@
     },
     {
       "aliasOfOfferType": "Storage.PaaS.AzurePostgresDbms",
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.PostgreSqlDbms",
       "params": [
         {
@@ -4934,6 +5066,7 @@
     },
     {
       "aliasOfOfferType": "Storage.PaaS.AzureBlob",
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.StorageAccount",
       "params": [
         {
@@ -5120,6 +5253,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.StorageBlobContainer",
       "params": [
         {
@@ -5174,6 +5308,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.SaaS.Unmanaged",
       "params": [
         {
