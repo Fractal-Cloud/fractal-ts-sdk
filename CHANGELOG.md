@@ -14,17 +14,46 @@ of truth for what is on npm.
 ### Added — `withEnvironmentSecrets` on offers that can access environment secrets
 
 An agent contract may flag an offer `canAccessSecrets` and declare the component parameter
-`environmentSecretShortNames` with it (fractal-cloud-agents #966, not yet in a release the
-snapshot pins). The generator now carries the flag (`OfferContract.canAccessSecrets`), and a
-flagged offer gets `withEnvironmentSecrets(shortNames)`:
+`environmentSecretShortNames` with it (fractal-cloud-agents #966, in v8.28.0). The generator
+now carries the flag (`OfferContract.canAccessSecrets`), and a flagged offer gets
+`withEnvironmentSecrets(shortNames)`:
 
     select: {api: EcsService({}).withEnvironmentSecrets(['db-password'])}
 
-It sends `environmentSecretShortNames`. Only flagged offers have it in their type, so calling it
-on any other offer is a compile error; called past the type, it refuses by name. Blank or
-repeated short names are refused, by position and without echoing them, whether set through
-the method or as the raw config key. Until the snapshot
-is re-pinned to an agent release that publishes the flag, no shipped offer has the method.
+It sends `environmentSecretShortNames`. Only flagged offers have it, in their type and at
+runtime, so calling it on any other offer is a compile error; setting the raw config key on one
+is refused by name. Blank or repeated short names are refused, by position and without echoing
+them, whether set through the method or as the raw config key. With the contracts re-pinned to v8.28.0 (below), these
+offers have it: `EcsService`, `CloudRun`, `AzureContainerApp`, `AwsLambda`, `AzureFunction`,
+`GcpFunction`, `Ec2Instance`, `AzureVm`, `GcpVm`, `OciInstance`, and the AWS, Azure and GCP
+Databricks clusters and jobs.
+
+### Changed — contracts re-pinned to fractal-cloud-agents v8.28.0
+
+The offer definitions are generated from fractal-cloud-agents **v8.28.0** (aws, azure, gcp,
+oci; were v8.25.11). aria-agent-caas-k8s v1.8.1, aria-agent-aruba v0.0.22 and
+aria-agent-openshift v0.1.0 are unchanged. What changes:
+
+- 42 agent declarations are published with `canAccessSecrets` and declare
+  `environmentSecretShortNames` (35 generated contracts once offers several agents declare are
+  merged); see above.
+- GCP `NetworkAndCompute.PaaS.CloudRun` (the Cloud Run container platform) declares `region`
+  only: the agent creates no resource for it. It no longer repeats the Cloud Run service's
+  keys, and `NetworkAndCompute.CaaS.CloudRunService` is no longer published as an alias of it.
+  No SDK offer emits the platform type, so no SDK API changes.
+- Agent behavior changes, no key changed (descriptions updated to match):
+  - Traefik (`APIManagement.CaaS.Traefik`) now deploys Traefik v3 (v3.7.15) and sends traces
+    over OTLP/HTTP only. A `tracing.jaeger` endpoint is used as declared only when its path
+    ends in `/v1/traces` and it is not on a Jaeger v1 port (14268, 6831, 6832); any other is
+    remapped to the same host's OTLP receiver, `http://<host>:4318/v1/traces`, and the remap is
+    reported in `contractWarnings`. For a linked Jaeger without a `collectorEndpoint`,
+    `localAgentPort` defaults to 4318 and `localAgentUrlPath` to `/v1/traces`.
+  - Azure Function (`CustomWorkloads.FaaS.AzureFunction`): a new .NET app with no declared
+    `FUNCTIONS_WORKER_RUNTIME` whose zip package is built for the in-process worker now gets
+    the in-process worker (`dotnet`), with a contract warning; it gets the isolated worker
+    (`dotnet-isolated`) only when its artifact does not show an in-process build. Was
+    `dotnet-isolated` for every new .NET app.
+- Other changes are description text only.
 
 ### Fixed — `EcsService` and `CloudRun` take `withEnv` and `withSecretEnv`
 

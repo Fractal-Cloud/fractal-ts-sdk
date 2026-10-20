@@ -1,9 +1,10 @@
 {
   "agentId": "fractal-cloud-agent-gcp",
-  "agentVersion": "v8.25.11",
+  "agentVersion": "v8.28.0",
   "offers": [
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "AI.SaaS.Unmanaged",
       "params": [
         {
@@ -30,6 +31,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "APIManagement.CaaS.Traefik",
       "params": [
         {
@@ -109,7 +111,7 @@
         },
         {
           "default": {},
-          "description": "Distributed tracing, as {jaeger: {collectorEndpoint, localAgentPort, localAgentUrlPath}}. When jaeger is set without a collectorEndpoint, the endpoint is taken from the Jaeger component this gateway links to with link type JaegerTracing, and the component fails when there is no such link. When unset, tracing is off.",
+          "description": "Distributed tracing, as {jaeger: {collectorEndpoint, localAgentPort, localAgentUrlPath}}. Traefik sends traces over OpenTelemetry (OTLP over HTTP) to that endpoint. When jaeger is set without a collectorEndpoint, the endpoint is the Jaeger component this gateway links to with link type JaegerTracing, on localAgentPort (default 4318) and localAgentUrlPath (default /v1/traces), and the component fails when there is no such link. Only an OTLP traces endpoint (a path ending in /v1/traces, not on a Jaeger v1 port 14268 / 6831 / 6832) is used as declared; any other endpoint is sent to the same host's OTLP receiver (http://<host>:4318/v1/traces), and the remap is published in contractWarnings. An endpoint without a scheme is read as http://. The collector must accept OTLP over HTTP, as Jaeger v2 does. When unset, tracing is off.",
           "key": "tracing",
           "type": "object"
         }
@@ -119,6 +121,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "APIManagement.PaaS.ApiGateway",
       "params": [
         {
@@ -149,6 +152,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "APIManagement.PaaS.GcpApiGateway",
       "params": [
         {
@@ -182,6 +186,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "APIManagement.SaaS.Unmanaged",
       "params": [
         {
@@ -208,6 +213,7 @@
     },
     {
       "aliasOfOfferType": "BigData.PaaS.GcpDatalake",
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.CloudStorage",
       "params": [
         {
@@ -251,6 +257,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.Databricks",
       "params": [
         {
@@ -285,6 +292,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "BigData.PaaS.DatabricksCluster",
       "params": [
         {
@@ -305,6 +313,11 @@
           "description": "Databricks data security (access) mode, e.g. SINGLE_USER, USER_ISOLATION or NONE. An unknown value falls back to SINGLE_USER with a warning. A change is reconciled and restarts the cluster. When unset, SINGLE_USER.",
           "key": "dataSecurityMode",
           "type": "string"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "default": [],
@@ -395,6 +408,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "BigData.PaaS.DatabricksJob",
       "parameterRules": [
         {
@@ -546,6 +560,11 @@
           "type": "array"
         },
         {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
           "deprecated": {
             "level": "warn",
             "note": "the job runs on the cluster it depends on, or on a cluster started for each run when it depends on none"
@@ -690,6 +709,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.DatabricksMlflowExperiment",
       "params": [
         {
@@ -716,6 +736,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.GcpDatabricks",
       "params": [
         {
@@ -753,6 +774,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "BigData.PaaS.GcpDatabricksCluster",
       "params": [
         {
@@ -773,6 +795,11 @@
           "description": "Databricks data security (access) mode, e.g. SINGLE_USER, USER_ISOLATION or NONE. An unknown value falls back to SINGLE_USER with a warning. A change is reconciled and restarts the cluster. When unset, SINGLE_USER.",
           "key": "dataSecurityMode",
           "type": "string"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "default": [],
@@ -868,6 +895,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "BigData.PaaS.GcpDatabricksJob",
       "parameterRules": [
         {
@@ -1019,6 +1047,11 @@
           "type": "array"
         },
         {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
           "deprecated": {
             "level": "warn",
             "note": "the job runs on the cluster it depends on, or on a cluster started for each run when it depends on none"
@@ -1166,6 +1199,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.GcpDatabricksMlflow",
       "params": [
         {
@@ -1195,6 +1229,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.GcpDatalake",
       "params": [
         {
@@ -1241,6 +1276,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.SaaS.Unmanaged",
       "params": [
         {
@@ -1267,6 +1303,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "CustomWorkloads.FaaS.GcpFunction",
       "params": [
         {
@@ -1274,6 +1311,11 @@
           "example": "com.example.functions.HelloHttp",
           "key": "entryPoint",
           "type": "string"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Legacy spelling of region, read only when region is unset.",
@@ -1320,6 +1362,7 @@
     },
     {
       "aliasOfOfferType": "CustomWorkloads.FaaS.GcpFunction",
+      "canAccessSecrets": true,
       "offerType": "CustomWorkloads.FaaS.GoogleFunction",
       "params": [
         {
@@ -1327,6 +1370,11 @@
           "example": "com.example.functions.HelloHttp",
           "key": "entryPoint",
           "type": "string"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Legacy spelling of region, read only when region is unset.",
@@ -1370,21 +1418,14 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "CustomWorkloads.IaaS.Workload",
       "params": [
         {
-          "description": "GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it.",
-          "key": "region",
-          "type": "string"
-        }
-      ],
-      "provider": "GCP",
-      "providerResources": []
-    },
-    {
-      "aliasOfOfferType": null,
-      "offerType": "CustomWorkloads.PaaS.GcpCloudRun",
-      "params": [
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
         {
           "description": "GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it.",
           "key": "region",
@@ -1396,6 +1437,26 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
+      "offerType": "CustomWorkloads.PaaS.GcpCloudRun",
+      "params": [
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
+          "description": "GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it.",
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "CustomWorkloads.SaaS.Unmanaged",
       "params": [
         {
@@ -1422,6 +1483,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.CaaS.KafkaUser",
       "params": [
         {
@@ -1462,6 +1524,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.GcpPubSub",
       "params": [
         {
@@ -1479,6 +1542,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.GcpPubSubTopic",
       "params": [
         {
@@ -1500,6 +1564,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.PubSub",
       "params": [
         {
@@ -1513,6 +1578,7 @@
     },
     {
       "aliasOfOfferType": "Messaging.PaaS.GcpPubSubTopic",
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.PubSubTopic",
       "params": [
         {
@@ -1530,6 +1596,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.Subscription",
       "params": [
         {
@@ -1563,6 +1630,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.SaaS.Unmanaged",
       "params": [
         {
@@ -1588,7 +1656,8 @@
       "providerResources": []
     },
     {
-      "aliasOfOfferType": "NetworkAndCompute.PaaS.CloudRun",
+      "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.CaaS.CloudRunService",
       "params": [
         {
@@ -1607,6 +1676,11 @@
           "description": "Environment variables of the container: name to a string, number or boolean, or to an environment-secret reference {\"$envSecret\": \"<shortName>\"}, which is passed as the cloud's secret reference and never as the raw value. Changing it rolls out a new revision.",
           "key": "environment",
           "type": "object"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Full container image reference the service runs, e.g. europe-docker.pkg.dev/<project>/<repository>/<image>:<tag>. A change deploys a new revision. Required to create a service; a deployed service without it keeps the image it runs.",
@@ -1675,6 +1749,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.IaaS.GcpComputeInstance",
       "params": [
         {
@@ -1682,6 +1757,11 @@
           "description": "Whether the instance gets an ephemeral external IPv4 address. Reconciled on an existing instance too (the address is added or removed). When unset, false: private only.",
           "key": "associatePublicIp",
           "type": "boolean"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' (\"system\" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent.",
@@ -1751,6 +1831,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.GcpFirewall",
       "params": [
         {
@@ -1800,6 +1881,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.GcpGlb",
       "params": [
         {
@@ -1826,6 +1908,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.GcpLoadBalancer",
       "params": [
         {
@@ -1849,6 +1932,7 @@
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.GcpFirewall",
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.GcpSecurityGroup",
       "params": [
         {
@@ -1895,6 +1979,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.GcpSubnet",
       "params": [
         {
@@ -1920,6 +2005,7 @@
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.GcpComputeInstance",
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.IaaS.GcpVirtualMachine",
       "params": [
         {
@@ -1927,6 +2013,11 @@
           "description": "Whether the instance gets an ephemeral external IPv4 address. Reconciled on an existing instance too (the address is added or removed). When unset, false: private only.",
           "key": "associatePublicIp",
           "type": "boolean"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' (\"system\" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent.",
@@ -1996,6 +2087,7 @@
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.GcpComputeInstance",
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.IaaS.GcpVm",
       "params": [
         {
@@ -2003,6 +2095,11 @@
           "description": "Whether the instance gets an ephemeral external IPv4 address. Reconciled on an existing instance too (the address is added or removed). When unset, false: private only.",
           "key": "associatePublicIp",
           "type": "boolean"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' (\"system\" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent.",
@@ -2079,6 +2176,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.GcpVpc",
       "params": [
         {
@@ -2110,6 +2208,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.GlobalLoadBalancer",
       "params": [
         {
@@ -2133,6 +2232,7 @@
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.GcpFirewall",
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.SecurityGroup",
       "params": [
         {
@@ -2179,6 +2279,7 @@
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.GcpComputeInstance",
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.IaaS.VirtualMachine",
       "params": [
         {
@@ -2186,6 +2287,11 @@
           "description": "Whether the instance gets an ephemeral external IPv4 address. Reconciled on an existing instance too (the address is added or removed). When unset, false: private only.",
           "key": "associatePublicIp",
           "type": "boolean"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' (\"system\" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent.",
@@ -2255,91 +2361,24 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.CloudRun",
       "params": [
-        {
-          "description": "Maximum concurrent requests per instance (1-1000). Required to create a service; a deployed service without it keeps the value it runs with. A change to this key alone does not update an existing service; it is applied with the next update.",
-          "example": 80,
-          "key": "concurrency",
-          "type": "integer"
-        },
-        {
-          "description": "CPU limit of each instance, in Kubernetes quantity form (1, 2, 4, 6 or 8, or below 1 in millicores, e.g. 1000m). Required to create a service; a deployed service without it keeps the value it runs with.",
-          "example": "1",
-          "key": "cpu",
-          "type": "string"
-        },
-        {
-          "description": "Environment variables of the container: name to a string, number or boolean, or to an environment-secret reference {\"$envSecret\": \"<shortName>\"}, which is passed as the cloud's secret reference and never as the raw value. Changing it rolls out a new revision.",
-          "key": "environment",
-          "type": "object"
-        },
-        {
-          "description": "Full container image reference the service runs, e.g. europe-docker.pkg.dev/<project>/<repository>/<image>:<tag>. A change deploys a new revision. Required to create a service; a deployed service without it keeps the image it runs.",
-          "example": "us-docker.pkg.dev/cloudrun/container/hello",
-          "key": "image",
-          "type": "string"
-        },
-        {
-          "description": "Who may reach the service: all (the internet), internal (the VPC and the project), or internal-and-cloud-load-balancing (also an external Application Load Balancer). Any other value is refused for a new service. Required to create a service; a deployed service without it keeps the value it runs with. A change to this key alone does not update an existing service; it is applied with the next update.",
-          "example": "internal",
-          "key": "ingress",
-          "type": "string",
-          "values": [
-            "all",
-            "internal",
-            "internal-and-cloud-load-balancing"
-          ]
-        },
-        {
-          "description": "Maximum number of instances, at least minInstances. Required to create a service; a deployed service without it keeps the value it runs with.",
-          "example": 3,
-          "key": "maxInstances",
-          "type": "integer"
-        },
-        {
-          "description": "Memory limit of each instance, in Kubernetes quantity form, e.g. 512Mi or 2Gi. Required to create a service; a deployed service without it keeps the value it runs with.",
-          "example": "512Mi",
-          "key": "memory",
-          "type": "string"
-        },
-        {
-          "description": "Minimum number of instances kept running; 0 lets the service scale to zero. Required to create a service; a deployed service without it keeps the value it runs with.",
-          "example": 0,
-          "key": "minInstances",
-          "type": "integer"
-        },
-        {
-          "description": "Container port Cloud Run sends requests to (1-65535), the port the image listens on. Required to create a service; a deployed service without it keeps the value it runs with. A change to this key alone does not update an existing service; it is applied with the next update.",
-          "example": 8080,
-          "key": "port",
-          "type": "integer"
-        },
         {
           "description": "GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it.",
           "key": "region",
           "type": "string"
-        },
-        {
-          "default": "",
-          "description": "Service account the revision runs as. Granted secretAccessor on the secrets 'environment' references. When unset, a new service runs as an account the agent creates in the deployment project, holding no roles beyond those grants. An account in another project that the agent cannot read is ignored with a contract warning.",
-          "example": "my-service@my-gcp-project.iam.gserviceaccount.com",
-          "key": "serviceAccountEmail",
-          "type": "string"
         }
       ],
       "provider": "GCP",
-      "providerResources": [
-        {
-          "type": "run.googleapis.com/Service"
-        }
-      ],
+      "providerResources": [],
       "serviceTypes": [
         "NetworkAndCompute.PaaS.ContainerPlatform"
       ]
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.PaaS.GcpGke",
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.GKE",
       "params": [
         {
@@ -2468,6 +2507,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.GcpDnsZone",
       "params": [
         {
@@ -2586,6 +2626,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.GcpGke",
       "params": [
         {
@@ -2717,6 +2758,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.GcpGlb",
       "params": [
         {
@@ -2740,6 +2782,7 @@
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.GcpComputeInstance",
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.PaaS.GcpVm",
       "params": [
         {
@@ -2747,6 +2790,11 @@
           "description": "Whether the instance gets an ephemeral external IPv4 address. Reconciled on an existing instance too (the address is added or removed). When unset, false: private only.",
           "key": "associatePublicIp",
           "type": "boolean"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' (\"system\" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent.",
@@ -2816,6 +2864,7 @@
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.PaaS.GcpGke",
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.Kubernetes",
       "params": [
         {
@@ -2944,6 +2993,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.SaaS.Unmanaged",
       "params": [
         {
@@ -2970,6 +3020,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Observability.CaaS.Jaeger",
       "params": [
         {
@@ -3014,6 +3065,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Observability.CaaS.Prometheus",
       "params": [
         {
@@ -3049,6 +3101,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Observability.SaaS.Jaeger",
       "params": [
         {
@@ -3067,6 +3120,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Observability.SaaS.Prometheus",
       "params": [
         {
@@ -3085,6 +3139,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Security.CaaS.Ocelot",
       "params": [
         {
@@ -3143,6 +3198,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Security.SaaS.Unmanaged",
       "params": [
         {
@@ -3169,6 +3225,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.CaaS.CnpgCluster",
       "params": [
         {
@@ -3272,6 +3329,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.CaaS.CnpgDatabase",
       "params": [
         {
@@ -3341,6 +3399,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.BigTable",
       "params": [
         {
@@ -3373,6 +3432,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.BigTableTable",
       "params": [
         {
@@ -3402,6 +3462,7 @@
     },
     {
       "aliasOfOfferType": "Storage.PaaS.GcpGcsBucket",
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.CloudStorage",
       "params": [
         {
@@ -3445,6 +3506,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.Collection",
       "params": [
         {
@@ -3472,8 +3534,14 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "Storage.PaaS.DataflowJob",
       "params": [
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
         {
           "default": "",
           "description": "Id of a Dataflow job launched outside Fractal, which this component records as projects/<project>/locations/<region>/jobs/<jobId>. The agent does not launch or cancel jobs; while unset the component stays Instantiating.",
@@ -3498,6 +3566,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.Firestore",
       "params": [
         {
@@ -3525,6 +3594,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.GcpGcsBucket",
       "params": [
         {
@@ -3571,6 +3641,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.GcpMySqlDbms",
       "params": [
         {
@@ -3654,6 +3725,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.GcpPostgresDatabase",
       "params": [
         {
@@ -3688,6 +3760,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.GcpPostgresDbms",
       "params": [
         {
@@ -3768,6 +3841,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.PostgreSqlDatabase",
       "params": [
         {
@@ -3799,6 +3873,7 @@
     },
     {
       "aliasOfOfferType": "Storage.PaaS.GcpPostgresDbms",
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.PostgreSqlDbms",
       "params": [
         {
@@ -3876,6 +3951,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.SaaS.Unmanaged",
       "params": [
         {

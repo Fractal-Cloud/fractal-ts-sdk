@@ -9,28 +9,28 @@ export const Storage_CaaS_CnpgCluster = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -90,28 +90,28 @@ export const Storage_CaaS_CnpgDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -334,7 +334,7 @@ export const Storage_PaaS_AwsDocumentDb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -370,7 +370,7 @@ export const Storage_PaaS_AwsDocumentDbDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -393,7 +393,7 @@ export const Storage_PaaS_AwsDynamoDb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -428,7 +428,7 @@ export const Storage_PaaS_AwsDynamoDbTable = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -462,7 +462,7 @@ export const Storage_PaaS_AwsElastiCache = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -498,7 +498,7 @@ export const Storage_PaaS_AwsElastiCacheKeyspace = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -518,7 +518,7 @@ export const Storage_PaaS_AwsRdsMySql = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -650,7 +650,7 @@ export const Storage_PaaS_AwsRdsMySqlDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -670,7 +670,7 @@ export const Storage_PaaS_AwsRdsPostgres = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -782,7 +782,7 @@ export const Storage_PaaS_AwsRdsPostgresDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -804,7 +804,7 @@ export const Storage_PaaS_AwsS3 = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -847,7 +847,7 @@ export const Storage_PaaS_AzureBlob = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -935,7 +935,7 @@ export const Storage_PaaS_AzurePostgresDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -957,7 +957,7 @@ export const Storage_PaaS_AzurePostgresDbms = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1005,7 +1005,7 @@ export const Storage_PaaS_BigTable = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1029,7 +1029,7 @@ export const Storage_PaaS_BigTableTable = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1051,7 +1051,7 @@ export const Storage_PaaS_CloudStorage = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'Storage.PaaS.GcpGcsBucket',
@@ -1078,7 +1078,7 @@ export const Storage_PaaS_Collection = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1106,7 +1106,7 @@ export const Storage_PaaS_CosmosDbAccount = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1130,7 +1130,7 @@ export const Storage_PaaS_CosmosDbCassandra = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1168,7 +1168,7 @@ export const Storage_PaaS_CosmosDbGremlinDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1190,7 +1190,7 @@ export const Storage_PaaS_CosmosDbMongoDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1212,7 +1212,7 @@ export const Storage_PaaS_CosmosDbPostgreSqlDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1266,7 +1266,7 @@ export const Storage_PaaS_CosmosDbPostgresSqlCluster = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1320,7 +1320,7 @@ export const Storage_PaaS_CosmosDbSqlDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1342,7 +1342,7 @@ export const Storage_PaaS_CosmosDbTable = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1361,16 +1361,19 @@ export const Storage_PaaS_CosmosDbTable = {
 export const Storage_PaaS_DataflowJob = {
   offerType: 'Storage.PaaS.DataflowJob',
   serviceTypes: ['Messaging.PaaS.StreamProcessing'],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Id of a Dataflow job launched outside Fractal, which this component records as projects/<project>/locations/<region>/jobs/<jobId>. The agent does not launch or cancel jobs; while unset the component stays Instantiating. */
     jobId: {type: 'string', required: false, default: ''},
     /** Legacy spelling of region, read only when region is unset. */
@@ -1386,7 +1389,7 @@ export const Storage_PaaS_FileShare = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1416,7 +1419,7 @@ export const Storage_PaaS_FileStorage = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1446,7 +1449,7 @@ export const Storage_PaaS_Firestore = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1468,7 +1471,7 @@ export const Storage_PaaS_GcpGcsBucket = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1494,7 +1497,7 @@ export const Storage_PaaS_GcpMySqlDbms = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1538,7 +1541,7 @@ export const Storage_PaaS_GcpPostgresDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1566,7 +1569,7 @@ export const Storage_PaaS_GcpPostgresDbms = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1632,21 +1635,21 @@ export const Storage_PaaS_PostgreSqlDatabase = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1697,7 +1700,7 @@ export const Storage_PaaS_PostgreSqlDbms = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'Storage.PaaS.AwsRdsPostgres',
@@ -1742,7 +1745,7 @@ export const Storage_PaaS_PostgreSqlDbms = {
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'Storage.PaaS.AzurePostgresDbms',
@@ -1750,7 +1753,7 @@ export const Storage_PaaS_PostgreSqlDbms = {
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'Storage.PaaS.GcpPostgresDbms',
@@ -1998,7 +2001,7 @@ export const Storage_PaaS_Rds = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'Storage.PaaS.AwsRdsPostgres',
@@ -2111,7 +2114,7 @@ export const Storage_PaaS_S3 = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'Storage.PaaS.AwsS3',
@@ -2152,7 +2155,7 @@ export const Storage_PaaS_StorageAccount = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'Storage.PaaS.AzureBlob',
@@ -2241,7 +2244,7 @@ export const Storage_PaaS_StorageBlobContainer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -2281,28 +2284,28 @@ export const Storage_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],

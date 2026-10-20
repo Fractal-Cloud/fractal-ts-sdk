@@ -9,28 +9,28 @@ export const AI_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],

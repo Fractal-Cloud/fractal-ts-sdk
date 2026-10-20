@@ -123,7 +123,7 @@ export const BigData_PaaS_AwsDatabricks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -154,10 +154,11 @@ export const BigData_PaaS_AwsDatabricks = {
 export const BigData_PaaS_AwsDatabricksCluster = {
   offerType: 'BigData.PaaS.AwsDatabricksCluster',
   serviceTypes: ['BigData.PaaS.DatabricksCluster'],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -170,6 +171,8 @@ export const BigData_PaaS_AwsDatabricksCluster = {
     clusterName: {type: 'string', required: false, default: ''},
     /** Databricks access mode of the cluster (data_security_mode), e.g. SINGLE_USER or USER_ISOLATION. An unknown value falls back to SINGLE_USER with a warning. When unset, SINGLE_USER. */
     dataSecurityMode: {type: 'string', required: false, default: 'SINGLE_USER'},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Maven artifacts installed on the cluster, each as group:artifact:version coordinates. When unset, none. */
     mavenLibraries: {type: 'array', required: false, default: []},
     /** Upper bound of the autoscaling worker range; ignored when numWorkers or singleNode is set. When neither bound is declared, 8. */
@@ -228,10 +231,11 @@ export const BigData_PaaS_AwsDatabricksCluster = {
 export const BigData_PaaS_AwsDatabricksJob = {
   offerType: 'BigData.PaaS.AwsDatabricksJob',
   serviceTypes: ['BigData.PaaS.DatabricksJob'],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -317,6 +321,8 @@ export const BigData_PaaS_AwsDatabricksJob = {
     entryPoint: {type: 'string', required: false},
     /** Arguments passed to entryPoint of a Python wheel job, as a list of strings in order. When unset, none. */
     entryPointArgs: {type: 'array', required: false, default: []},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Legacy flag, ignored: the job runs on the cluster it depends on, or on a new cluster started for each run when it depends on none. A value contradicting that placement is reported as a warning; the placement applied is published as the clusterPlacement output. */
     existingCluster: {
       type: 'boolean',
@@ -419,7 +425,7 @@ export const BigData_PaaS_AwsDatabricksMlflow = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -441,7 +447,7 @@ export const BigData_PaaS_AwsS3Datalake = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -481,7 +487,7 @@ export const BigData_PaaS_AzureDatabricks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -502,10 +508,11 @@ export const BigData_PaaS_AzureDatabricks = {
 export const BigData_PaaS_AzureDatabricksCluster = {
   offerType: 'BigData.PaaS.AzureDatabricksCluster',
   serviceTypes: ['BigData.PaaS.DatabricksCluster'],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -518,6 +525,8 @@ export const BigData_PaaS_AzureDatabricksCluster = {
     clusterName: {type: 'string', required: false, default: ''},
     /** Databricks access mode, as the Databricks API enum name (case-sensitive), e.g. SINGLE_USER, USER_ISOLATION or DATA_SECURITY_MODE_DEDICATED. An unrecognized value falls back to SINGLE_USER with a warning. A change edits the running cluster. When unset, SINGLE_USER. */
     dataSecurityMode: {type: 'string', required: false, default: 'SINGLE_USER'},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Maven libraries installed on the cluster, as group:artifact:version coordinates. Installed only when the agent creates the cluster; later changes are not applied to an existing cluster. */
     mavenLibraries: {type: 'array', required: false, default: []},
     /** Autoscale ceiling (worker nodes), used when numWorkers is not greater than zero. When only minWorkers is set, the higher of 8 and minWorkers. */
@@ -576,10 +585,11 @@ export const BigData_PaaS_AzureDatabricksCluster = {
 export const BigData_PaaS_AzureDatabricksJob = {
   offerType: 'BigData.PaaS.AzureDatabricksJob',
   serviceTypes: ['BigData.PaaS.DatabricksJob'],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [
@@ -665,6 +675,8 @@ export const BigData_PaaS_AzureDatabricksJob = {
     entryPoint: {type: 'string', required: false},
     /** Arguments passed to entryPoint of a Python wheel job, as a list of strings in order. When unset, none. */
     entryPointArgs: {type: 'array', required: false, default: []},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Legacy flag, ignored: the job runs on the cluster it depends on, or on a new cluster started for each run when it depends on none. A value contradicting that placement is reported as a warning; the placement applied is published as the clusterPlacement output. */
     existingCluster: {
       type: 'boolean',
@@ -767,7 +779,7 @@ export const BigData_PaaS_AzureDatabricksMlflow = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -789,7 +801,7 @@ export const BigData_PaaS_AzureDatalake = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -877,7 +889,7 @@ export const BigData_PaaS_CloudStorage = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'BigData.PaaS.GcpDatalake',
@@ -904,21 +916,21 @@ export const BigData_PaaS_Databricks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -979,24 +991,25 @@ export const BigData_PaaS_Databricks = {
 export const BigData_PaaS_DatabricksCluster = {
   offerType: 'BigData.PaaS.DatabricksCluster',
   serviceTypes: [],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1009,6 +1022,8 @@ export const BigData_PaaS_DatabricksCluster = {
     clusterName: {type: 'string', required: false, default: ''},
     /** Databricks access mode of the cluster (data_security_mode), e.g. SINGLE_USER or USER_ISOLATION. An unknown value falls back to SINGLE_USER with a warning. When unset, SINGLE_USER. */
     dataSecurityMode: {type: 'string', required: false, default: 'SINGLE_USER'},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Maven artifacts installed on the cluster, each as group:artifact:version coordinates. When unset, none. */
     mavenLibraries: {type: 'array', required: false, default: []},
     /** Upper bound of the autoscaling worker range; ignored when numWorkers or singleNode is set. When neither bound is declared, 8. */
@@ -1055,10 +1070,11 @@ export const BigData_PaaS_DatabricksCluster = {
 export const BigData_PaaS_DatabricksJob = {
   offerType: 'BigData.PaaS.DatabricksJob',
   serviceTypes: [],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -1128,7 +1144,7 @@ export const BigData_PaaS_DatabricksJob = {
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [
@@ -1198,7 +1214,7 @@ export const BigData_PaaS_DatabricksJob = {
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [
@@ -1284,6 +1300,8 @@ export const BigData_PaaS_DatabricksJob = {
     entryPoint: {type: 'string', required: false},
     /** Arguments passed to entryPoint of a Python wheel job, as a list of strings in order. When unset, none. */
     entryPointArgs: {type: 'array', required: false, default: []},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Legacy flag, ignored: the job runs on the cluster it depends on, or on a new cluster started for each run when it depends on none. A value contradicting that placement is reported as a warning; the placement applied is published as the clusterPlacement output. */
     existingCluster: {
       type: 'boolean',
@@ -1386,21 +1404,21 @@ export const BigData_PaaS_DatabricksMlflowExperiment = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1422,7 +1440,7 @@ export const BigData_PaaS_GcpDatabricks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1448,10 +1466,11 @@ export const BigData_PaaS_GcpDatabricks = {
 export const BigData_PaaS_GcpDatabricksCluster = {
   offerType: 'BigData.PaaS.GcpDatabricksCluster',
   serviceTypes: ['BigData.PaaS.DatabricksCluster'],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1464,6 +1483,8 @@ export const BigData_PaaS_GcpDatabricksCluster = {
     clusterName: {type: 'string', required: false, default: ''},
     /** Databricks data security (access) mode, e.g. SINGLE_USER, USER_ISOLATION or NONE. An unknown value falls back to SINGLE_USER with a warning. A change is reconciled and restarts the cluster. When unset, SINGLE_USER. */
     dataSecurityMode: {type: 'string', required: false, default: 'SINGLE_USER'},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Maven libraries installed on the cluster, as groupId:artifactId:version coordinates. Installed when the cluster is created only. When unset, none. */
     mavenLibraries: {type: 'array', required: false, default: []},
     /** Autoscaling ceiling, used when numWorkers is unset. When unset, 8. */
@@ -1522,10 +1543,11 @@ export const BigData_PaaS_GcpDatabricksCluster = {
 export const BigData_PaaS_GcpDatabricksJob = {
   offerType: 'BigData.PaaS.GcpDatabricksJob',
   serviceTypes: ['BigData.PaaS.DatabricksJob'],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [
@@ -1611,6 +1633,8 @@ export const BigData_PaaS_GcpDatabricksJob = {
     entryPoint: {type: 'string', required: false},
     /** Arguments passed to entryPoint of a Python wheel job, as a list of strings in order. When unset, none. */
     entryPointArgs: {type: 'array', required: false, default: []},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Legacy flag, ignored: the job runs on the cluster it depends on, or on a new cluster started for each run when it depends on none. A value contradicting that placement is reported as a warning; the placement applied is published as the clusterPlacement output. */
     existingCluster: {
       type: 'boolean',
@@ -1713,7 +1737,7 @@ export const BigData_PaaS_GcpDatabricksMlflow = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1735,7 +1759,7 @@ export const BigData_PaaS_GcpDatalake = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1761,7 +1785,7 @@ export const BigData_PaaS_S3 = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'BigData.PaaS.AwsS3Datalake',
@@ -1883,7 +1907,7 @@ export const BigData_PaaS_StorageAccount = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'BigData.PaaS.AzureDatalake',
@@ -1972,28 +1996,28 @@ export const BigData_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.28.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
