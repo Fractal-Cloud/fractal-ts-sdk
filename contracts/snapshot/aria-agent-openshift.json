@@ -1,9 +1,10 @@
 {
   "agentId": "aria-agent-openshift",
-  "agentVersion": "v0.1.0",
+  "agentVersion": "v0.1.1",
   "offers": [
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "CustomWorkloads.CaaS.OpenshiftWorkload",
       "parameterRules": [],
       "params": [
@@ -31,6 +32,11 @@
           "description": "JSON-encoded environment variables (name to value). `env` is accepted as an alias; `envVars` wins when both are set",
           "key": "envVars",
           "type": "string"
+        },
+        {
+          "description": "the short names of the environment secrets this component may read",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Container image",
@@ -100,6 +106,8 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
       "offerType": "NetworkAndCompute.CaaS.OpenshiftIpAddressPool",
       "parameterRules": [],
       "params": [
@@ -144,6 +152,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.CaaS.OpenshiftSecurityGroup",
       "parameterRules": [],
       "params": [
@@ -182,6 +191,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.CaaS.OpenshiftService",
       "parameterRules": [],
       "params": [
@@ -237,6 +247,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.IaaS.OpenshiftVirtualMachine",
       "parameterRules": [],
       "params": [
@@ -251,6 +262,11 @@
           "description": "Root disk size",
           "key": "diskSizeGi",
           "type": "string"
+        },
+        {
+          "description": "the short names of the environment secrets this component may read",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Container disk image or DataVolume source URL",
@@ -309,6 +325,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.CaaS.OpenshiftPersistentVolume",
       "parameterRules": [],
       "params": [

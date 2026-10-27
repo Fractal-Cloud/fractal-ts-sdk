@@ -9,7 +9,7 @@ export const Observability_CaaS_GrafanaAlloy = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.8.1',
+      agentVersion: 'v1.14.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -35,7 +35,7 @@ export const Observability_CaaS_GrafanaLoki = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.8.1',
+      agentVersion: 'v1.14.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -48,14 +48,16 @@ export const Observability_CaaS_GrafanaLoki = {
       default: 'monitoring',
       constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?'},
     },
-    /** Days logs are kept; the bucket's lifecycle should match */
+    /** Keep the object storage the agent made for Loki, and the logs in it, when the component is deleted; unset = deleted with it */
+    retainStorageOnDelete: {type: 'boolean', required: false, default: false},
+    /** Days logs are kept; Loki's compactor deletes older ones from its storage */
     retentionDays: {
       type: 'integer',
       required: false,
       default: 14,
       constraints: {maximum: 2147483647, minimum: 1},
     },
-    /** StorageClass of a volume for Loki's write-ahead log; unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else ephemeral */
+    /** StorageClass of a volume for Loki's write-ahead log; unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else (AKS and GKE included) ephemeral */
     storageClassName: {type: 'string', required: false},
     /** Chart values deep-merged over the agent's, for operators */
     values: {type: 'object', required: false},
@@ -68,7 +70,7 @@ export const Observability_CaaS_GrafanaTempo = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.8.1',
+      agentVersion: 'v1.14.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -88,7 +90,7 @@ export const Observability_CaaS_GrafanaTempo = {
       default: 7,
       constraints: {maximum: 2147483647, minimum: 1},
     },
-    /** StorageClass of a volume for Tempo's write-ahead log; unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else ephemeral */
+    /** StorageClass of a volume for Tempo's write-ahead log; unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else (AKS and GKE included) ephemeral */
     storageClassName: {type: 'string', required: false},
     /** Chart values deep-merged over the agent's, for operators */
     values: {type: 'object', required: false},
@@ -101,28 +103,28 @@ export const Observability_CaaS_Jaeger = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -174,7 +176,7 @@ export const Observability_CaaS_KubePrometheusStack = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.8.1',
+      agentVersion: 'v1.14.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -222,28 +224,28 @@ export const Observability_CaaS_Prometheus = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -285,7 +287,7 @@ export const Observability_CaaS_SqsExporter = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.8.1',
+      agentVersion: 'v1.14.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -321,28 +323,28 @@ export const Observability_SaaS_Jaeger = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -362,28 +364,28 @@ export const Observability_SaaS_Prometheus = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],

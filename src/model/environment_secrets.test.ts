@@ -11,7 +11,7 @@ import {
   PlainFunction,
   SecretReader,
 } from './offers/contract/fixtures/secret_access_offers';
-import {CloudRun, EcsService} from './offers/custom_workloads';
+import {CloudRun, EcsService, K8sWorkload} from './offers/custom_workloads';
 import {isSecretRef, secretRef} from './secret';
 import type {OfferContract} from './offers/contract/offer_contract';
 import {
@@ -92,17 +92,23 @@ describe('withEnvironmentSecrets', () => {
     ).toThrow('takes a list of environment-secret short names');
   });
 
-  it('refuses by name, never as a missing function, on an offer that cannot access secrets', () => {
-    const plain = PlainFunction({}) as unknown as {
-      withEnvironmentSecrets: (n: string[]) => unknown;
-    };
-    expect(() => plain.withEnvironmentSecrets(['a'])).toThrow(
+  it('is only on an offer whose contract can access secrets', () => {
+    const plain = PlainFunction({});
+    expect('withEnvironmentSecrets' in plain).toBe(false);
+    const flagged = SecretReader({});
+    expect('withEnvironmentSecrets' in flagged).toBe(true);
+    expect(flagged.withEnvironmentSecrets(['a']).config).toEqual({
+      environmentSecretShortNames: ['a'],
+    });
+  });
+
+  it('refuses the raw config key on an offer that cannot access secrets', () => {
+    expect(() =>
+      PlainFunction({environmentSecretShortNames: ['a']} as never),
+    ).toThrow(
       'CustomWorkloads.FaaS.Plain cannot access environment secrets: its ' +
         'contract publishes no canAccessSecrets',
     );
-    expect(() =>
-      PlainFunction({environmentSecretShortNames: ['a']} as never),
-    ).toThrow('cannot access environment secrets');
   });
 
   it('EcsService: its two contracts agree on secret access', () => {
@@ -115,6 +121,26 @@ describe('withEnvironmentSecrets', () => {
       (NetworkAndCompute_CaaS_ECSTaskDefinition as OfferContract)
         .canAccessSecrets,
     );
+  });
+
+  it('reaches the agent through the shipped offers that build their own components', () => {
+    const fractal = workloadFractal({});
+    const k8s = fractal.toLiveSystem({
+      name: 'ls',
+      environment,
+      select: {web: K8sWorkload({}).withEnvironmentSecrets(['db-password'])},
+    });
+    expect(k8s.components[0].parameters.environmentSecretShortNames).toEqual([
+      'db-password',
+    ]);
+    const ecs = fractal.toLiveSystem({
+      name: 'ls',
+      environment,
+      select: {web: EcsService({}).withEnvironmentSecrets(['db-password'])},
+    });
+    expect(
+      ecs.components.filter(c => 'environmentSecretShortNames' in c.parameters),
+    ).not.toHaveLength(0);
   });
 
   it('refuses an offer that drops the selection when it instantiates', () => {

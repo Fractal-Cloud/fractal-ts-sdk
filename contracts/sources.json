@@ -4,72 +4,72 @@
     {
       "agentId": "fractal-cloud-agent-aws",
       "repository": "Fractal-Cloud/fractal-cloud-agents",
-      "tag": "v8.25.11",
+      "tag": "v8.31.0",
       "fetch": {
         "kind": "release-asset",
         "asset": "param-contract.aws.json"
       },
-      "snapshotSha256": "d5ff16dbe73c7a12111ae82a373daa3cb039d2a2f4d13c9055c83835c7f757cc"
+      "snapshotSha256": "c7cd34da768ae41c21ad50ebb06c4e41e7216a768e8d88e2b366dc9994bec33a"
     },
     {
       "agentId": "fractal-cloud-agent-azure",
       "repository": "Fractal-Cloud/fractal-cloud-agents",
-      "tag": "v8.25.11",
+      "tag": "v8.31.0",
       "fetch": {
         "kind": "release-asset",
         "asset": "param-contract.azure.json"
       },
-      "snapshotSha256": "b601493bfbc38c5c3821d613eb10668e3404bfe4a26f9f597051cf7a87b89f9b"
+      "snapshotSha256": "1937f4810ebb43e864ee7a45a3df55b21137f09ddb47754efca94bb8506fa2cc"
     },
     {
       "agentId": "fractal-cloud-agent-gcp",
       "repository": "Fractal-Cloud/fractal-cloud-agents",
-      "tag": "v8.25.11",
+      "tag": "v8.31.0",
       "fetch": {
         "kind": "release-asset",
         "asset": "param-contract.gcp.json"
       },
-      "snapshotSha256": "04f0252e0e0d9ef64281cb9b2b926dead05f95af7516b43dcb4ad971049bb6db"
+      "snapshotSha256": "a6519548de11b2a6e02b04844a87c7ad623f15c095e4f76c750a7470c804f98b"
     },
     {
       "agentId": "fractal-cloud-agent-oci",
       "repository": "Fractal-Cloud/fractal-cloud-agents",
-      "tag": "v8.25.11",
+      "tag": "v8.31.0",
       "fetch": {
         "kind": "release-asset",
         "asset": "param-contract.oci.json"
       },
-      "snapshotSha256": "649e39ea070d9e7b7f4f0754bcad47260519eb8e74a842f7c29500ce4edcf612"
+      "snapshotSha256": "0a18595f2100a124e0351f7a05d1298a00a24539ca1f96678630fd0bbf9af7e5"
     },
     {
       "agentId": "aria-agent-caas-k8s",
       "repository": "Fractal-Cloud/aria-agent-caas-k8s",
-      "tag": "v1.8.1",
+      "tag": "v1.14.0",
       "fetch": {
         "kind": "release-asset",
         "asset": "param-contract.json"
       },
-      "snapshotSha256": "f335d90c4a9dd872ab2174909729f6de5f0faddb3410a30b7df9c48b1411e630"
+      "snapshotSha256": "10b6bbc8df1c17a4713eefff16df8e0c8ec7b5ac5a0f20954b0e90955cd501ae"
     },
     {
       "agentId": "aria-agent-aruba",
       "repository": "Fractal-Cloud/aria-agent-aruba",
-      "tag": "v0.0.22",
+      "tag": "v0.0.23",
       "fetch": {
         "kind": "release-asset",
         "asset": "param-contract.json"
       },
-      "snapshotSha256": "06fc5b8cad91fab16c4a654439e9b8e7030e10d4ebe7473031c9867a05986f5d"
+      "snapshotSha256": "17a539b13e1930fe94570d3d8ae928dd40543a44413d3a3aff94918379ea96c1"
     },
     {
       "agentId": "aria-agent-openshift",
       "repository": "Fractal-Cloud/aria-agent-openshift",
-      "tag": "v0.1.0",
+      "tag": "v0.1.1",
       "fetch": {
         "kind": "release-asset",
         "asset": "param-contract.json"
       },
-      "snapshotSha256": "5b097c1a3cb0c4988c0668f6233a08782eb713e48571be4fbde4e29c6800def5"
+      "snapshotSha256": "a1bb3aa13c6a3cab18c1095a2ef2316042d7116bc54237261423dc2ddcfe65b6"
     }
   ],
   "unpublished": [

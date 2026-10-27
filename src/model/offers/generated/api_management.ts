@@ -9,7 +9,7 @@ export const APIManagement_CaaS_Ambassador = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.8.1',
+      agentVersion: 'v1.14.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -32,7 +32,7 @@ export const APIManagement_CaaS_ArubaAPIGateway = {
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.22',
+      agentVersion: 'v0.0.23',
       contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
@@ -47,28 +47,28 @@ export const APIManagement_CaaS_Traefik = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -113,7 +113,7 @@ export const APIManagement_CaaS_Traefik = {
     tlsCertificates: {type: 'array', required: false, default: []},
     /** TLS options of the entry points, as {supportedTlsVersions, supportedCiphers}: supportedTlsVersions lists TLS_1_0, TLS_1_1, TLS_1_2 or TLS_1_3 (the lowest becomes the minimum version; any other value fails the component), supportedCiphers lists cipher-suite names as Go's crypto/tls spells them (e.g. TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256). Each half left unset keeps its default: TLS 1.2 and 1.3, with a fixed list of ECDHE and TLS 1.3 AES-GCM / ChaCha20 suites. */
     tlsSettings: {type: 'object', required: false, default: {}},
-    /** Distributed tracing, as {jaeger: {collectorEndpoint, localAgentPort, localAgentUrlPath}}. When jaeger is set without a collectorEndpoint, the endpoint is taken from the Jaeger component this gateway links to with link type JaegerTracing, and the component fails when there is no such link. When unset, tracing is off. */
+    /** Distributed tracing, as {jaeger: {collectorEndpoint, localAgentPort, localAgentUrlPath}}. Traefik sends traces over OpenTelemetry (OTLP over HTTP) to that endpoint. When jaeger is set without a collectorEndpoint, the endpoint is the Jaeger component this gateway links to with link type JaegerTracing, on localAgentPort (default 4318) and localAgentUrlPath (default /v1/traces), and the component fails when there is no such link. Only an OTLP traces endpoint (a path ending in /v1/traces, not on a Jaeger v1 port 14268 / 6831 / 6832) is used as declared; any other endpoint is sent to the same host's OTLP receiver (http://<host>:4318/v1/traces), and the remap is published in contractWarnings. An endpoint without a scheme is read as http://. The collector must accept OTLP over HTTP, as Jaeger v2 does. When unset, tracing is off. */
     tracing: {type: 'object', required: false, default: {}},
   },
 } as const satisfies OfferContract;
@@ -124,7 +124,7 @@ export const APIManagement_CaaS_TraefikGateway = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.8.1',
+      agentVersion: 'v1.14.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [
@@ -238,8 +238,8 @@ export const APIManagement_CaaS_TraefikGateway = {
     },
     /** ACME directory of the gateway's certificate issuer: production, staging, or an https URL */
     acmeServer: {type: 'string', required: false, default: 'production'},
-    /** traefik chart version (39.0.9 is Traefik v3.6.15) */
-    chartVersion: {type: 'string', required: false, default: '39.0.9'},
+    /** traefik chart version (42.0.0 runs Traefik v3.7.15; another runs its own default) */
+    chartVersion: {type: 'string', required: false, default: '42.0.0'},
     /** [{name, access}]: environment DNS zones the gateway may write in with its cert-manager's identity; TXT write on the zone of a TLS host lets the gateway issue its own certificate for it (DNS-01) */
     dnsZones: {type: 'array', required: false},
     /** Idle timeout of the web entrypoint; must exceed the CloudFront keep-alive */
@@ -345,7 +345,7 @@ export const APIManagement_PaaS_ApiGateway = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -379,7 +379,7 @@ export const APIManagement_PaaS_ApiManagement = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -396,8 +396,62 @@ export const APIManagement_PaaS_ApiManagement = {
     publisherName: {type: 'string', required: false},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
-    /** Tier and capacity as '<tier>_<units>', e.g. 'Developer_1' or 'Premium_2'; the units default to 1 when omitted, must be a positive integer (a new instance with anything else is refused; a deployed one keeps its SKU, with a warning), and are ignored for Consumption. When unset, Developer_1 (no SLA: declare a production tier for production). A change is applied to the existing instance. */
-    skuName: {type: 'string', required: false, default: 'Developer_1'},
+    /** Tier, optionally with its units as '<tier>_<units>': Consumption, Developer, Basic, Standard, Premium, BasicV2, StandardV2, e.g. 'Consumption', 'Developer_1' or 'Premium_2'. The units default to 1; Consumption has none (Azure requires 0, so only 'Consumption' or 'Consumption_0'), Developer allows 1, Basic up to 2, Standard up to 4, Premium up to 12, BasicV2 and StandardV2 up to 10. A new instance with any other value is refused; a deployed one keeps its SKU, with a warning. When unset, Developer_1 (no SLA: declare a production tier for production). A change is applied to the existing instance; Azure does not move an instance into or out of Consumption. */
+    skuName: {
+      type: 'string',
+      required: false,
+      default: 'Developer_1',
+      values: [
+        'Consumption',
+        'Consumption_0',
+        'Developer',
+        'Developer_1',
+        'Basic',
+        'Basic_1',
+        'Basic_2',
+        'Standard',
+        'Standard_1',
+        'Standard_2',
+        'Standard_3',
+        'Standard_4',
+        'Premium',
+        'Premium_1',
+        'Premium_2',
+        'Premium_3',
+        'Premium_4',
+        'Premium_5',
+        'Premium_6',
+        'Premium_7',
+        'Premium_8',
+        'Premium_9',
+        'Premium_10',
+        'Premium_11',
+        'Premium_12',
+        'BasicV2',
+        'BasicV2_1',
+        'BasicV2_2',
+        'BasicV2_3',
+        'BasicV2_4',
+        'BasicV2_5',
+        'BasicV2_6',
+        'BasicV2_7',
+        'BasicV2_8',
+        'BasicV2_9',
+        'BasicV2_10',
+        'StandardV2',
+        'StandardV2_1',
+        'StandardV2_2',
+        'StandardV2_3',
+        'StandardV2_4',
+        'StandardV2_5',
+        'StandardV2_6',
+        'StandardV2_7',
+        'StandardV2_8',
+        'StandardV2_9',
+        'StandardV2_10',
+      ],
+      valuesCaseInsensitive: true,
+    },
   },
 } as const satisfies OfferContract;
 
@@ -407,7 +461,7 @@ export const APIManagement_PaaS_AwsCloudFront = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -539,7 +593,7 @@ export const APIManagement_PaaS_AzureApiManagement = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -556,8 +610,62 @@ export const APIManagement_PaaS_AzureApiManagement = {
     publisherName: {type: 'string', required: false},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
-    /** Tier and capacity as '<tier>_<units>', e.g. 'Developer_1' or 'Premium_2'; the units default to 1 when omitted, must be a positive integer (a new instance with anything else is refused; a deployed one keeps its SKU, with a warning), and are ignored for Consumption. When unset, Developer_1 (no SLA: declare a production tier for production). A change is applied to the existing instance. */
-    skuName: {type: 'string', required: false, default: 'Developer_1'},
+    /** Tier, optionally with its units as '<tier>_<units>': Consumption, Developer, Basic, Standard, Premium, BasicV2, StandardV2, e.g. 'Consumption', 'Developer_1' or 'Premium_2'. The units default to 1; Consumption has none (Azure requires 0, so only 'Consumption' or 'Consumption_0'), Developer allows 1, Basic up to 2, Standard up to 4, Premium up to 12, BasicV2 and StandardV2 up to 10. A new instance with any other value is refused; a deployed one keeps its SKU, with a warning. When unset, Developer_1 (no SLA: declare a production tier for production). A change is applied to the existing instance; Azure does not move an instance into or out of Consumption. */
+    skuName: {
+      type: 'string',
+      required: false,
+      default: 'Developer_1',
+      values: [
+        'Consumption',
+        'Consumption_0',
+        'Developer',
+        'Developer_1',
+        'Basic',
+        'Basic_1',
+        'Basic_2',
+        'Standard',
+        'Standard_1',
+        'Standard_2',
+        'Standard_3',
+        'Standard_4',
+        'Premium',
+        'Premium_1',
+        'Premium_2',
+        'Premium_3',
+        'Premium_4',
+        'Premium_5',
+        'Premium_6',
+        'Premium_7',
+        'Premium_8',
+        'Premium_9',
+        'Premium_10',
+        'Premium_11',
+        'Premium_12',
+        'BasicV2',
+        'BasicV2_1',
+        'BasicV2_2',
+        'BasicV2_3',
+        'BasicV2_4',
+        'BasicV2_5',
+        'BasicV2_6',
+        'BasicV2_7',
+        'BasicV2_8',
+        'BasicV2_9',
+        'BasicV2_10',
+        'StandardV2',
+        'StandardV2_1',
+        'StandardV2_2',
+        'StandardV2_3',
+        'StandardV2_4',
+        'StandardV2_5',
+        'StandardV2_6',
+        'StandardV2_7',
+        'StandardV2_8',
+        'StandardV2_9',
+        'StandardV2_10',
+      ],
+      valuesCaseInsensitive: true,
+    },
   },
 } as const satisfies OfferContract;
 
@@ -567,7 +675,7 @@ export const APIManagement_PaaS_CloudFront = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -699,7 +807,7 @@ export const APIManagement_PaaS_GcpApiGateway = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -733,28 +841,28 @@ export const APIManagement_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],

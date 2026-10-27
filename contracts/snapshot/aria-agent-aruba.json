@@ -1,9 +1,10 @@
 {
   "agentId": "aria-agent-aruba",
-  "agentVersion": "v0.0.22",
+  "agentVersion": "v0.0.23",
   "offers": [
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "APIManagement.CaaS.ArubaAPIGateway",
       "parameterRules": [],
       "params": [],
@@ -15,6 +16,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.SparkPlatform",
       "parameterRules": [],
       "params": [
@@ -37,6 +39,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "BigData.PaaS.SparkPlatformCluster",
       "parameterRules": [],
       "params": [
@@ -49,6 +52,11 @@
           "default": "1g",
           "key": "driverMemory",
           "type": "string"
+        },
+        {
+          "description": "the short names of the environment secrets this component may read",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "default": "1",
@@ -84,9 +92,15 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "BigData.PaaS.SparkPlatformJob",
       "parameterRules": [],
       "params": [
+        {
+          "description": "the short names of the environment secrets this component may read",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
         {
           "default": "apache/spark:3.5.0",
           "key": "image",
@@ -121,6 +135,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.SparkPlatformMlExperiment",
       "parameterRules": [],
       "params": [
@@ -146,9 +161,16 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "CustomWorkloads.CaaS.ArubaWorkload",
       "parameterRules": [],
-      "params": [],
+      "params": [
+        {
+          "description": "the short names of the environment secrets this component may read",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        }
+      ],
       "provider": "Aruba",
       "runtimeChecks": [],
       "serviceTypes": [
@@ -157,6 +179,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.ManagedKafka",
       "parameterRules": [],
       "params": [
@@ -178,6 +201,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.ManagedKafkaTopic",
       "parameterRules": [],
       "params": [
@@ -205,12 +229,18 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.IaaS.ArubaCloudServer",
       "parameterRules": [],
       "params": [
         {
           "key": "bootVolume",
           "type": "string"
+        },
+        {
+          "description": "the short names of the environment secrets this component may read",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "key": "flavorName",
@@ -229,6 +259,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.ArubaElasticIp",
       "parameterRules": [],
       "params": [
@@ -252,6 +283,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.ArubaSecurityGroup",
       "parameterRules": [],
       "params": [
@@ -269,6 +301,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.ArubaSshKeyPair",
       "parameterRules": [],
       "params": [
@@ -289,6 +322,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.ArubaSubnet",
       "parameterRules": [],
       "params": [
@@ -305,6 +339,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.ArubaVpc",
       "parameterRules": [],
       "params": [
@@ -328,6 +363,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.ArubaVpcPeering",
       "parameterRules": [],
       "params": [
@@ -344,6 +380,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.ArubaVpnTunnel",
       "parameterRules": [],
       "params": [
@@ -369,6 +406,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.ArubaContainerRegistry",
       "parameterRules": [],
       "params": [
@@ -386,6 +424,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.Kubernetes",
       "parameterRules": [],
       "params": [
@@ -416,6 +455,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.IaaS.ArubaBlockStorage",
       "parameterRules": [],
       "params": [
@@ -437,6 +477,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.ArubaMsSqlDbms",
       "parameterRules": [],
       "params": [
@@ -453,6 +494,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.ArubaMySqlDbms",
       "parameterRules": [],
       "params": [
@@ -469,6 +511,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.ArubaObjectStorageAccount",
       "parameterRules": [],
       "params": [
@@ -496,6 +539,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.ManagedDatalake",
       "parameterRules": [],
       "params": [

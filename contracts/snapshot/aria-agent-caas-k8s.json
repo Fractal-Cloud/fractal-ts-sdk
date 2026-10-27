@@ -1,9 +1,11 @@
 {
   "agentId": "aria-agent-caas-k8s",
-  "agentVersion": "v1.8.1",
+  "agentVersion": "v1.14.0",
   "offers": [
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
       "offerType": "APIManagement.CaaS.Ambassador",
       "parameterRules": [],
       "params": [
@@ -42,6 +44,8 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
       "offerType": "APIManagement.CaaS.TraefikGateway",
       "parameterRules": [
         {
@@ -198,8 +202,8 @@
           "type": "string"
         },
         {
-          "default": "39.0.9",
-          "description": "traefik chart version (39.0.9 is Traefik v3.6.15)",
+          "default": "42.0.0",
+          "description": "traefik chart version (42.0.0 runs Traefik v3.7.15; another runs its own default)",
           "key": "chartVersion",
           "type": "string"
         },
@@ -442,6 +446,13 @@
           "id": "plain-http-serves-nothing",
           "message": "plainHttp is false and the gateway has no TLS, so it would serve nothing.",
           "reason": "NOT_EXPRESSIBLE"
+        },
+        {
+          "field": "/values",
+          "fix": "Remove the field from directly under service, keeping the value under service.spec.",
+          "id": "values-service-spec",
+          "message": "values sets a Service spec field (type, loadBalancerClass, loadBalancerSourceRanges, externalIPs, ipFamilyPolicy, ipFamilies) both directly under service and under service.spec, to different values; traefik chart 40.0.0 and later read only service.spec.",
+          "reason": "NOT_EXPRESSIBLE"
         }
       ],
       "serviceTypes": [
@@ -450,6 +461,64 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
+      "offerType": "BigData.CaaS.MinioTenant",
+      "parameterRules": [],
+      "params": [
+        {
+          "key": "bucketName",
+          "type": "string"
+        },
+        {
+          "constraints": {
+            "pattern": "[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?"
+          },
+          "default": "minio",
+          "example": "team-a",
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "requestAutoCert",
+          "type": "boolean"
+        },
+        {
+          "default": 4,
+          "key": "servers",
+          "type": "integer"
+        },
+        {
+          "key": "storageClass",
+          "type": "string"
+        },
+        {
+          "key": "tenantName",
+          "type": "string"
+        },
+        {
+          "default": "10Gi",
+          "key": "volumeSize",
+          "type": "string"
+        },
+        {
+          "default": 4,
+          "key": "volumesPerServer",
+          "type": "integer"
+        }
+      ],
+      "provider": "CaaS",
+      "providerResources": [],
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "BigData.CaaS.MinIO"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": true,
+      "contractSchemaVersion": "2.0",
       "offerType": "BigData.CaaS.SparkCluster",
       "parameterRules": [],
       "params": [
@@ -462,6 +531,11 @@
           "default": "1g",
           "key": "driverMemory",
           "type": "string"
+        },
+        {
+          "description": "the short names of the environment secrets this component may read",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "default": "1",
@@ -501,9 +575,16 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
+      "contractSchemaVersion": "2.0",
       "offerType": "BigData.CaaS.SparkJob",
       "parameterRules": [],
       "params": [
+        {
+          "description": "the short names of the environment secrets this component may read",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
         {
           "default": "apache/spark:3.5.0",
           "key": "image",
@@ -549,6 +630,8 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
       "offerType": "BigData.CaaS.SparkMlExperiment",
       "parameterRules": [],
       "params": [
@@ -587,6 +670,8 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
       "offerType": "BigData.CaaS.SparkOperator",
       "parameterRules": [],
       "params": [
@@ -622,6 +707,8 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
       "offerType": "BigData.CaaS.SparkUnityCatalog",
       "parameterRules": [],
       "params": [],
@@ -634,6 +721,8 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
+      "contractSchemaVersion": "2.0",
       "offerType": "CustomWorkloads.CaaS.KubernetesWorkload",
       "parameterRules": [
         {
@@ -715,38 +804,6 @@
                         "key": "/autoscaling/minReplicas"
                       }
                     ]
-                  }
-                ]
-              }
-            },
-            {
-              "id": "flat-hpa-replicas-zero",
-              "then": {
-                "forbidden": [
-                  "maxReplicas"
-                ]
-              },
-              "when": {
-                "allOf": [
-                  {
-                    "equals": 0,
-                    "key": "replicas"
-                  },
-                  {
-                    "key": "autoscaling",
-                    "present": false
-                  },
-                  {
-                    "key": "maxReplicas",
-                    "present": true
-                  },
-                  {
-                    "not": {
-                      "in": [
-                        0
-                      ],
-                      "key": "maxReplicas"
-                    }
                   }
                 ]
               }
@@ -864,6 +921,11 @@
             "properties": {
               "config": {
                 "maxReplicas": {
+                  "aliases": [
+                    {
+                      "key": "/maxReplicas"
+                    }
+                  ],
                   "constraints": {
                     "maximum": 2147483647,
                     "minimum": 0
@@ -913,16 +975,6 @@
           "type": "string"
         },
         {
-          "description": "alias of resourceLimits.cpu",
-          "key": "cpuLimit",
-          "type": "string"
-        },
-        {
-          "description": "alias of resourceRequests.cpu",
-          "key": "cpuRequest",
-          "type": "string"
-        },
-        {
           "description": "[{name, access}]: environment DNS zones the workload may read or write programmatically, with its own cloud identity, which the zone's agent grants access to",
           "key": "dnsZones",
           "type": "array"
@@ -931,6 +983,11 @@
           "default": {},
           "key": "env",
           "type": "object"
+        },
+        {
+          "description": "the short names of the environment secrets this component may read",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "constraints": {
@@ -1084,11 +1141,6 @@
           "type": "string"
         },
         {
-          "description": "alias of autoscaling.maxReplicas",
-          "key": "maxReplicas",
-          "type": "integer"
-        },
-        {
           "constraints": {
             "level": "warn",
             "pattern": "[0-9]{1,9}|(?:100|[1-9]?[0-9])%"
@@ -1111,16 +1163,6 @@
         {
           "default": "128Mi",
           "key": "memory",
-          "type": "string"
-        },
-        {
-          "description": "alias of resourceLimits.memory",
-          "key": "memoryLimit",
-          "type": "string"
-        },
-        {
-          "description": "alias of resourceRequests.memory",
-          "key": "memoryRequest",
           "type": "string"
         },
         {
@@ -1226,19 +1268,69 @@
           "type": "integer"
         },
         {
+          "constraints": {
+            "properties": {
+              "config": {
+                "cpu": {
+                  "aliases": [
+                    {
+                      "key": "/cpuLimit"
+                    }
+                  ],
+                  "type": "string",
+                  "typeLevel": "warn"
+                },
+                "memory": {
+                  "aliases": [
+                    {
+                      "key": "/memoryLimit"
+                    }
+                  ],
+                  "type": "string",
+                  "typeLevel": "warn"
+                }
+              }
+            }
+          },
           "default": {
             "cpu": "500m",
             "memory": "512Mi"
           },
+          "description": "{cpu, memory}",
           "key": "resourceLimits",
           "type": "object",
           "typeLevel": "error"
         },
         {
+          "constraints": {
+            "properties": {
+              "config": {
+                "cpu": {
+                  "aliases": [
+                    {
+                      "key": "/cpuRequest"
+                    }
+                  ],
+                  "type": "string",
+                  "typeLevel": "warn"
+                },
+                "memory": {
+                  "aliases": [
+                    {
+                      "key": "/memoryRequest"
+                    }
+                  ],
+                  "type": "string",
+                  "typeLevel": "warn"
+                }
+              }
+            }
+          },
           "default": {
             "cpu": "100m",
             "memory": "128Mi"
           },
+          "description": "{cpu, memory}",
           "key": "resourceRequests",
           "type": "object",
           "typeLevel": "error"
@@ -1395,6 +1487,8 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
       "offerType": "Messaging.CaaS.Kafka",
       "parameterRules": [],
       "params": [
@@ -1425,6 +1519,8 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
       "offerType": "Messaging.CaaS.KafkaTopic",
       "parameterRules": [],
       "params": [
@@ -1461,6 +1557,8 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
       "offerType": "Observability.CaaS.GrafanaAlloy",
       "parameterRules": [],
       "params": [
@@ -1511,6 +1609,8 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
       "offerType": "Observability.CaaS.GrafanaLoki",
       "parameterRules": [],
       "params": [
@@ -1524,17 +1624,23 @@
           "type": "string"
         },
         {
+          "default": false,
+          "description": "Keep the object storage the agent made for Loki, and the logs in it, when the component is deleted; unset = deleted with it",
+          "key": "retainStorageOnDelete",
+          "type": "boolean"
+        },
+        {
           "constraints": {
             "maximum": 2147483647,
             "minimum": 1
           },
           "default": 14,
-          "description": "Days logs are kept; the bucket's lifecycle should match",
+          "description": "Days logs are kept; Loki's compactor deletes older ones from its storage",
           "key": "retentionDays",
           "type": "integer"
         },
         {
-          "description": "StorageClass of a volume for Loki's write-ahead log; unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else ephemeral",
+          "description": "StorageClass of a volume for Loki's write-ahead log; unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else (AKS and GKE included) ephemeral",
           "key": "storageClassName",
           "type": "string"
         },
@@ -1562,6 +1668,8 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
       "offerType": "Observability.CaaS.GrafanaTempo",
       "parameterRules": [],
       "params": [
@@ -1585,7 +1693,7 @@
           "type": "integer"
         },
         {
-          "description": "StorageClass of a volume for Tempo's write-ahead log; unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else ephemeral",
+          "description": "StorageClass of a volume for Tempo's write-ahead log; unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else (AKS and GKE included) ephemeral",
           "key": "storageClassName",
           "type": "string"
         },
@@ -1613,6 +1721,8 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
       "offerType": "Observability.CaaS.KubePrometheusStack",
       "parameterRules": [],
       "params": [
@@ -1709,6 +1819,8 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
       "offerType": "Observability.CaaS.SqsExporter",
       "parameterRules": [],
       "params": [
@@ -1793,6 +1905,47 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
+      "offerType": "Storage.CaaS.MinioBucket",
+      "parameterRules": [],
+      "params": [
+        {
+          "constraints": {
+            "pattern": "[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]"
+          },
+          "description": "Name of the bucket in the tenant; unset = the component id",
+          "example": "orders",
+          "key": "bucketName",
+          "type": "string"
+        }
+      ],
+      "provider": "CaaS",
+      "providerResources": [],
+      "runtimeChecks": [
+        {
+          "field": "/bucketName",
+          "fix": "Set bucketName to 3 to 63 lower-case letters, digits, '.' and '-', starting and ending with a letter or digit.",
+          "id": "minio-bucket-name-from-id",
+          "message": "Without bucketName the bucket is named after the component id, which is not a valid bucket name.",
+          "reason": "NOT_EXPRESSIBLE"
+        },
+        {
+          "field": "/bucketName",
+          "fix": "Set bucketName to a name no bucket of the tenant has.",
+          "id": "minio-bucket-name-taken",
+          "message": "A bucket of this name already exists in the MinIO tenant and was not made by this component; it is never taken over.",
+          "reason": "CLOUD_STATE"
+        }
+      ],
+      "serviceTypes": [
+        "Storage.CaaS.MinIO"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
       "offerType": "Storage.CaaS.MinioTenant",
       "parameterRules": [],
       "params": [
@@ -1846,12 +1999,13 @@
       ],
       "runtimeChecks": [],
       "serviceTypes": [
-        "Storage.CaaS.MinIO",
-        "BigData.CaaS.MinIO"
+        "Storage.CaaS.MinIO"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
       "offerType": "Storage.CaaS.OpenSearch",
       "parameterRules": [],
       "params": [

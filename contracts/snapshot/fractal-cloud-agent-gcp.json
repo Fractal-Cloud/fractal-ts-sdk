@@ -1,9 +1,10 @@
 {
   "agentId": "fractal-cloud-agent-gcp",
-  "agentVersion": "v8.25.11",
+  "agentVersion": "v8.31.0",
   "offers": [
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "AI.SaaS.Unmanaged",
       "params": [
         {
@@ -26,10 +27,12 @@
         }
       ],
       "provider": "GCP",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "APIManagement.CaaS.Traefik",
       "params": [
         {
@@ -109,16 +112,18 @@
         },
         {
           "default": {},
-          "description": "Distributed tracing, as {jaeger: {collectorEndpoint, localAgentPort, localAgentUrlPath}}. When jaeger is set without a collectorEndpoint, the endpoint is taken from the Jaeger component this gateway links to with link type JaegerTracing, and the component fails when there is no such link. When unset, tracing is off.",
+          "description": "Distributed tracing, as {jaeger: {collectorEndpoint, localAgentPort, localAgentUrlPath}}. Traefik sends traces over OpenTelemetry (OTLP over HTTP) to that endpoint. When jaeger is set without a collectorEndpoint, the endpoint is the Jaeger component this gateway links to with link type JaegerTracing, on localAgentPort (default 4318) and localAgentUrlPath (default /v1/traces), and the component fails when there is no such link. Only an OTLP traces endpoint (a path ending in /v1/traces, not on a Jaeger v1 port 14268 / 6831 / 6832) is used as declared; any other endpoint is sent to the same host's OTLP receiver (http://<host>:4318/v1/traces), and the remap is published in contractWarnings. An endpoint without a scheme is read as http://. The collector must accept OTLP over HTTP, as Jaeger v2 does. When unset, tracing is off.",
           "key": "tracing",
           "type": "object"
         }
       ],
       "provider": "GCP",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "APIManagement.PaaS.ApiGateway",
       "params": [
         {
@@ -145,10 +150,16 @@
           "type": "string"
         }
       ],
-      "provider": "GCP"
+      "provider": "GCP",
+      "requiredApis": [
+        "apigateway.googleapis.com",
+        "servicecontrol.googleapis.com",
+        "servicemanagement.googleapis.com"
+      ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "APIManagement.PaaS.GcpApiGateway",
       "params": [
         {
@@ -176,12 +187,18 @@
         }
       ],
       "provider": "GCP",
+      "requiredApis": [
+        "apigateway.googleapis.com",
+        "servicecontrol.googleapis.com",
+        "servicemanagement.googleapis.com"
+      ],
       "serviceTypes": [
         "APIManagement.PaaS.APIGateway"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "APIManagement.SaaS.Unmanaged",
       "params": [
         {
@@ -204,10 +221,12 @@
         }
       ],
       "provider": "GCP",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": "BigData.PaaS.GcpDatalake",
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.CloudStorage",
       "params": [
         {
@@ -247,10 +266,14 @@
         {
           "type": "storage.googleapis.com/Bucket"
         }
+      ],
+      "requiredApis": [
+        "storage.googleapis.com"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.Databricks",
       "params": [
         {
@@ -281,10 +304,15 @@
           "type": "string"
         }
       ],
-      "provider": "GCP"
+      "provider": "GCP",
+      "requiredApis": [
+        "compute.googleapis.com",
+        "storage.googleapis.com"
+      ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "BigData.PaaS.DatabricksCluster",
       "params": [
         {
@@ -305,6 +333,11 @@
           "description": "Databricks data security (access) mode, e.g. SINGLE_USER, USER_ISOLATION or NONE. An unknown value falls back to SINGLE_USER with a warning. A change is reconciled and restarts the cluster. When unset, SINGLE_USER.",
           "key": "dataSecurityMode",
           "type": "string"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "default": [],
@@ -391,10 +424,15 @@
           "type": "string"
         }
       ],
-      "provider": "GCP"
+      "provider": "GCP",
+      "requiredApis": [
+        "compute.googleapis.com",
+        "storage.googleapis.com"
+      ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "BigData.PaaS.DatabricksJob",
       "parameterRules": [
         {
@@ -546,6 +584,11 @@
           "type": "array"
         },
         {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
           "deprecated": {
             "level": "warn",
             "note": "the job runs on the cluster it depends on, or on a cluster started for each run when it depends on none"
@@ -686,10 +729,15 @@
           "valuesLevel": "warn"
         }
       ],
-      "provider": "GCP"
+      "provider": "GCP",
+      "requiredApis": [
+        "compute.googleapis.com",
+        "storage.googleapis.com"
+      ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.DatabricksMlflowExperiment",
       "params": [
         {
@@ -712,10 +760,15 @@
           "type": "string"
         }
       ],
-      "provider": "GCP"
+      "provider": "GCP",
+      "requiredApis": [
+        "compute.googleapis.com",
+        "storage.googleapis.com"
+      ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.GcpDatabricks",
       "params": [
         {
@@ -747,12 +800,17 @@
         }
       ],
       "provider": "GCP",
+      "requiredApis": [
+        "compute.googleapis.com",
+        "storage.googleapis.com"
+      ],
       "serviceTypes": [
         "BigData.PaaS.Databricks"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "BigData.PaaS.GcpDatabricksCluster",
       "params": [
         {
@@ -773,6 +831,11 @@
           "description": "Databricks data security (access) mode, e.g. SINGLE_USER, USER_ISOLATION or NONE. An unknown value falls back to SINGLE_USER with a warning. A change is reconciled and restarts the cluster. When unset, SINGLE_USER.",
           "key": "dataSecurityMode",
           "type": "string"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "default": [],
@@ -862,12 +925,17 @@
         }
       ],
       "provider": "GCP",
+      "requiredApis": [
+        "compute.googleapis.com",
+        "storage.googleapis.com"
+      ],
       "serviceTypes": [
         "BigData.PaaS.DatabricksCluster"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "BigData.PaaS.GcpDatabricksJob",
       "parameterRules": [
         {
@@ -1019,6 +1087,11 @@
           "type": "array"
         },
         {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
           "deprecated": {
             "level": "warn",
             "note": "the job runs on the cluster it depends on, or on a cluster started for each run when it depends on none"
@@ -1160,12 +1233,17 @@
         }
       ],
       "provider": "GCP",
+      "requiredApis": [
+        "compute.googleapis.com",
+        "storage.googleapis.com"
+      ],
       "serviceTypes": [
         "BigData.PaaS.DatabricksJob"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.GcpDatabricksMlflow",
       "params": [
         {
@@ -1189,12 +1267,17 @@
         }
       ],
       "provider": "GCP",
+      "requiredApis": [
+        "compute.googleapis.com",
+        "storage.googleapis.com"
+      ],
       "serviceTypes": [
         "BigData.PaaS.DatabricksMlflowExperiment"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.GcpDatalake",
       "params": [
         {
@@ -1235,12 +1318,16 @@
           "type": "storage.googleapis.com/Bucket"
         }
       ],
+      "requiredApis": [
+        "storage.googleapis.com"
+      ],
       "serviceTypes": [
         "BigData.PaaS.CloudStorage"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.SaaS.Unmanaged",
       "params": [
         {
@@ -1263,10 +1350,12 @@
         }
       ],
       "provider": "GCP",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "CustomWorkloads.FaaS.GcpFunction",
       "params": [
         {
@@ -1276,6 +1365,11 @@
           "type": "string"
         },
         {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
           "description": "Legacy spelling of region, read only when region is unset.",
           "key": "location",
           "type": "string"
@@ -1286,10 +1380,36 @@
           "type": "string"
         },
         {
-          "description": "Cloud Functions (2nd gen) runtime id matching the function's source, e.g. java21, python312 or nodejs24. Required to create a function: no runtime is assumed, and a new function without it is refused. A deployed function without it keeps the runtime it runs on.",
+          "description": "Cloud Functions (2nd gen) runtime id matching the function's source, e.g. java21, python312 or nodejs24. A version spelling (python3.12, nodejs-22, node22) is read as the id it names. A runtime the region does not offer is refused before anything is built; the values listed are the usual ones, the region's own list decides. Required to create a function: no runtime is assumed, and a new function without it is refused. A deployed function without it keeps the runtime it runs on.",
           "example": "java21",
           "key": "runtime",
-          "type": "string"
+          "type": "string",
+          "values": [
+            "nodejs18",
+            "nodejs20",
+            "nodejs22",
+            "nodejs24",
+            "python39",
+            "python310",
+            "python311",
+            "python312",
+            "python313",
+            "go121",
+            "go122",
+            "go123",
+            "go124",
+            "java17",
+            "java21",
+            "ruby32",
+            "ruby33",
+            "ruby34",
+            "php82",
+            "php83",
+            "php84",
+            "dotnet8"
+          ],
+          "valuesCaseInsensitive": true,
+          "valuesLevel": "warn"
         },
         {
           "description": "OCI artifact reference of the function's source zip, e.g. europe-docker.pkg.dev/<project>/<repository>/<function>:<tag>. The agent copies the zip to a staging bucket it owns and redeploys only when the artifact digest changes; a container image is refused. The legacy sourceBucket + sourceObject pair is accepted in its place. Required to create a function; a deployed function without a source is kept as it is.",
@@ -1300,6 +1420,12 @@
         {
           "description": "Deprecated: name of the Cloud Storage bucket (without gs://) holding a source zip staged outside Fractal. Read only when sourceArtifact is unset, with sourceObject; an existing function deployed this way is never updated.",
           "key": "sourceBucket",
+          "type": "string"
+        },
+        {
+          "description": "Python only: path of the file in the source zip that holds the entry point, relative to the zip root, passed to the build as GOOGLE_FUNCTION_SOURCE. When unset the build reads main.py at the zip root. A source zip without that file is refused before anything is built.",
+          "example": "worker.py",
+          "key": "sourceFile",
           "type": "string"
         },
         {
@@ -1314,12 +1440,19 @@
           "type": "cloudfunctions.googleapis.com/Function"
         }
       ],
+      "requiredApis": [
+        "artifactregistry.googleapis.com",
+        "cloudbuild.googleapis.com",
+        "cloudfunctions.googleapis.com",
+        "run.googleapis.com"
+      ],
       "serviceTypes": [
         "NetworkAndCompute.FaaS.Workload"
       ]
     },
     {
       "aliasOfOfferType": "CustomWorkloads.FaaS.GcpFunction",
+      "canAccessSecrets": true,
       "offerType": "CustomWorkloads.FaaS.GoogleFunction",
       "params": [
         {
@@ -1329,6 +1462,11 @@
           "type": "string"
         },
         {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
           "description": "Legacy spelling of region, read only when region is unset.",
           "key": "location",
           "type": "string"
@@ -1339,10 +1477,36 @@
           "type": "string"
         },
         {
-          "description": "Cloud Functions (2nd gen) runtime id matching the function's source, e.g. java21, python312 or nodejs24. Required to create a function: no runtime is assumed, and a new function without it is refused. A deployed function without it keeps the runtime it runs on.",
+          "description": "Cloud Functions (2nd gen) runtime id matching the function's source, e.g. java21, python312 or nodejs24. A version spelling (python3.12, nodejs-22, node22) is read as the id it names. A runtime the region does not offer is refused before anything is built; the values listed are the usual ones, the region's own list decides. Required to create a function: no runtime is assumed, and a new function without it is refused. A deployed function without it keeps the runtime it runs on.",
           "example": "java21",
           "key": "runtime",
-          "type": "string"
+          "type": "string",
+          "values": [
+            "nodejs18",
+            "nodejs20",
+            "nodejs22",
+            "nodejs24",
+            "python39",
+            "python310",
+            "python311",
+            "python312",
+            "python313",
+            "go121",
+            "go122",
+            "go123",
+            "go124",
+            "java17",
+            "java21",
+            "ruby32",
+            "ruby33",
+            "ruby34",
+            "php82",
+            "php83",
+            "php84",
+            "dotnet8"
+          ],
+          "valuesCaseInsensitive": true,
+          "valuesLevel": "warn"
         },
         {
           "description": "OCI artifact reference of the function's source zip, e.g. europe-docker.pkg.dev/<project>/<repository>/<function>:<tag>. The agent copies the zip to a staging bucket it owns and redeploys only when the artifact digest changes; a container image is refused. The legacy sourceBucket + sourceObject pair is accepted in its place. Required to create a function; a deployed function without a source is kept as it is.",
@@ -1356,6 +1520,12 @@
           "type": "string"
         },
         {
+          "description": "Python only: path of the file in the source zip that holds the entry point, relative to the zip root, passed to the build as GOOGLE_FUNCTION_SOURCE. When unset the build reads main.py at the zip root. A source zip without that file is refused before anything is built.",
+          "example": "worker.py",
+          "key": "sourceFile",
+          "type": "string"
+        },
+        {
           "description": "Deprecated: object name of the source zip in sourceBucket, e.g. functions/hello-http.zip. Read only when sourceArtifact is unset.",
           "key": "sourceObject",
           "type": "string"
@@ -1366,25 +1536,24 @@
         {
           "type": "cloudfunctions.googleapis.com/Function"
         }
+      ],
+      "requiredApis": [
+        "artifactregistry.googleapis.com",
+        "cloudbuild.googleapis.com",
+        "cloudfunctions.googleapis.com",
+        "run.googleapis.com"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "CustomWorkloads.IaaS.Workload",
       "params": [
         {
-          "description": "GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it.",
-          "key": "region",
-          "type": "string"
-        }
-      ],
-      "provider": "GCP",
-      "providerResources": []
-    },
-    {
-      "aliasOfOfferType": null,
-      "offerType": "CustomWorkloads.PaaS.GcpCloudRun",
-      "params": [
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
         {
           "description": "GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it.",
           "key": "region",
@@ -1392,10 +1561,34 @@
         }
       ],
       "provider": "GCP",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
+      "offerType": "CustomWorkloads.PaaS.GcpCloudRun",
+      "params": [
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
+          "description": "GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it.",
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "GCP",
+      "providerResources": [],
+      "requiredApis": [
+        "run.googleapis.com"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "CustomWorkloads.SaaS.Unmanaged",
       "params": [
         {
@@ -1418,10 +1611,12 @@
         }
       ],
       "provider": "GCP",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.CaaS.KafkaUser",
       "params": [
         {
@@ -1458,10 +1653,12 @@
         }
       ],
       "provider": "GCP",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.GcpPubSub",
       "params": [
         {
@@ -1472,6 +1669,9 @@
       ],
       "provider": "GCP",
       "providerResources": [],
+      "requiredApis": [
+        "pubsub.googleapis.com"
+      ],
       "serviceTypes": [
         "Messaging.PaaS.MessageBroker",
         "Messaging.PaaS.StreamProcessing"
@@ -1479,6 +1679,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.GcpPubSubTopic",
       "params": [
         {
@@ -1493,6 +1694,9 @@
           "type": "pubsub.googleapis.com/Topic"
         }
       ],
+      "requiredApis": [
+        "pubsub.googleapis.com"
+      ],
       "serviceTypes": [
         "Messaging.PaaS.MessageBrokerEntity",
         "Messaging.PaaS.StreamProcessingEntity"
@@ -1500,6 +1704,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.PubSub",
       "params": [
         {
@@ -1509,10 +1714,14 @@
         }
       ],
       "provider": "GCP",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": [
+        "pubsub.googleapis.com"
+      ]
     },
     {
       "aliasOfOfferType": "Messaging.PaaS.GcpPubSubTopic",
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.PubSubTopic",
       "params": [
         {
@@ -1526,10 +1735,14 @@
         {
           "type": "pubsub.googleapis.com/Topic"
         }
+      ],
+      "requiredApis": [
+        "pubsub.googleapis.com"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.Subscription",
       "params": [
         {
@@ -1556,6 +1769,9 @@
           "type": "pubsub.googleapis.com/Subscription"
         }
       ],
+      "requiredApis": [
+        "pubsub.googleapis.com"
+      ],
       "serviceTypes": [
         "Messaging.PaaS.MessageBrokerEntity",
         "Messaging.PaaS.StreamProcessingEntity"
@@ -1563,6 +1779,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.SaaS.Unmanaged",
       "params": [
         {
@@ -1585,10 +1802,12 @@
         }
       ],
       "provider": "GCP",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
-      "aliasOfOfferType": "NetworkAndCompute.PaaS.CloudRun",
+      "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.CaaS.CloudRunService",
       "params": [
         {
@@ -1607,6 +1826,11 @@
           "description": "Environment variables of the container: name to a string, number or boolean, or to an environment-secret reference {\"$envSecret\": \"<shortName>\"}, which is passed as the cloud's secret reference and never as the raw value. Changing it rolls out a new revision.",
           "key": "environment",
           "type": "object"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Full container image reference the service runs, e.g. europe-docker.pkg.dev/<project>/<repository>/<image>:<tag>. A change deploys a new revision. Required to create a service; a deployed service without it keeps the image it runs.",
@@ -1668,6 +1892,9 @@
           "type": "run.googleapis.com/Service"
         }
       ],
+      "requiredApis": [
+        "run.googleapis.com"
+      ],
       "serviceTypes": [
         "NetworkAndCompute.CaaS.CloudRunWorkload",
         "NetworkAndCompute.PaaS.Workload"
@@ -1675,6 +1902,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.IaaS.GcpComputeInstance",
       "params": [
         {
@@ -1682,6 +1910,11 @@
           "description": "Whether the instance gets an ephemeral external IPv4 address. Reconciled on an existing instance too (the address is added or removed). When unset, false: private only.",
           "key": "associatePublicIp",
           "type": "boolean"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' (\"system\" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent.",
@@ -1747,10 +1980,14 @@
         {
           "type": "compute.googleapis.com/Instance"
         }
+      ],
+      "requiredApis": [
+        "compute.googleapis.com"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.GcpFirewall",
       "params": [
         {
@@ -1794,12 +2031,16 @@
           "type": "compute.googleapis.com/Firewall"
         }
       ],
+      "requiredApis": [
+        "compute.googleapis.com"
+      ],
       "serviceTypes": [
         "NetworkAndCompute.IaaS.SecurityGroup"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.GcpGlb",
       "params": [
         {
@@ -1820,12 +2061,16 @@
         }
       ],
       "provider": "GCP",
+      "requiredApis": [
+        "compute.googleapis.com"
+      ],
       "serviceTypes": [
         "NetworkAndCompute.IaaS.LoadBalancer"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.GcpLoadBalancer",
       "params": [
         {
@@ -1845,10 +2090,14 @@
           "type": "string"
         }
       ],
-      "provider": "GCP"
+      "provider": "GCP",
+      "requiredApis": [
+        "compute.googleapis.com"
+      ]
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.GcpFirewall",
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.GcpSecurityGroup",
       "params": [
         {
@@ -1891,10 +2140,14 @@
         {
           "type": "compute.googleapis.com/Firewall"
         }
+      ],
+      "requiredApis": [
+        "compute.googleapis.com"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.GcpSubnet",
       "params": [
         {
@@ -1914,12 +2167,16 @@
           "type": "compute.googleapis.com/Subnetwork"
         }
       ],
+      "requiredApis": [
+        "compute.googleapis.com"
+      ],
       "serviceTypes": [
         "NetworkAndCompute.IaaS.Subnet"
       ]
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.GcpComputeInstance",
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.IaaS.GcpVirtualMachine",
       "params": [
         {
@@ -1927,6 +2184,11 @@
           "description": "Whether the instance gets an ephemeral external IPv4 address. Reconciled on an existing instance too (the address is added or removed). When unset, false: private only.",
           "key": "associatePublicIp",
           "type": "boolean"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' (\"system\" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent.",
@@ -1992,10 +2254,14 @@
         {
           "type": "compute.googleapis.com/Instance"
         }
+      ],
+      "requiredApis": [
+        "compute.googleapis.com"
       ]
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.GcpComputeInstance",
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.IaaS.GcpVm",
       "params": [
         {
@@ -2003,6 +2269,11 @@
           "description": "Whether the instance gets an ephemeral external IPv4 address. Reconciled on an existing instance too (the address is added or removed). When unset, false: private only.",
           "key": "associatePublicIp",
           "type": "boolean"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' (\"system\" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent.",
@@ -2073,12 +2344,16 @@
           "type": "compute.googleapis.com/Instance"
         }
       ],
+      "requiredApis": [
+        "compute.googleapis.com"
+      ],
       "serviceTypes": [
         "NetworkAndCompute.IaaS.VirtualMachine"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.GcpVpc",
       "params": [
         {
@@ -2104,12 +2379,16 @@
           "type": "compute.googleapis.com/Network"
         }
       ],
+      "requiredApis": [
+        "compute.googleapis.com"
+      ],
       "serviceTypes": [
         "NetworkAndCompute.IaaS.VirtualNetwork"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.GlobalLoadBalancer",
       "params": [
         {
@@ -2129,10 +2408,14 @@
           "type": "string"
         }
       ],
-      "provider": "GCP"
+      "provider": "GCP",
+      "requiredApis": [
+        "compute.googleapis.com"
+      ]
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.GcpFirewall",
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.SecurityGroup",
       "params": [
         {
@@ -2175,10 +2458,14 @@
         {
           "type": "compute.googleapis.com/Firewall"
         }
+      ],
+      "requiredApis": [
+        "compute.googleapis.com"
       ]
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.GcpComputeInstance",
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.IaaS.VirtualMachine",
       "params": [
         {
@@ -2186,6 +2473,11 @@
           "description": "Whether the instance gets an ephemeral external IPv4 address. Reconciled on an existing instance too (the address is added or removed). When unset, false: private only.",
           "key": "associatePublicIp",
           "type": "boolean"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' (\"system\" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent.",
@@ -2251,88 +2543,26 @@
         {
           "type": "compute.googleapis.com/Instance"
         }
+      ],
+      "requiredApis": [
+        "compute.googleapis.com"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.CloudRun",
       "params": [
-        {
-          "description": "Maximum concurrent requests per instance (1-1000). Required to create a service; a deployed service without it keeps the value it runs with. A change to this key alone does not update an existing service; it is applied with the next update.",
-          "example": 80,
-          "key": "concurrency",
-          "type": "integer"
-        },
-        {
-          "description": "CPU limit of each instance, in Kubernetes quantity form (1, 2, 4, 6 or 8, or below 1 in millicores, e.g. 1000m). Required to create a service; a deployed service without it keeps the value it runs with.",
-          "example": "1",
-          "key": "cpu",
-          "type": "string"
-        },
-        {
-          "description": "Environment variables of the container: name to a string, number or boolean, or to an environment-secret reference {\"$envSecret\": \"<shortName>\"}, which is passed as the cloud's secret reference and never as the raw value. Changing it rolls out a new revision.",
-          "key": "environment",
-          "type": "object"
-        },
-        {
-          "description": "Full container image reference the service runs, e.g. europe-docker.pkg.dev/<project>/<repository>/<image>:<tag>. A change deploys a new revision. Required to create a service; a deployed service without it keeps the image it runs.",
-          "example": "us-docker.pkg.dev/cloudrun/container/hello",
-          "key": "image",
-          "type": "string"
-        },
-        {
-          "description": "Who may reach the service: all (the internet), internal (the VPC and the project), or internal-and-cloud-load-balancing (also an external Application Load Balancer). Any other value is refused for a new service. Required to create a service; a deployed service without it keeps the value it runs with. A change to this key alone does not update an existing service; it is applied with the next update.",
-          "example": "internal",
-          "key": "ingress",
-          "type": "string",
-          "values": [
-            "all",
-            "internal",
-            "internal-and-cloud-load-balancing"
-          ]
-        },
-        {
-          "description": "Maximum number of instances, at least minInstances. Required to create a service; a deployed service without it keeps the value it runs with.",
-          "example": 3,
-          "key": "maxInstances",
-          "type": "integer"
-        },
-        {
-          "description": "Memory limit of each instance, in Kubernetes quantity form, e.g. 512Mi or 2Gi. Required to create a service; a deployed service without it keeps the value it runs with.",
-          "example": "512Mi",
-          "key": "memory",
-          "type": "string"
-        },
-        {
-          "description": "Minimum number of instances kept running; 0 lets the service scale to zero. Required to create a service; a deployed service without it keeps the value it runs with.",
-          "example": 0,
-          "key": "minInstances",
-          "type": "integer"
-        },
-        {
-          "description": "Container port Cloud Run sends requests to (1-65535), the port the image listens on. Required to create a service; a deployed service without it keeps the value it runs with. A change to this key alone does not update an existing service; it is applied with the next update.",
-          "example": 8080,
-          "key": "port",
-          "type": "integer"
-        },
         {
           "description": "GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it.",
           "key": "region",
           "type": "string"
-        },
-        {
-          "default": "",
-          "description": "Service account the revision runs as. Granted secretAccessor on the secrets 'environment' references. When unset, a new service runs as an account the agent creates in the deployment project, holding no roles beyond those grants. An account in another project that the agent cannot read is ignored with a contract warning.",
-          "example": "my-service@my-gcp-project.iam.gserviceaccount.com",
-          "key": "serviceAccountEmail",
-          "type": "string"
         }
       ],
       "provider": "GCP",
-      "providerResources": [
-        {
-          "type": "run.googleapis.com/Service"
-        }
+      "providerResources": [],
+      "requiredApis": [
+        "run.googleapis.com"
       ],
       "serviceTypes": [
         "NetworkAndCompute.PaaS.ContainerPlatform"
@@ -2340,6 +2570,7 @@
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.PaaS.GcpGke",
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.GKE",
       "params": [
         {
@@ -2457,6 +2688,10 @@
           "type": "container.googleapis.com/Cluster"
         }
       ],
+      "requiredApis": [
+        "compute.googleapis.com",
+        "container.googleapis.com"
+      ],
       "runtimeChecks": [
         {
           "fix": "Declare subnetworkIpRange, podIpRange and serviceIpRange (for example 10.20.0.0/22, 10.24.0.0/14 and 10.20.32.0/20), or create the cluster in an environment with a spoke network.",
@@ -2468,6 +2703,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.GcpDnsZone",
       "params": [
         {
@@ -2580,12 +2816,16 @@
         }
       ],
       "provider": "GCP",
+      "requiredApis": [
+        "dns.googleapis.com"
+      ],
       "serviceTypes": [
         "NetworkAndCompute.PaaS.DnsZone"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.GcpGke",
       "params": [
         {
@@ -2703,6 +2943,10 @@
           "type": "container.googleapis.com/Cluster"
         }
       ],
+      "requiredApis": [
+        "compute.googleapis.com",
+        "container.googleapis.com"
+      ],
       "runtimeChecks": [
         {
           "fix": "Declare subnetworkIpRange, podIpRange and serviceIpRange (for example 10.20.0.0/22, 10.24.0.0/14 and 10.20.32.0/20), or create the cluster in an environment with a spoke network.",
@@ -2717,6 +2961,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.GcpGlb",
       "params": [
         {
@@ -2736,10 +2981,14 @@
           "type": "string"
         }
       ],
-      "provider": "GCP"
+      "provider": "GCP",
+      "requiredApis": [
+        "compute.googleapis.com"
+      ]
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.GcpComputeInstance",
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.PaaS.GcpVm",
       "params": [
         {
@@ -2747,6 +2996,11 @@
           "description": "Whether the instance gets an ephemeral external IPv4 address. Reconciled on an existing instance too (the address is added or removed). When unset, false: private only.",
           "key": "associatePublicIp",
           "type": "boolean"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' (\"system\" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent.",
@@ -2812,10 +3066,14 @@
         {
           "type": "compute.googleapis.com/Instance"
         }
+      ],
+      "requiredApis": [
+        "compute.googleapis.com"
       ]
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.PaaS.GcpGke",
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.Kubernetes",
       "params": [
         {
@@ -2933,6 +3191,10 @@
           "type": "container.googleapis.com/Cluster"
         }
       ],
+      "requiredApis": [
+        "compute.googleapis.com",
+        "container.googleapis.com"
+      ],
       "runtimeChecks": [
         {
           "fix": "Declare subnetworkIpRange, podIpRange and serviceIpRange (for example 10.20.0.0/22, 10.24.0.0/14 and 10.20.32.0/20), or create the cluster in an environment with a spoke network.",
@@ -2944,6 +3206,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.SaaS.Unmanaged",
       "params": [
         {
@@ -2966,10 +3229,12 @@
         }
       ],
       "provider": "GCP",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Observability.CaaS.Jaeger",
       "params": [
         {
@@ -3010,10 +3275,12 @@
         }
       ],
       "provider": "GCP",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Observability.CaaS.Prometheus",
       "params": [
         {
@@ -3045,10 +3312,12 @@
         }
       ],
       "provider": "GCP",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Observability.SaaS.Jaeger",
       "params": [
         {
@@ -3063,10 +3332,12 @@
         }
       ],
       "provider": "GCP",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Observability.SaaS.Prometheus",
       "params": [
         {
@@ -3081,10 +3352,12 @@
         }
       ],
       "provider": "GCP",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Security.CaaS.Ocelot",
       "params": [
         {
@@ -3139,10 +3412,12 @@
         }
       ],
       "provider": "GCP",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Security.SaaS.Unmanaged",
       "params": [
         {
@@ -3165,10 +3440,12 @@
         }
       ],
       "provider": "GCP",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.CaaS.CnpgCluster",
       "params": [
         {
@@ -3268,10 +3545,12 @@
         }
       ],
       "provider": "GCP",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.CaaS.CnpgDatabase",
       "params": [
         {
@@ -3337,10 +3616,12 @@
         }
       ],
       "provider": "GCP",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.BigTable",
       "params": [
         {
@@ -3367,12 +3648,16 @@
         }
       ],
       "provider": "GCP",
+      "requiredApis": [
+        "bigtableadmin.googleapis.com"
+      ],
       "serviceTypes": [
         "Storage.PaaS.VendorSpecificColumnOrientedDbms"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.BigTableTable",
       "params": [
         {
@@ -3396,12 +3681,16 @@
         }
       ],
       "provider": "GCP",
+      "requiredApis": [
+        "bigtableadmin.googleapis.com"
+      ],
       "serviceTypes": [
         "Storage.PaaS.VendorSpecificColumnOrientedEntity"
       ]
     },
     {
       "aliasOfOfferType": "Storage.PaaS.GcpGcsBucket",
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.CloudStorage",
       "params": [
         {
@@ -3441,10 +3730,14 @@
         {
           "type": "storage.googleapis.com/Bucket"
         }
+      ],
+      "requiredApis": [
+        "storage.googleapis.com"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.Collection",
       "params": [
         {
@@ -3466,14 +3759,23 @@
         }
       ],
       "provider": "GCP",
+      "requiredApis": [
+        "firestore.googleapis.com"
+      ],
       "serviceTypes": [
         "Storage.PaaS.VendorSpecificDocumentDatabase"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "Storage.PaaS.DataflowJob",
       "params": [
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
         {
           "default": "",
           "description": "Id of a Dataflow job launched outside Fractal, which this component records as projects/<project>/locations/<region>/jobs/<jobId>. The agent does not launch or cancel jobs; while unset the component stays Instantiating.",
@@ -3492,12 +3794,16 @@
         }
       ],
       "provider": "GCP",
+      "requiredApis": [
+        "dataflow.googleapis.com"
+      ],
       "serviceTypes": [
         "Messaging.PaaS.StreamProcessing"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.Firestore",
       "params": [
         {
@@ -3519,12 +3825,16 @@
         }
       ],
       "provider": "GCP",
+      "requiredApis": [
+        "firestore.googleapis.com"
+      ],
       "serviceTypes": [
         "Storage.PaaS.VendorSpecificDocumentDbms"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.GcpGcsBucket",
       "params": [
         {
@@ -3565,12 +3875,16 @@
           "type": "storage.googleapis.com/Bucket"
         }
       ],
+      "requiredApis": [
+        "storage.googleapis.com"
+      ],
       "serviceTypes": [
         "Storage.PaaS.FilesAndBlobs"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.GcpMySqlDbms",
       "params": [
         {
@@ -3642,6 +3956,9 @@
           "type": "sqladmin.googleapis.com/Instance"
         }
       ],
+      "requiredApis": [
+        "sqladmin.googleapis.com"
+      ],
       "runtimeChecks": [
         {
           "field": "peeringNetworkAddress",
@@ -3654,6 +3971,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.GcpPostgresDatabase",
       "params": [
         {
@@ -3682,12 +4000,16 @@
       ],
       "provider": "GCP",
       "providerResources": [],
+      "requiredApis": [
+        "sqladmin.googleapis.com"
+      ],
       "serviceTypes": [
         "Storage.PaaS.PostgreSqlDatabase"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.GcpPostgresDbms",
       "params": [
         {
@@ -3753,6 +4075,9 @@
           "type": "sqladmin.googleapis.com/Instance"
         }
       ],
+      "requiredApis": [
+        "sqladmin.googleapis.com"
+      ],
       "runtimeChecks": [
         {
           "field": "peeringNetworkAddress",
@@ -3768,6 +4093,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.PostgreSqlDatabase",
       "params": [
         {
@@ -3795,10 +4121,14 @@
         }
       ],
       "provider": "GCP",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": [
+        "sqladmin.googleapis.com"
+      ]
     },
     {
       "aliasOfOfferType": "Storage.PaaS.GcpPostgresDbms",
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.PostgreSqlDbms",
       "params": [
         {
@@ -3864,6 +4194,9 @@
           "type": "sqladmin.googleapis.com/Instance"
         }
       ],
+      "requiredApis": [
+        "sqladmin.googleapis.com"
+      ],
       "runtimeChecks": [
         {
           "field": "peeringNetworkAddress",
@@ -3876,6 +4209,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.SaaS.Unmanaged",
       "params": [
         {
@@ -3898,7 +4232,8 @@
         }
       ],
       "provider": "GCP",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     }
   ],
   "schemaVersion": "2.0"

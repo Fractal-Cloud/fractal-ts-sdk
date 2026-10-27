@@ -238,6 +238,71 @@ const ensureSecretEnvReferences = (
   }
 };
 
+/** The deprecated flat limits and the `resourceLimits` member each aliases. */
+const FLAT_LIMITS = [
+  ['cpuLimit', 'cpu'],
+  ['memoryLimit', 'memory'],
+] as const;
+
+/**
+ * Deprecation warnings already emitted, so a repeated build warns once. A
+ * message names the component id and the keys, not their values.
+ */
+const warned = new Set<string>();
+
+/**
+ * `cpuLimit` and `memoryLimit` were contract keys until caas-k8s v1.12.0, which
+ * declares them only as aliases of `resourceLimits.{cpu,memory}`. Like the
+ * agent, a flat value fills its member when that member is unset and loses to
+ * it otherwise. Over a locked `resources` limits guardrail it is refused, as
+ * `resourceLimits` is (see `adopt`). Returns the deprecation warning to emit,
+ * if any.
+ */
+const mergeFlatLimits = (
+  params: Record<string, unknown>,
+  componentId: string,
+  locked: readonly string[],
+  neutral: Record<string, unknown>,
+  lockedLimits: unknown,
+): string | undefined => {
+  const used: string[] = [];
+  const ignored: string[] = [];
+  for (const [flat, member] of FLAT_LIMITS) {
+    if (!isSupplied(neutral[flat])) {
+      continue;
+    }
+    if (locked.includes('resources') && isSupplied(lockedLimits)) {
+      throw new Error(
+        `Parameter 'resources' on '${componentId}' is a locked guardrail, and ` +
+          `'${flat}' (deprecated, an alias of ${KEY.resourceLimits}.${member}) ` +
+          'would add to its limits without the lock noticing. Remove the ' +
+          `'${flat}' override, or drop the guardrail if the limits are meant to ` +
+          'be dev-open.',
+      );
+    }
+    const limits = asRecord(params[KEY.resourceLimits]);
+    if (isSupplied(limits[member])) {
+      ignored.push(`${flat} (${KEY.resourceLimits}.${member} is set and wins)`);
+      continue;
+    }
+    params[KEY.resourceLimits] = {...limits, [member]: neutral[flat]};
+    used.push(`${flat} as ${KEY.resourceLimits}.${member}`);
+  }
+  if (used.length + ignored.length === 0) {
+    return undefined;
+  }
+  return (
+    `Kubernetes workload '${componentId}': cpuLimit and memoryLimit are ` +
+    `deprecated, set '${KEY.resourceLimits}: {cpu, memory}' instead. ` +
+    [
+      used.length > 0 ? `Sent ${used.join(', ')}.` : '',
+      ignored.length > 0 ? `Ignored ${ignored.join(', ')}.` : '',
+    ]
+      .filter(Boolean)
+      .join(' ')
+  );
+};
+
 /**
  * Translate a Workload's neutral parameters into the names the caas-k8s agent
  * reads, and refuse what it could not deploy. Applied on BOTH emit paths (the
@@ -248,6 +313,7 @@ const ensureSecretEnvReferences = (
  *   port                           → containerPort
  *   cpuRequest, memoryRequest,
  *   resources.requests             → resourceRequests {cpu, memory}
+ *   cpuLimit, memoryLimit,
  *   resources.limits               → resourceLimits {cpu, memory}
  *   maxReplicas                    → autoscaling {maxReplicas}
  *   healthCheck {path, port}       → readinessProbe and livenessProbe {path, port}
@@ -283,6 +349,8 @@ export const toKubernetesWorkloadParameters = (
     'resources',
     'maxReplicas',
     'healthCheck',
+    'cpuLimit',
+    'memoryLimit',
   );
   const resources = asRecord(neutral.resources);
   adopt(
@@ -318,6 +386,13 @@ export const toKubernetesWorkloadParameters = (
     KEY.resourceLimits,
     v => compact({...asRecord(v.resources)}),
   );
+  const flatLimitsWarning = mergeFlatLimits(
+    params,
+    componentId,
+    locked,
+    neutral,
+    resources.limits,
+  );
   adopt(
     params,
     componentId,
@@ -347,5 +422,13 @@ export const toKubernetesWorkloadParameters = (
   // Before the move: it would read a secretEnv that is not a map as empty.
   ensureSecretEnvReferences(params, componentId);
   moveSecretRefsToSecretEnv(params, componentId);
+  // Last, so a component refused above does not also warn.
+  if (flatLimitsWarning !== undefined && !warned.has(flatLimitsWarning)) {
+    warned.add(flatLimitsWarning);
+    process.emitWarning(flatLimitsWarning, {
+      type: 'DeprecationWarning',
+      code: 'FRACTAL_K8S_WORKLOAD_FLAT_LIMITS',
+    });
+  }
   return params;
 };

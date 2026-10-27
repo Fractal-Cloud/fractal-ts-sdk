@@ -1,9 +1,10 @@
 {
   "agentId": "fractal-cloud-agent-aws",
-  "agentVersion": "v8.25.11",
+  "agentVersion": "v8.31.0",
   "offers": [
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "AI.SaaS.Unmanaged",
       "params": [
         {
@@ -26,10 +27,12 @@
         }
       ],
       "provider": "AWS",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "APIManagement.CaaS.Traefik",
       "params": [
         {
@@ -109,16 +112,18 @@
         },
         {
           "default": {},
-          "description": "Distributed tracing, as {jaeger: {collectorEndpoint, localAgentPort, localAgentUrlPath}}. When jaeger is set without a collectorEndpoint, the endpoint is taken from the Jaeger component this gateway links to with link type JaegerTracing, and the component fails when there is no such link. When unset, tracing is off.",
+          "description": "Distributed tracing, as {jaeger: {collectorEndpoint, localAgentPort, localAgentUrlPath}}. Traefik sends traces over OpenTelemetry (OTLP over HTTP) to that endpoint. When jaeger is set without a collectorEndpoint, the endpoint is the Jaeger component this gateway links to with link type JaegerTracing, on localAgentPort (default 4318) and localAgentUrlPath (default /v1/traces), and the component fails when there is no such link. Only an OTLP traces endpoint (a path ending in /v1/traces, not on a Jaeger v1 port 14268 / 6831 / 6832) is used as declared; any other endpoint is sent to the same host's OTLP receiver (http://<host>:4318/v1/traces), and the remap is published in contractWarnings. An endpoint without a scheme is read as http://. The collector must accept OTLP over HTTP, as Jaeger v2 does. When unset, tracing is off.",
           "key": "tracing",
           "type": "object"
         }
       ],
       "provider": "AWS",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "APIManagement.PaaS.AwsCloudFront",
       "parameterRules": [
         {
@@ -288,12 +293,14 @@
         }
       ],
       "provider": "AWS",
+      "requiredApis": [],
       "serviceTypes": [
         "APIManagement.PaaS.APIGateway"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "APIManagement.PaaS.CloudFront",
       "parameterRules": [
         {
@@ -461,10 +468,12 @@
           "typeLevel": "error"
         }
       ],
-      "provider": "AWS"
+      "provider": "AWS",
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "APIManagement.SaaS.Unmanaged",
       "params": [
         {
@@ -487,10 +496,12 @@
         }
       ],
       "provider": "AWS",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.AwsDatabricks",
       "params": [
         {
@@ -533,12 +544,14 @@
         }
       ],
       "provider": "AWS",
+      "requiredApis": [],
       "serviceTypes": [
         "BigData.PaaS.Databricks"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "BigData.PaaS.AwsDatabricksCluster",
       "params": [
         {
@@ -558,6 +571,11 @@
           "description": "Databricks access mode of the cluster (data_security_mode), e.g. SINGLE_USER or USER_ISOLATION. An unknown value falls back to SINGLE_USER with a warning. When unset, SINGLE_USER.",
           "key": "dataSecurityMode",
           "type": "string"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "default": [],
@@ -637,12 +655,14 @@
         }
       ],
       "provider": "AWS",
+      "requiredApis": [],
       "serviceTypes": [
         "BigData.PaaS.DatabricksCluster"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "BigData.PaaS.AwsDatabricksJob",
       "parameterRules": [
         {
@@ -794,6 +814,11 @@
           "type": "array"
         },
         {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
           "deprecated": {
             "level": "warn",
             "note": "the job runs on the cluster it depends on, or on a cluster started for each run when it depends on none"
@@ -935,12 +960,14 @@
         }
       ],
       "provider": "AWS",
+      "requiredApis": [],
       "serviceTypes": [
         "BigData.PaaS.DatabricksJob"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.AwsDatabricksMlflow",
       "params": [
         {
@@ -963,12 +990,14 @@
         }
       ],
       "provider": "AWS",
+      "requiredApis": [],
       "serviceTypes": [
         "BigData.PaaS.DatabricksMlflowExperiment"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.AwsS3Datalake",
       "params": [
         {
@@ -1019,12 +1048,14 @@
           "type": "AWS::S3::Bucket"
         }
       ],
+      "requiredApis": [],
       "serviceTypes": [
         "BigData.PaaS.S3"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.Databricks",
       "params": [
         {
@@ -1066,10 +1097,12 @@
           "type": "string"
         }
       ],
-      "provider": "AWS"
+      "provider": "AWS",
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "BigData.PaaS.DatabricksCluster",
       "params": [
         {
@@ -1089,6 +1122,11 @@
           "description": "Databricks access mode of the cluster (data_security_mode), e.g. SINGLE_USER or USER_ISOLATION. An unknown value falls back to SINGLE_USER with a warning. When unset, SINGLE_USER.",
           "key": "dataSecurityMode",
           "type": "string"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "default": [],
@@ -1165,10 +1203,12 @@
           "type": "string"
         }
       ],
-      "provider": "AWS"
+      "provider": "AWS",
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "BigData.PaaS.DatabricksJob",
       "parameterRules": [
         {
@@ -1320,6 +1360,11 @@
           "type": "array"
         },
         {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
           "deprecated": {
             "level": "warn",
             "note": "the job runs on the cluster it depends on, or on a cluster started for each run when it depends on none"
@@ -1460,10 +1505,12 @@
           "valuesLevel": "warn"
         }
       ],
-      "provider": "AWS"
+      "provider": "AWS",
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.DatabricksMlflowExperiment",
       "params": [
         {
@@ -1485,10 +1532,12 @@
           "type": "string"
         }
       ],
-      "provider": "AWS"
+      "provider": "AWS",
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": "BigData.PaaS.AwsS3Datalake",
+      "canAccessSecrets": false,
       "offerType": "BigData.PaaS.S3",
       "params": [
         {
@@ -1538,10 +1587,12 @@
         {
           "type": "AWS::S3::Bucket"
         }
-      ]
+      ],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "BigData.SaaS.Unmanaged",
       "params": [
         {
@@ -1564,10 +1615,12 @@
         }
       ],
       "provider": "AWS",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "CustomWorkloads.FaaS.AwsLambda",
       "params": [
         {
@@ -1580,6 +1633,11 @@
           "description": "Environment variables of the function, as a name to value map.",
           "key": "environment",
           "type": "object"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "default": "",
@@ -1638,27 +1696,21 @@
           "type": "AWS::Lambda::Function"
         }
       ],
+      "requiredApis": [],
       "serviceTypes": [
         "NetworkAndCompute.FaaS.Workload"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "CustomWorkloads.IaaS.Workload",
       "params": [
         {
-          "description": "AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read.",
-          "key": "region",
-          "type": "string"
-        }
-      ],
-      "provider": "AWS",
-      "providerResources": []
-    },
-    {
-      "aliasOfOfferType": null,
-      "offerType": "CustomWorkloads.PaaS.AwsEcsService",
-      "params": [
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
         {
           "description": "AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read.",
           "key": "region",
@@ -1666,10 +1718,32 @@
         }
       ],
       "provider": "AWS",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
+      "offerType": "CustomWorkloads.PaaS.AwsEcsService",
+      "params": [
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
+          "description": "AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read.",
+          "key": "region",
+          "type": "string"
+        }
+      ],
+      "provider": "AWS",
+      "providerResources": [],
+      "requiredApis": []
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "CustomWorkloads.SaaS.Unmanaged",
       "params": [
         {
@@ -1692,10 +1766,12 @@
         }
       ],
       "provider": "AWS",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.CaaS.KafkaUser",
       "params": [
         {
@@ -1732,10 +1808,12 @@
         }
       ],
       "provider": "AWS",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.AwsMessaging",
       "params": [
         {
@@ -1746,12 +1824,14 @@
       ],
       "provider": "AWS",
       "providerResources": [],
+      "requiredApis": [],
       "serviceTypes": [
         "Messaging.PaaS.MessageBroker"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.AwsSesIdentity",
       "parameterRules": [
         {
@@ -1863,6 +1943,7 @@
         }
       ],
       "provider": "AWS",
+      "requiredApis": [],
       "runtimeChecks": [
         {
           "field": "mailFromSubdomain",
@@ -1878,6 +1959,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.AwsSnsTopic",
       "params": [
         {
@@ -1915,12 +1997,14 @@
         }
       ],
       "provider": "AWS",
+      "requiredApis": [],
       "serviceTypes": [
         "Messaging.PaaS.MessageBrokerEntity"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.AwsSqsQueue",
       "parameterRules": [
         {
@@ -2023,6 +2107,7 @@
         }
       ],
       "provider": "AWS",
+      "requiredApis": [],
       "runtimeChecks": [
         {
           "field": "filterPolicy",
@@ -2038,6 +2123,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Messaging.SaaS.Unmanaged",
       "params": [
         {
@@ -2060,10 +2146,12 @@
         }
       ],
       "provider": "AWS",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.CaaS.ECSService",
       "params": [
         {
@@ -2079,6 +2167,11 @@
           "type": "integer"
         },
         {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
           "default": "FARGATE",
           "description": "ECS launch type of the service: FARGATE or EC2. Applied when the service is created; changing it later does not change an existing service. When unset, FARGATE.",
           "key": "launchType",
@@ -2091,12 +2184,14 @@
         }
       ],
       "provider": "AWS",
+      "requiredApis": [],
       "serviceTypes": [
         "NetworkAndCompute.CaaS.ECSWorkload"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.CaaS.ECSTaskDefinition",
       "params": [
         {
@@ -2126,6 +2221,11 @@
           "description": "Environment variables of the container: name to a string, number or boolean, or to an environment-secret reference {\"$envSecret\": \"<shortName>\"}, which is passed as the cloud's secret reference and never as the raw value. Changing it rolls out a new revision.",
           "key": "environment",
           "type": "object"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "default": "",
@@ -2158,12 +2258,14 @@
         }
       ],
       "provider": "AWS",
+      "requiredApis": [],
       "serviceTypes": [
         "NetworkAndCompute.CaaS.ECSWorkload"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.IaaS.AwsEc2Instance",
       "params": [
         {
@@ -2177,6 +2279,11 @@
           "description": "Whether the instance gets a public IPv4 address at launch. When unset, false.",
           "key": "associatePublicIp",
           "type": "boolean"
+        },
+        {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "default": "",
@@ -2238,12 +2345,14 @@
           "type": "AWS::EC2::Instance"
         }
       ],
+      "requiredApis": [],
       "serviceTypes": [
         "NetworkAndCompute.IaaS.VirtualMachine"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.AwsLb",
       "params": [
         {
@@ -2281,12 +2390,14 @@
           "type": "AWS::ElasticLoadBalancingV2::LoadBalancer"
         }
       ],
+      "requiredApis": [],
       "serviceTypes": [
         "NetworkAndCompute.IaaS.LoadBalancer"
       ]
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.AwsLb",
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.AwsLoadBalancer",
       "params": [
         {
@@ -2323,10 +2434,12 @@
         {
           "type": "AWS::ElasticLoadBalancingV2::LoadBalancer"
         }
-      ]
+      ],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.AwsSecurityGroup",
       "params": [
         {
@@ -2358,12 +2471,14 @@
           "type": "AWS::EC2::SecurityGroup"
         }
       ],
+      "requiredApis": [],
       "serviceTypes": [
         "NetworkAndCompute.IaaS.SecurityGroup"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.AwsSubnet",
       "params": [
         {
@@ -2390,12 +2505,14 @@
           "type": "AWS::EC2::Subnet"
         }
       ],
+      "requiredApis": [],
       "serviceTypes": [
         "NetworkAndCompute.IaaS.Subnet"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.IaaS.AwsVpc",
       "params": [
         {
@@ -2434,12 +2551,14 @@
           "type": "AWS::EC2::VPC"
         }
       ],
+      "requiredApis": [],
       "serviceTypes": [
         "NetworkAndCompute.IaaS.VirtualNetwork"
       ]
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.AwsEc2Instance",
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.IaaS.EC2",
       "params": [
         {
@@ -2455,6 +2574,11 @@
           "type": "boolean"
         },
         {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
           "default": "",
           "description": "Legacy: name of an existing IAM instance profile to launch with; identity.instanceProfile wins when both are set. When neither is set, the agent creates a role and instance profile for the instance when a link needs a grant.",
           "key": "iamInstanceProfile",
@@ -2510,10 +2634,12 @@
         {
           "type": "AWS::EC2::Instance"
         }
-      ]
+      ],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.AwsEc2Instance",
+      "canAccessSecrets": true,
       "offerType": "NetworkAndCompute.PaaS.AwsEc2Instance",
       "params": [
         {
@@ -2529,6 +2655,11 @@
           "type": "boolean"
         },
         {
+          "description": "Short names of the environment secrets this component may access.",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
           "default": "",
           "description": "Legacy: name of an existing IAM instance profile to launch with; identity.instanceProfile wins when both are set. When neither is set, the agent creates a role and instance profile for the instance when a link needs a grant.",
           "key": "iamInstanceProfile",
@@ -2584,10 +2715,12 @@
         {
           "type": "AWS::EC2::Instance"
         }
-      ]
+      ],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.AwsEks",
       "params": [
         {
@@ -2887,12 +3020,14 @@
           "type": "AWS::EKS::Cluster"
         }
       ],
+      "requiredApis": [],
       "serviceTypes": [
         "NetworkAndCompute.PaaS.Kubernetes"
       ]
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.IaaS.AwsLb",
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.AwsLb",
       "params": [
         {
@@ -2929,10 +3064,12 @@
         {
           "type": "AWS::ElasticLoadBalancingV2::LoadBalancer"
         }
-      ]
+      ],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.AwsRoute53HostedZone",
       "params": [
         {
@@ -3045,12 +3182,14 @@
         }
       ],
       "provider": "AWS",
+      "requiredApis": [],
       "serviceTypes": [
         "NetworkAndCompute.PaaS.DnsZone"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.ECS",
       "params": [
         {
@@ -3060,12 +3199,14 @@
         }
       ],
       "provider": "AWS",
+      "requiredApis": [],
       "serviceTypes": [
         "NetworkAndCompute.PaaS.ContainerPlatform"
       ]
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.PaaS.AwsEks",
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.EKS",
       "params": [
         {
@@ -3364,10 +3505,12 @@
         {
           "type": "AWS::EKS::Cluster"
         }
-      ]
+      ],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": "NetworkAndCompute.PaaS.AwsEks",
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.PaaS.Kubernetes",
       "params": [
         {
@@ -3666,10 +3809,12 @@
         {
           "type": "AWS::EKS::Cluster"
         }
-      ]
+      ],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "NetworkAndCompute.SaaS.Unmanaged",
       "params": [
         {
@@ -3692,10 +3837,12 @@
         }
       ],
       "provider": "AWS",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Observability.CaaS.Jaeger",
       "params": [
         {
@@ -3736,10 +3883,12 @@
         }
       ],
       "provider": "AWS",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Observability.CaaS.Prometheus",
       "params": [
         {
@@ -3771,10 +3920,12 @@
         }
       ],
       "provider": "AWS",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Observability.SaaS.Jaeger",
       "params": [
         {
@@ -3789,10 +3940,12 @@
         }
       ],
       "provider": "AWS",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Observability.SaaS.Prometheus",
       "params": [
         {
@@ -3807,10 +3960,12 @@
         }
       ],
       "provider": "AWS",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Security.CaaS.Ocelot",
       "params": [
         {
@@ -3865,10 +4020,12 @@
         }
       ],
       "provider": "AWS",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Security.PaaS.AwsCognito",
       "params": [
         {
@@ -3904,12 +4061,14 @@
         }
       ],
       "provider": "AWS",
+      "requiredApis": [],
       "serviceTypes": [
         "Security.PaaS.AwsCognito"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Security.SaaS.Unmanaged",
       "params": [
         {
@@ -3932,10 +4091,12 @@
         }
       ],
       "provider": "AWS",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.CaaS.CnpgCluster",
       "params": [
         {
@@ -4035,10 +4196,12 @@
         }
       ],
       "provider": "AWS",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.CaaS.CnpgDatabase",
       "params": [
         {
@@ -4104,10 +4267,12 @@
         }
       ],
       "provider": "AWS",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.AwsDocumentDb",
       "params": [
         {
@@ -4155,12 +4320,14 @@
         }
       ],
       "provider": "AWS",
+      "requiredApis": [],
       "serviceTypes": [
         "Storage.PaaS.MongoDb"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.AwsDocumentDbDatabase",
       "params": [
         {
@@ -4176,12 +4343,14 @@
       ],
       "provider": "AWS",
       "providerResources": [],
+      "requiredApis": [],
       "serviceTypes": [
         "Storage.PaaS.MongoDbDatabase"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.AwsDynamoDb",
       "params": [
         {
@@ -4229,6 +4398,7 @@
         }
       ],
       "provider": "AWS",
+      "requiredApis": [],
       "serviceTypes": [
         "Storage.PaaS.VendorSpecificKeyValueDbms",
         "Storage.PaaS.VendorSpecificDocumentDbms"
@@ -4236,6 +4406,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.AwsDynamoDbTable",
       "params": [
         {
@@ -4288,6 +4459,7 @@
         }
       ],
       "provider": "AWS",
+      "requiredApis": [],
       "serviceTypes": [
         "Storage.PaaS.VendorSpecificKeyValueEntity",
         "Storage.PaaS.VendorSpecificDocumentDatabase"
@@ -4295,6 +4467,7 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.AwsElastiCache",
       "params": [
         {
@@ -4351,12 +4524,14 @@
         }
       ],
       "provider": "AWS",
+      "requiredApis": [],
       "serviceTypes": [
         "Storage.PaaS.VendorSpecificKeyValueDbms"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.AwsElastiCacheKeyspace",
       "params": [
         {
@@ -4371,12 +4546,14 @@
         }
       ],
       "provider": "AWS",
+      "requiredApis": [],
       "serviceTypes": [
         "Storage.PaaS.VendorSpecificKeyValueEntity"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.AwsRdsMySql",
       "parameterRules": [
         {
@@ -4565,12 +4742,14 @@
           "type": "AWS::RDS::DBInstance"
         }
       ],
+      "requiredApis": [],
       "serviceTypes": [
         "Storage.PaaS.MySql"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.AwsRdsMySqlDatabase",
       "params": [
         {
@@ -4586,12 +4765,14 @@
       ],
       "provider": "AWS",
       "providerResources": [],
+      "requiredApis": [],
       "serviceTypes": [
         "Storage.PaaS.MySqlDatabase"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.AwsRdsPostgres",
       "parameterRules": [
         {
@@ -4773,12 +4954,14 @@
           "type": "AWS::RDS::DBInstance"
         }
       ],
+      "requiredApis": [],
       "serviceTypes": [
         "Storage.PaaS.PostgreSql"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.AwsRdsPostgresDatabase",
       "params": [
         {
@@ -4800,12 +4983,14 @@
       ],
       "provider": "AWS",
       "providerResources": [],
+      "requiredApis": [],
       "serviceTypes": [
         "Storage.PaaS.PostgreSqlDatabase"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.AwsS3",
       "params": [
         {
@@ -4856,12 +5041,14 @@
           "type": "AWS::S3::Bucket"
         }
       ],
+      "requiredApis": [],
       "serviceTypes": [
         "Storage.PaaS.FilesAndBlobs"
       ]
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.PostgreSqlDatabase",
       "params": [
         {
@@ -4882,10 +5069,12 @@
         }
       ],
       "provider": "AWS",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": "Storage.PaaS.AwsRdsPostgres",
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.PostgreSqlDbms",
       "parameterRules": [
         {
@@ -5066,10 +5255,12 @@
           },
           "type": "AWS::RDS::DBInstance"
         }
-      ]
+      ],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": "Storage.PaaS.AwsRdsPostgres",
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.Rds",
       "parameterRules": [
         {
@@ -5250,10 +5441,12 @@
           },
           "type": "AWS::RDS::DBInstance"
         }
-      ]
+      ],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": "Storage.PaaS.AwsS3",
+      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.S3",
       "params": [
         {
@@ -5303,10 +5496,12 @@
         {
           "type": "AWS::S3::Bucket"
         }
-      ]
+      ],
+      "requiredApis": []
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": false,
       "offerType": "Storage.SaaS.Unmanaged",
       "params": [
         {
@@ -5329,7 +5524,8 @@
         }
       ],
       "provider": "AWS",
-      "providerResources": []
+      "providerResources": [],
+      "requiredApis": []
     }
   ],
   "schemaVersion": "2.0"

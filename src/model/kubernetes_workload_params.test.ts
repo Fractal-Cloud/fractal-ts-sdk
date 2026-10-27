@@ -10,7 +10,7 @@
  * spread and secret-env parameters travel under their own names. Literals on
  * purpose: they pin the wire contract.
  */
-import {describe, it, expect} from 'vitest';
+import {afterEach, describe, it, expect, vi} from 'vitest';
 import {createFractal} from './core';
 import type {LiveSystemComponent} from './core';
 import {Workload} from './components/custom_workloads';
@@ -176,6 +176,118 @@ describe('Workload parameters on a Kubernetes workload', () => {
     expect(web.parameters.resourceRequests).toEqual({
       cpu: '100m',
       memory: '1Gi',
+    });
+  });
+
+  describe('the deprecated cpuLimit / memoryLimit on K8sWorkload', () => {
+    // Warnings are deduplicated per message (component id and keys, not
+    // values) for the process, so every case below that warns names a key
+    // set of its own.
+    const spyWarnings = () =>
+      vi.spyOn(process, 'emitWarning').mockImplementation(() => {});
+    const image = (w: WorkloadNode<'web'>) => w.withImage('registry/app:1');
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('sends them as resourceLimits, with a deprecation warning', () => {
+      const warn = spyWarnings();
+      const web = emit(image, {}, {cpuLimit: '1', memoryLimit: '1Gi'});
+      expect(web.parameters.resourceLimits).toEqual({cpu: '1', memory: '1Gi'});
+      expect(web.parameters).not.toHaveProperty('cpuLimit');
+      expect(web.parameters).not.toHaveProperty('memoryLimit');
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Sent cpuLimit as resourceLimits.cpu, memoryLimit as resourceLimits.memory.',
+        ),
+        {type: 'DeprecationWarning', code: 'FRACTAL_K8S_WORKLOAD_FLAT_LIMITS'},
+      );
+    });
+
+    it('merges per member: a flat key fills the member resourceLimits leaves unset', () => {
+      const warn = spyWarnings();
+      const web = emit(
+        image,
+        {},
+        {
+          memoryLimit: '3Gi',
+          resourceLimits: {cpu: '3'},
+        },
+      );
+      expect(web.parameters.resourceLimits).toEqual({cpu: '3', memory: '3Gi'});
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('Sent memoryLimit as resourceLimits.memory.'),
+        expect.anything(),
+      );
+    });
+
+    it('loses to the member resourceLimits sets, and says so', () => {
+      const warn = spyWarnings();
+      const web = emit(
+        image,
+        {},
+        {
+          cpuLimit: '4',
+          resourceLimits: {cpu: '5'},
+        },
+      );
+      expect(web.parameters.resourceLimits).toEqual({cpu: '5'});
+      expect(web.parameters).not.toHaveProperty('cpuLimit');
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Ignored cpuLimit (resourceLimits.cpu is set and wins).',
+        ),
+        expect.anything(),
+      );
+    });
+
+    it('fills around dev-open withResources limits, which win per member', () => {
+      spyWarnings();
+      const web = emit(
+        image,
+        {resources: {limits: {cpu: '6'}}},
+        {cpuLimit: '7', memoryLimit: '7Gi'},
+      );
+      expect(web.parameters.resourceLimits).toEqual({cpu: '6', memory: '7Gi'});
+    });
+
+    it('refuses a flat key over a LOCKED withResources limits guardrail, as resourceLimits is', () => {
+      const warn = spyWarnings();
+      const locked = (w: WorkloadNode<'web'>) =>
+        image(w).withResources({limits: {cpu: '6'}});
+      expect(() => emit(locked, {}, {memoryLimit: '7Gi'})).toThrow(
+        /'resources'.*'memoryLimit'/,
+      );
+      expect(() => emit(locked, {}, {resourceLimits: {memory: '7Gi'}})).toThrow(
+        /'resources'.*'resourceLimits'/,
+      );
+      expect(warn).not.toHaveBeenCalled();
+    });
+
+    it('warns once for the same component and keys, however often it is built', () => {
+      const warn = spyWarnings();
+      emit(image, {}, {cpuLimit: '8'});
+      emit(image, {}, {cpuLimit: '8'});
+      expect(warn).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not warn for a component it refuses', () => {
+      const warn = spyWarnings();
+      expect(() =>
+        emit(image, {}, {
+          cpuLimit: '9',
+          secretEnv: {DB_PASSWORD: 'hunter2'},
+        } as never),
+      ).toThrow('is not an environment-secret reference');
+      expect(warn).not.toHaveBeenCalled();
+    });
+
+    it('stays silent when neither is set', () => {
+      const warn = spyWarnings();
+      emit(everySetter);
+      expect(warn).not.toHaveBeenCalled();
     });
   });
 

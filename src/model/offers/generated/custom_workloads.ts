@@ -6,25 +6,30 @@ import type {OfferContract} from '../contract/offer_contract';
 export const CustomWorkloads_CaaS_ArubaWorkload = {
   offerType: 'CustomWorkloads.CaaS.ArubaWorkload',
   serviceTypes: ['CustomWorkloads.CaaS.Workload'],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'aria-agent-aruba',
-      agentVersion: 'v0.0.22',
+      agentVersion: 'v0.0.23',
       contractSchemaVersion: '2.0',
       provider: 'Aruba',
       parameterRules: [],
     },
   ],
-  params: {},
+  params: {
+    /** the short names of the environment secrets this component may read */
+    environmentSecretShortNames: {type: 'array', required: false},
+  },
 } as const satisfies OfferContract;
 
 export const CustomWorkloads_CaaS_KubernetesWorkload = {
   offerType: 'CustomWorkloads.CaaS.KubernetesWorkload',
   serviceTypes: ['NetworkAndCompute.CaaS.KubernetesWorkload'],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.8.1',
+      agentVersion: 'v1.14.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [
@@ -73,18 +78,6 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
                       {in: [0], key: '/autoscaling/minReplicas'},
                     ],
                   },
-                ],
-              },
-            },
-            {
-              id: 'flat-hpa-replicas-zero',
-              then: {forbidden: ['maxReplicas']},
-              when: {
-                allOf: [
-                  {equals: 0, key: 'replicas'},
-                  {key: 'autoscaling', present: false},
-                  {key: 'maxReplicas', present: true},
-                  {not: {in: [0], key: 'maxReplicas'}},
                 ],
               },
             },
@@ -174,6 +167,7 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
         properties: {
           config: {
             maxReplicas: {
+              aliases: [{key: '/maxReplicas'}],
               constraints: {maximum: 2147483647, minimum: 0},
               type: 'integer',
             },
@@ -200,13 +194,11 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
     },
     containerPort: {type: 'integer', required: false, default: 80},
     cpu: {type: 'string', required: false, default: '100m'},
-    /** alias of resourceLimits.cpu */
-    cpuLimit: {type: 'string', required: false},
-    /** alias of resourceRequests.cpu */
-    cpuRequest: {type: 'string', required: false},
     /** [{name, access}]: environment DNS zones the workload may read or write programmatically, with its own cloud identity, which the zone's agent grants access to */
     dnsZones: {type: 'array', required: false},
     env: {type: 'object', required: false, default: {}},
+    /** the short names of the environment secrets this component may read */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** alias: {path, port} for readiness and liveness */
     healthCheck: {
       type: 'object',
@@ -290,8 +282,6 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
       },
     },
     manifestUri: {type: 'string', required: false},
-    /** alias of autoscaling.maxReplicas */
-    maxReplicas: {type: 'integer', required: false},
     maxSurge: {
       type: 'string',
       required: false,
@@ -305,10 +295,6 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
       constraints: {level: 'warn', pattern: '[0-9]{1,9}|(?:100|[1-9]?[0-9])%'},
     },
     memory: {type: 'string', required: false, default: '128Mi'},
-    /** alias of resourceLimits.memory */
-    memoryLimit: {type: 'string', required: false},
-    /** alias of resourceRequests.memory */
-    memoryRequest: {type: 'string', required: false},
     namespace: {
       type: 'string',
       required: false,
@@ -372,15 +358,49 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
       },
     },
     replicas: {type: 'integer', required: false, default: 1},
+    /** {cpu, memory} */
     resourceLimits: {
       type: 'object',
       required: false,
       default: {cpu: '500m', memory: '512Mi'},
+      constraints: {
+        properties: {
+          config: {
+            cpu: {
+              aliases: [{key: '/cpuLimit'}],
+              type: 'string',
+              typeLevel: 'warn',
+            },
+            memory: {
+              aliases: [{key: '/memoryLimit'}],
+              type: 'string',
+              typeLevel: 'warn',
+            },
+          },
+        },
+      },
     },
+    /** {cpu, memory} */
     resourceRequests: {
       type: 'object',
       required: false,
       default: {cpu: '100m', memory: '128Mi'},
+      constraints: {
+        properties: {
+          config: {
+            cpu: {
+              aliases: [{key: '/cpuRequest'}],
+              type: 'string',
+              typeLevel: 'warn',
+            },
+            memory: {
+              aliases: [{key: '/memoryRequest'}],
+              type: 'string',
+              typeLevel: 'warn',
+            },
+          },
+        },
+      },
     },
     /** NAME -> {"$envSecret": "<shortName>"} */
     secretEnv: {type: 'object', required: false, sensitive: true},
@@ -476,10 +496,11 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
 export const CustomWorkloads_CaaS_OpenshiftWorkload = {
   offerType: 'CustomWorkloads.CaaS.OpenshiftWorkload',
   serviceTypes: ['CustomWorkloads.CaaS.KubernetesWorkload'],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'aria-agent-openshift',
-      agentVersion: 'v0.1.0',
+      agentVersion: 'v0.1.1',
       contractSchemaVersion: '2.0',
       provider: 'RedHat',
       parameterRules: [],
@@ -494,6 +515,8 @@ export const CustomWorkloads_CaaS_OpenshiftWorkload = {
     cpuLimit: {type: 'string', required: false},
     /** CPU request per container */
     cpuRequest: {type: 'string', required: false},
+    /** the short names of the environment secrets this component may read */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** JSON-encoded environment variables (name to value). `env` is accepted as an alias; `envVars` wins when both are set */
     envVars: {type: 'string', required: false},
     /** Container image */
@@ -524,10 +547,11 @@ export const CustomWorkloads_CaaS_OpenshiftWorkload = {
 export const CustomWorkloads_FaaS_AwsLambda = {
   offerType: 'CustomWorkloads.FaaS.AwsLambda',
   serviceTypes: ['NetworkAndCompute.FaaS.Workload'],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -538,6 +562,8 @@ export const CustomWorkloads_FaaS_AwsLambda = {
     codeBase64: {type: 'string', required: false},
     /** Environment variables of the function, as a name to value map. */
     environment: {type: 'object', required: false, default: {}},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Name of the Lambda function. When unset, the component id. */
     functionName: {type: 'string', required: false, default: ''},
     /** Function entry point in the runtime's handler format (e.g. com.example.Handler::handleRequest, app.handler). Required for a zip-packaged function, which fails without it; ignored for a container image. */
@@ -562,10 +588,11 @@ export const CustomWorkloads_FaaS_AwsLambda = {
 export const CustomWorkloads_FaaS_AzureFunction = {
   offerType: 'CustomWorkloads.FaaS.AzureFunction',
   serviceTypes: ['NetworkAndCompute.FaaS.Workload'],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -576,8 +603,10 @@ export const CustomWorkloads_FaaS_AzureFunction = {
     appServicePlan: {type: 'object', required: false, default: {}},
     /** Application settings as a name to value map, added to the settings the agent sets itself (AzureWebJobsStorage, FUNCTIONS_EXTENSION_VERSION, FUNCTIONS_WORKER_RUNTIME and the package settings). A declared name replaces the agent's setting of that name, compared without regard to case, so FUNCTIONS_WORKER_RUNTIME can be chosen here. A change alone is not detected as drift on an existing app. */
     appSettings: {type: 'object', required: false, default: {}},
-    /** Site configuration: {applicationStack?: {nodeVersion | pythonVersion | dotnetVersion | javaVersion | powerShellVersion}, alwaysOn? (true), http2Enabled? (true), minimumTlsVersion? (1.2), ftpsState? (Disabled), healthCheckPath?, corsSettings?: {allowedOrigins, supportCredentials?}}. The first applicationStack version set picks the runtime; when none is, Node 20. dotnetVersion runs the .NET isolated worker (FUNCTIONS_WORKER_RUNTIME dotnet-isolated): the in-process model is retired (.NET 8, the last version offering it, leaves support on 2026-11-10). A deployed app running the in-process worker keeps it, with a contract warning; appSettings.FUNCTIONS_WORKER_RUNTIME chooses explicitly. On an existing app, only a runtime stack change is detected as drift. */
+    /** Site configuration: {applicationStack?: {nodeVersion | pythonVersion | dotnetVersion | javaVersion | powerShellVersion}, alwaysOn? (true), http2Enabled? (true), minimumTlsVersion? (1.2), ftpsState? (Disabled), healthCheckPath?, corsSettings?: {allowedOrigins, supportCredentials?}}. The first applicationStack version set picks the runtime; when none is, Node 20. dotnetVersion runs the .NET isolated worker (FUNCTIONS_WORKER_RUNTIME dotnet-isolated): the in-process model is retired (.NET 8, the last version offering it, leaves support on 2026-11-10). A deployed app running the in-process worker keeps it, with a contract warning. A new app whose zip package was built for the in-process worker gets it, with a contract warning; one whose worker its artifact does not show gets the isolated worker, with a contract warning. appSettings.FUNCTIONS_WORKER_RUNTIME chooses explicitly. On an existing app, only a runtime stack change is detected as drift. */
     configuration: {type: 'object', required: false, default: {}},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Managed identity of the app as {type}, type an Azure managed identity type such as 'SystemAssigned' or 'None'. When unset, SystemAssigned, which a container-image function uses to pull from the registry. The identity's principal ID is published as the principalId output. */
     identity: {type: 'object', required: false, default: {}},
     /** Overrides how sourceArtifact is classified: 'image' or 'zip'. When unset, detected from the artifact's manifest. 'zip' on an artifact that is a container image fails the component. */
@@ -599,10 +628,11 @@ export const CustomWorkloads_FaaS_AzureFunction = {
 export const CustomWorkloads_FaaS_GcpFunction = {
   offerType: 'CustomWorkloads.FaaS.GcpFunction',
   serviceTypes: ['NetworkAndCompute.FaaS.Workload'],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -611,16 +641,49 @@ export const CustomWorkloads_FaaS_GcpFunction = {
   params: {
     /** Function the runtime invokes: for Java the fully qualified class name, for Python or Node.js the function name. Required to create a function; a deployed function without it keeps the entry point it was built with. */
     entryPoint: {type: 'string', required: false},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Legacy spelling of region, read only when region is unset. */
     location: {type: 'string', required: false},
     /** Region the function is deployed in, e.g. us-central1. When unset, location, else the Live System's region, else the region of the environment's GCP agent (else the region the agent is deployed in), else the location a deployed function recorded; with none of these the function is refused, no region is assumed. */
     region: {type: 'string', required: false},
-    /** Cloud Functions (2nd gen) runtime id matching the function's source, e.g. java21, python312 or nodejs24. Required to create a function: no runtime is assumed, and a new function without it is refused. A deployed function without it keeps the runtime it runs on. */
-    runtime: {type: 'string', required: false},
+    /** Cloud Functions (2nd gen) runtime id matching the function's source, e.g. java21, python312 or nodejs24. A version spelling (python3.12, nodejs-22, node22) is read as the id it names. A runtime the region does not offer is refused before anything is built; the values listed are the usual ones, the region's own list decides. Required to create a function: no runtime is assumed, and a new function without it is refused. A deployed function without it keeps the runtime it runs on. */
+    runtime: {
+      type: 'string',
+      required: false,
+      values: [
+        'nodejs18',
+        'nodejs20',
+        'nodejs22',
+        'nodejs24',
+        'python39',
+        'python310',
+        'python311',
+        'python312',
+        'python313',
+        'go121',
+        'go122',
+        'go123',
+        'go124',
+        'java17',
+        'java21',
+        'ruby32',
+        'ruby33',
+        'ruby34',
+        'php82',
+        'php83',
+        'php84',
+        'dotnet8',
+      ],
+      valuesCaseInsensitive: true,
+      valuesLevel: 'warn',
+    },
     /** OCI artifact reference of the function's source zip, e.g. europe-docker.pkg.dev/<project>/<repository>/<function>:<tag>. The agent copies the zip to a staging bucket it owns and redeploys only when the artifact digest changes; a container image is refused. The legacy sourceBucket + sourceObject pair is accepted in its place. Required to create a function; a deployed function without a source is kept as it is. */
     sourceArtifact: {type: 'string', required: false},
     /** Deprecated: name of the Cloud Storage bucket (without gs://) holding a source zip staged outside Fractal. Read only when sourceArtifact is unset, with sourceObject; an existing function deployed this way is never updated. */
     sourceBucket: {type: 'string', required: false},
+    /** Python only: path of the file in the source zip that holds the entry point, relative to the zip root, passed to the build as GOOGLE_FUNCTION_SOURCE. When unset the build reads main.py at the zip root. A source zip without that file is refused before anything is built. */
+    sourceFile: {type: 'string', required: false},
     /** Deprecated: object name of the source zip in sourceBucket, e.g. functions/hello-http.zip. Read only when sourceArtifact is unset. */
     sourceObject: {type: 'string', required: false},
   },
@@ -629,10 +692,11 @@ export const CustomWorkloads_FaaS_GcpFunction = {
 export const CustomWorkloads_FaaS_GoogleFunction = {
   offerType: 'CustomWorkloads.FaaS.GoogleFunction',
   serviceTypes: [],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'CustomWorkloads.FaaS.GcpFunction',
@@ -642,16 +706,49 @@ export const CustomWorkloads_FaaS_GoogleFunction = {
   params: {
     /** Function the runtime invokes: for Java the fully qualified class name, for Python or Node.js the function name. Required to create a function; a deployed function without it keeps the entry point it was built with. */
     entryPoint: {type: 'string', required: false},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Legacy spelling of region, read only when region is unset. */
     location: {type: 'string', required: false},
     /** Region the function is deployed in, e.g. us-central1. When unset, location, else the Live System's region, else the region of the environment's GCP agent (else the region the agent is deployed in), else the location a deployed function recorded; with none of these the function is refused, no region is assumed. */
     region: {type: 'string', required: false},
-    /** Cloud Functions (2nd gen) runtime id matching the function's source, e.g. java21, python312 or nodejs24. Required to create a function: no runtime is assumed, and a new function without it is refused. A deployed function without it keeps the runtime it runs on. */
-    runtime: {type: 'string', required: false},
+    /** Cloud Functions (2nd gen) runtime id matching the function's source, e.g. java21, python312 or nodejs24. A version spelling (python3.12, nodejs-22, node22) is read as the id it names. A runtime the region does not offer is refused before anything is built; the values listed are the usual ones, the region's own list decides. Required to create a function: no runtime is assumed, and a new function without it is refused. A deployed function without it keeps the runtime it runs on. */
+    runtime: {
+      type: 'string',
+      required: false,
+      values: [
+        'nodejs18',
+        'nodejs20',
+        'nodejs22',
+        'nodejs24',
+        'python39',
+        'python310',
+        'python311',
+        'python312',
+        'python313',
+        'go121',
+        'go122',
+        'go123',
+        'go124',
+        'java17',
+        'java21',
+        'ruby32',
+        'ruby33',
+        'ruby34',
+        'php82',
+        'php83',
+        'php84',
+        'dotnet8',
+      ],
+      valuesCaseInsensitive: true,
+      valuesLevel: 'warn',
+    },
     /** OCI artifact reference of the function's source zip, e.g. europe-docker.pkg.dev/<project>/<repository>/<function>:<tag>. The agent copies the zip to a staging bucket it owns and redeploys only when the artifact digest changes; a container image is refused. The legacy sourceBucket + sourceObject pair is accepted in its place. Required to create a function; a deployed function without a source is kept as it is. */
     sourceArtifact: {type: 'string', required: false},
     /** Deprecated: name of the Cloud Storage bucket (without gs://) holding a source zip staged outside Fractal. Read only when sourceArtifact is unset, with sourceObject; an existing function deployed this way is never updated. */
     sourceBucket: {type: 'string', required: false},
+    /** Python only: path of the file in the source zip that holds the entry point, relative to the zip root, passed to the build as GOOGLE_FUNCTION_SOURCE. When unset the build reads main.py at the zip root. A source zip without that file is refused before anything is built. */
+    sourceFile: {type: 'string', required: false},
     /** Deprecated: object name of the source zip in sourceBucket, e.g. functions/hello-http.zip. Read only when sourceArtifact is unset. */
     sourceObject: {type: 'string', required: false},
   },
@@ -660,37 +757,40 @@ export const CustomWorkloads_FaaS_GoogleFunction = {
 export const CustomWorkloads_IaaS_Workload = {
   offerType: 'CustomWorkloads.IaaS.Workload',
   serviceTypes: [],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
     },
   ],
   params: {
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {
       type: 'string',
@@ -707,16 +807,19 @@ export const CustomWorkloads_IaaS_Workload = {
 export const CustomWorkloads_PaaS_AwsEcsService = {
   offerType: 'CustomWorkloads.PaaS.AwsEcsService',
   serviceTypes: [],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
   ],
   params: {
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {type: 'string', required: false},
   },
@@ -725,10 +828,11 @@ export const CustomWorkloads_PaaS_AwsEcsService = {
 export const CustomWorkloads_PaaS_AzureContainerApp = {
   offerType: 'CustomWorkloads.PaaS.AzureContainerApp',
   serviceTypes: ['NetworkAndCompute.CaaS.AzureContainerAppWorkload'],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -737,6 +841,8 @@ export const CustomWorkloads_PaaS_AzureContainerApp = {
   params: {
     /** CPU cores for the container (e.g. 0.25, 0.5, 1). When unset, 0.5. Must be a combination with memory that Azure Container Apps accepts. */
     cpu: {type: 'number', required: false, default: 0.5},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** When true, the app is published on a public FQDN with no authentication in front of it. When unset, false: ingress is internal to the Container Apps environment. */
     externalIngress: {type: 'boolean', required: false, default: false},
     /** Container image reference to run, e.g. 'registry/repository:tag'. Required to create: a deployed one declared without it keeps the image it runs. A change is applied as a new revision. */
@@ -762,10 +868,11 @@ export const CustomWorkloads_PaaS_AzureContainerInstance = {
     'NetworkAndCompute.CaaS.AzureContainerInstanceWorkload',
     'NetworkAndCompute.PaaS.Workload',
   ],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -774,8 +881,19 @@ export const CustomWorkloads_PaaS_AzureContainerInstance = {
   params: {
     /** CPU cores requested for the container (fractions allowed). When unset, 1. Changing it deletes and recreates the container group. */
     cpu: {type: 'number', required: false, default: 1},
-    /** DNS label for the public IP, giving the FQDN '<label>.<region>.azurecontainer.io'. Used only when publicIp is true. Applied when the container group is created. */
-    dnsNameLabel: {type: 'string', required: false, default: ''},
+    /** DNS label for the public IP, giving the FQDN '<label>.<region>.azurecontainer.io'. 5 to 63 letters, digits and hyphens, not starting or ending with a hyphen; it must be unique in the region. When unset or blank, no DNS name. Used only when publicIp is true. Applied when the container group is created: a new public group with an invalid label is refused. */
+    dnsNameLabel: {
+      type: 'string',
+      required: false,
+      constraints: {
+        level: 'warn',
+        maxLength: 63,
+        minLength: 5,
+        pattern: '[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]',
+      },
+    },
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Container image reference to run, e.g. 'registry/repository:tag'. Required to create: a deployed one declared without it keeps the image it runs. Changing it deletes and recreates the container group. */
     image: {type: 'string', required: false},
     /** Azure location the container group is created in (e.g. 'westeurope'). When unset, the component's region: 'region', else the legacy 'azureRegion', else its resource group's region. Applied when the container group is created. */
@@ -789,23 +907,32 @@ export const CustomWorkloads_PaaS_AzureContainerInstance = {
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
     /** Container group restart policy: Always, OnFailure or Never (case-sensitive). Any other value means Always. Applied when the container group is created. */
-    restartPolicy: {type: 'string', required: false, default: 'Always'},
+    restartPolicy: {
+      type: 'string',
+      required: false,
+      default: 'Always',
+      values: ['Always', 'OnFailure', 'Never'],
+      valuesLevel: 'warn',
+    },
   },
 } as const satisfies OfferContract;
 
 export const CustomWorkloads_PaaS_GcpCloudRun = {
   offerType: 'CustomWorkloads.PaaS.GcpCloudRun',
   serviceTypes: [],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
   },
@@ -817,10 +944,11 @@ export const CustomWorkloads_PaaS_WebApp = {
     'NetworkAndCompute.CaaS.AzureWebAppWorkload',
     'NetworkAndCompute.PaaS.Workload',
   ],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -859,6 +987,8 @@ export const CustomWorkloads_PaaS_WebApp = {
     dailyMemoryTimeQuota: {type: 'integer', required: false, default: 0},
     /** Whether the site is enabled; false creates it stopped. When unset, the site is enabled (Azure's default). Applied when the web app is created; later changes are not applied to an existing app. */
     enabled: {type: 'boolean', required: false},
+    /** Short names of the environment secrets this component may access. */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** ARM resource ID of the App Service Environment that hosts the app. When unset, the multi-tenant service. Applied when the web app is created; later changes are not applied to an existing app. */
     hostingEnvironmentProfileId: {type: 'string', required: false, default: ''},
     /** When true, the app's public host names are disabled and it is reachable only through API Management. When unset, Azure's default (false). Applied when the web app is created; later changes are not applied to an existing app. */
@@ -908,28 +1038,28 @@ export const CustomWorkloads_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.25.11',
+      agentVersion: 'v8.31.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
