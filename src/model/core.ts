@@ -197,9 +197,11 @@ export const defineOffer = <C extends string, Cfg>(
     if (selected !== undefined) {
       selectionFor(selected);
     }
-    // Present on every offer, so an offer whose config type admits a selection
-    // its own contract does not (a composite offer drawing its config from
-    // several contracts) refuses by name instead of failing as no function.
+    // Only on an offer whose contract can access secrets, as its type says.
+    if (spec.contract?.canAccessSecrets !== true) {
+      return constructOffer(config) as Offer<C, Cfg> &
+        EnvironmentSecretsSelection<C, Cfg>;
+    }
     return {
       ...constructOffer(config),
       withEnvironmentSecrets: (shortNames: readonly string[]) =>

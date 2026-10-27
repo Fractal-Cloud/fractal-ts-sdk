@@ -587,13 +587,15 @@ describe('generator', () => {
 });
 
 describe('the committed contracts', () => {
+  // Regenerates and formats every module: ~3s alone under coverage, past
+  // vitest's 5s default on a loaded machine.
   it('are generated from the committed snapshot, untouched', async () => {
     const files = await generateFromSnapshot('.');
     expect(readdirSync(GENERATED_DIR).sort()).toEqual([...files.keys()].sort());
     for (const [name, text] of files) {
       expect(readFileSync(`${GENERATED_DIR}/${name}`, 'utf8'), name).toBe(text);
     }
-  });
+  }, 30_000);
 
   it('come from the agent releases contracts/sources.json pins', () => {
     const projections = readSnapshot('.');

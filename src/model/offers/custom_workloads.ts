@@ -441,14 +441,11 @@ export const K8sWorkload = defineOffer<
   ContractConfig<
     typeof CustomWorkloads_CaaS_KubernetesWorkload,
     | 'autoscaling'
-    | 'cpuRequest'
     | 'dnsZones'
     | 'env'
     | 'healthCheck'
     | 'livenessProbe'
-    | 'maxReplicas'
     | 'maxSurge'
-    | 'memoryRequest'
     | 'nodeSelector'
     | 'podDisruptionBudget'
     | 'preStopSleepSeconds'
@@ -462,7 +459,20 @@ export const K8sWorkload = defineOffer<
       ssmParameters?: WorkloadSsmParameters;
       sesIdentityArns?: string[];
     }
-  >
+  > & {
+    /**
+     * @deprecated caas-k8s v1.12.0 declares this only as an alias of
+     * `resourceLimits.cpu`. Sent as `resourceLimits.cpu`, with a warning;
+     * pass `resourceLimits: {cpu}` instead.
+     */
+    cpuLimit?: string;
+    /**
+     * @deprecated caas-k8s v1.12.0 declares this only as an alias of
+     * `resourceLimits.memory`. Sent as `resourceLimits.memory`, with a
+     * warning; pass `resourceLimits: {memory}` instead.
+     */
+    memoryLimit?: string;
+  }
 >({
   satisfies: 'CustomWorkloads.Workload',
   // Exported symbol name is public API and stays `K8sWorkload`; only the wire

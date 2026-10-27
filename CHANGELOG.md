@@ -9,7 +9,82 @@ The version published for a release is the GitHub release tag: `release.yml` run
 `npm version <tag>` at publish time, so `package.json` on `main` is not the source
 of truth for what is on npm.
 
-## Unreleased
+## 2.15.0
+
+### Breaking — what to change when upgrading
+
+2.15.0 is a minor release: it re-pins the agent contracts (below), and two of the contract
+changes refuse what 2.14.0 accepted.
+
+- **`AzureApiManagement` `skuName` is checked against the agent's tiers.** A value outside
+  `Consumption`, `Developer`, `Basic`, `Standard`, `Premium`, `BasicV2`, `StandardV2` with
+  their unit suffixes (`Developer_1`, `Premium_2`, `StandardV2_3`, ...) compiled and was sent
+  before; it is now refused while the Live System is built. The agent refused it for a new
+  instance anyway; a deployed instance keeps its SKU. Use a listed value.
+- **`withEnvironmentSecrets` exists only on offers that can access environment secrets**, at
+  runtime as well as in the types. It was never in the type of any other offer, so TypeScript
+  callers see no change; a JavaScript caller calling it on such an offer now gets a
+  `TypeError` (not a function) instead of a refusal naming the offer. Setting the raw
+  `environmentSecretShortNames` config key on such an offer is still refused by name.
+
+### Added — `withEnvironmentSecrets` on the shipped offers
+
+With the contracts re-pinned, these offers can access environment secrets and have
+`withEnvironmentSecrets(shortNames)`: `EcsService`, `CloudRun`, `AzureContainerApp`,
+`AwsLambda`, `AzureFunction`, `GcpFunction`, `Ec2Instance`, `AzureVm`, `GcpVm`, `OciInstance`,
+`K8sWorkload`, `CaaSSparkCluster`, `CaaSSparkJob`, `OpenshiftWorkload`, `OpenshiftVm`, and the
+AWS, Azure and GCP Databricks clusters and jobs (2.14.0 shipped the method with no offer
+flagged).
+
+### Added — `GrafanaLoki` `retainStorageOnDelete`
+
+caas-k8s v1.14.0: `GrafanaLoki({retainStorageOnDelete: true})` keeps the object storage the
+agent made for Loki, and the logs in it, when the component is deleted. Default `false`.
+
+### Deprecated — `K8sWorkload` `cpuLimit` and `memoryLimit`
+
+caas-k8s (from v1.12.0) no longer declares the flat `cpuRequest`, `memoryRequest`, `cpuLimit`,
+`memoryLimit` and `maxReplicas`: they are aliases of `resourceRequests.{cpu,memory}`,
+`resourceLimits.{cpu,memory}` and `autoscaling.maxReplicas`. The SDK already sent the nested
+keys for the `Workload` setters, so nothing deployed changes.
+
+`K8sWorkload({cpuLimit, memoryLimit})` still compiles, marked `@deprecated`. Like the agent, the
+SDK merges per member: a flat value is sent as its `resourceLimits` member when that member is
+unset (by `resourceLimits` or `withResources({limits})`), and loses to it otherwise. Over a
+locked `withResources({limits})` guardrail it is refused, as `resourceLimits` is. A
+`DeprecationWarning` (`FRACTAL_K8S_WORKLOAD_FLAT_LIMITS`) says which keys were sent and which
+ignored, once per component id and keys for the process. Pass `resourceLimits: {cpu, memory}`
+instead.
+
+### Changed — contracts re-pinned
+
+The offer definitions are generated from fractal-cloud-agents **v8.31.0** (aws, azure, gcp,
+oci; were v8.25.11), aria-agent-caas-k8s **v1.14.0** (was v1.8.1), aria-agent-aruba
+**v0.0.23** (was v0.0.22) and aria-agent-openshift **v0.1.1** (was v0.1.0). What changes,
+beyond the sections above:
+
+- `canAccessSecrets` and `environmentSecretShortNames` on 51 agent declarations (44 generated
+  contracts once offers several agents declare are merged).
+- GCP `GcpFunction` takes `sourceFile` (Python: the entry-point file in the source zip), and
+  `runtime` lists the usual runtime ids (a warning, not a refusal: the region decides).
+- GCP `NetworkAndCompute.PaaS.CloudRun` (the Cloud Run container platform) declares `region`
+  only: the agent creates no resource for it, and `NetworkAndCompute.CaaS.CloudRunService` is no
+  longer published as an alias of it. No SDK offer emits the platform type.
+- Azure Container Instance `dnsNameLabel` (5 to 63 characters, warning) and `restartPolicy`
+  (`Always`, `OnFailure`, `Never`, warning) publish their checks.
+- caas-k8s publishes MinIO as two offers: `Storage.CaaS.MinioTenant` (what `MinIO` emits,
+  unchanged) now serves only `Storage.CaaS.MinIO`, and the new `BigData.CaaS.MinioTenant` serves
+  `BigData.CaaS.MinIO`, as the catalogue already offered it. The SDK reads no service type.
+- New agent offers without an SDK offer yet: Azure `Messaging.PaaS.AzureRelayHybridConnection`,
+  caas-k8s `BigData.CaaS.MinioTenant` and `Storage.CaaS.MinioBucket`.
+- caas-k8s `TraefikGateway` `chartVersion` defaults to 42.0.0 (was 39.0.9).
+- Agent behavior changes, no key changed (descriptions updated): Traefik v3 (v3.7.15) with
+  traces over OTLP/HTTP only (a non-OTLP `tracing.jaeger` endpoint is remapped to
+  `http://<host>:4318/v1/traces` and reported in `contractWarnings`); a new .NET Azure Function
+  with no declared `FUNCTIONS_WORKER_RUNTIME` runs the worker its zip package is built for.
+- Other changes are description text only.
+
+## 2.14.0
 
 ### Added — `withEnvironmentSecrets` on offers that can access environment secrets
 
