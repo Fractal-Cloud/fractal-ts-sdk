@@ -110,7 +110,8 @@ const lockedOverride = (
  * parameter to the part of its value that belongs to `contract` (the caller has
  * already removed the neutral keys). An explicitly set canonical value wins,
  * unless a neutral value it would discard is a locked guardrail, which is
- * refused (the same rule as the image, see `withContractImageName`).
+ * refused (the same rule as the image, see `withContractImageName`). A canonical
+ * key locked without a value is not filled by an open neutral value either.
  */
 const adopt = (
   params: Record<string, unknown>,
@@ -130,6 +131,14 @@ const adopt = (
       throw lockedOverride(componentId, lockedNeutral, contract);
     }
     return;
+  }
+  if (locked.includes(contract) && !supplied.some(k => locked.includes(k))) {
+    throw new Error(
+      `Parameter '${contract}' on '${componentId}' is a locked guardrail, and ` +
+        `'${supplied[0]}' would set it without the lock noticing. Remove the ` +
+        `'${supplied[0]}' value, or drop the guardrail if '${contract}' is ` +
+        'meant to be dev-open.',
+    );
   }
   const converted = toContract(sources);
   if (converted !== undefined) {
@@ -246,17 +255,26 @@ const FLAT_LIMITS = [
 
 /**
  * Deprecation warnings already emitted, so a repeated build warns once. A
- * message names the component id and the keys, not their values.
+ * message names the component id and the keys, not their values. Bounded: past
+ * `FLAT_LIMIT_WARNINGS_MAX` distinct messages it starts over, so a long-lived process may
+ * warn again but does not grow without limit.
  */
 const warned = new Set<string>();
+export const FLAT_LIMIT_WARNINGS_MAX = 1000;
+
+/** Test-only: forget which deprecation warnings were emitted. */
+export const resetFlatLimitWarnings = (): void => {
+  warned.clear();
+};
 
 /**
  * `cpuLimit` and `memoryLimit` were contract keys until caas-k8s v1.12.0, which
  * declares them only as aliases of `resourceLimits.{cpu,memory}`. Like the
  * agent, a flat value fills its member when that member is unset and loses to
- * it otherwise. Over a locked `resources` limits guardrail it is refused, as
- * `resourceLimits` is (see `adopt`). Returns the deprecation warning to emit,
- * if any.
+ * it otherwise. It is refused over a locked limits guardrail, whether locked as
+ * `resources` (as `resourceLimits` is there, see `adopt`) or as `resourceLimits`
+ * itself, and a locked flat value is refused where a set member would discard
+ * it. Returns the deprecation warning to emit, if any.
  */
 const mergeFlatLimits = (
   params: Record<string, unknown>,
@@ -271,17 +289,26 @@ const mergeFlatLimits = (
     if (!isSupplied(neutral[flat])) {
       continue;
     }
-    if (locked.includes('resources') && isSupplied(lockedLimits)) {
+    const lockedKey =
+      locked.includes('resources') && isSupplied(lockedLimits)
+        ? 'resources'
+        : locked.includes(KEY.resourceLimits)
+          ? KEY.resourceLimits
+          : undefined;
+    if (lockedKey !== undefined) {
       throw new Error(
-        `Parameter 'resources' on '${componentId}' is a locked guardrail, and ` +
+        `Parameter '${lockedKey}' on '${componentId}' is a locked guardrail, and ` +
           `'${flat}' (deprecated, an alias of ${KEY.resourceLimits}.${member}) ` +
-          'would add to its limits without the lock noticing. Remove the ' +
+          'would change its limits without the lock noticing. Remove the ' +
           `'${flat}' override, or drop the guardrail if the limits are meant to ` +
           'be dev-open.',
       );
     }
     const limits = asRecord(params[KEY.resourceLimits]);
     if (isSupplied(limits[member])) {
+      if (locked.includes(flat)) {
+        throw lockedOverride(componentId, flat, KEY.resourceLimits);
+      }
       ignored.push(`${flat} (${KEY.resourceLimits}.${member} is set and wins)`);
       continue;
     }
@@ -424,6 +451,9 @@ export const toKubernetesWorkloadParameters = (
   moveSecretRefsToSecretEnv(params, componentId);
   // Last, so a component refused above does not also warn.
   if (flatLimitsWarning !== undefined && !warned.has(flatLimitsWarning)) {
+    if (warned.size >= FLAT_LIMIT_WARNINGS_MAX) {
+      warned.clear();
+    }
     warned.add(flatLimitsWarning);
     process.emitWarning(flatLimitsWarning, {
       type: 'DeprecationWarning',

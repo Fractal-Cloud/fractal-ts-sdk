@@ -606,6 +606,21 @@ describe('offers and the contracts their agents publish', () => {
     expect(vm('AzureServiceBus')).not.toHaveProperty('tier');
   });
 
+  it('runs a Cloud Run workload as a CloudRunService, never as the resourceless platform', () => {
+    // From fractal-cloud-agents v8.31.0 NetworkAndCompute.PaaS.CloudRun is the
+    // Cloud Run container platform: it declares `region` only and creates
+    // nothing. The workload keys live on NetworkAndCompute.CaaS.CloudRunService.
+    const platform = CONTRACTS.get('NetworkAndCompute.PaaS.CloudRun')!;
+    expect(Object.keys(platform.params)).toEqual(['region']);
+    const [c] = emitted('CloudRun', Object.fromEntries(OFFERS)['CloudRun']);
+    expect(c.type).toBe('NetworkAndCompute.CaaS.CloudRunService');
+    expect(
+      OFFERS.filter(([, o]) => o.offerType === platform.offerType).map(
+        ([n]) => n,
+      ),
+    ).toEqual([]);
+  });
+
   it('emits an ECS workload as a task definition and the service that depends on it', () => {
     const ecs = Object.fromEntries(OFFERS)['EcsService'];
     const [task, service] = ecs({launchType: 'FARGATE'} as never).instantiate({

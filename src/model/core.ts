@@ -16,6 +16,7 @@
  *     (`select`), with no global provider; mixed vendors are normal.
  */
 
+import {isDeepStrictEqual} from 'node:util';
 import {contractConfigProblem} from './offers/contract/contract_config_problem';
 import type {ComponentReference} from './component_reference';
 import type {OfferContract} from './offers/contract/offer_contract';
@@ -239,6 +240,9 @@ export const defineOffer = <C extends string, Cfg>(
           }
         : undefined,
     instantiate: raw => {
+      // A config key set to undefined is not set: spread as an own property it
+      // would erase the parameter, locked or open, without a word.
+      const cfg = withoutUndefined(config);
       const ctx: InstantiationContext = spec.neutral
         ? {
             ...raw,
@@ -247,13 +251,14 @@ export const defineOffer = <C extends string, Cfg>(
               componentId: raw.id,
               parameters: raw.parameters,
               locked: raw.locked ?? [],
-              config,
+              config: cfg,
               rules: spec.neutral,
             }),
           }
         : raw;
+      refuseConfigOverLockedGuardrail(offerType, ctx, cfg);
       const emitted = spec.instantiate
-        ? spec.instantiate(ctx, config)
+        ? spec.instantiate(ctx, cfg)
         : [
             {
               id: ctx.id,
@@ -263,7 +268,7 @@ export const defineOffer = <C extends string, Cfg>(
               deliveryModel: spec.deliveryModel,
               parameters: {
                 ...ctx.parameters,
-                ...(config as Record<string, unknown>),
+                ...(cfg as Record<string, unknown>),
               },
               dependencies: ctx.dependencies,
               links: ctx.links,
@@ -271,7 +276,7 @@ export const defineOffer = <C extends string, Cfg>(
           ];
       // A secret selection a custom `instantiate` drops would deploy a
       // component without the access it was given, silently.
-      const selected = (config as Record<string, unknown> | undefined)?.[
+      const selected = (cfg as Record<string, unknown> | undefined)?.[
         ENVIRONMENT_SECRET_SHORT_NAMES_KEY
       ];
       if (
@@ -294,6 +299,55 @@ export const defineOffer = <C extends string, Cfg>(
     satisfies: spec.satisfies,
     neutral: spec.neutral,
   });
+};
+
+/** The config without its own keys whose value is undefined. */
+const withoutUndefined = <Cfg>(config: Cfg): Cfg =>
+  config === null || typeof config !== 'object'
+    ? config
+    : (Object.fromEntries(
+        Object.entries(config as Record<string, unknown>).filter(
+          ([, v]) => v !== undefined,
+        ),
+      ) as Cfg);
+
+/**
+ * The same parameter value. A list also equals its comma-separated form: some
+ * offers send lists that way, so a locked `'a,b'` is repeated by `['a', 'b']`.
+ */
+const sameValue = (a: unknown, b: unknown): boolean =>
+  isDeepStrictEqual(a, b) ||
+  (Array.isArray(a) && typeof b === 'string' && a.join(',') === b) ||
+  (Array.isArray(b) && typeof a === 'string' && b.join(',') === a);
+
+/**
+ * Offer config is spread over the component's parameters, so a config key named
+ * like a locked guardrail would replace the locked value without the lock
+ * noticing. Refused, unless it sets the locked value itself. Checked after the
+ * neutral rules: a locked neutral key they consumed is no longer a parameter,
+ * and a vendor key of the same name (`encryption`) does not replace it.
+ */
+const refuseConfigOverLockedGuardrail = (
+  offerType: string,
+  raw: InstantiationContext,
+  config: unknown,
+): void => {
+  const cfg = (config ?? {}) as Record<string, unknown>;
+  for (const key of raw.locked ?? []) {
+    if (
+      Object.hasOwn(raw.parameters, key) &&
+      Object.hasOwn(cfg, key) &&
+      !sameValue(cfg[key], raw.parameters[key])
+    ) {
+      throw new Error(
+        `Parameter '${key}' on '${raw.id}' is a locked guardrail, and the ` +
+          `${offerType} offer config sets '${key}' to another value. Setting it ` +
+          'would override the locked value without the lock noticing. Remove ' +
+          `the '${key}' config override, or drop the guardrail if the value is ` +
+          'meant to be dev-open.',
+      );
+    }
+  }
 };
 
 // ── Component node (immutable) ───────────────────────────────────────────────

@@ -10,7 +10,7 @@
  * spread and secret-env parameters travel under their own names. Literals on
  * purpose: they pin the wire contract.
  */
-import {afterEach, describe, it, expect, vi} from 'vitest';
+import {afterEach, beforeEach, describe, it, expect, vi} from 'vitest';
 import {createFractal} from './core';
 import type {LiveSystemComponent} from './core';
 import {Workload} from './components/custom_workloads';
@@ -19,6 +19,11 @@ import {ContainerPlatform} from './components/network_and_compute';
 import {K8sWorkload} from './offers/custom_workloads';
 import {Eks} from './offers/network_and_compute';
 import {CustomWorkloads_CaaS_KubernetesWorkload} from './offers/generated/custom_workloads';
+import {
+  FLAT_LIMIT_WARNINGS_MAX,
+  resetFlatLimitWarnings,
+  toKubernetesWorkloadParameters,
+} from './offers/kubernetes_workload_contract';
 import {secretRef} from './secret';
 
 const environment = {};
@@ -181,11 +186,14 @@ describe('Workload parameters on a Kubernetes workload', () => {
 
   describe('the deprecated cpuLimit / memoryLimit on K8sWorkload', () => {
     // Warnings are deduplicated per message (component id and keys, not
-    // values) for the process, so every case below that warns names a key
-    // set of its own.
+    // values) for the process; each case starts with none remembered.
     const spyWarnings = () =>
       vi.spyOn(process, 'emitWarning').mockImplementation(() => {});
     const image = (w: WorkloadNode<'web'>) => w.withImage('registry/app:1');
+
+    beforeEach(() => {
+      resetFlatLimitWarnings();
+    });
 
     afterEach(() => {
       vi.restoreAllMocks();
@@ -264,6 +272,105 @@ describe('Workload parameters on a Kubernetes workload', () => {
         /'resources'.*'resourceLimits'/,
       );
       expect(warn).not.toHaveBeenCalled();
+    });
+
+    it('refuses a flat key over a LOCKED resourceLimits guardrail, set or unset member', () => {
+      const warn = spyWarnings();
+      const locked = ['resourceLimits'];
+      expect(() =>
+        toKubernetesWorkloadParameters(
+          {
+            image: 'registry/app:1',
+            resourceLimits: {memory: '1Gi'},
+            cpuLimit: '8',
+          },
+          'web',
+          locked,
+        ),
+      ).toThrow(/'resourceLimits'.*locked guardrail.*'cpuLimit'/);
+      expect(() =>
+        toKubernetesWorkloadParameters(
+          {
+            image: 'registry/app:1',
+            resourceLimits: {memory: '1Gi'},
+            memoryLimit: '8Gi',
+          },
+          'web',
+          locked,
+        ),
+      ).toThrow(/'resourceLimits'.*locked guardrail.*'memoryLimit'/);
+      expect(warn).not.toHaveBeenCalled();
+    });
+
+    it('refuses a LOCKED flat key that a set resourceLimits member would discard', () => {
+      const warn = spyWarnings();
+      expect(() =>
+        toKubernetesWorkloadParameters(
+          {image: 'registry/app:1', resourceLimits: {cpu: '8'}, cpuLimit: '2'},
+          'web',
+          ['cpuLimit'],
+        ),
+      ).toThrow(/'cpuLimit' on 'web' is a locked guardrail.*'resourceLimits'/);
+      expect(warn).not.toHaveBeenCalled();
+    });
+
+    it('still sends a LOCKED flat key into an unset member', () => {
+      spyWarnings();
+      const params = toKubernetesWorkloadParameters(
+        {image: 'registry/app:1', cpuLimit: '2'},
+        'locked-flat',
+        ['cpuLimit'],
+      );
+      expect(params.resourceLimits).toEqual({cpu: '2'});
+    });
+
+    it('bounds the warned-once memory: past its cap a component warns again', () => {
+      const warn = spyWarnings();
+      const build = (id: string) =>
+        toKubernetesWorkloadParameters(
+          {image: 'registry/app:1', memoryLimit: '1Gi'},
+          id,
+        );
+      build('bounded-0');
+      for (let i = 1; i <= FLAT_LIMIT_WARNINGS_MAX; i++) {
+        build(`bounded-${i}`);
+      }
+      build('bounded-0');
+      expect(
+        warn.mock.calls.filter(([m]) => String(m).includes("'bounded-0'")),
+      ).toHaveLength(2);
+    });
+
+    it('fills limits under a LOCKED resources that sets no limits: the lock covers what it sets', () => {
+      spyWarnings();
+      const params = toKubernetesWorkloadParameters(
+        {
+          image: 'registry/app:1',
+          resources: {requests: {cpu: '1'}},
+          cpuLimit: '8',
+        },
+        'web',
+        ['resources'],
+      );
+      expect(params.resourceLimits).toEqual({cpu: '8'});
+      expect(params.resourceRequests).toEqual({cpu: '1'});
+    });
+
+    it('refuses open withResources limits over a LOCKED resourceLimits left unset, as the flat keys are', () => {
+      expect(() =>
+        toKubernetesWorkloadParameters(
+          {image: 'registry/app:1', resources: {limits: {cpu: '8'}}},
+          'web',
+          ['resourceLimits'],
+        ),
+      ).toThrow(/'resourceLimits' on 'web' is a locked guardrail.*'resources'/);
+      expect(() =>
+        toKubernetesWorkloadParameters(
+          {image: 'registry/app:1', cpuLimit: '8'},
+          'web',
+          ['resourceLimits'],
+        ),
+      ).toThrow(/'resourceLimits'.*locked guardrail.*'cpuLimit'/);
     });
 
     it('warns once for the same component and keys, however often it is built', () => {

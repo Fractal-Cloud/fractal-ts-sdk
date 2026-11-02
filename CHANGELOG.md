@@ -50,11 +50,27 @@ keys for the `Workload` setters, so nothing deployed changes.
 
 `K8sWorkload({cpuLimit, memoryLimit})` still compiles, marked `@deprecated`. Like the agent, the
 SDK merges per member: a flat value is sent as its `resourceLimits` member when that member is
-unset (by `resourceLimits` or `withResources({limits})`), and loses to it otherwise. Over a
-locked `withResources({limits})` guardrail it is refused, as `resourceLimits` is. A
+unset (by `resourceLimits` or `withResources({limits})`), and loses to it otherwise. It is
+refused over a locked limits guardrail, whether locked as `withResources({limits})` (as
+`resourceLimits` is) or as `resourceLimits` itself (`guardrail(s, 'resourceLimits', ...)`), and a
+locked flat value is refused where a set `resourceLimits` member would discard it. A
+`resourceLimits` locked without a value is not filled by open `withResources({limits})` either.
+A locked `withResources` that sets no limits does not lock them: a lock covers what it sets. A
 `DeprecationWarning` (`FRACTAL_K8S_WORKLOAD_FLAT_LIMITS`) says which keys were sent and which
-ignored, once per component id and keys for the process. Pass `resourceLimits: {cpu, memory}`
-instead.
+ignored, once per component id and keys (the memory of what was warned holds 1000 messages, then
+starts over). Pass `resourceLimits: {cpu, memory}` instead.
+
+### Fixed — offer config cannot replace a locked guardrail of the same name
+
+Offer config is spread over a component's parameters. A config key named like a locked
+guardrail parameter (one locked through `guardrail()`, e.g. `region`, or a `K8sWorkload`
+`resourceLimits`) replaced the locked value silently, on every offer. It is now refused, naming
+the key, unless it repeats the locked value (a list repeats its comma-separated form). A config
+key set to `undefined` is not set: it no longer erases the parameter, locked or open, as an own
+`undefined` property spread over it did. A key the offer's neutral rules translate was
+already refused; a vendor key that only shares its name with a neutral one the rules consumed
+(`encryption` on `AzureBlob`) is not affected. The typed `withXxx()` setters lock keys the offer
+configs do not declare, so TypeScript callers of the typed API see no change.
 
 ### Changed — contracts re-pinned
 
@@ -69,15 +85,31 @@ beyond the sections above:
   `runtime` lists the usual runtime ids (a warning, not a refusal: the region decides).
 - GCP `NetworkAndCompute.PaaS.CloudRun` (the Cloud Run container platform) declares `region`
   only: the agent creates no resource for it, and `NetworkAndCompute.CaaS.CloudRunService` is no
-  longer published as an alias of it. No SDK offer emits the platform type.
+  longer published as an alias of it. The workload keys (`image`, `port`, `environment`, `cpu`,
+  `memory`, `minInstances`, `maxInstances`, `concurrency`, `ingress`, `serviceAccountEmail`) are
+  declared on `CloudRunService` only. No SDK offer emits the platform type (the `CloudRun` offer has
+  emitted `NetworkAndCompute.CaaS.CloudRunService` since 2.13.0), and its generated contract is not
+  exported, so no SDK caller changes. A component of the platform type written by other means:
+  the agent (since v8.28.0; pinned here at v8.31.0) no longer reads its workload keys; a Cloud
+  Run service it deployed before keeps running unchanged, is reported in `contractWarnings`
+  (`legacyPlatformService`), and is deleted with the component. Model the workload as a
+  `CloudRun` (`CloudRunService`) component instead.
 - Azure Container Instance `dnsNameLabel` (5 to 63 characters, warning) and `restartPolicy`
   (`Always`, `OnFailure`, `Never`, warning) publish their checks.
 - caas-k8s publishes MinIO as two offers: `Storage.CaaS.MinioTenant` (what `MinIO` emits,
-  unchanged) now serves only `Storage.CaaS.MinIO`, and the new `BigData.CaaS.MinioTenant` serves
-  `BigData.CaaS.MinIO`, as the catalogue already offered it. The SDK reads no service type.
+  unchanged: same type, same keys) now serves only `Storage.CaaS.MinIO`, and the new
+  `BigData.CaaS.MinioTenant` serves `BigData.CaaS.MinIO`, as the catalogue already offered it.
+  The agent dispatches by offer type and the same handler type serves both (the
+  `BigData` registration also checks ownership of an existing tenant), so a deployed
+  `Storage.CaaS.MinioTenant` component reconciles as before. Service types are catalogue
+  placement: the SDK reads none, and no SDK offer emits `BigData.CaaS.MinioTenant`.
 - New agent offers without an SDK offer yet: Azure `Messaging.PaaS.AzureRelayHybridConnection`,
   caas-k8s `BigData.CaaS.MinioTenant` and `Storage.CaaS.MinioBucket`.
-- caas-k8s `TraefikGateway` `chartVersion` defaults to 42.0.0 (was 39.0.9).
+- caas-k8s `TraefikGateway` `chartVersion` defaults to 42.0.0 (was 39.0.9). **Behavior change
+  in the agent, whatever the SDK version:** a gateway with `chartVersion` unset, or set to the
+  former default `39.0.9` (read as unset, with a `TraefikChartVersionFormerDefault` warning), is
+  upgraded to chart 42.0.0 running Traefik v3.7.15 on its next reconcile. The SDK sends no
+  default. To stay on a chart, set `chartVersion` to a version that was never a default.
 - Agent behavior changes, no key changed (descriptions updated): Traefik v3 (v3.7.15) with
   traces over OTLP/HTTP only (a non-OTLP `tracing.jaeger` endpoint is remapped to
   `http://<host>:4318/v1/traces` and reported in `contractWarnings`); a new .NET Azure Function
