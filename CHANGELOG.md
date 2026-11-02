@@ -27,6 +27,21 @@ changes refuse what 2.14.0 accepted.
   `TypeError` (not a function) instead of a refusal naming the offer. Setting the raw
   `environmentSecretShortNames` config key on such an offer is still refused by name.
 
+**Behavior changes in the pinned agents.** These two change deployed infrastructure, whatever
+SDK version emitted the component. Details are under "Changed — contracts re-pinned".
+
+- **BREAKING: GCP `NetworkAndCompute.PaaS.CloudRun` no longer deploys a workload** (agents
+  v8.28.0 on). It is the Cloud Run platform: it declares only `region` and creates nothing.
+  `image`, `port`, `environment`, `cpu`, `memory`, `minInstances`, `maxInstances`,
+  `concurrency`, `ingress` and `serviceAccountEmail` on a component of that type are no longer
+  read, and a service it deployed earlier stops being updated. The SDK `CloudRun` offer is
+  unaffected: it emits `NetworkAndCompute.CaaS.CloudRunService`. A component of the platform
+  type written by other means must move to a `CloudRunService` component.
+- **BEHAVIOR CHANGE: unpinned Traefik gateways are upgraded** (caas-k8s v1.14.0). A
+  `TraefikGateway` with `chartVersion` unset, or set to the former default `39.0.9`, moves to
+  chart 42.0.0 (Traefik v3.7.15) on its next reconcile. To stay on a chart, set `chartVersion`
+  to a version that was never a default.
+
 ### Added — `withEnvironmentSecrets` on the shipped offers
 
 With the contracts re-pinned, these offers can access environment secrets and have
@@ -83,12 +98,13 @@ beyond the sections above:
   contracts once offers several agents declare are merged).
 - GCP `GcpFunction` takes `sourceFile` (Python: the entry-point file in the source zip), and
   `runtime` lists the usual runtime ids (a warning, not a refusal: the region decides).
-- GCP `NetworkAndCompute.PaaS.CloudRun` (the Cloud Run container platform) declares `region`
-  only: the agent creates no resource for it, and `NetworkAndCompute.CaaS.CloudRunService` is no
-  longer published as an alias of it. The workload keys (`image`, `port`, `environment`, `cpu`,
-  `memory`, `minInstances`, `maxInstances`, `concurrency`, `ingress`, `serviceAccountEmail`) are
-  declared on `CloudRunService` only. No SDK offer emits the platform type (the `CloudRun` offer has
-  emitted `NetworkAndCompute.CaaS.CloudRunService` since 2.13.0), and its generated contract is not
+- **Breaking (see above).** GCP `NetworkAndCompute.PaaS.CloudRun` (the Cloud Run container
+  platform) declares `region` only: the agent creates no resource for it, and
+  `NetworkAndCompute.CaaS.CloudRunService` is no longer published as an alias of it. The
+  workload keys (`image`, `port`, `environment`, `cpu`, `memory`, `minInstances`,
+  `maxInstances`, `concurrency`, `ingress`, `serviceAccountEmail`) are declared on
+  `CloudRunService` only. No SDK offer emits the platform type (the `CloudRun` offer has emitted
+  `NetworkAndCompute.CaaS.CloudRunService` since 2.13.0), and its generated contract is not
   exported, so no SDK caller changes. A component of the platform type written by other means:
   the agent (since v8.28.0; pinned here at v8.31.0) no longer reads its workload keys; a Cloud
   Run service it deployed before keeps running unchanged, is reported in `contractWarnings`
@@ -105,11 +121,12 @@ beyond the sections above:
   placement: the SDK reads none, and no SDK offer emits `BigData.CaaS.MinioTenant`.
 - New agent offers without an SDK offer yet: Azure `Messaging.PaaS.AzureRelayHybridConnection`,
   caas-k8s `BigData.CaaS.MinioTenant` and `Storage.CaaS.MinioBucket`.
-- caas-k8s `TraefikGateway` `chartVersion` defaults to 42.0.0 (was 39.0.9). **Behavior change
-  in the agent, whatever the SDK version:** a gateway with `chartVersion` unset, or set to the
-  former default `39.0.9` (read as unset, with a `TraefikChartVersionFormerDefault` warning), is
-  upgraded to chart 42.0.0 running Traefik v3.7.15 on its next reconcile. The SDK sends no
-  default. To stay on a chart, set `chartVersion` to a version that was never a default.
+- **Behavior change (see above).** caas-k8s `TraefikGateway` `chartVersion` defaults to 42.0.0
+  (was 39.0.9). In the agent, whatever the SDK version: a gateway with `chartVersion` unset, or
+  set to the former default `39.0.9` (read as unset, with a `TraefikChartVersionFormerDefault`
+  warning), is upgraded to chart 42.0.0 running Traefik v3.7.15 on its next reconcile. The SDK
+  sends no default. To stay on a chart, set `chartVersion` to a version that was never a
+  default.
 - Agent behavior changes, no key changed (descriptions updated): Traefik v3 (v3.7.15) with
   traces over OTLP/HTTP only (a non-OTLP `tracing.jaeger` endpoint is remapped to
   `http://<host>:4318/v1/traces` and reported in `contractWarnings`); a new .NET Azure Function

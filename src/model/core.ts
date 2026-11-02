@@ -301,24 +301,47 @@ export const defineOffer = <C extends string, Cfg>(
   });
 };
 
-/** The config without its own keys whose value is undefined. */
-const withoutUndefined = <Cfg>(config: Cfg): Cfg =>
-  config === null || typeof config !== 'object'
-    ? config
-    : (Object.fromEntries(
-        Object.entries(config as Record<string, unknown>).filter(
-          ([, v]) => v !== undefined,
-        ),
-      ) as Cfg);
+const isPlainObject = (v: unknown): v is Record<string, unknown> => {
+  if (v === null || typeof v !== 'object' || Array.isArray(v)) {
+    return false;
+  }
+  const proto = Object.getPrototypeOf(v);
+  return proto === Object.prototype || proto === null;
+};
 
 /**
- * The same parameter value. A list also equals its comma-separated form: some
- * offers send lists that way, so a locked `'a,b'` is repeated by `['a', 'b']`.
+ * The value without its keys whose value is undefined, at every depth of plain
+ * objects: `{cpu: '1', memory: undefined}` is `{cpu: '1'}`, as it is sent.
+ * Arrays keep their positions (an undefined element stays where it is).
  */
-const sameValue = (a: unknown, b: unknown): boolean =>
-  isDeepStrictEqual(a, b) ||
-  (Array.isArray(a) && typeof b === 'string' && a.join(',') === b) ||
-  (Array.isArray(b) && typeof a === 'string' && b.join(',') === a);
+const withoutUndefined = <T>(value: T): T => {
+  if (Array.isArray(value)) {
+    return value.map(e => withoutUndefined(e)) as T;
+  }
+  if (!isPlainObject(value)) {
+    return value;
+  }
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, v]) => v !== undefined)
+      .map(([k, v]) => [k, withoutUndefined(v)]),
+  ) as T;
+};
+
+/**
+ * The same parameter value, keys set to undefined ignored at every depth. A list
+ * also equals its comma-separated form: some offers send lists that way, so a
+ * locked `'a,b'` is repeated by `['a', 'b']`.
+ */
+const sameValue = (rawA: unknown, rawB: unknown): boolean => {
+  const a = withoutUndefined(rawA);
+  const b = withoutUndefined(rawB);
+  return (
+    isDeepStrictEqual(a, b) ||
+    (Array.isArray(a) && typeof b === 'string' && a.join(',') === b) ||
+    (Array.isArray(b) && typeof a === 'string' && b.join(',') === a)
+  );
+};
 
 /**
  * Offer config is spread over the component's parameters, so a config key named
