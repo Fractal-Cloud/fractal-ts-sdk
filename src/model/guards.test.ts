@@ -8,9 +8,9 @@
 import {describe, it, expect} from 'vitest';
 import {createFractal} from './core';
 import {ObjectStorage, RelationalDatabase} from './components/storage';
-import {AwsS3} from './offers/storage';
+import {AwsS3, AzureBlob} from './offers/storage';
 import {TraefikGateway} from './offers/api_management';
-import {K8sWorkload} from './offers/custom_workloads';
+import {EcsService, K8sWorkload} from './offers/custom_workloads';
 import {GcpSubnet} from './offers/network_and_compute';
 import type {InstantiationContext} from './core';
 
@@ -191,5 +191,102 @@ describe('offer config over a locked guardrail of the same name', () => {
         ctx({tags: ['a']}, ['tags']),
       ),
     ).toThrow(/'tags' on 'web' is a locked guardrail/);
+  });
+});
+
+describe('a vendor config value that sets nothing, against a neutral one', () => {
+  // EcsService translates the neutral `env` into the task's `environment`.
+  const task = (cfg: Record<string, unknown>, locked: readonly string[]) =>
+    EcsService({launchType: 'FARGATE', ...cfg} as never)
+      .instantiate({
+        id: 'w',
+        displayName: 'w',
+        parameters: {image: 'registry/app:1', port: 80, env: {X: '1'}},
+        locked,
+        dependencies: [],
+        links: [],
+        children: [],
+      })
+      .find(c => c.id === 'w-task')!.parameters.environment;
+
+  it('does not drop an open neutral value', () => {
+    const translated = task({}, []);
+    expect(translated).toBeDefined();
+    expect(task({environment: {A: undefined}}, [])).toStrictEqual(translated);
+  });
+
+  it('takes a literal {} as written: an empty environment, which a locked env refuses', () => {
+    expect(task({environment: {}}, [])).toStrictEqual({});
+    expect(() => task({environment: {}}, ['env'])).toThrow(
+      /'env' on 'w' is a locked guardrail/,
+    );
+  });
+
+  it('is not refused over a locked neutral value', () => {
+    expect(task({environment: {A: undefined}}, ['env'])).toStrictEqual(
+      task({}, ['env']),
+    );
+  });
+
+  it('holds for a vendor value set on the component itself, not only in config', () => {
+    const fromParameters = (locked: readonly string[]) =>
+      EcsService({launchType: 'FARGATE'})
+        .instantiate({
+          id: 'w',
+          displayName: 'w',
+          parameters: {
+            image: 'registry/app:1',
+            port: 80,
+            env: {X: '1'},
+            environment: {A: undefined},
+          },
+          locked,
+          dependencies: [],
+          links: [],
+          children: [],
+        })
+        .find(c => c.id === 'w-task')!.parameters.environment;
+    expect(fromParameters([])).toStrictEqual(task({}, []));
+    expect(fromParameters(['env'])).toStrictEqual(task({}, ['env']));
+  });
+
+  it('still wins over an open neutral value, and is refused over a locked one, when it sets something', () => {
+    expect(task({environment: {A: '2'}}, [])).not.toStrictEqual(task({}, []));
+    expect(() => task({environment: {A: '2'}}, ['env'])).toThrow(
+      /'env' on 'w' is a locked guardrail/,
+    );
+  });
+});
+
+describe('a literal {} offer config value reaches the wire', () => {
+  it('sends AzureBlob networkRuleSet, routingPreference, encryption and identity as {}', () => {
+    const [blob] = AzureBlob({
+      networkRuleSet: {},
+      routingPreference: {},
+      encryption: {},
+      identity: {},
+    } as never).instantiate({
+      id: 'b',
+      displayName: 'b',
+      parameters: {},
+      locked: [],
+      dependencies: [],
+      links: [],
+      children: [],
+    });
+    expect(blob.parameters).toMatchObject({
+      networkRuleSet: {},
+      routingPreference: {},
+      encryption: {},
+      identity: {},
+    });
+    for (const k of [
+      'networkRuleSet',
+      'routingPreference',
+      'encryption',
+      'identity',
+    ]) {
+      expect(blob.parameters[k], k).toStrictEqual({});
+    }
   });
 });
