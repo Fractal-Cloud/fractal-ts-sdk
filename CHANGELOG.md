@@ -87,6 +87,24 @@ already refused; a vendor key that only shares its name with a neutral one the r
 (`encryption` on `AzureBlob`) is not affected. The typed `withXxx()` setters lock keys the offer
 configs do not declare, so TypeScript callers of the typed API see no change.
 
+One definition of a set value now applies everywhere a vendor value and a neutral or
+component value compete: a key set to `undefined` is not set, at any depth, and neither is an
+object whose every key is `undefined` (`{cpu: undefined}`). A literal `{}` **is** a value: it is
+sent as written, since agents read it as a request (an Azure `networkRuleSet: {}` asserts a
+firewall rule set, a caas-k8s `podDisruptionBudget: {}` or `autoscaling: {}` disables the PDB or
+HPA). So:
+
+- An offer config key that sets nothing is dropped before it is spread, so
+  `K8sWorkload({resourceLimits: {cpu: undefined}})` no longer replaces the component's
+  `resourceLimits` with `{}`. A literal `{}` config value is still sent.
+- A vendor value that sets nothing no longer beats an open neutral one, and is not refused
+  over a locked one. Before, `EcsService({environment: {A: undefined}})` sent an empty task
+  environment over an open `withEnv`, and was refused over a locked one; on a Kubernetes
+  workload, `resourceLimits: {cpu: undefined}` dropped open `withResources({limits})`. A
+  literal `environment: {}` is an empty environment: it wins over an open `withEnv` and is
+  refused over a locked one, as before.
+- An offer's own refusals still see the config as written.
+
 ### Changed — contracts re-pinned
 
 The offer definitions are generated from fractal-cloud-agents **v8.31.0** (aws, azure, gcp,

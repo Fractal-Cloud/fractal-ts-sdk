@@ -16,8 +16,8 @@
  *     (`select`), with no global provider; mixed vendors are normal.
  */
 
-import {isDeepStrictEqual} from 'node:util';
 import {contractConfigProblem} from './offers/contract/contract_config_problem';
+import {sameValue, withoutUndefined} from './parameter_value';
 import type {ComponentReference} from './component_reference';
 import type {OfferContract} from './offers/contract/offer_contract';
 import type {NeutralRule} from './neutral_rule';
@@ -236,12 +236,15 @@ export const defineOffer = <C extends string, Cfg>(
                 throw new Error(`Live component '${self.id}': ${problem}.`);
               }
             }
+            // The config as written, not instantiate's cleaned view: an
+            // offer's refusals judge what the caller passed.
             spec.validate?.(self, all, config);
           }
         : undefined,
     instantiate: raw => {
-      // A config key set to undefined is not set: spread as an own property it
-      // would erase the parameter, locked or open, without a word.
+      // A config key that sets nothing (undefined, or `{cpu: undefined}`) is not
+      // set: spread as an own property it would replace the parameter, locked or
+      // open, without a word. A literal `{}` is a value and is sent.
       const cfg = withoutUndefined(config);
       const ctx: InstantiationContext = spec.neutral
         ? {
@@ -299,48 +302,6 @@ export const defineOffer = <C extends string, Cfg>(
     satisfies: spec.satisfies,
     neutral: spec.neutral,
   });
-};
-
-const isPlainObject = (v: unknown): v is Record<string, unknown> => {
-  if (v === null || typeof v !== 'object' || Array.isArray(v)) {
-    return false;
-  }
-  const proto = Object.getPrototypeOf(v);
-  return proto === Object.prototype || proto === null;
-};
-
-/**
- * The value without its keys whose value is undefined, at every depth of plain
- * objects: `{cpu: '1', memory: undefined}` is `{cpu: '1'}`, as it is sent.
- * Arrays keep their positions (an undefined element stays where it is).
- */
-const withoutUndefined = <T>(value: T): T => {
-  if (Array.isArray(value)) {
-    return value.map(e => withoutUndefined(e)) as T;
-  }
-  if (!isPlainObject(value)) {
-    return value;
-  }
-  return Object.fromEntries(
-    Object.entries(value)
-      .filter(([, v]) => v !== undefined)
-      .map(([k, v]) => [k, withoutUndefined(v)]),
-  ) as T;
-};
-
-/**
- * The same parameter value, keys set to undefined ignored at every depth. A list
- * also equals its comma-separated form: some offers send lists that way, so a
- * locked `'a,b'` is repeated by `['a', 'b']`.
- */
-const sameValue = (rawA: unknown, rawB: unknown): boolean => {
-  const a = withoutUndefined(rawA);
-  const b = withoutUndefined(rawB);
-  return (
-    isDeepStrictEqual(a, b) ||
-    (Array.isArray(a) && typeof b === 'string' && a.join(',') === b) ||
-    (Array.isArray(b) && typeof a === 'string' && b.join(',') === a)
-  );
 };
 
 /**
