@@ -158,4 +158,38 @@ describe('offer config over a locked guardrail of the same name', () => {
       ),
     ).toThrow(/'tlsHosts' on 'web' is a locked guardrail/);
   });
+
+  it('ignores a nested key set to undefined when the config repeats a locked value (default path)', () => {
+    const labels = (v: Record<string, unknown>) =>
+      GcpSubnet({labels: v} as never).instantiate(
+        ctx({labels: {team: 'core'}}, ['labels']),
+      );
+    const [same] = labels({team: 'core', owner: undefined});
+    expect(same.parameters.labels).toStrictEqual({team: 'core'});
+    expect(() => labels({team: 'edge', owner: undefined})).toThrow(
+      /'labels' on 'web' is a locked guardrail/,
+    );
+  });
+
+  it('ignores a nested key set to undefined when the config repeats a locked value (K8sWorkload)', () => {
+    const limits = (v: Record<string, unknown>) =>
+      K8sWorkload({namespace: 'fractal', resourceLimits: v}).instantiate(
+        ctx({image: 'registry/app:1', resourceLimits: {cpu: '1'}}, [
+          'resourceLimits',
+        ]),
+      );
+    const [same] = limits({cpu: '1', memory: undefined});
+    expect(same.parameters.resourceLimits).toStrictEqual({cpu: '1'});
+    expect(() => limits({cpu: '2', memory: undefined})).toThrow(
+      /'resourceLimits' on 'web' is a locked guardrail/,
+    );
+  });
+
+  it('keeps array positions: an undefined element is not dropped', () => {
+    expect(() =>
+      GcpSubnet({tags: ['a', undefined]} as never).instantiate(
+        ctx({tags: ['a']}, ['tags']),
+      ),
+    ).toThrow(/'tags' on 'web' is a locked guardrail/);
+  });
 });
