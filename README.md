@@ -1036,6 +1036,15 @@ On OpenShift a `LoadBalancer`'s subnet is a MetalLB IP address pool: select `Ope
 | `Workload` | `EcsService` | `AzureContainerApp` | `CloudRun` | `OpenshiftWorkload` | `K8sWorkload` |
 | `Function` | `AwsLambda` | `AzureFunction` | `GcpFunction` | — | — |
 
+A `K8sWorkload` pulls a private image (`withImage`) with an environment secret
+holding a Docker config JSON for its registry (caas-k8s v1.17.0). Name the
+secret in `containerImageCredentials` and grant it with `withEnvironmentSecrets`:
+
+```ts
+K8sWorkload({containerImageCredentials: 'docker-hub-pull'})
+  .withEnvironmentSecrets(['docker-hub-pull']);
+```
+
 ### Storage
 
 | Component | AWS | Azure | GCP | Aruba | RedHat | Self-hosted |
@@ -1386,7 +1395,7 @@ component's neutral `withRetentionDays` (sent as `retentionDays`), not an offer 
 
 | Offer | Keys (agent defaults) | Links and dependencies |
 |---|---|---|
-| `KubePrometheusStack` (`Observability.CaaS.KubePrometheusStack`) | `namespace`, `storageClassName` (see below), `prometheusStorageGi` (`50`), `lokiUrl` / `tempoUrl` (the Loki / Tempo service in the namespace; `none` = no datasource), `alertRules`, `alertmanagerConfig`, `values`; `retentionDays` `15` | optional route link to a `TraefikGateway` for Grafana (below) |
+| `KubePrometheusStack` (`Observability.CaaS.KubePrometheusStack`) | `namespace`, `storageClassName` (see below), `prometheusStorageGi` (`50`), `lokiUrl` / `tempoUrl` (the Loki / Tempo service in the namespace; `none` = no datasource), `alertRules`, `alertmanagerConfig`, `values`, `secretEnv` (Grafana variables from environment secrets, below); `retentionDays` `15` | optional route link to a `TraefikGateway` for Grafana (below) |
 | `GrafanaLoki` (`Observability.CaaS.GrafanaLoki`) | `namespace`, `storageClassName` (see below), `values`; `retentionDays` `14` | exactly one link to an `AwsS3` bucket with `{access: 'read-write'}` |
 | `GrafanaTempo` (`Observability.CaaS.GrafanaTempo`) | as Loki; `retentionDays` `7` | as Loki |
 | `GrafanaAlloy` (`Observability.CaaS.GrafanaAlloy`), on `LogShipper` | `namespace`, `lokiPushUrl` (none = the `pushUrl` of the Loki it depends on), `values` | a dependency on a `GrafanaLoki` component, unless `lokiPushUrl` is set |
@@ -1408,6 +1417,16 @@ The agent routes to `kps-grafana:80` and strips the sub-path, which must end wit
 `/` (a `rewritePath` is refused); the route goes through ForwardAuth unless the
 gateway's `forwardAuthExemptComponentIds` lists the stack. `KubePrometheusStack`
 then publishes `gatewayRoutes`.
+
+Grafana reads environment secrets as environment variables (caas-k8s v1.17.0):
+`secretEnv` maps each variable to a `secretRef`, and `withEnvironmentSecrets`
+grants the secrets. A raw value is refused.
+
+```ts
+KubePrometheusStack({
+  secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: secretRef('grafana-google')},
+}).withEnvironmentSecrets(['grafana-google']);
+```
 
 #### `SqsExporter` (`Observability.CaaS.SqsExporter`)
 

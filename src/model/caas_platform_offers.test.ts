@@ -40,6 +40,7 @@ import {
 } from './offers/observability';
 import {AwsS3, StorageOpenSearch} from './offers/storage';
 import {liveSystemIdOf, referenceTo} from './reference';
+import {secretRef} from './secret';
 
 const environment = {};
 const boundedContextId = {name: 'platform'};
@@ -214,18 +215,24 @@ describe('TraefikGateway platform keys', () => {
         tlsHosts: ['api.fractal.cloud'],
       },
     ],
-  ])('refuses tlsClusterIssuer as the only certificate source (%s)', (_, config) => {
-    expect(() => gateway(config)).toThrow(
-      "Live component 'traefik': tlsClusterIssuer is ignored by aria-agent-caas-k8s, " +
-        'which requests no certificate from it, so this gateway has no certificate source. ' +
-        'Fix: give the gateway withDnsZones with TXT write on the zone of its hosts (it ' +
-        'issues its own certificate; one already served from the issuer is kept until then), ' +
-        'or set tlsSecretName; then remove tlsClusterIssuer.',
-    );
-  });
+  ])(
+    'refuses tlsClusterIssuer as the only certificate source (%s)',
+    (_, config) => {
+      expect(() => gateway(config)).toThrow(
+        "Live component 'traefik': tlsClusterIssuer is ignored by aria-agent-caas-k8s, " +
+          'which requests no certificate from it, so this gateway has no certificate source. ' +
+          'Fix: give the gateway withDnsZones with TXT write on the zone of its hosts (it ' +
+          'issues its own certificate; one already served from the issuer is kept until then), ' +
+          'or set tlsSecretName; then remove tlsClusterIssuer.',
+      );
+    },
+  );
 
   it.each([
-    ['a TXT grant on another zone', {name: 'yanchware.com', access: {TXT: 'write'}}],
+    [
+      'a TXT grant on another zone',
+      {name: 'yanchware.com', access: {TXT: 'write'}},
+    ],
     ['a read grant', {name: 'fractal.cloud', access: {TXT: 'read'}}],
   ])(
     'refuses tlsClusterIssuer with dnsZones that give no certificate (%s)',
@@ -238,7 +245,10 @@ describe('TraefikGateway platform keys', () => {
           blueprint: bp => ({
             traefik: bp.add(
               ApiGateway({id: 'traefik'}).withDnsZones([
-                zone as {name: string; access: Record<string, 'read' | 'write'>},
+                zone as {
+                  name: string;
+                  access: Record<string, 'read' | 'write'>;
+                },
               ]),
             ),
           }),
@@ -374,7 +384,7 @@ describe('TraefikGateway platform keys', () => {
       gateway({
         forwardAuthAddress:
           'https://user:pw@evil.com/ https://good.example.com/verify',
-      })
+      }),
     ).toThrow(/'forwardAuthAddress'/);
   });
 
@@ -610,6 +620,60 @@ describe('caas-k8s observability parameters and links', () => {
     });
   });
 
+  it('kube-prometheus-stack reads the environment secrets it is granted (caas-k8s v1.17.0)', () => {
+    expect(
+      only(
+        stack({
+          prometheus: KubePrometheusStack({
+            secretEnv: {
+              GF_AUTH_GOOGLE_CLIENT_SECRET: secretRef('grafana-google'),
+            },
+          }).withEnvironmentSecrets(['grafana-google']),
+        }),
+        'prometheus',
+      ).parameters,
+    ).toEqual({
+      secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: {$envSecret: 'grafana-google'}},
+      environmentSecretShortNames: ['grafana-google'],
+    });
+  });
+
+  it.each([
+    ['a raw value', {GF_AUTH_GOOGLE_CLIENT_SECRET: 'hunter2'}],
+    [
+      'a reference carrying anything beside the tag',
+      {GF_AUTH_GOOGLE_CLIENT_SECRET: {$envSecret: 'g', raw: 'hunter2'}},
+    ],
+  ])(
+    'kube-prometheus-stack refuses %s in secretEnv, without echoing it',
+    (_, secretEnv) => {
+      let message = '';
+      try {
+        stack({
+          prometheus: KubePrometheusStack({secretEnv: secretEnv as never}),
+        });
+      } catch (e) {
+        message = (e as Error).message;
+      }
+      expect(message).toBe(
+        "Live component 'prometheus': secretEnv 'GF_AUTH_GOOGLE_CLIENT_SECRET' is not an " +
+          "environment-secret reference: pass secretRef('<shortName>'), never the secret itself.",
+      );
+    },
+  );
+
+  it('kube-prometheus-stack refuses a secretEnv that is not a map, without echoing it', () => {
+    let message = '';
+    try {
+      stack({prometheus: KubePrometheusStack({secretEnv: 'hunter2' as never})});
+    } catch (e) {
+      message = (e as Error).message;
+    }
+    // The contract's own check: secretEnv is an object.
+    expect(message).toContain("is not the object 'secretEnv' takes");
+    expect(message).not.toContain('hunter2');
+  });
+
   it('Alloy ships to the Loki it depends on, or to lokiPushUrl', () => {
     expect(only(stack({}), 'alloy').dependencies).toEqual(['loki']);
     expect(
@@ -744,7 +808,9 @@ describe('scrapeInterval and samplingRate are refused, never pruned', () => {
         environment,
         select: {metrics: Prometheus({})},
       }),
-    ).toThrow("selected for 'metrics', cannot honor withScrapeInterval ('scrapeInterval'), a guardrail locked in the Fractal");
+    ).toThrow(
+      "selected for 'metrics', cannot honor withScrapeInterval ('scrapeInterval'), a guardrail locked in the Fractal",
+    );
   });
 
   it('builds without them', () => {

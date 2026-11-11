@@ -1,5 +1,6 @@
 import type {Observability_CaaS_KubePrometheusStack} from './generated/observability';
 import type {ContractConfig} from './contract/contract_config';
+import type {SecretRef} from '../secret';
 
 /**
  * Vendor knobs of the `KubePrometheusStack` offer
@@ -9,5 +10,15 @@ import type {ContractConfig} from './contract/contract_config';
  */
 export type KubePrometheusStackConfig = ContractConfig<
   typeof Observability_CaaS_KubePrometheusStack,
-  'retentionDays'
+  'retentionDays',
+  {
+    /**
+     * Grafana's environment variables resolved from environment secrets, by
+     * variable name: `{GF_AUTH_GOOGLE_CLIENT_SECRET: secretRef('grafana-google')}`
+     * (caas-k8s v1.17.0). Only references travel; select each secret with
+     * `withEnvironmentSecrets`. The contract types it only as `object`, so the
+     * offer refuses any value that is not a reference.
+     */
+    secretEnv?: Readonly<Record<string, SecretRef>>;
+  }
 >;

@@ -14,3 +14,9 @@ K8sWorkload({cpuLimit: 1});
 K8sWorkload({cpuRequest: '100m'});
 // caas-k8s v1.13.0 flags the workload as able to read environment secrets.
 K8sWorkload({}).withEnvironmentSecrets(['db-password']);
+// caas-k8s v1.17.0: a private image is read with an environment secret.
+K8sWorkload({
+  containerImageCredentials: 'docker-hub-pull',
+}).withEnvironmentSecrets(['docker-hub-pull']);
+// @ts-expect-error the credentials are an environment secret's short name.
+K8sWorkload({containerImageCredentials: ['docker-hub-pull']});

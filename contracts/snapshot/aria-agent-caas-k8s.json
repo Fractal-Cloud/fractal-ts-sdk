@@ -1,6 +1,6 @@
 {
   "agentId": "aria-agent-caas-k8s",
-  "agentVersion": "v1.14.0",
+  "agentVersion": "v1.17.0",
   "offers": [
     {
       "aliasOfOfferType": null,
@@ -578,8 +578,34 @@
       "canAccessSecrets": true,
       "contractSchemaVersion": "2.0",
       "offerType": "BigData.CaaS.SparkJob",
-      "parameterRules": [],
+      "parameterRules": [
+        {
+          "fix": "Set artifactUri to the URL of the Python wheel the job runs, or jarUri to the jar and mainClass to its main class.",
+          "id": "job-artifact",
+          "keys": [
+            "jarUri",
+            "artifactUri"
+          ],
+          "kind": "anyOf",
+          "message": "The job does not say what to run."
+        }
+      ],
       "params": [
+        {
+          "description": "the kind of artifact in artifactUri; when unset, a Python wheel",
+          "key": "artifactType",
+          "type": "string",
+          "values": [
+            "python_wheel"
+          ],
+          "valuesLevel": "warn"
+        },
+        {
+          "description": "the https URL of the pure-Python wheel the job runs, ending with #sha256=<the wheel's SHA-256>, wrapped into an image by the agent",
+          "example": "https://artifacts.example/etl-1.0-py3-none-any.whl#sha256=<digest>",
+          "key": "artifactUri",
+          "type": "string"
+        },
         {
           "description": "the short names of the environment secrets this component may read",
           "key": "environmentSecretShortNames",
@@ -591,12 +617,15 @@
           "type": "string"
         },
         {
-          "default": "",
+          "description": "the jar the job runs, when it does not run a Python wheel from artifactUri",
+          "example": "local:///opt/spark/examples/jars/spark-examples_2.12-3.5.0.jar",
           "key": "jarUri",
           "type": "string"
         },
         {
           "default": "",
+          "description": "the main class of the jar in jarUri",
+          "example": "org.apache.spark.examples.SparkPi",
           "key": "mainClass",
           "type": "string"
         },
@@ -609,8 +638,24 @@
           "type": "string"
         },
         {
+          "derived": {
+            "note": "the component id, with - read as _"
+          },
+          "description": "the Python package the wheel installs",
+          "key": "packageName",
+          "type": "string"
+        },
+        {
           "default": "",
           "key": "schedule",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "the agent's pinned Spark base image"
+          },
+          "description": "the Spark image the wheel runs on, pinned by digest (…@sha256:<64 hex>)",
+          "key": "sparkBaseImage",
           "type": "string"
         }
       ],
@@ -711,10 +756,67 @@
       "contractSchemaVersion": "2.0",
       "offerType": "BigData.CaaS.SparkUnityCatalog",
       "parameterRules": [],
-      "params": [],
+      "params": [
+        {
+          "constraints": {
+            "pattern": "[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?"
+          },
+          "default": "unitycatalog",
+          "example": "team-a",
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "description": "the name of the server's objects; the component's by default",
+          "key": "serverName",
+          "type": "string"
+        },
+        {
+          "description": "the buckets of that MinIO whose tables the server vends credentials for",
+          "example": [
+            "lake"
+          ],
+          "key": "storageBuckets",
+          "type": "array"
+        },
+        {
+          "description": "the Secret in the server's namespace holding accessKey and secretKey of the MinIO user the server vends credentials as",
+          "example": "uc-lake-user",
+          "key": "storageCredentialsSecret",
+          "type": "string"
+        },
+        {
+          "description": "the S3 endpoint of the MinIO the cataloged tables are stored in, whose STS vends their credentials",
+          "example": "http://minio.lake.svc.cluster.local",
+          "key": "storageEndpoint",
+          "type": "string"
+        },
+        {
+          "default": "us-east-1",
+          "description": "the region of that endpoint",
+          "key": "storageRegion",
+          "type": "string"
+        }
+      ],
       "provider": "CaaS",
-      "providerResources": [],
-      "runtimeChecks": [],
+      "providerResources": [
+        {
+          "discriminator": {
+            "name": "app.kubernetes.io/name",
+            "value": "unitycatalog"
+          },
+          "type": "apps/Deployment"
+        }
+      ],
+      "runtimeChecks": [
+        {
+          "field": "storageEndpoint",
+          "fix": "set all three, or none",
+          "id": "storage-together",
+          "message": "storageEndpoint, storageCredentialsSecret and storageBuckets go together",
+          "reason": "NOT_EXPRESSIBLE"
+        }
+      ],
       "serviceTypes": [
         "BigData.CaaS.UnityCatalog"
       ]
@@ -930,6 +1032,7 @@
                     "maximum": 2147483647,
                     "minimum": 0
                   },
+                  "example": 3,
                   "type": "integer"
                 },
                 "minReplicas": {
@@ -938,6 +1041,7 @@
                     "maximum": 2147483647,
                     "minimum": 0
                   },
+                  "example": 1,
                   "type": "integer",
                   "typeLevel": "warn"
                 },
@@ -947,6 +1051,7 @@
                     "maximum": 100,
                     "minimum": 0
                   },
+                  "default": 70,
                   "description": "CPU utilization percentage the HPA keeps; 0 or unset is 70",
                   "type": "integer",
                   "typeLevel": "warn"
@@ -954,7 +1059,12 @@
               }
             }
           },
-          "description": "{minReplicas, maxReplicas, targetCpuUtilization}: an HPA when maxReplicas > 0",
+          "description": "{minReplicas, maxReplicas, targetCpuUtilization}: an HPA when maxReplicas > 0; unset, no autoscaling",
+          "example": {
+            "maxReplicas": 3,
+            "minReplicas": 1,
+            "targetCpuUtilization": 70
+          },
           "key": "autoscaling",
           "type": "object",
           "typeLevel": "error"
@@ -962,6 +1072,12 @@
         {
           "default": "public.ecr.aws/docker/library/nginx:alpine",
           "key": "containerImage",
+          "type": "string"
+        },
+        {
+          "description": "short name of the environment secret (a Docker config JSON for the registry of containerImage) the image is read with when it is imported; it must be listed in environmentSecretShortNames",
+          "example": "dockerhub-read",
+          "key": "containerImageCredentials",
           "type": "string"
         },
         {
@@ -1036,6 +1152,7 @@
                     "maximum": 65535,
                     "minimum": 0
                   },
+                  "description": "0 or unset: the container port",
                   "type": "integer",
                   "typeLevel": "warn"
                 },
@@ -1090,6 +1207,7 @@
                     "maximum": 2147483647,
                     "minimum": 0
                   },
+                  "default": 3,
                   "type": "integer"
                 },
                 "initialDelaySeconds": {
@@ -1097,6 +1215,7 @@
                     "maximum": 2147483647,
                     "minimum": 0
                   },
+                  "default": 0,
                   "type": "integer"
                 },
                 "path": {
@@ -1112,6 +1231,7 @@
                     "maximum": 2147483647,
                     "minimum": 0
                   },
+                  "default": 10,
                   "type": "integer"
                 },
                 "port": {
@@ -1119,6 +1239,7 @@
                     "maximum": 65535,
                     "minimum": 0
                   },
+                  "description": "0 or unset: the container port",
                   "type": "integer"
                 },
                 "timeoutSeconds": {
@@ -1126,12 +1247,16 @@
                     "maximum": 2147483647,
                     "minimum": 0
                   },
+                  "default": 1,
                   "type": "integer"
                 }
               }
             }
           },
           "description": "{path, port, initialDelaySeconds, periodSeconds, timeoutSeconds, failureThreshold}",
+          "example": {
+            "path": "/healthz"
+          },
           "key": "livenessProbe",
           "type": "object",
           "typeLevel": "error"
@@ -1175,6 +1300,9 @@
           "type": "string"
         },
         {
+          "example": {
+            "kubernetes.io/os": "linux"
+          },
           "key": "nodeSelector",
           "type": "object",
           "typeLevel": "error"
@@ -1188,12 +1316,16 @@
                     "maximum": 2147483647,
                     "minimum": 0
                   },
+                  "example": 1,
                   "type": "integer"
                 }
               }
             }
           },
           "description": "{minAvailable}; default minAvailable 1 when more than one replica, 0 disables",
+          "example": {
+            "minAvailable": 1
+          },
           "key": "podDisruptionBudget",
           "type": "object",
           "typeLevel": "error"
@@ -1216,6 +1348,7 @@
                     "maximum": 2147483647,
                     "minimum": 0
                   },
+                  "default": 3,
                   "type": "integer"
                 },
                 "initialDelaySeconds": {
@@ -1223,6 +1356,7 @@
                     "maximum": 2147483647,
                     "minimum": 0
                   },
+                  "default": 0,
                   "type": "integer"
                 },
                 "path": {
@@ -1238,6 +1372,7 @@
                     "maximum": 2147483647,
                     "minimum": 0
                   },
+                  "default": 10,
                   "type": "integer"
                 },
                 "port": {
@@ -1245,6 +1380,7 @@
                     "maximum": 65535,
                     "minimum": 0
                   },
+                  "description": "0 or unset: the container port",
                   "type": "integer"
                 },
                 "timeoutSeconds": {
@@ -1252,12 +1388,16 @@
                     "maximum": 2147483647,
                     "minimum": 0
                   },
+                  "default": 1,
                   "type": "integer"
                 }
               }
             }
           },
           "description": "{path, port, initialDelaySeconds, periodSeconds, timeoutSeconds, failureThreshold}",
+          "example": {
+            "path": "/healthz"
+          },
           "key": "readinessProbe",
           "type": "object",
           "typeLevel": "error"
@@ -1337,6 +1477,11 @@
         },
         {
           "description": "NAME -> {\"$envSecret\": \"<shortName>\"}",
+          "example": {
+            "DB_PASSWORD": {
+              "$envSecret": "db-password"
+            }
+          },
           "key": "secretEnv",
           "type": "object",
           "typeLevel": "error"
@@ -1398,6 +1543,7 @@
                     "maximum": 2147483647,
                     "minimum": 0
                   },
+                  "default": 3,
                   "type": "integer"
                 },
                 "initialDelaySeconds": {
@@ -1405,6 +1551,7 @@
                     "maximum": 2147483647,
                     "minimum": 0
                   },
+                  "default": 0,
                   "type": "integer"
                 },
                 "path": {
@@ -1420,6 +1567,7 @@
                     "maximum": 2147483647,
                     "minimum": 0
                   },
+                  "default": 10,
                   "type": "integer"
                 },
                 "port": {
@@ -1427,6 +1575,7 @@
                     "maximum": 65535,
                     "minimum": 0
                   },
+                  "description": "0 or unset: the container port",
                   "type": "integer"
                 },
                 "timeoutSeconds": {
@@ -1434,12 +1583,16 @@
                     "maximum": 2147483647,
                     "minimum": 0
                   },
+                  "default": 1,
                   "type": "integer"
                 }
               }
             }
           },
           "description": "{path, port, initialDelaySeconds, periodSeconds, timeoutSeconds, failureThreshold}",
+          "example": {
+            "path": "/healthz"
+          },
           "key": "startupProbe",
           "type": "object",
           "typeLevel": "error"
@@ -1478,6 +1631,20 @@
           "fix": "Set each secretEnv entry to {{\"$envSecret\": \"<secret short name>\"}}, named with letters, digits and '_'.",
           "id": "secret-env-references",
           "message": "Every secretEnv entry must be an environment variable name set to a reference to an environment secret, and must not also be set in env.",
+          "reason": "NOT_EXPRESSIBLE"
+        },
+        {
+          "field": "/containerImageCredentials",
+          "fix": "Set containerImageCredentials to the secret's short name, for example \"dockerhub-read\", not to a $envSecret object.",
+          "id": "container-image-credentials",
+          "message": "containerImageCredentials must be the short name of an environment secret: one segment of letters, digits, '.', '_' and '-'.",
+          "reason": "NOT_EXPRESSIBLE"
+        },
+        {
+          "field": "/environmentSecretShortNames",
+          "fix": "Add the secret's short name to environmentSecretShortNames, or remove its reference from secretEnv or containerImageCredentials.",
+          "id": "environment-secret-granted",
+          "message": "Every environment secret secretEnv and containerImageCredentials reference must be listed in environmentSecretShortNames.",
           "reason": "NOT_EXPRESSIBLE"
         }
       ],
@@ -1721,7 +1888,7 @@
     },
     {
       "aliasOfOfferType": null,
-      "canAccessSecrets": false,
+      "canAccessSecrets": true,
       "contractSchemaVersion": "2.0",
       "offerType": "Observability.CaaS.KubePrometheusStack",
       "parameterRules": [],
@@ -1737,6 +1904,11 @@
           "key": "alertmanagerConfig",
           "type": "object",
           "typeLevel": "error"
+        },
+        {
+          "description": "the short names of the environment secrets this component may read",
+          "key": "environmentSecretShortNames",
+          "type": "array"
         },
         {
           "description": "Grafana's Loki datasource; unset = the GrafanaLoki service in this namespace, none = no datasource",
@@ -1772,6 +1944,17 @@
           "description": "Days Prometheus keeps metrics",
           "key": "retentionDays",
           "type": "integer"
+        },
+        {
+          "description": "NAME -> {\"$envSecret\": \"<shortName>\"}",
+          "example": {
+            "DB_PASSWORD": {
+              "$envSecret": "db-password"
+            }
+          },
+          "key": "secretEnv",
+          "type": "object",
+          "typeLevel": "error"
         },
         {
           "description": "StorageClass of Prometheus' volume; unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else ephemeral",
@@ -1810,6 +1993,20 @@
           "fix": "Set tempoUrl to the URL of Tempo, for example http://tempo.monitoring.svc.cluster.local:3200, or to none.",
           "id": "tempo-url",
           "message": "tempoUrl must be none or an absolute http or https URL.",
+          "reason": "NOT_EXPRESSIBLE"
+        },
+        {
+          "field": "/secretEnv",
+          "fix": "Set each secretEnv entry to {{\"$envSecret\": \"<secret short name>\"}}, named with letters, digits and '_'.",
+          "id": "secret-env-references",
+          "message": "Every secretEnv entry must be an environment variable name set to a reference to an environment secret, and must not also be set in env.",
+          "reason": "NOT_EXPRESSIBLE"
+        },
+        {
+          "field": "/secretEnv",
+          "fix": "Add the secret's short name to environmentSecretShortNames, or remove it from secretEnv.",
+          "id": "environment-secret-granted",
+          "message": "Every environment secret secretEnv references must be listed in environmentSecretShortNames.",
           "reason": "NOT_EXPRESSIBLE"
         }
       ],
@@ -1901,6 +2098,149 @@
       ],
       "serviceTypes": [
         "Observability.CaaS.PrometheusExporter"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
+      "offerType": "Storage.CaaS.CnpgCluster",
+      "parameterRules": [],
+      "params": [
+        {
+          "default": false,
+          "key": "age",
+          "type": "boolean"
+        },
+        {
+          "default": "1",
+          "key": "cpuLimit",
+          "type": "string"
+        },
+        {
+          "default": "500m",
+          "key": "cpuRequest",
+          "type": "string"
+        },
+        {
+          "default": "app",
+          "key": "database",
+          "type": "string"
+        },
+        {
+          "default": "app",
+          "key": "databaseOwner",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "enableSuperuserAccess",
+          "type": "boolean"
+        },
+        {
+          "default": 3,
+          "key": "instances",
+          "type": "integer"
+        },
+        {
+          "default": "1Gi",
+          "key": "memoryLimit",
+          "type": "string"
+        },
+        {
+          "default": "512Mi",
+          "key": "memoryRequest",
+          "type": "string"
+        },
+        {
+          "constraints": {
+            "pattern": "[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?"
+          },
+          "example": "team-a",
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "default": "17.2",
+          "key": "postgresqlVersion",
+          "type": "string"
+        },
+        {
+          "key": "storageClass",
+          "type": "string"
+        },
+        {
+          "default": "10Gi",
+          "key": "storageSize",
+          "type": "string"
+        },
+        {
+          "key": "version",
+          "type": "string"
+        }
+      ],
+      "provider": "CaaS",
+      "providerResources": [
+        {
+          "type": "postgresql.cnpg.io/Cluster"
+        }
+      ],
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "Storage.CaaS.CloudNativePg"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
+      "offerType": "Storage.CaaS.CnpgDatabase",
+      "parameterRules": [],
+      "params": [
+        {
+          "key": "cnpgClusterName",
+          "type": "string"
+        },
+        {
+          "example": "orders",
+          "key": "databaseName",
+          "type": "string"
+        },
+        {
+          "key": "databaseOwner",
+          "type": "string"
+        },
+        {
+          "default": "UTF8",
+          "key": "encoding",
+          "type": "string"
+        },
+        {
+          "key": "localeCType",
+          "type": "string"
+        },
+        {
+          "key": "localeCollate",
+          "type": "string"
+        },
+        {
+          "constraints": {
+            "pattern": "[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?"
+          },
+          "example": "team-a",
+          "key": "namespace",
+          "type": "string"
+        }
+      ],
+      "provider": "CaaS",
+      "providerResources": [
+        {
+          "type": "postgresql.cnpg.io/Database"
+        }
+      ],
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "Storage.CaaS.CloudNativePgDatabase"
       ]
     },
     {

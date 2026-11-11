@@ -9,7 +9,7 @@ export const APIManagement_CaaS_Ambassador = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.14.0',
+      agentVersion: 'v1.17.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -124,7 +124,7 @@ export const APIManagement_CaaS_TraefikGateway = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.14.0',
+      agentVersion: 'v1.17.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [

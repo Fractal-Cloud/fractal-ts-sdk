@@ -65,7 +65,10 @@ describe('withEnvironmentSecrets', () => {
       throw new Error('not refused');
     };
     const blank = refusal(() =>
-      SecretReader({}).withEnvironmentSecrets(['ok', {raw: 'hunter2'} as never]),
+      SecretReader({}).withEnvironmentSecrets([
+        'ok',
+        {raw: 'hunter2'} as never,
+      ]),
     );
     expect(blank).not.toContain('hunter2');
     const repeated = refusal(() =>
@@ -231,8 +234,99 @@ describe('env and secretEnv on a container environment', () => {
         environment,
         select: {web: EcsService({})},
       }),
-    ).toThrow(
-      "secretEnv 'DB_PASSWORD' is not an environment-secret reference",
-    );
+    ).toThrow("secretEnv 'DB_PASSWORD' is not an environment-secret reference");
+  });
+});
+
+describe('K8sWorkload image credentials (caas-k8s v1.17.0)', () => {
+  it('pulls a private image with the environment secret it is granted', () => {
+    const ls = workloadFractal({
+      DB_PASSWORD: secretRef('db-password'),
+    }).toLiveSystem({
+      name: 'ls',
+      environment,
+      select: {
+        web: K8sWorkload({
+          containerImageCredentials: 'docker-hub-pull',
+        }).withEnvironmentSecrets(['docker-hub-pull', 'db-password']),
+      },
+    });
+    expect(ls.components[0].parameters).toMatchObject({
+      containerImage: 'registry/app:1',
+      containerImageCredentials: 'docker-hub-pull',
+      environmentSecretShortNames: ['docker-hub-pull', 'db-password'],
+      secretEnv: {DB_PASSWORD: {$envSecret: 'db-password'}},
+    });
+  });
+
+  it('refuses credentials that are not a string, without echoing them', () => {
+    let message = '';
+    try {
+      workloadFractal({}).toLiveSystem({
+        name: 'ls',
+        environment,
+        select: {
+          web: K8sWorkload({
+            containerImageCredentials: {auths: {hunter2: 1}} as never,
+          }),
+        },
+      });
+    } catch (e) {
+      message = (e as Error).message;
+    }
+    expect(message).toContain("'containerImageCredentials'");
+    expect(message).not.toContain('hunter2');
+  });
+
+  // The review's probes: a credential pasted where its short name belongs.
+  const notGranted =
+    "Live component 'web': containerImageCredentials must be the short name of " +
+    'an environment secret granted to the workload in environmentSecretShortNames ' +
+    '(withEnvironmentSecrets); the value is withheld.';
+  const refusal = (offer: ReturnType<typeof K8sWorkload>): string => {
+    try {
+      workloadFractal({}).toLiveSystem({
+        name: 'ls',
+        environment,
+        select: {web: offer},
+      });
+    } catch (e) {
+      return (e as Error).message;
+    }
+    throw new Error('not refused');
+  };
+
+  it.each([
+    [
+      'a Docker config JSON, with no grant',
+      K8sWorkload({
+        containerImageCredentials:
+          '{"auths":{"registry.example.com":{"auth":"dXNlcjpodW50ZXIy"}}}',
+      }),
+      'dXNlcjpodW50ZXIy',
+    ],
+    [
+      'a token, with a grant that does not list it',
+      K8sWorkload({
+        containerImageCredentials: 'ghp_hunter2',
+      }).withEnvironmentSecrets(['pull']),
+      'hunter2',
+    ],
+    [
+      'a granted name, with no grant at all',
+      K8sWorkload({containerImageCredentials: 'docker-hub-pull'}),
+      'docker-hub-pull',
+    ],
+    [
+      'an environment-secret reference instead of a short name',
+      K8sWorkload({
+        containerImageCredentials: secretRef('docker-hub-pull') as never,
+      }).withEnvironmentSecrets(['docker-hub-pull']),
+      'docker-hub-pull',
+    ],
+  ])('refuses %s, naming the key, never the value', (_, offer, value) => {
+    const message = refusal(offer);
+    expect(message).toBe(notGranted);
+    expect(message).not.toContain(value);
   });
 });

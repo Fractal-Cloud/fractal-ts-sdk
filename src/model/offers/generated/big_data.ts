@@ -9,7 +9,7 @@ export const BigData_CaaS_MinioTenant = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.14.0',
+      agentVersion: 'v1.17.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -39,7 +39,7 @@ export const BigData_CaaS_SparkCluster = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.14.0',
+      agentVersion: 'v1.17.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -69,24 +69,55 @@ export const BigData_CaaS_SparkJob = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.14.0',
+      agentVersion: 'v1.17.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
-      parameterRules: [],
+      parameterRules: [
+        {
+          fix: 'Set artifactUri to the URL of the Python wheel the job runs, or jarUri to the jar and mainClass to its main class.',
+          id: 'job-artifact',
+          keys: ['jarUri', 'artifactUri'],
+          kind: 'anyOf',
+          message: 'The job does not say what to run.',
+        },
+      ],
     },
   ],
   params: {
+    /** the kind of artifact in artifactUri; when unset, a Python wheel */
+    artifactType: {
+      type: 'string',
+      required: false,
+      values: ['python_wheel'],
+      valuesLevel: 'warn',
+    },
+    /** the https URL of the pure-Python wheel the job runs, ending with #sha256=<the wheel's SHA-256>, wrapped into an image by the agent */
+    artifactUri: {type: 'string', required: false},
     /** the short names of the environment secrets this component may read */
     environmentSecretShortNames: {type: 'array', required: false},
     image: {type: 'string', required: false, default: 'apache/spark:3.5.0'},
-    jarUri: {type: 'string', required: false, default: ''},
+    /** the jar the job runs, when it does not run a Python wheel from artifactUri */
+    jarUri: {type: 'string', required: false},
+    /** the main class of the jar in jarUri */
     mainClass: {type: 'string', required: false, default: ''},
     namespace: {
       type: 'string',
       required: false,
       constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?'},
     },
+    /** the Python package the wheel installs */
+    packageName: {
+      type: 'string',
+      required: false,
+      derived: {note: 'the component id, with - read as _'},
+    },
     schedule: {type: 'string', required: false, default: ''},
+    /** the Spark image the wheel runs on, pinned by digest (…@sha256:<64 hex>) */
+    sparkBaseImage: {
+      type: 'string',
+      required: false,
+      derived: {note: "the agent's pinned Spark base image"},
+    },
   },
 } as const satisfies OfferContract;
 
@@ -96,7 +127,7 @@ export const BigData_CaaS_SparkMlExperiment = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.14.0',
+      agentVersion: 'v1.17.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -120,7 +151,7 @@ export const BigData_CaaS_SparkOperator = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.14.0',
+      agentVersion: 'v1.17.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -143,13 +174,34 @@ export const BigData_CaaS_SparkUnityCatalog = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.14.0',
+      agentVersion: 'v1.17.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
     },
   ],
-  params: {},
+  params: {
+    namespace: {
+      type: 'string',
+      required: false,
+      default: 'unitycatalog',
+      constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?'},
+    },
+    /** the name of the server's objects; the component's by default */
+    serverName: {type: 'string', required: false},
+    /** the buckets of that MinIO whose tables the server vends credentials for */
+    storageBuckets: {type: 'array', required: false},
+    /** the Secret in the server's namespace holding accessKey and secretKey of the MinIO user the server vends credentials as */
+    storageCredentialsSecret: {
+      type: 'string',
+      required: false,
+      sensitive: true,
+    },
+    /** the S3 endpoint of the MinIO the cataloged tables are stored in, whose STS vends their credentials */
+    storageEndpoint: {type: 'string', required: false},
+    /** the region of that endpoint */
+    storageRegion: {type: 'string', required: false, default: 'us-east-1'},
+  },
 } as const satisfies OfferContract;
 
 export const BigData_PaaS_AwsDatabricks = {

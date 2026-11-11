@@ -30,6 +30,13 @@ import {
 import {searchLinkRefusal} from '../components/search_link_refusal';
 import {parseRouteLink, routeRefusal} from './route_link_routes';
 import type {SqsExporterConfig} from './sqs_exporter_config';
+import {contractKeys} from './contract/contract_keys';
+import {rawSecretEnvVariable} from './raw_secret_env_variable';
+
+/** The kube-prometheus-stack contract's keys. */
+const KUBE_PROMETHEUS_STACK_KEY = contractKeys(
+  Observability_CaaS_KubePrometheusStack,
+);
 
 /** Throw the error every check here throws, naming the component. */
 const refuse = (id: string, why: string): never => {
@@ -289,8 +296,31 @@ export const KubePrometheusStack = defineOffer<
   neutral: {
     scrapeInterval: unsupported('the agent sets no scrape interval'),
   },
-  validate: (self, all) => ensureGrafanaRoutes(self, all),
+  validate: (self, all) => {
+    ensureGrafanaSecretEnvReferences(self);
+    ensureGrafanaRoutes(self, all);
+  },
 });
+
+/**
+ * Refuse a Grafana `secretEnv` value that is not an environment-secret
+ * reference (the contract check already refuses one that is not a map). Names
+ * the variable, never the value.
+ */
+const ensureGrafanaSecretEnvReferences = (self: LiveSystemComponent): void => {
+  const secretEnv = self.parameters[KUBE_PROMETHEUS_STACK_KEY.secretEnv];
+  if (typeof secretEnv !== 'object' || secretEnv === null) {
+    return;
+  }
+  const raw = rawSecretEnvVariable(secretEnv as Record<string, unknown>);
+  if (raw !== undefined) {
+    refuse(
+      self.id,
+      `secretEnv '${raw}' is not an environment-secret reference: ` +
+        "pass secretRef('<shortName>'), never the secret itself",
+    );
+  }
+};
 
 /**
  * Grafana Loki, monolithic (grafana-community chart 18.13.7, Loki 3.7.8). Its
