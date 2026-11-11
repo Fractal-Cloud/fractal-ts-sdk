@@ -11,6 +11,7 @@ import {
   SqsExporter,
 } from './observability';
 import type {Offer} from '../core';
+import {secretRef} from '../secret';
 
 // ── SqsExporter: every key is optional; the lists are lists ──────────────────
 SqsExporter({});
@@ -45,6 +46,14 @@ KubePrometheusStack({
   alertmanagerConfig: {route: {receiver: 'null'}},
   values: {grafana: {replicas: 1}},
 });
+// caas-k8s v1.17.0: Grafana reads environment secrets as references only.
+KubePrometheusStack({
+  secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: secretRef('grafana-google')},
+}).withEnvironmentSecrets(['grafana-google']);
+// @ts-expect-error a secretEnv value is a secretRef, never the secret itself.
+KubePrometheusStack({secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: 'hunter2'}});
+// @ts-expect-error secretEnv maps variable names to references.
+KubePrometheusStack({secretEnv: secretRef('grafana-google')});
 // @ts-expect-error `prometheusStorageGi` is a number of GiB.
 KubePrometheusStack({prometheusStorageGi: '50'});
 // @ts-expect-error `retentionDays` is the component's `withRetentionDays`, not an offer key.

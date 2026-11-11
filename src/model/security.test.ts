@@ -18,6 +18,7 @@ import {
 } from './components/security';
 import {Ocelot, Cognito, Keycloak, EntraExternalId} from './offers/security';
 import {Workload} from './components/custom_workloads';
+import {Security_CaaS_Ocelot} from './offers/generated/security';
 
 const environment = {};
 const boundedContextId = {id: 'security-templates'};
@@ -224,5 +225,16 @@ describe('Security domain', () => {
         },
       },
     ]);
+  });
+});
+
+describe('Ocelot routing', () => {
+  it('is reconciled by the cloud agents only, never by caas-k8s', () => {
+    // caas-k8s (v1.17.0) serves no Security.CaaS.Ocelot: a contract that
+    // listed it would route Ocelot components to an agent that cannot run them.
+    expect(
+      Security_CaaS_Ocelot.declaredBy.map(d => d.agentId as string),
+    ).not.toContain('aria-agent-caas-k8s');
+    expect(Security_CaaS_Ocelot.serviceTypes).toEqual([]);
   });
 });

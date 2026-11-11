@@ -29,7 +29,7 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.14.0',
+      agentVersion: 'v1.17.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [
@@ -159,7 +159,7 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
     },
   ],
   params: {
-    /** {minReplicas, maxReplicas, targetCpuUtilization}: an HPA when maxReplicas > 0 */
+    /** {minReplicas, maxReplicas, targetCpuUtilization}: an HPA when maxReplicas > 0; unset, no autoscaling */
     autoscaling: {
       type: 'object',
       required: false,
@@ -169,15 +169,18 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
             maxReplicas: {
               aliases: [{key: '/maxReplicas'}],
               constraints: {maximum: 2147483647, minimum: 0},
+              example: 3,
               type: 'integer',
             },
             minReplicas: {
               constraints: {level: 'warn', maximum: 2147483647, minimum: 0},
+              example: 1,
               type: 'integer',
               typeLevel: 'warn',
             },
             targetCpuUtilization: {
               constraints: {level: 'warn', maximum: 100, minimum: 0},
+              default: 70,
               description:
                 'CPU utilization percentage the HPA keeps; 0 or unset is 70',
               type: 'integer',
@@ -192,6 +195,8 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
       required: false,
       default: 'public.ecr.aws/docker/library/nginx:alpine',
     },
+    /** short name of the environment secret (a Docker config JSON for the registry of containerImage) the image is read with when it is imported; it must be listed in environmentSecretShortNames */
+    containerImageCredentials: {type: 'string', required: false},
     containerPort: {type: 'integer', required: false, default: 80},
     cpu: {type: 'string', required: false, default: '100m'},
     /** [{name, access}]: environment DNS zones the workload may read or write programmatically, with its own cloud identity, which the zone's agent grants access to */
@@ -230,6 +235,7 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
             },
             port: {
               constraints: {level: 'warn', maximum: 65535, minimum: 0},
+              description: '0 or unset: the container port',
               type: 'integer',
               typeLevel: 'warn',
             },
@@ -256,10 +262,12 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
           config: {
             failureThreshold: {
               constraints: {maximum: 2147483647, minimum: 0},
+              default: 3,
               type: 'integer',
             },
             initialDelaySeconds: {
               constraints: {maximum: 2147483647, minimum: 0},
+              default: 0,
               type: 'integer',
             },
             path: {
@@ -270,11 +278,17 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
             },
             periodSeconds: {
               constraints: {maximum: 2147483647, minimum: 0},
+              default: 10,
               type: 'integer',
             },
-            port: {constraints: {maximum: 65535, minimum: 0}, type: 'integer'},
+            port: {
+              constraints: {maximum: 65535, minimum: 0},
+              description: '0 or unset: the container port',
+              type: 'integer',
+            },
             timeoutSeconds: {
               constraints: {maximum: 2147483647, minimum: 0},
+              default: 1,
               type: 'integer',
             },
           },
@@ -311,6 +325,7 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
           config: {
             minAvailable: {
               constraints: {maximum: 2147483647, minimum: 0},
+              example: 1,
               type: 'integer',
             },
           },
@@ -332,10 +347,12 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
           config: {
             failureThreshold: {
               constraints: {maximum: 2147483647, minimum: 0},
+              default: 3,
               type: 'integer',
             },
             initialDelaySeconds: {
               constraints: {maximum: 2147483647, minimum: 0},
+              default: 0,
               type: 'integer',
             },
             path: {
@@ -346,11 +363,17 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
             },
             periodSeconds: {
               constraints: {maximum: 2147483647, minimum: 0},
+              default: 10,
               type: 'integer',
             },
-            port: {constraints: {maximum: 65535, minimum: 0}, type: 'integer'},
+            port: {
+              constraints: {maximum: 65535, minimum: 0},
+              description: '0 or unset: the container port',
+              type: 'integer',
+            },
             timeoutSeconds: {
               constraints: {maximum: 2147483647, minimum: 0},
+              default: 1,
               type: 'integer',
             },
           },
@@ -457,10 +480,12 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
           config: {
             failureThreshold: {
               constraints: {maximum: 2147483647, minimum: 0},
+              default: 3,
               type: 'integer',
             },
             initialDelaySeconds: {
               constraints: {maximum: 2147483647, minimum: 0},
+              default: 0,
               type: 'integer',
             },
             path: {
@@ -471,11 +496,17 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
             },
             periodSeconds: {
               constraints: {maximum: 2147483647, minimum: 0},
+              default: 10,
               type: 'integer',
             },
-            port: {constraints: {maximum: 65535, minimum: 0}, type: 'integer'},
+            port: {
+              constraints: {maximum: 65535, minimum: 0},
+              description: '0 or unset: the container port',
+              type: 'integer',
+            },
             timeoutSeconds: {
               constraints: {maximum: 2147483647, minimum: 0},
+              default: 1,
               type: 'integer',
             },
           },

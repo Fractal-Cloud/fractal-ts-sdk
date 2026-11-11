@@ -13,8 +13,12 @@ of truth for what is on npm.
 
 ### Breaking — what to change when upgrading
 
-2.15.0 is a minor release: it re-pins the agent contracts (below), and two of the contract
+2.15.0 is a minor release: it re-pins the agent contracts (below), and three of the contract
 changes refuse what 2.14.0 accepted.
+
+- **A `CaaSSparkJob` must say what it runs** (caas-k8s v1.17.0). Its contract's `job-artifact`
+  rule needs `jarUri` (with `mainClass`) or `artifactUri` (a Python wheel); a job with neither
+  is refused before deploy. Set one of them.
 
 - **`AzureApiManagement` `skuName` is checked against the agent's tiers.** A value outside
   `Consumption`, `Developer`, `Basic`, `Standard`, `Premium`, `BasicV2`, `StandardV2` with
@@ -50,6 +54,24 @@ With the contracts re-pinned, these offers can access environment secrets and ha
 `K8sWorkload`, `CaaSSparkCluster`, `CaaSSparkJob`, `OpenshiftWorkload`, `OpenshiftVm`, and the
 AWS, Azure and GCP Databricks clusters and jobs (2.14.0 shipped the method with no offer
 flagged).
+
+### Added — `K8sWorkload` pulls private images with an environment secret
+
+caas-k8s v1.17.0: `K8sWorkload({containerImageCredentials: '<shortName>'})` names the
+environment secret (a Docker config JSON for the registry of the `Workload`'s `withImage`) the
+agent reads the image with when it imports it. Grant the same secret with
+`withEnvironmentSecrets([...])`; the agent reads only granted secrets, and holds the workload
+until the secret exists. The value is a short name, never the credential: a value that is not
+one of the workload's `environmentSecretShortNames` is refused while the Live System is built,
+naming the key, never the value, so a pasted credential is not stored.
+
+### Added — `KubePrometheusStack` reads environment secrets
+
+caas-k8s v1.17.0: `KubePrometheusStack` can access environment secrets. It has
+`withEnvironmentSecrets(shortNames)`, and `secretEnv` sets Grafana environment variables from
+them: `KubePrometheusStack({secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: secretRef('grafana-google')}})
+.withEnvironmentSecrets(['grafana-google'])`. `secretEnv` takes references only, in its type and
+while the Live System is built: a raw value is refused, naming the variable, never the value.
 
 ### Added — `GrafanaLoki` `retainStorageOnDelete`
 
@@ -90,9 +112,29 @@ configs do not declare, so TypeScript callers of the typed API see no change.
 ### Changed — contracts re-pinned
 
 The offer definitions are generated from fractal-cloud-agents **v8.31.0** (aws, azure, gcp,
-oci; were v8.25.11), aria-agent-caas-k8s **v1.14.0** (was v1.8.1), aria-agent-aruba
+oci; were v8.25.11), aria-agent-caas-k8s **v1.17.0** (was v1.8.1), aria-agent-aruba
 **v0.0.23** (was v0.0.22) and aria-agent-openshift **v0.1.1** (was v0.1.0). What changes,
 beyond the sections above:
+
+- caas-k8s v1.15.0 to v1.17.0:
+  - `CaaSSparkJob` takes `artifactUri` (an https pure-Python wheel URL ending
+    `#sha256=<digest>`), `artifactType` (`python_wheel`), `packageName` and `sparkBaseImage`;
+    `jarUri` has no `''` default any more. The contract's `job-artifact` rule needs `jarUri` or
+    `artifactUri`: the control plane refuses a Spark job with neither before deploy.
+  - caas-k8s also declares `Storage.CaaS.CnpgCluster` and `Storage.CaaS.CnpgDatabase` (beside
+    the cloud agents). `containerPlatform` is read by the cloud agents only, and `namespace`
+    publishes the Kubernetes name pattern. No SDK offer emits either type.
+  - `BigData.CaaS.SparkUnityCatalog` declares its keys (`namespace`, `serverName`,
+    `storageBuckets`, `storageCredentialsSecret` (sensitive), `storageEndpoint`,
+    `storageRegion`). No SDK offer emits it.
+  - `K8sWorkload` probe and autoscaling members publish their defaults; descriptions only.
+  - **`Security.CaaS.Ocelot` is not served by caas-k8s v1.17.0** and is not in its contract:
+    `Ocelot` stays declared by, and reconciled by, the cloud agents only. A `TraefikGateway`
+    linked to an Ocelot is refused by caas-k8s v1.17.0; set its `forwardAuthAddress` instead.
+  - Agent behavior, no key changed: images are imported into the environment registry
+    pinned by digest; cloud registries (ECR, GAR) get no pull Secret (nodes pull with their own
+    identity); a `manifestUri` bundle with cluster-scoped or platform-namespace documents is
+    refused.
 
 - `canAccessSecrets` and `environmentSecretShortNames` on 51 agent declarations (44 generated
   contracts once offers several agents declare are merged).

@@ -9,7 +9,7 @@ export const Observability_CaaS_GrafanaAlloy = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.14.0',
+      agentVersion: 'v1.17.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -35,7 +35,7 @@ export const Observability_CaaS_GrafanaLoki = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.14.0',
+      agentVersion: 'v1.17.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -70,7 +70,7 @@ export const Observability_CaaS_GrafanaTempo = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.14.0',
+      agentVersion: 'v1.17.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -173,10 +173,11 @@ export const Observability_CaaS_Jaeger = {
 export const Observability_CaaS_KubePrometheusStack = {
   offerType: 'Observability.CaaS.KubePrometheusStack',
   serviceTypes: ['Observability.CaaS.Prometheus'],
+  canAccessSecrets: true,
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.14.0',
+      agentVersion: 'v1.17.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -187,6 +188,8 @@ export const Observability_CaaS_KubePrometheusStack = {
     alertmanagerConfig: {type: 'object', required: false},
     /** Ops-supplied PrometheusRule specs by name (chart additionalPrometheusRulesMap); none by default */
     alertRules: {type: 'object', required: false},
+    /** the short names of the environment secrets this component may read */
+    environmentSecretShortNames: {type: 'array', required: false},
     /** Grafana's Loki datasource; unset = the GrafanaLoki service in this namespace, none = no datasource */
     lokiUrl: {type: 'string', required: false},
     namespace: {
@@ -209,6 +212,8 @@ export const Observability_CaaS_KubePrometheusStack = {
       default: 15,
       constraints: {maximum: 2147483647, minimum: 1},
     },
+    /** NAME -> {"$envSecret": "<shortName>"} */
+    secretEnv: {type: 'object', required: false, sensitive: true},
     /** StorageClass of Prometheus' volume; unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else ephemeral */
     storageClassName: {type: 'string', required: false},
     /** Grafana's Tempo datasource; unset = the GrafanaTempo service in this namespace, none = no datasource */
@@ -287,7 +292,7 @@ export const Observability_CaaS_SqsExporter = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.14.0',
+      agentVersion: 'v1.17.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],

@@ -5,8 +5,15 @@ import type {OfferContract} from '../contract/offer_contract';
 
 export const Storage_CaaS_CnpgCluster = {
   offerType: 'Storage.CaaS.CnpgCluster',
-  serviceTypes: [],
+  serviceTypes: ['Storage.CaaS.CloudNativePg'],
   declaredBy: [
+    {
+      agentId: 'aria-agent-caas-k8s',
+      agentVersion: 'v1.17.0',
+      contractSchemaVersion: '2.0',
+      provider: 'CaaS',
+      parameterRules: [],
+    },
     {
       agentId: 'fractal-cloud-agent-aws',
       agentVersion: 'v8.31.0',
@@ -40,7 +47,16 @@ export const Storage_CaaS_CnpgCluster = {
     /** Whether to run the Fractal-built PostgreSQL image bundling the Apache AGE graph extension, preloaded as a shared library. When unset, false. Requires PostgreSQL 17.2, the only version with a published AGE image: a new cluster on any other version is refused, and a deployed one keeps the image it runs, with a warning. Toggling it on a running cluster swaps the image with a rolling update. */
     age: {type: 'boolean', required: false, default: false},
     /** Deprecated. Id of the Kubernetes cluster component to deploy on, read only when this component declares no dependency on a Kubernetes cluster. Declare that dependency instead. */
-    containerPlatform: {type: 'string', required: false},
+    containerPlatform: {
+      type: 'string',
+      required: false,
+      agents: [
+        'fractal-cloud-agent-aws',
+        'fractal-cloud-agent-azure',
+        'fractal-cloud-agent-gcp',
+        'fractal-cloud-agent-oci',
+      ],
+    },
     /** CPU limit of each PostgreSQL instance, as a Kubernetes quantity (cores or millicores). When unset, 1. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image. */
     cpuLimit: {type: 'string', required: false, default: '1'},
     /** CPU requested by each PostgreSQL instance, as a Kubernetes quantity (cores, or millicores such as 500m). When unset, 500m. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image. */
@@ -61,7 +77,7 @@ export const Storage_CaaS_CnpgCluster = {
     namespace: {
       type: 'string',
       required: false,
-      derived: {note: 'defaults to the component id when absent'},
+      constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?'},
     },
     /** PostgreSQL version, used as the tag of the ghcr.io/cloudnative-pg/postgresql image (e.g. 17.2). Takes precedence over 'version'; when neither is set, 17.2. A running cluster only moves within its major version: a different major is kept at the deployed one, because a major upgrade needs a migration. With age=true only 17.2 is available. */
     postgresqlVersion: {type: 'string', required: false, default: '17.2'},
@@ -76,7 +92,7 @@ export const Storage_CaaS_CnpgCluster = {
       ],
     },
     /** Kubernetes storage class of the data volumes. When unset, the cluster's default storage class. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image. */
-    storageClass: {type: 'string', required: false, default: ''},
+    storageClass: {type: 'string', required: false},
     /** Size of each instance's data volume, as a Kubernetes quantity (e.g. 10Gi). When unset, 10Gi. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image. */
     storageSize: {type: 'string', required: false, default: '10Gi'},
     /** PostgreSQL version as declared by the blueprint component, used when 'postgresqlVersion' is not set. Applies only when the cluster is created: a running cluster keeps its deployed version unless 'postgresqlVersion' asks for another one. */
@@ -86,8 +102,15 @@ export const Storage_CaaS_CnpgCluster = {
 
 export const Storage_CaaS_CnpgDatabase = {
   offerType: 'Storage.CaaS.CnpgDatabase',
-  serviceTypes: [],
+  serviceTypes: ['Storage.CaaS.CloudNativePgDatabase'],
   declaredBy: [
+    {
+      agentId: 'aria-agent-caas-k8s',
+      agentVersion: 'v1.17.0',
+      contractSchemaVersion: '2.0',
+      provider: 'CaaS',
+      parameterRules: [],
+    },
     {
       agentId: 'fractal-cloud-agent-aws',
       agentVersion: 'v8.31.0',
@@ -119,34 +142,33 @@ export const Storage_CaaS_CnpgDatabase = {
   ],
   params: {
     /** Component id of the CnpgCluster, in the same Live System, that hosts the database. When unset, the CnpgCluster this component depends on; with neither the database fails. It waits until that cluster is Active. */
-    cnpgClusterName: {
+    cnpgClusterName: {type: 'string', required: false},
+    /** Deprecated. Id of the Kubernetes cluster component to deploy on, read only when this component declares no dependency on a Kubernetes cluster. Declare that dependency instead. */
+    containerPlatform: {
       type: 'string',
       required: false,
-      derived: {note: 'the CnpgCluster component this database depends on'},
+      agents: [
+        'fractal-cloud-agent-aws',
+        'fractal-cloud-agent-azure',
+        'fractal-cloud-agent-gcp',
+        'fractal-cloud-agent-oci',
+      ],
     },
-    /** Deprecated. Id of the Kubernetes cluster component to deploy on, read only when this component declares no dependency on a Kubernetes cluster. Declare that dependency instead. */
-    containerPlatform: {type: 'string', required: false},
     /** Name of the PostgreSQL database created in the CloudNativePG cluster. Required to create: a new database without one is refused; set it to the database name your application connects to. Used only when the database is created: an existing database is never changed, and one declared without it is kept, with a warning. */
     databaseName: {type: 'string', required: false},
     /** Existing PostgreSQL role that owns the database. When unset, the role the CnpgCluster bootstraps (that cluster's databaseOwner). Used only when the database is created: an existing database is never changed. */
-    databaseOwner: {
-      type: 'string',
-      required: false,
-      derived: {
-        note: 'the role the CnpgCluster bootstraps (its databaseOwner)',
-      },
-    },
+    databaseOwner: {type: 'string', required: false},
     /** Character encoding of the database, as PostgreSQL names it (e.g. UTF8). When unset, UTF8. Used only when the database is created: an existing database is never changed. */
     encoding: {type: 'string', required: false, default: 'UTF8'},
     /** Collation locale (LC_COLLATE) of the database, the Database resource's localeCollate, e.g. en_US.UTF-8; it must be a locale the PostgreSQL image provides. When unset, the cluster's default. Used only when the database is created: CloudNativePG refuses to change it afterwards. */
-    localeCollate: {type: 'string', required: false, default: ''},
+    localeCollate: {type: 'string', required: false},
     /** Character classification locale (LC_CTYPE) of the database, the Database resource's localeCType; it must be a locale the PostgreSQL image provides. When unset, the cluster's default. Used only when the database is created: CloudNativePG refuses to change it afterwards. */
-    localeCType: {type: 'string', required: false, default: ''},
+    localeCType: {type: 'string', required: false},
     /** Kubernetes namespace of the database resource. Always the namespace of its CnpgCluster: when unset, that one is used, and a different value fails the component, because the operator only adopts a database in its cluster's namespace. */
     namespace: {
       type: 'string',
       required: false,
-      derived: {note: 'defaults to the component id when absent'},
+      constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?'},
     },
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
     region: {
@@ -167,7 +189,7 @@ export const Storage_CaaS_MinioBucket = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.14.0',
+      agentVersion: 'v1.17.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -189,7 +211,7 @@ export const Storage_CaaS_MinioTenant = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.14.0',
+      agentVersion: 'v1.17.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -218,7 +240,7 @@ export const Storage_CaaS_OpenSearch = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.14.0',
+      agentVersion: 'v1.17.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],

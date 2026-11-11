@@ -39,6 +39,7 @@ import {
   KUBERNETES_WORKLOAD_OFFER_TYPE,
 } from './offer_type_ids';
 import {toKubernetesWorkloadParameters} from './kubernetes_workload_contract';
+import {ensureImageCredentialsGranted} from './image_credentials_grant';
 import type {WorkloadSsmParameters} from './workload_ssm_parameters';
 
 const asRecord = (v: unknown): Record<string, unknown> =>
@@ -479,6 +480,7 @@ export const K8sWorkload = defineOffer<
   // value is pinned to the id the catalogue and the caas-k8s agent agree on.
   contract: CustomWorkloads_CaaS_KubernetesWorkload,
   deliveryModel: 'CaaS',
+  validate: self => ensureImageCredentialsGranted(self),
   instantiate: (ctx, cfg) => {
     // The zones are the component's. A config key spread over its parameters
     // would silently replace the zones the component asked for.

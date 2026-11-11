@@ -12,6 +12,7 @@
 
 import {isSecretRef} from '../secret';
 import {contractKeys} from './contract/contract_keys';
+import {rawSecretEnvVariable} from './raw_secret_env_variable';
 import {CustomWorkloads_CaaS_KubernetesWorkload} from './generated/custom_workloads';
 
 /** The workload contract's keys. */
@@ -235,15 +236,14 @@ const ensureSecretEnvReferences = (
         "references: {NAME: secretRef('<shortName>')}",
     );
   }
-  for (const [name, value] of Object.entries(asRecord(secretEnv))) {
-    if (!isSecretRef(value)) {
-      // The value itself is never echoed: it is what must not be printed.
-      refuse(
-        componentId,
-        `secretEnv '${name}' on '${componentId}' is not an environment-secret ` +
-          "reference: pass secretRef('<shortName>'), never the secret itself",
-      );
-    }
+  const raw = rawSecretEnvVariable(asRecord(secretEnv));
+  if (raw !== undefined) {
+    // The value itself is never echoed: it is what must not be printed.
+    refuse(
+      componentId,
+      `secretEnv '${raw}' on '${componentId}' is not an environment-secret ` +
+        "reference: pass secretRef('<shortName>'), never the secret itself",
+    );
   }
 };
 
