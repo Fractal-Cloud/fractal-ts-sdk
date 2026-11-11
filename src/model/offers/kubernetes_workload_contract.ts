@@ -11,6 +11,7 @@
  */
 
 import {isSecretRef} from '../secret';
+import {isSetValue, withoutUndefined} from '../parameter_value';
 import {contractKeys} from './contract/contract_keys';
 import {rawSecretEnvVariable} from './raw_secret_env_variable';
 import {CustomWorkloads_CaaS_KubernetesWorkload} from './generated/custom_workloads';
@@ -24,9 +25,12 @@ export const KUBERNETES_WORKLOAD_IMAGE_PARAM = KEY.containerImage;
 /** The neutral `Workload` component's name for the same value. */
 export const NEUTRAL_IMAGE_PARAM = 'image';
 
-/** A value counts as supplied only if it is not nullish and not a blank string. */
+/**
+ * A value counts as supplied only if it is set (`isSetValue`: not undefined,
+ * not an object with no key set) and not null or a blank string.
+ */
 const isSupplied = (v: unknown): boolean =>
-  v !== undefined && v !== null && !(typeof v === 'string' && v.trim() === '');
+  isSetValue(v) && v !== null && !(typeof v === 'string' && v.trim() === '');
 
 /**
  * Translate a Workload's neutral `image` into the name the caas-k8s agent reads.
@@ -367,7 +371,14 @@ export const toKubernetesWorkloadParameters = (
   componentId: string,
   locked: readonly string[] = [],
 ): Record<string, unknown> => {
-  const params = withContractImageName(input, componentId, locked);
+  // A key set to undefined, at any depth, is not set: on both emit paths (the
+  // K8sWorkload config is already cleaned by defineOffer, a ContainerPlatform
+  // child's parameters are not).
+  const params = withContractImageName(
+    withoutUndefined(input),
+    componentId,
+    locked,
+  );
   const neutral = take(
     params,
     'port',

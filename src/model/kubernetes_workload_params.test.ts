@@ -567,3 +567,123 @@ describe('Workload parameters on a Kubernetes workload', () => {
     });
   });
 });
+
+describe('a resourceLimits that sets nothing (every member undefined)', () => {
+  const ctx = (parameters: Record<string, unknown>, locked: string[]) => ({
+    id: 'w',
+    displayName: 'w',
+    parameters,
+    locked,
+    dependencies: [],
+    links: [],
+    children: [],
+  });
+  const limitsOf = (
+    cfg: Record<string, unknown>,
+    parameters: Record<string, unknown>,
+    locked: string[],
+  ) =>
+    K8sWorkload({namespace: 'n', ...cfg} as never).instantiate(
+      ctx(parameters, locked),
+    )[0].parameters.resourceLimits;
+
+  it('does not discard open withResources limits (K8sWorkload config)', () => {
+    expect(
+      limitsOf(
+        {resourceLimits: {cpu: undefined}},
+        {image: 'r/a:1', resources: {limits: {cpu: '1'}}},
+        [],
+      ),
+    ).toStrictEqual({cpu: '1'});
+  });
+
+  it('is not refused over LOCKED withResources limits (K8sWorkload config)', () => {
+    expect(
+      limitsOf(
+        {resourceLimits: {cpu: undefined, memory: undefined}},
+        {image: 'r/a:1', resources: {limits: {cpu: '1'}}},
+        ['resources'],
+      ),
+    ).toStrictEqual({cpu: '1'});
+  });
+
+  it('does neither on the ContainerPlatform child path, whose parameters are not cleaned by defineOffer', () => {
+    const params = {
+      image: 'r/a:1',
+      resourceLimits: {cpu: undefined},
+      resources: {limits: {cpu: '1'}},
+    };
+    expect(
+      toKubernetesWorkloadParameters(params, 'w', []).resourceLimits,
+    ).toStrictEqual({cpu: '1'});
+    expect(
+      toKubernetesWorkloadParameters(params, 'w', ['resources']).resourceLimits,
+    ).toStrictEqual({cpu: '1'});
+  });
+
+  it('still refuses a member that IS set over LOCKED withResources limits', () => {
+    expect(() =>
+      toKubernetesWorkloadParameters(
+        {
+          image: 'r/a:1',
+          resourceLimits: {cpu: '8', memory: undefined},
+          resources: {limits: {cpu: '1'}},
+        },
+        'w',
+        ['resources'],
+      ),
+    ).toThrow(/'resources' on 'w' is a locked guardrail/);
+  });
+
+  it('does not replace an open resourceLimits component value (K8sWorkload config)', () => {
+    expect(
+      limitsOf(
+        {resourceLimits: {cpu: undefined}},
+        {image: 'r/a:1', resourceLimits: {memory: '1Gi'}},
+        [],
+      ),
+    ).toStrictEqual({memory: '1Gi'});
+  });
+
+  it('keeps a literal {} as a value: the agent reads it as a request', () => {
+    // caas-k8s: podDisruptionBudget {} disables the default PDB, autoscaling {}
+    // the HPA. Neither may be dropped or filled from a neutral value.
+    const [w] = K8sWorkload({
+      namespace: 'n',
+      podDisruptionBudget: {},
+      autoscaling: {},
+    } as never).instantiate(ctx({image: 'r/a:1', maxReplicas: 3}, []));
+    expect(w.parameters.podDisruptionBudget).toStrictEqual({});
+    expect(w.parameters.autoscaling).toStrictEqual({});
+    // A locked literal {} holds: open withResources limits do not replace it.
+    expect(
+      toKubernetesWorkloadParameters(
+        {image: 'r/a:1', resourceLimits: {}, resources: {limits: {cpu: '1'}}},
+        'w',
+        ['resourceLimits'],
+      ).resourceLimits,
+    ).toStrictEqual({});
+    // A locked withResources({limits: {}}) locks the limits as empty.
+    expect(() =>
+      toKubernetesWorkloadParameters(
+        {image: 'r/a:1', resources: {limits: {}}, cpuLimit: '2'},
+        'w',
+        ['resources'],
+      ),
+    ).toThrow(/'resources' on 'w' is a locked guardrail.*'cpuLimit'/);
+  });
+
+  it('drops undefined members it sends, at any depth', () => {
+    const params = toKubernetesWorkloadParameters(
+      {
+        image: 'r/a:1',
+        resourceLimits: {cpu: '1', memory: undefined},
+        nodeSelector: {pool: 'apps', zone: undefined},
+      },
+      'w',
+      [],
+    );
+    expect(params.resourceLimits).toStrictEqual({cpu: '1'});
+    expect(params.nodeSelector).toStrictEqual({pool: 'apps'});
+  });
+});

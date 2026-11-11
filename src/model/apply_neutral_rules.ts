@@ -1,4 +1,5 @@
 import type {NeutralRule} from './neutral_rule';
+import {isSetValue} from './parameter_value';
 
 /** Neutral parameters set by a setter not named after them. */
 const SETTERS: Readonly<Record<string, string>> = {
@@ -10,8 +11,8 @@ const SETTERS: Readonly<Record<string, string>> = {
 export const neutralSetterName = (key: string): string =>
   SETTERS[key] ?? `with${key.charAt(0).toUpperCase()}${key.slice(1)}`;
 
-/** Is a parameter supplied at all? */
-const isSet = (v: unknown): boolean => v !== undefined;
+/** Is a parameter supplied at all? (see `isSetValue`) */
+const isSet = isSetValue;
 
 /**
  * Applies an offer's neutral rules to a component's neutral parameters, before
