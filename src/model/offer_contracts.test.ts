@@ -79,21 +79,33 @@ const OFFERS: ReadonlyArray<[string, OfferConstructor]> = [
   .filter((e): e is [string, OfferConstructor] => isOfferConstructor(e[1]))
   .sort(([a], [b]) => a.localeCompare(b));
 
-const CONTRACTS = new Map<string, OfferContract>(
-  [
-    aiContracts,
-    apiManagementContracts,
-    bigDataContracts,
-    customWorkloadContracts,
-    messagingContracts,
-    networkContracts,
-    observabilityContracts,
-    securityContracts,
-    storageContracts,
-  ]
-    .flatMap(m => Object.values(m) as OfferContract[])
-    .map(c => [c.offerType, c]),
-);
+const CONTRACTS: readonly OfferContract[] = [
+  aiContracts,
+  apiManagementContracts,
+  bigDataContracts,
+  customWorkloadContracts,
+  messagingContracts,
+  networkContracts,
+  observabilityContracts,
+  securityContracts,
+  storageContracts,
+].flatMap(m => Object.values(m) as OfferContract[]);
+
+/**
+ * The contract of offer type `type` that `provider`'s agents declare. An offer
+ * type the generator splits per provider (its providers disagree on a
+ * required key) has one contract per provider; any other has one contract.
+ */
+const contractFor = (
+  type: string,
+  provider?: string,
+): OfferContract | undefined => {
+  const candidates = CONTRACTS.filter(c => c.offerType === type);
+  if (candidates.length <= 1) {
+    return candidates[0];
+  }
+  return candidates.find(c => c.declaredBy.some(d => d.provider === provider));
+};
 
 /**
  * Offers whose agent publishes no contract the SDK can read, and why. Each is
@@ -388,7 +400,7 @@ const undeclaredParameters = (): Record<string, Record<string, string[]>> => {
       continue;
     }
     for (const component of emitted(name, offer)) {
-      const contract = CONTRACTS.get(component.type);
+      const contract = contractFor(component.type, component.provider);
       if (contract === undefined) {
         continue;
       }
@@ -417,12 +429,15 @@ describe('offers and the contracts their agents publish', () => {
     for (const [name, offer] of OFFERS) {
       if (offer.contract === undefined) {
         expect(
-          CONTRACTS.has(offer.offerType),
+          CONTRACTS.some(c => c.offerType === offer.offerType),
           `${name}: ${offer.offerType} is published now; define the offer from its contract`,
         ).toBe(false);
       } else {
         expect(offer.offerType, name).toBe(offer.contract.offerType);
-        expect(CONTRACTS.get(offer.offerType), name).toBe(offer.contract);
+        expect(
+          contractFor(offer.offerType, offer({} as never).provider),
+          name,
+        ).toBe(offer.contract);
       }
     }
   });
@@ -478,7 +493,7 @@ describe('offers and the contracts their agents publish', () => {
         continue;
       }
       for (const component of emitted(name, offer)) {
-        const contract = CONTRACTS.get(component.type);
+        const contract = contractFor(component.type, component.provider);
         const problem =
           contract && contractConfigProblem(contract, component.parameters);
         if (problem) {
@@ -505,7 +520,8 @@ describe('offers and the contracts their agents publish', () => {
           const emittedKeys = run().flatMap(c => Object.keys(c.parameters));
           expect(emittedKeys, `${name} ${key}`).not.toContain(key);
         } else {
-          const quoted = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const quoted = (t: string) =>
+            t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           const setter = neutralSetterName(key);
           expect(run, `${name} ${key}`).toThrow(
             new RegExp(
@@ -610,7 +626,7 @@ describe('offers and the contracts their agents publish', () => {
     // From fractal-cloud-agents v8.31.0 NetworkAndCompute.PaaS.CloudRun is the
     // Cloud Run container platform: it declares `region` only and creates
     // nothing. The workload keys live on NetworkAndCompute.CaaS.CloudRunService.
-    const platform = CONTRACTS.get('NetworkAndCompute.PaaS.CloudRun')!;
+    const platform = contractFor('NetworkAndCompute.PaaS.CloudRun')!;
     expect(Object.keys(platform.params)).toEqual(['region']);
     const [c] = emitted('CloudRun', Object.fromEntries(OFFERS)['CloudRun']);
     expect(c.type).toBe('NetworkAndCompute.CaaS.CloudRunService');
@@ -725,7 +741,9 @@ describe('offers and the contracts their agents publish', () => {
           },
         ],
       }),
-    ).toThrow("selected for 'orders', cannot honor withCharset ('charset'), a parameter open in the Fractal");
+    ).toThrow(
+      "selected for 'orders', cannot honor withCharset ('charset'), a parameter open in the Fractal",
+    );
   });
 
   it('never emits a former drift', () => {

@@ -319,6 +319,30 @@ export const Storage_IaaS_ArubaBlockStorage = {
   },
 } as const satisfies OfferContract;
 
+export const Storage_IaaS_WiitBlockStorage = {
+  offerType: 'Storage.IaaS.WiitBlockStorage',
+  serviceTypes: ['Storage.IaaS.BlockVolume'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-wiit',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'WIIT',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** the availability zone; the attached server's, else the agent default, when empty */
+    availabilityZone: {type: 'string', required: false},
+    /** the volume name; derived from the component ID when empty */
+    name: {type: 'string', required: false},
+    /** the volume size in GiB */
+    size: {type: 'integer', required: false, default: 10},
+    /** the Cinder volume type; the cloud default when empty */
+    volumeType: {type: 'string', required: false},
+  },
+} as const satisfies OfferContract;
+
 export const Storage_PaaS_ArubaMsSqlDbms = {
   offerType: 'Storage.PaaS.ArubaMsSqlDbms',
   serviceTypes: ['Storage.PaaS.MsSql'],
@@ -1509,6 +1533,143 @@ export const Storage_PaaS_Firestore = {
   },
 } as const satisfies OfferContract;
 
+export const Storage_PaaS_FractalFerretDb = {
+  offerType: 'Storage.PaaS.FractalFerretDb',
+  serviceTypes: ['Storage.PaaS.MongoDb'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-fractalcloud',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'FractalCloud',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    clusterName: {type: 'string', required: false},
+    /** what happens to the service's data volumes when it is deleted: Retain keeps them until they are reclaimed, Delete deletes their data; unset follows the environment (Retain in production, Delete otherwise) */
+    volumeRetention: {
+      type: 'string',
+      required: false,
+      values: ['Retain', 'Delete'],
+      valuesCaseInsensitive: true,
+    },
+  },
+} as const satisfies OfferContract;
+
+export const Storage_PaaS_FractalObjectStorage = {
+  offerType: 'Storage.PaaS.FractalObjectStorage',
+  serviceTypes: ['Storage.PaaS.FilesAndBlobs'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-fractalcloud',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'FractalCloud',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    bucketName: {type: 'string', required: false},
+    requestAutoCert: {type: 'boolean', required: false, default: false},
+    servers: {type: 'integer', required: false, default: 4},
+    storageClass: {type: 'string', required: false},
+    tenantName: {type: 'string', required: false},
+    /** what happens to the service's data volumes when it is deleted: Retain keeps them until they are reclaimed, Delete deletes their data; unset follows the environment (Retain in production, Delete otherwise) */
+    volumeRetention: {
+      type: 'string',
+      required: false,
+      values: ['Retain', 'Delete'],
+      valuesCaseInsensitive: true,
+    },
+    volumeSize: {type: 'string', required: false, default: '10Gi'},
+    volumesPerServer: {type: 'integer', required: false, default: 4},
+  },
+} as const satisfies OfferContract;
+
+export const Storage_PaaS_FractalObjectStorageBucket = {
+  offerType: 'Storage.PaaS.FractalObjectStorageBucket',
+  serviceTypes: ['Storage.PaaS.FilesAndBlobs'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-fractalcloud',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'FractalCloud',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** Name of the bucket in the tenant; unset = the component id */
+    bucketName: {
+      type: 'string',
+      required: false,
+      constraints: {pattern: '[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]'},
+    },
+  },
+} as const satisfies OfferContract;
+
+export const Storage_PaaS_FractalOpenSearch = {
+  offerType: 'Storage.PaaS.FractalOpenSearch',
+  serviceTypes: ['Storage.PaaS.Search'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-fractalcloud',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'FractalCloud',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** CPU requested by each node, a Kubernetes quantity; never limited. Unset = the chart's */
+    cpu: {type: 'string', required: false},
+    /** Install OpenSearch Dashboards beside the cluster */
+    dashboards: {type: 'boolean', required: false, default: false},
+    /** Memory of each node (requested and limited), a Kubernetes quantity; the JVM heap is half of it. Unset = the chart's */
+    memory: {type: 'string', required: false},
+    /** Volume size of each node, a Kubernetes quantity */
+    storage: {type: 'string', required: false, default: '100Gi'},
+    /** StorageClass of the nodes' volumes; unset = the class its cluster publishes, else the agent's default, else the cluster's default class */
+    storageClassName: {type: 'string', required: false},
+    /** what happens to the service's data volumes when it is deleted: Retain keeps them until they are reclaimed, Delete deletes their data; unset follows the environment (Retain in production, Delete otherwise) */
+    volumeRetention: {
+      type: 'string',
+      required: false,
+      values: ['Retain', 'Delete'],
+      valuesCaseInsensitive: true,
+    },
+  },
+} as const satisfies OfferContract;
+
+export const Storage_PaaS_FractalValkey = {
+  offerType: 'Storage.PaaS.FractalValkey',
+  serviceTypes: ['Storage.PaaS.VendorSpecificKeyValueDbms'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-fractalcloud',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'FractalCloud',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    clusterName: {
+      type: 'string',
+      required: false,
+      constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,28}[a-z0-9])?'},
+    },
+    /** what happens to the service's data volumes when it is deleted: Retain keeps them until they are reclaimed, Delete deletes their data; unset follows the environment (Retain in production, Delete otherwise) */
+    volumeRetention: {
+      type: 'string',
+      required: false,
+      values: ['Retain', 'Delete'],
+      valuesCaseInsensitive: true,
+    },
+  },
+} as const satisfies OfferContract;
+
 export const Storage_PaaS_GcpGcsBucket = {
   offerType: 'Storage.PaaS.GcpGcsBucket',
   serviceTypes: ['Storage.PaaS.FilesAndBlobs'],
@@ -2319,6 +2480,24 @@ export const Storage_PaaS_StorageBlobContainer = {
     publicAccess: {type: 'string', required: false, default: 'None'},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
     region: {type: 'string', required: false},
+  },
+} as const satisfies OfferContract;
+
+export const Storage_PaaS_WiitObjectStorageBucket = {
+  offerType: 'Storage.PaaS.WiitObjectStorageBucket',
+  serviceTypes: ['Storage.PaaS.FilesAndBlobs'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-wiit',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'WIIT',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** the bucket name (3-63 lowercase letters, digits or hyphens, unique on the endpoint); derived from the component ID when empty */
+    name: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
 

@@ -530,6 +530,119 @@ export const Messaging_PaaS_EventHubNamespace = {
   },
 } as const satisfies OfferContract;
 
+export const Messaging_PaaS_FractalArtemis = {
+  offerType: 'Messaging.PaaS.FractalArtemis',
+  serviceTypes: ['Messaging.PaaS.MessageBroker'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-fractalcloud',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'FractalCloud',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    brokerName: {
+      type: 'string',
+      required: false,
+      constraints: {pattern: '[a-z0-9](?:[-a-z0-9]{0,38}[a-z0-9])?'},
+    },
+    memory: {type: 'string', required: false, default: '1Gi'},
+    /** what happens to the service's data volumes when it is deleted: Retain keeps them until they are reclaimed, Delete deletes their data; unset follows the environment (Retain in production, Delete otherwise) */
+    volumeRetention: {
+      type: 'string',
+      required: false,
+      values: ['Retain', 'Delete'],
+      valuesCaseInsensitive: true,
+    },
+  },
+} as const satisfies OfferContract;
+
+export const Messaging_PaaS_FractalArtemisQueue = {
+  offerType: 'Messaging.PaaS.FractalArtemisQueue',
+  serviceTypes: ['Messaging.PaaS.MessageBrokerEntity'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-fractalcloud',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'FractalCloud',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    address: {
+      type: 'string',
+      required: false,
+      constraints: {pattern: '[A-Za-z0-9_/-]+(?:\\.[A-Za-z0-9_/-]+){0,99}'},
+    },
+  },
+} as const satisfies OfferContract;
+
+export const Messaging_PaaS_FractalArtemisTopic = {
+  offerType: 'Messaging.PaaS.FractalArtemisTopic',
+  serviceTypes: ['Messaging.PaaS.MessageBrokerEntity'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-fractalcloud',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'FractalCloud',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    address: {
+      type: 'string',
+      required: false,
+      constraints: {pattern: '[A-Za-z0-9_/-]+(?:\\.[A-Za-z0-9_/-]+){0,99}'},
+    },
+  },
+} as const satisfies OfferContract;
+
+export const Messaging_PaaS_FractalKafka = {
+  offerType: 'Messaging.PaaS.FractalKafka',
+  serviceTypes: ['Messaging.PaaS.StreamProcessing'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-fractalcloud',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'FractalCloud',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    clusterName: {type: 'string', required: false},
+    /** what happens to the service's data volumes when it is deleted: Retain keeps them until they are reclaimed, Delete deletes their data; unset follows the environment (Retain in production, Delete otherwise) */
+    volumeRetention: {
+      type: 'string',
+      required: false,
+      values: ['Retain', 'Delete'],
+      valuesCaseInsensitive: true,
+    },
+  },
+} as const satisfies OfferContract;
+
+export const Messaging_PaaS_FractalKafkaTopic = {
+  offerType: 'Messaging.PaaS.FractalKafkaTopic',
+  serviceTypes: ['Messaging.PaaS.StreamProcessingEntity'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-fractalcloud',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'FractalCloud',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    partitions: {type: 'integer', required: false, default: 1},
+    replicas: {type: 'integer', required: false, default: 1},
+  },
+} as const satisfies OfferContract;
+
 export const Messaging_PaaS_GcpPubSub = {
   offerType: 'Messaging.PaaS.GcpPubSub',
   serviceTypes: [

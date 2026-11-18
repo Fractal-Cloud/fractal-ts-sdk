@@ -27,7 +27,7 @@ import {toContractKeys} from '../neutral_rules';
 import {
   NetworkAndCompute_IaaS_AwsLb,
   NetworkAndCompute_PaaS_GcpGke,
-  NetworkAndCompute_PaaS_Kubernetes,
+  NetworkAndCompute_PaaS_Kubernetes_GCP,
 } from '../generated/network_and_compute';
 import {
   CustomWorkloads_CaaS_KubernetesWorkload,
@@ -474,7 +474,8 @@ describe('generator', () => {
     const SECRETS_PARAM = {
       key: KEY,
       type: 'array',
-      description: 'Short names of the environment secrets this component may access.',
+      description:
+        'Short names of the environment secrets this component may access.',
     };
     // As fractal-cloud-agents publishes it since #966: every offer says true or false.
     const agent = (
@@ -511,11 +512,17 @@ describe('generator', () => {
 
     it('leaves the flag out when false or not declared', async () => {
       for (const flag of [false, null, undefined]) {
-        const [offer] = buildModel([agent('fractal-cloud-agent-aws', flag, [])]);
+        const [offer] = buildModel([
+          agent('fractal-cloud-agent-aws', flag, []),
+        ]);
         expect(offer.canAccessSecrets).toBe(false);
       }
-      const files = await generate([agent('fractal-cloud-agent-aws', false, [])]);
-      expect(files.get('custom_workloads.ts')).not.toContain('canAccessSecrets');
+      const files = await generate([
+        agent('fractal-cloud-agent-aws', false, []),
+      ]);
+      expect(files.get('custom_workloads.ts')).not.toContain(
+        'canAccessSecrets',
+      );
     });
 
     it('flags an offer several agents declare only when all of them do', () => {
@@ -528,7 +535,9 @@ describe('generator', () => {
         const [offer] = buildModel(order);
         expect(offer.canAccessSecrets).toBe(false);
         // Only some agents read the key, so it is not offered as config.
-        expect(offer.params.get(KEY).agents).toEqual(['fractal-cloud-agent-aws']);
+        expect(offer.params.get(KEY).agents).toEqual([
+          'fractal-cloud-agent-aws',
+        ]);
       }
       const both = buildModel([
         flagged,
@@ -554,9 +563,7 @@ describe('generator', () => {
         ]),
       ).toThrow("environmentSecretShortNames has type 'string', not 'array'");
       expect(() =>
-        buildModel([
-          agent('fractal-cloud-agent-aws', 'yes', [SECRETS_PARAM]),
-        ]),
+        buildModel([agent('fractal-cloud-agent-aws', 'yes', [SECRETS_PARAM])]),
       ).toThrow('canAccessSecrets is "yes", not a boolean');
     });
 
@@ -640,7 +647,7 @@ describe('the committed contracts', () => {
     ]);
     expect(NetworkAndCompute_PaaS_GcpGke.declaredBy).toHaveLength(1);
     expect(
-      NetworkAndCompute_PaaS_Kubernetes.declaredBy.find(
+      NetworkAndCompute_PaaS_Kubernetes_GCP.declaredBy.find(
         d => d.agentId === 'fractal-cloud-agent-gcp',
       ),
     ).toMatchObject({aliasOf: 'NetworkAndCompute.PaaS.GcpGke'});
@@ -768,5 +775,149 @@ describe('contract values', () => {
     ['missing', 1, `X.CaaS.Y declares no 'missing'`],
   ])('%s = %j', (key, value, problem) => {
     expect(contractValueProblem(contract, key, value)).toBe(problem);
+  });
+});
+
+// An IaaS, PaaS or FaaS offer type is keyed in ARIA by offer type and
+// provider: when its providers' agents disagree on whether a key is required,
+// a merged contract would require it of every provider's offer, so the
+// generator emits one contract per provider instead (docs/offer-contracts.md).
+describe('generator: one contract per provider when required-ness differs', () => {
+  const agent = (
+    agentId: string,
+    offerType: string,
+    provider: string | undefined,
+    params: Record<string, unknown>[],
+  ) => ({
+    schemaVersion: '2.0',
+    agentId,
+    agentVersion: 'v1',
+    offers: [{offerType, provider, params}],
+  });
+  const identifiers = (model: {identifier: string}[]) =>
+    model.map(c => c.identifier);
+
+  it('splits a PaaS offer type whose providers disagree on a required key', () => {
+    const model = buildModel([
+      agent('b', 'X.PaaS.Kubernetes', 'Beta', [
+        {key: 'flavor', type: 'string', required: true},
+        {key: 'version', type: 'string'},
+      ]),
+      agent('a', 'X.PaaS.Kubernetes', 'Alpha', [
+        {key: 'version', type: 'string'},
+      ]),
+    ]);
+    expect(identifiers(model)).toEqual([
+      'X_PaaS_Kubernetes_Alpha',
+      'X_PaaS_Kubernetes_Beta',
+    ]);
+    const [alpha, beta] = model;
+    expect(alpha.offerType).toBe('X.PaaS.Kubernetes');
+    expect([...alpha.params.keys()]).toEqual(['version']);
+    expect(beta.params.get('flavor').required).toBe(true);
+    expect(alpha.declaredBy.map((d: {provider: string}) => d.provider)).toEqual(
+      ['Alpha'],
+    );
+  });
+
+  it('splits when the key is required by one provider and optional for another', () => {
+    const model = buildModel([
+      agent('a', 'X.IaaS.Vm', 'Alpha', [
+        {key: 'image', type: 'string', required: true},
+      ]),
+      agent('b', 'X.IaaS.Vm', 'Beta', [{key: 'image', type: 'string'}]),
+    ]);
+    expect(identifiers(model)).toEqual(['X_IaaS_Vm_Alpha', 'X_IaaS_Vm_Beta']);
+  });
+
+  it('merges providers that agree on required-ness, as before', () => {
+    const model = buildModel([
+      agent('a', 'X.PaaS.Db', 'Alpha', [
+        {key: 'size', type: 'string', required: true, values: ['s', 'm']},
+      ]),
+      agent('b', 'X.PaaS.Db', 'Beta', [
+        {key: 'size', type: 'string', required: true, values: ['m', 'l']},
+      ]),
+    ]);
+    expect(identifiers(model)).toEqual(['X_PaaS_Db']);
+    // Only required-ness splits: other differences still merge.
+    expect(model[0].params.get('size').values).toEqual(['m']);
+  });
+
+  it('merges agents of one provider, whatever they require', () => {
+    const model = buildModel([
+      agent('a', 'X.PaaS.Db', 'Alpha', [
+        {key: 'size', type: 'string', required: true},
+      ]),
+      agent('b', 'X.PaaS.Db', 'Alpha', [{key: 'tier', type: 'string'}]),
+    ]);
+    expect(identifiers(model)).toEqual(['X_PaaS_Db']);
+    expect(model[0].params.get('size').required).toBe(true);
+  });
+
+  it('merges a self-hosted CaaS offer across providers: any agent may reconcile it', () => {
+    const model = buildModel([fixture('go-agent'), fixture('java-agent')]);
+    const kafka = model.find(c => c.offerType === 'Messaging.CaaS.Kafka')!;
+    expect(kafka.identifier).toBe('Messaging_CaaS_Kafka');
+    expect(kafka.params.get('storageSize').required).toBe(true);
+  });
+
+  it('refuses to split a declaration without a provider it can name', () => {
+    expect(() =>
+      buildModel([
+        agent('a', 'X.PaaS.Db', 'Alpha', [
+          {key: 'size', type: 'string', required: true},
+        ]),
+        agent('b', 'X.PaaS.Db', undefined, []),
+      ]),
+    ).toThrow(/X\.PaaS\.Db must be generated per provider/);
+  });
+
+  it('renders each split contract under its own name', async () => {
+    const files = await generate([
+      agent('a', 'X.PaaS.Db', 'Alpha', [
+        {key: 'size', type: 'string', required: true},
+      ]),
+      agent('b', 'X.PaaS.Db', 'Beta', []),
+    ]);
+    const text = files.get('x.ts')!;
+    expect(text).toContain('export const X_PaaS_Db_Alpha = {');
+    expect(text).toContain('export const X_PaaS_Db_Beta = {');
+    expect(text).not.toContain('export const X_PaaS_Db = {');
+  });
+
+  it('splits exactly the committed offer types that need it', () => {
+    const split = buildModel(readSnapshot('.'))
+      .filter(
+        (c: {identifier: string; offerType: string}) =>
+          c.identifier !== contractIdentifier(c.offerType),
+      )
+      .map((c: {identifier: string}) => c.identifier);
+    expect(split).toEqual([
+      'BigData_PaaS_DatabricksMlflowExperiment_AWS',
+      'BigData_PaaS_DatabricksMlflowExperiment_Azure',
+      'BigData_PaaS_DatabricksMlflowExperiment_GCP',
+      'NetworkAndCompute_PaaS_Kubernetes_Aruba',
+      'NetworkAndCompute_PaaS_Kubernetes_AWS',
+      'NetworkAndCompute_PaaS_Kubernetes_Azure',
+      'NetworkAndCompute_PaaS_Kubernetes_GCP',
+      'NetworkAndCompute_PaaS_Kubernetes_OCI',
+      'NetworkAndCompute_PaaS_Kubernetes_WIIT',
+    ]);
+  });
+
+  // The merged contract required `experimentName` of all three providers,
+  // though only the GCP agent requires it.
+  it('requires a key only of the provider whose agent requires it', () => {
+    const model = buildModel(readSnapshot('.'));
+    const required = (identifier: string) =>
+      model
+        .find((c: {identifier: string}) => c.identifier === identifier)!
+        .params.get('experimentName').required;
+    expect(required('BigData_PaaS_DatabricksMlflowExperiment_AWS')).toBe(false);
+    expect(required('BigData_PaaS_DatabricksMlflowExperiment_Azure')).toBe(
+      false,
+    );
+    expect(required('BigData_PaaS_DatabricksMlflowExperiment_GCP')).toBe(true);
   });
 });
