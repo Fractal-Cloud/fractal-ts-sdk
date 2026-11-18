@@ -100,11 +100,14 @@ export const Jaeger = defineOffer<
       deliveryModel: 'CaaS',
       parameters: {...ctx.parameters, ...config},
       dependencies: ctx.dependencies,
-      // The OpenSearch link is the one to a dependency that carries access.
+      // The OpenSearch link is the one to a dependency that carries access. A
+      // link that names its indices already (indexPrefix, or the catalog's
+      // indexPattern) keeps them.
       links: ctx.links.map(link =>
         ctx.dependencies.includes(link.componentId) &&
         carriesAccess(link.settings) &&
-        link.settings.indexPrefix === undefined
+        link.settings.indexPrefix === undefined &&
+        link.settings.indexPattern === undefined
           ? {
               ...link,
               settings: {...link.settings, indexPrefix: `${ctx.id}-jaeger-`},

@@ -2,15 +2,20 @@
  * search_link_refusal.ts — why the agent of a `Storage.Search` component would
  * refuse a link's settings, or `undefined` when it accepts them.
  *
- * Mirrors the target's own checks (see `SearchLink`): `access` is required and
- * one of `read`, `write`, `read-write`; the catalogue spelling `accessMode`
- * (`read` / `write` / `readWrite`) is accepted when `access` is absent, and
- * `access` wins when both are set. `indexPrefix`, when set, is lower-case
- * letters, digits and `-_.` only: no blank prefix, no wildcard, no upper case.
+ * Mirrors the targets' own checks (see `SearchLink` and `CatalogSearchLink`):
+ * `access` is required and one of `read`, `write`, `read-write`; the catalog
+ * spelling `accessMode` (`read` / `write` / `readWrite`) is accepted when
+ * `access` is absent, and `access` wins when both are set. `indexPrefix`, when
+ * set, is lower-case letters, digits and `-_.` only: no blank prefix, no
+ * wildcard, no upper case. `indexPattern`, when set, is lower-case letters,
+ * digits, `-_.` and `*`; it names the indices `indexPrefix` would, so a link
+ * sets one of the two. Whether the selected offer's agent can grant the pattern
+ * is that offer's to judge (`incomingLinks`).
  */
 const ACCESS = ['read', 'write', 'read-write'];
 const ACCESS_MODE = ['read', 'write', 'readWrite'];
 const INDEX_PREFIX = /^[a-z0-9._-]+$/;
+const INDEX_PATTERN = /^[a-z0-9._*-]+$/;
 
 export const searchLinkRefusal = (
   settings: Readonly<Record<string, unknown>>,
@@ -28,6 +33,22 @@ export const searchLinkRefusal = (
     return `access '${String(access)}' is not one of ${ACCESS.join(', ')}`;
   }
   const prefix = settings.indexPrefix;
+  const pattern = settings.indexPattern;
+  if (prefix !== undefined && pattern !== undefined) {
+    return 'it sets both indexPrefix and indexPattern: set one';
+  }
+  if (pattern !== undefined) {
+    if (typeof pattern !== 'string' || pattern.trim() === '') {
+      return 'indexPattern is blank: omit it for the default <consumerId>-*';
+    }
+    if (!INDEX_PATTERN.test(pattern)) {
+      return (
+        `indexPattern '${pattern}' may hold only lower-case letters, digits, -_. ` +
+        'and * (no upper case)'
+      );
+    }
+    return undefined;
+  }
   if (prefix === undefined) {
     return undefined;
   }

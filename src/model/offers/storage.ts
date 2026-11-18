@@ -36,6 +36,7 @@ import type {
 import type {AwsRdsDbmsConfig} from './aws_rds_dbms_config';
 import type {OpenSearchConfig} from './open_search_config';
 import {searchLinkRefusal} from '../components/search_link_refusal';
+import {indexPrefixLink} from './index_prefix_link';
 
 /**
  * A DBMS offer emits itself PLUS one Database live component per child the
@@ -574,7 +575,10 @@ export const OpenshiftPersistentVolume = defineOffer<
  * Dashboards (`dashboards: true`). It depends on the container platform it is
  * installed on.
  *
- * Consumers link to it with `searchLinkSettings({access, indexPrefix?})`; this
+ * Consumers link to it with `searchLinkSettings({access, indexPrefix?})`, or in
+ * the catalog vocabulary `searchLinkSettings({accessMode, indexPattern?})`; its
+ * agent grants an index prefix, so `indexPattern: '<prefix>*'` reaches it as
+ * `indexPrefix: '<prefix>'`, and any other pattern is refused. This
  * component's agent makes each one its own user and role and puts the
  * credentials in a Secret in the consumer's namespace.
  *
@@ -591,6 +595,8 @@ export const StorageOpenSearch = defineOffer<
   satisfies: 'Storage.Search',
   contract: Storage_CaaS_OpenSearch,
   deliveryModel: 'CaaS',
+  incomingLinks: (settings, {from, target}) =>
+    indexPrefixLink(settings, from.id, target.id),
   validate: (self, all) => {
     const refuse = (why: string): never => {
       throw new Error(`Live component '${self.id}': ${why}.`);

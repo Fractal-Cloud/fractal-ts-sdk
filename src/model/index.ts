@@ -63,6 +63,8 @@ export * from './ci';
 export * from './components/network_and_compute';
 export * from './components/storage';
 export type {SearchLink} from './components/search_link';
+export type {CatalogSearchLink} from './components/catalog_search_link';
+export type {IncomingLinkRule} from './incoming_link_rule';
 export * from './components/search_link_settings';
 export * from './components/big_data';
 export * from './components/messaging';
