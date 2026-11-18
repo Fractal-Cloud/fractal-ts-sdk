@@ -1,0 +1,478 @@
+{
+  "agentId": "aria-agent-wiit",
+  "agentVersion": "v0.1.0",
+  "offers": [
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.WiitCloudServer",
+      "parameterRules": [],
+      "params": [
+        {
+          "default": false,
+          "description": "whether a floating IP is bound to the primary port",
+          "key": "associatePublicIp",
+          "type": "boolean"
+        },
+        {
+          "description": "the availability zone (AZ1, AZ2, AZ3); the agent default when empty",
+          "key": "availabilityZone",
+          "type": "string"
+        },
+        {
+          "default": 0,
+          "description": "the size in GiB of a boot volume made from the image; 0 boots from the hypervisor disk",
+          "key": "bootVolumeSize",
+          "type": "integer"
+        },
+        {
+          "description": "the Cinder volume type of the boot volume; the cloud default when empty",
+          "key": "bootVolumeType",
+          "type": "string"
+        },
+        {
+          "description": "the Nova flavor name or ID",
+          "key": "flavor",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "the Glance image name or ID the server boots",
+          "key": "image",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "the server name; derived from the component ID when empty",
+          "key": "name",
+          "type": "string"
+        },
+        {
+          "description": "the cloud-init user data, as a value (environment secret references are refused); readable by every process on the server through the metadata service",
+          "key": "userData",
+          "sensitive": true,
+          "type": "string"
+        }
+      ],
+      "provider": "WIIT",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.VirtualMachine"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.WiitLoadBalancer",
+      "parameterRules": [],
+      "params": [
+        {
+          "default": false,
+          "description": "whether a floating IP is bound to the VIP",
+          "key": "associatePublicIp",
+          "type": "boolean"
+        },
+        {
+          "description": "the listeners as [{port, targetPort?, protocol?, allowedCidrs?, healthCheck?}]; allowedCidrs needs the amphora provider",
+          "key": "listeners",
+          "type": "string"
+        },
+        {
+          "description": "the load balancer name; derived from the component ID when empty",
+          "key": "name",
+          "type": "string"
+        },
+        {
+          "default": "ovn",
+          "description": "the Octavia provider; fixed once created",
+          "key": "provider",
+          "type": "string",
+          "values": [
+            "ovn",
+            "amphora"
+          ]
+        }
+      ],
+      "provider": "WIIT",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.LoadBalancer"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.WiitNetwork",
+      "parameterRules": [],
+      "params": [
+        {
+          "description": "the network name; derived from the component ID when empty",
+          "key": "name",
+          "type": "string"
+        }
+      ],
+      "provider": "WIIT",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.VirtualNetwork"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.WiitSecurityGroup",
+      "parameterRules": [],
+      "params": [
+        {
+          "default": true,
+          "description": "whether all outbound traffic is allowed",
+          "key": "allowAllEgress",
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "description": "whether members of the group may reach each other on every port",
+          "key": "allowIntraGroup",
+          "type": "boolean"
+        },
+        {
+          "description": "outbound rules as [{fromPort, toPort?, protocol?, destCidr}], in addition to allowAllEgress; destCidr is required",
+          "key": "egressRules",
+          "type": "string"
+        },
+        {
+          "description": "inbound rules as [{fromPort, toPort?, protocol?, sourceCidr}]; sourceCidr is required (0.0.0.0/0 allows every address) and an omitted toPort means the single port fromPort",
+          "key": "ingressRules",
+          "type": "string"
+        },
+        {
+          "description": "the security group name; derived from the component ID when empty",
+          "key": "name",
+          "type": "string"
+        }
+      ],
+      "provider": "WIIT",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.SecurityGroup"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.IaaS.WiitSubnet",
+      "parameterRules": [],
+      "params": [
+        {
+          "description": "the subnet's IPv4 CIDR, from IPAM or the blueprint",
+          "key": "cidrBlock",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "comma-separated DNS servers handed out by DHCP",
+          "key": "dnsNameservers",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "description": "whether a router connects the subnet to the external network",
+          "key": "externalGateway",
+          "type": "boolean"
+        },
+        {
+          "description": "the gateway address; the first address of the CIDR when empty",
+          "key": "gatewayIp",
+          "type": "string"
+        },
+        {
+          "description": "the subnet name; derived from the component ID when empty",
+          "key": "name",
+          "type": "string"
+        }
+      ],
+      "provider": "WIIT",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "NetworkAndCompute.IaaS.Subnet"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.PaaS.Kubernetes",
+      "parameterRules": [],
+      "params": [
+        {
+          "description": "comma-separated IPv4 CIDRs allowed to reach the Kubernetes API from outside the node subnet; nobody outside when empty",
+          "key": "apiAllowedCidrs",
+          "type": "string"
+        },
+        {
+          "default": "AZ1,AZ2,AZ3",
+          "description": "comma-separated availability zones the nodes are spread over",
+          "key": "availabilityZones",
+          "type": "string"
+        },
+        {
+          "default": 0,
+          "description": "boot the control plane nodes from Cinder volumes of this size in GiB; 0 uses the flavor's disk",
+          "key": "controlPlaneBootVolumeSize",
+          "type": "integer"
+        },
+        {
+          "default": 3,
+          "description": "the number of control plane nodes (an odd number, for etcd quorum)",
+          "key": "controlPlaneCount",
+          "type": "integer"
+        },
+        {
+          "description": "the Nova flavor of the control plane nodes",
+          "key": "controlPlaneFlavor",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "comma-separated DNS resolvers for the nodes; the subnet default when empty",
+          "key": "dnsNameservers",
+          "type": "string"
+        },
+        {
+          "description": "the Glance image (name or ID) of the Talos OpenStack disk image; fixed after creation",
+          "key": "image",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "v1.37.1",
+          "description": "the Kubernetes release",
+          "key": "kubernetesVersion",
+          "type": "string"
+        },
+        {
+          "default": 2,
+          "description": "the number of addresses reserved for Services of type LoadBalancer, 1 to 10; lowering it is refused while a Service holds a released address",
+          "key": "loadBalancerAddresses",
+          "type": "integer"
+        },
+        {
+          "description": "comma-separated IPv4 CIDRs (at most 20, none wider than /8) allowed to reach Services of type LoadBalancer; the node subnet only when empty",
+          "key": "loadBalancerAllowedCidrs",
+          "type": "string"
+        },
+        {
+          "default": "80,443",
+          "description": "comma-separated TCP ports (at most 20) clients may reach Services of type LoadBalancer on; the cluster's own ports are refused",
+          "key": "loadBalancerPorts",
+          "type": "string"
+        },
+        {
+          "default": "ovn",
+          "description": "the Octavia provider of the API load balancer: ovn or amphora",
+          "key": "loadBalancerProvider",
+          "type": "string"
+        },
+        {
+          "default": "cilium",
+          "description": "how Services of type LoadBalancer get addresses: cilium (Cilium L2 on addresses reserved on the node subnet) or none (they stay Pending); cannot change from cilium to none",
+          "key": "loadBalancers",
+          "type": "string"
+        },
+        {
+          "description": "the cluster name, a lowercase DNS label of at most 32 characters; derived from the component ID when empty",
+          "key": "name",
+          "type": "string"
+        },
+        {
+          "default": "10.240.0.0/24",
+          "description": "the IPv4 subnet the agent creates for the nodes",
+          "key": "nodeCidr",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "description": "put a floating IP on the API load balancer (still limited to apiAllowedCidrs)",
+          "key": "publicApi",
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "description": "give each Service address a floating IP (still limited to loadBalancerAllowedCidrs)",
+          "key": "publicLoadBalancerAddresses",
+          "type": "boolean"
+        },
+        {
+          "default": "v1.14.4",
+          "description": "the Talos release of the image",
+          "key": "talosVersion",
+          "type": "string"
+        },
+        {
+          "description": "what happens to the cluster's persistent volumes (the Cinder volumes its CSI driver made) when the cluster is deleted: Retain keeps them until they are reclaimed, Delete deletes their data; unset follows the environment (Retain in production, Delete otherwise); in production a cluster that keeps them cannot be switched to Delete",
+          "example": "Retain",
+          "key": "volumeRetention",
+          "type": "string",
+          "values": [
+            "Retain",
+            "Delete"
+          ],
+          "valuesCaseInsensitive": true
+        },
+        {
+          "default": 0,
+          "description": "boot the worker nodes from Cinder volumes of this size in GiB; 0 uses the flavor's disk",
+          "key": "workerBootVolumeSize",
+          "type": "integer"
+        },
+        {
+          "default": 3,
+          "description": "the number of worker nodes over all zones",
+          "key": "workerCount",
+          "type": "integer"
+        },
+        {
+          "description": "the Nova flavor of the worker nodes",
+          "key": "workerFlavor",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "provider": "WIIT",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "NetworkAndCompute.PaaS.Kubernetes"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "NetworkAndCompute.PaaS.WiitDnsZone",
+      "parameterRules": [],
+      "params": [
+        {
+          "default": false,
+          "description": "whether one pass may delete 3 or more record sets that are also more than half of the zone's",
+          "key": "allowBulkDelete",
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "description": "whether NS record sets below the apex may be declared",
+          "key": "allowSubdomainDelegation",
+          "type": "boolean"
+        },
+        {
+          "description": "the record types the zone may declare; A, AAAA, CAA, CNAME, MX, NS, PTR, SRV and TXT when empty",
+          "key": "allowedRecordTypes",
+          "type": "array"
+        },
+        {
+          "description": "certificate authorities allowed to issue for the domain; one apex CAA 0 issue record each",
+          "key": "caaIssuers",
+          "type": "array"
+        },
+        {
+          "default": "disabled",
+          "description": "disabled or optional; Designate does not sign zones, so required is refused",
+          "key": "dnssec",
+          "type": "string"
+        },
+        {
+          "description": "the domain the zone is authoritative for (e.g. example.com); fixed after creation",
+          "key": "domainName",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "the zone's SOA contact; hostmaster@<domain> when empty",
+          "key": "email",
+          "type": "string"
+        },
+        {
+          "default": 604800,
+          "description": "the largest TTL a record set may declare, in seconds",
+          "key": "maxTtl",
+          "type": "integer"
+        },
+        {
+          "default": 0,
+          "description": "the smallest TTL a record set may declare, in seconds",
+          "key": "minTtl",
+          "type": "integer"
+        },
+        {
+          "default": "authoritative",
+          "description": "authoritative (the zone holds exactly its declared record sets) or lax (record sets it never declared are kept)",
+          "key": "recordManagement",
+          "type": "string"
+        },
+        {
+          "description": "the record sets the zone holds: [{\"name\": \"www\", \"type\": \"A\", \"ttl\": 300, \"values\": [\"192.0.2.10\"]}]; name is relative to the zone (\"@\" for the apex) or fully qualified",
+          "key": "records",
+          "type": "array"
+        },
+        {
+          "default": 3600,
+          "description": "the zone's default TTL in seconds",
+          "key": "ttl",
+          "type": "integer"
+        },
+        {
+          "default": "public",
+          "description": "public; Designate has no private zones, so private is refused",
+          "key": "visibility",
+          "type": "string"
+        }
+      ],
+      "provider": "WIIT",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "NetworkAndCompute.PaaS.DnsZone"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.IaaS.WiitBlockStorage",
+      "parameterRules": [],
+      "params": [
+        {
+          "description": "the availability zone; the attached server's, else the agent default, when empty",
+          "key": "availabilityZone",
+          "type": "string"
+        },
+        {
+          "description": "the volume name; derived from the component ID when empty",
+          "key": "name",
+          "type": "string"
+        },
+        {
+          "default": 10,
+          "description": "the volume size in GiB",
+          "key": "size",
+          "type": "integer"
+        },
+        {
+          "description": "the Cinder volume type; the cloud default when empty",
+          "key": "volumeType",
+          "type": "string"
+        }
+      ],
+      "provider": "WIIT",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "Storage.IaaS.BlockVolume"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "offerType": "Storage.PaaS.WiitObjectStorageBucket",
+      "parameterRules": [],
+      "params": [
+        {
+          "description": "the bucket name (3-63 lowercase letters, digits or hyphens, unique on the endpoint); derived from the component ID when empty",
+          "key": "name",
+          "type": "string"
+        }
+      ],
+      "provider": "WIIT",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "Storage.PaaS.FilesAndBlobs"
+      ]
+    }
+  ],
+  "schemaVersion": "2.0"
+}

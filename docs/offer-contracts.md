@@ -72,6 +72,17 @@ per offer type, named after it (`NetworkAndCompute.IaaS.AwsLb` → `NetworkAndCo
   it, differing defaults and `derived` notes are dropped, an alias is kept only when every agent reads
   it, and `agents` records which agents read a key when not all do. Any other disagreement (two
   different `constraints` included) fails the generator, naming both agents.
+- **One contract per provider when providers disagree on a required key.** An IaaS, PaaS or FaaS
+  offer is emitted with its provider, and ARIA keys a catalog offer by offer type and provider.
+  When agents of different providers declare one such offer type, and one of them requires a key
+  that another provider's agent does not require (or does not declare), a merged contract would
+  require that key of every provider's offer. The generator then emits one contract per provider,
+  `<Offer_Type>_<Provider>` (`NetworkAndCompute_PaaS_Kubernetes_WIIT`), and no merged contract.
+  **The trigger is required-ness only.** The other differences a merge reconciles (allowed values,
+  defaults, aliases, ...) merge as above. Agents of one provider are always merged, and so are CaaS
+  and SaaS offers, which the SDK emits without a provider. A refresh that introduces such a
+  disagreement removes the merged contract, so an offer built on it stops compiling until it names
+  its provider's contract.
 - **A key named for a secret value** (`...Password`, `...Secret`, `...Token`, `...ApiKey`,
   `...ConnectionString`, ...; not a secret's name or id) is generated `sensitive` even when its agent
   leaves it unmarked, so it takes a `secretRef(...)` and a refusal never shows it.

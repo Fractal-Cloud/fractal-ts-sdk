@@ -8,7 +8,9 @@
  * per infrastructure domain, exporting one `as const` contract per offer type.
  * An offer type several agents declare (the self-hosted CaaS offers) is merged
  * into one contract, because the SDK emits ONE component for it and any of
- * those agents may be the one that reconciles it.
+ * those agents may be the one that reconciles it, unless agents of different
+ * providers disagree on a key's required-ness: that offer type gets one
+ * contract per provider (see `providerSplitOfferTypes`).
  */
 import {createHash} from 'node:crypto';
 
@@ -268,27 +270,37 @@ const mergeParameter = (offerType, key, current, next) => {
 const applyKeyAliases = (offers, keyAliases) => {
   for (const {offerType, key, alias} of keyAliases) {
     const where = `contracts/key-aliases.json: ${offerType}`;
-    const entry = offers.get(offerType);
-    if (entry === undefined) {
+    // A split offer type has one contract per provider: the pair is folded in
+    // each contract that declares both keys, and must be needed by one.
+    const entries = [...offers.values()].filter(e => e.offerType === offerType);
+    if (entries.length === 0) {
       fail(`${where} is declared by no agent; remove the entry`);
     }
-    for (const k of [key, alias]) {
-      if (!entry.params.has(k)) {
-        fail(`${where} declares no '${k}'; remove the entry`);
+    const applicable = entries.filter(
+      e => e.params.has(key) && e.params.has(alias),
+    );
+    if (applicable.length === 0) {
+      for (const k of [key, alias]) {
+        if (!entries.some(e => e.params.has(k))) {
+          fail(`${where} declares no '${k}'; remove the entry`);
+        }
       }
+      fail(`${where} declares no '${key}' and '${alias}' together; remove the entry`);
     }
-    const canonical = entry.params.get(key);
-    const older = entry.params.get(alias);
-    if (older.type !== canonical.type) {
-      fail(
-        `${where}: '${alias}' is '${older.type}', '${key}' is '${canonical.type}'`,
-      );
+    for (const entry of applicable) {
+      const canonical = entry.params.get(key);
+      const older = entry.params.get(alias);
+      if (older.type !== canonical.type) {
+        fail(
+          `${where}: '${alias}' is '${older.type}', '${key}' is '${canonical.type}'`,
+        );
+      }
+      canonical.aliases = [
+        ...(canonical.aliases ?? []),
+        {deprecated: true, key: alias},
+      ];
+      entry.params.delete(alias);
     }
-    canonical.aliases = [
-      ...(canonical.aliases ?? []),
-      {deprecated: true, key: alias},
-    ];
-    entry.params.delete(alias);
   }
 };
 
@@ -323,22 +335,99 @@ const readSecretAccess = (agentId, offer) => {
 };
 
 /**
- * Merges every projection into one model: offer type → contract. Deterministic
- * whatever the projection order: agents, offers and keys are sorted.
+ * The offer types whose declarations are generated as one contract per
+ * provider instead of one merged contract.
+ *
+ * Merging makes a key required when any declaring agent requires it. That is
+ * right for a self-hosted CaaS or SaaS offer: the SDK emits it without a
+ * provider and any declaring agent may reconcile it. An IaaS, PaaS or FaaS offer
+ * is emitted with its provider, and ARIA keys a catalog offer by offer type AND
+ * provider, so when agents of different providers declare one such offer type
+ * and one of them requires a key another provider's agent does not (or does not
+ * declare at all), a merged contract would require that key of every
+ * provider's offer. Such an offer type is split: one contract per provider,
+ * named `<Offer_Type>_<Provider>`, and no merged contract. The trigger is
+ * required-ness only; the other differences a merge reconciles (allowed values,
+ * defaults, ...) merge as for any offer type. Agents of one provider are always
+ * merged.
+ */
+const PROVIDER_KEYED_DELIVERY_MODELS = new Set(['IaaS', 'PaaS', 'FaaS']);
+
+const providerSplitOfferTypes = declarations => {
+  const byOfferType = new Map();
+  for (const {offer} of declarations) {
+    if (!PROVIDER_KEYED_DELIVERY_MODELS.has(offer.offerType.split('.')[1])) {
+      continue;
+    }
+    byOfferType.set(offer.offerType, [
+      ...(byOfferType.get(offer.offerType) ?? []),
+      offer,
+    ]);
+  }
+  const split = new Set();
+  for (const [offerType, offers] of byOfferType) {
+    const keys = new Set(offers.flatMap(o => (o.params ?? []).map(p => p.key)));
+    const leaks = [...keys].some(key => {
+      const requiring = offers.filter(o =>
+        (o.params ?? []).some(p => p.key === key && p.required === true),
+      );
+      return offers.some(
+        o =>
+          !requiring.includes(o) &&
+          requiring.some(r => r.provider !== o.provider),
+      );
+    });
+    if (leaks) {
+      split.add(offerType);
+    }
+  }
+  return split;
+};
+
+/** `Aruba` → `Aruba`: the provider part of a per-provider contract's identifier. */
+const providerSuffix = (offerType, provider, agentId) => {
+  if (typeof provider !== 'string' || !/^[A-Za-z][A-Za-z0-9]*$/.test(provider)) {
+    fail(
+      `${agentId} ${offerType} must be generated per provider, but its provider ` +
+        `${JSON.stringify(provider)} cannot name a contract`,
+    );
+  }
+  return provider;
+};
+
+/**
+ * Merges every projection into one model: one contract per offer type, or per
+ * offer type and provider (`providerSplitOfferTypes`). Deterministic whatever
+ * the projection order: agents, offers and keys are sorted.
  */
 export const buildModel = (projections, keyAliases = []) => {
   const sorted = [...projections].sort((a, b) =>
     a.agentId.localeCompare(b.agentId),
   );
+  const declarations = sorted.flatMap(projection =>
+    readProjection(projection).map(offer => ({projection, offer})),
+  );
+  for (const {projection, offer} of declarations) {
+    if (!/^[A-Za-z]+\.[A-Za-z]+\.[A-Za-z0-9]+$/.test(String(offer.offerType))) {
+      fail(`${projection.agentId}: '${offer.offerType}' is not an offer type`);
+    }
+  }
+  const split = providerSplitOfferTypes(declarations);
   const offers = new Map();
   for (const projection of sorted) {
     for (const offer of readProjection(projection)) {
       const offerType = offer.offerType;
-      if (!/^[A-Za-z]+\.[A-Za-z]+\.[A-Za-z0-9]+$/.test(String(offerType))) {
-        fail(`${projection.agentId}: '${offerType}' is not an offer type`);
-      }
-      const entry = offers.get(offerType) ?? {
+      const provider = split.has(offerType)
+        ? providerSuffix(offerType, offer.provider, projection.agentId)
+        : undefined;
+      const identifier =
+        provider === undefined
+          ? contractIdentifier(offerType)
+          : `${contractIdentifier(offerType)}_${provider}`;
+      const entry = offers.get(identifier) ?? {
         offerType,
+        identifier,
+        provider,
         declaredBy: [],
         serviceTypes: new Set(),
         params: new Map(),
@@ -377,12 +466,14 @@ export const buildModel = (projections, keyAliases = []) => {
             : mergeParameter(offerType, param.key, current, next),
         );
       }
-      offers.set(offerType, entry);
+      offers.set(identifier, entry);
     }
   }
   applyKeyAliases(offers, keyAliases);
-  return [...offers.values()].sort((a, b) =>
-    a.offerType.localeCompare(b.offerType),
+  return [...offers.values()].sort(
+    (a, b) =>
+      a.offerType.localeCompare(b.offerType) ||
+      (a.provider ?? '').localeCompare(b.provider ?? ''),
   );
 };
 
@@ -425,7 +516,7 @@ const renderContract = offer => {
   );
   const declaredBy = offer.declaredBy.map(d => `    ${literal(d)},\n`).join('');
   return (
-    `export const ${contractIdentifier(offer.offerType)} = {\n` +
+    `export const ${offer.identifier ?? contractIdentifier(offer.offerType)} = {\n` +
     `  offerType: ${literal(offer.offerType)},\n` +
     `  serviceTypes: ${literal([...offer.serviceTypes].sort())},\n` +
     (offer.canAccessSecrets ? '  canAccessSecrets: true,\n' : '') +

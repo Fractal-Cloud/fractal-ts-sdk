@@ -70,6 +70,26 @@
         "asset": "param-contract.json"
       },
       "snapshotSha256": "a1bb3aa13c6a3cab18c1095a2ef2316042d7116bc54237261423dc2ddcfe65b6"
+    },
+    {
+      "agentId": "aria-agent-fractalcloud",
+      "repository": "Fractal-Cloud/aria-agent-fractalcloud",
+      "tag": "v0.1.0",
+      "fetch": {
+        "kind": "release-asset",
+        "asset": "param-contract.json"
+      },
+      "snapshotSha256": "1883389040df0d07393fc795538d915255611abe23472e18605cd4b2d0df7f29"
+    },
+    {
+      "agentId": "aria-agent-wiit",
+      "repository": "Fractal-Cloud/aria-agent-wiit",
+      "tag": "v0.1.0",
+      "fetch": {
+        "kind": "release-asset",
+        "asset": "param-contract.json"
+      },
+      "snapshotSha256": "db2b784b31c451f885b21828bb8c1e3692a07097e0c54ea827ccd5711b386769"
     }
   ],
   "unpublished": [
