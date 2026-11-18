@@ -1485,7 +1485,7 @@ export const BigData_PaaS_DatabricksJob = {
   },
 } as const satisfies OfferContract;
 
-export const BigData_PaaS_DatabricksMlflowExperiment = {
+export const BigData_PaaS_DatabricksMlflowExperiment_AWS = {
   offerType: 'BigData.PaaS.DatabricksMlflowExperiment',
   serviceTypes: [],
   declaredBy: [
@@ -1496,6 +1496,21 @@ export const BigData_PaaS_DatabricksMlflowExperiment = {
       provider: 'AWS',
       parameterRules: [],
     },
+  ],
+  params: {
+    /** Storage location of the experiment's artifacts (e.g. an s3:// or dbfs:/ URI). When unset, the workspace's default artifact location. Cannot change once the experiment exists. */
+    artifactLocation: {type: 'string', required: false, default: ''},
+    /** MLflow experiment name, an absolute workspace path (e.g. /Shared/<name>); a bare name is placed under /Shared/. When unset, /Shared/<componentId>. */
+    experimentName: {type: 'string', required: false, default: ''},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
+    region: {type: 'string', required: false},
+  },
+} as const satisfies OfferContract;
+
+export const BigData_PaaS_DatabricksMlflowExperiment_Azure = {
+  offerType: 'BigData.PaaS.DatabricksMlflowExperiment',
+  serviceTypes: [],
+  declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
       agentVersion: 'v8.31.0',
@@ -1503,6 +1518,21 @@ export const BigData_PaaS_DatabricksMlflowExperiment = {
       provider: 'Azure',
       parameterRules: [],
     },
+  ],
+  params: {
+    /** URI where MLflow stores the experiment's artifacts, e.g. a dbfs:/ or abfss:// path. When unset, the workspace's default artifact store. Immutable after creation: a different value on an existing experiment fails the component. */
+    artifactLocation: {type: 'string', required: false, default: ''},
+    /** MLflow experiment name, an absolute workspace path such as /Shared/churn-model; a name without a leading / is placed under /Shared/. When unset or blank, /Shared/<component id>. An existing experiment of that name is adopted. */
+    experimentName: {type: 'string', required: false, default: ''},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
+    region: {type: 'string', required: false},
+  },
+} as const satisfies OfferContract;
+
+export const BigData_PaaS_DatabricksMlflowExperiment_GCP = {
+  offerType: 'BigData.PaaS.DatabricksMlflowExperiment',
+  serviceTypes: [],
+  declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
       agentVersion: 'v8.31.0',
@@ -1512,12 +1542,237 @@ export const BigData_PaaS_DatabricksMlflowExperiment = {
     },
   ],
   params: {
-    /** Storage location of the experiment's artifacts (e.g. an s3:// or dbfs:/ URI). When unset, the workspace's default artifact location. Cannot change once the experiment exists. */
+    /** Where the experiment's run artifacts are stored, e.g. gs://<bucket>/<path> or a dbfs:/ path. Set at creation only: an existing experiment keeps its location, with a warning. When unset, the workspace's default artifact store. */
     artifactLocation: {type: 'string', required: false, default: ''},
-    /** MLflow experiment name, an absolute workspace path (e.g. /Shared/<name>); a bare name is placed under /Shared/. When unset, /Shared/<componentId>. */
+    /** Name of the MLflow experiment in the workspace, an absolute workspace path such as /Shared/<experiment>. The agent finds the experiment by it. */
     experimentName: {type: 'string', required: true},
-    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
     region: {type: 'string', required: false},
+  },
+} as const satisfies OfferContract;
+
+export const BigData_PaaS_FractalDatalake = {
+  offerType: 'BigData.PaaS.FractalDatalake',
+  serviceTypes: ['BigData.PaaS.ManagedDatalake'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-fractalcloud',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'FractalCloud',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    bucketName: {type: 'string', required: false},
+    requestAutoCert: {type: 'boolean', required: false, default: false},
+    servers: {type: 'integer', required: false, default: 4},
+    storageClass: {type: 'string', required: false},
+    tenantName: {type: 'string', required: false},
+    /** what happens to the service's data volumes when it is deleted: Retain keeps them until they are reclaimed, Delete deletes their data; unset follows the environment (Retain in production, Delete otherwise) */
+    volumeRetention: {
+      type: 'string',
+      required: false,
+      values: ['Retain', 'Delete'],
+      valuesCaseInsensitive: true,
+    },
+    volumeSize: {type: 'string', required: false, default: '10Gi'},
+    volumesPerServer: {type: 'integer', required: false, default: 4},
+  },
+} as const satisfies OfferContract;
+
+export const BigData_PaaS_FractalMlflow = {
+  offerType: 'BigData.PaaS.FractalMlflow',
+  serviceTypes: ['BigData.PaaS.SparkPlatformMlExperiment'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-fractalcloud',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'FractalCloud',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    artifactRoot: {type: 'string', required: false},
+    trackingUri: {type: 'string', required: false},
+    /** what happens to the service's data volumes when it is deleted: Retain keeps them until they are reclaimed, Delete deletes their data; unset follows the environment (Retain in production, Delete otherwise) */
+    volumeRetention: {
+      type: 'string',
+      required: false,
+      values: ['Retain', 'Delete'],
+      valuesCaseInsensitive: true,
+    },
+  },
+} as const satisfies OfferContract;
+
+export const BigData_PaaS_FractalSparkCluster = {
+  offerType: 'BigData.PaaS.FractalSparkCluster',
+  serviceTypes: ['BigData.PaaS.SparkPlatformCluster'],
+  canAccessSecrets: true,
+  declaredBy: [
+    {
+      agentId: 'aria-agent-fractalcloud',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'FractalCloud',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    driverCores: {type: 'string', required: false, default: '1'},
+    driverMemory: {type: 'string', required: false, default: '1g'},
+    /** the short names of the environment secrets this component may read */
+    environmentSecretShortNames: {type: 'array', required: false},
+    executorCores: {type: 'string', required: false, default: '1'},
+    executorInstances: {type: 'integer', required: false, default: 2},
+    executorMemory: {type: 'string', required: false, default: '1g'},
+    image: {type: 'string', required: false, default: 'apache/spark:3.5.0'},
+  },
+} as const satisfies OfferContract;
+
+export const BigData_PaaS_FractalSparkJob = {
+  offerType: 'BigData.PaaS.FractalSparkJob',
+  serviceTypes: ['BigData.PaaS.SparkPlatformJob'],
+  canAccessSecrets: true,
+  declaredBy: [
+    {
+      agentId: 'aria-agent-fractalcloud',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'FractalCloud',
+      parameterRules: [
+        {
+          fix: 'Set artifactUri to the URL of the Python wheel the job runs, or jarUri to the jar and mainClass to its main class.',
+          id: 'job-artifact',
+          keys: ['jarUri', 'artifactUri'],
+          kind: 'anyOf',
+          message: 'The job does not say what to run.',
+        },
+      ],
+    },
+  ],
+  params: {
+    /** the kind of artifact in artifactUri; when unset, a Python wheel */
+    artifactType: {
+      type: 'string',
+      required: false,
+      values: ['python_wheel'],
+      valuesLevel: 'warn',
+    },
+    /** the URL of the Python wheel the job runs, wrapped into an image by the agent */
+    artifactUri: {type: 'string', required: false},
+    /** the short names of the environment secrets this component may read */
+    environmentSecretShortNames: {type: 'array', required: false},
+    image: {type: 'string', required: false, default: 'apache/spark:3.5.0'},
+    /** the jar the job runs, when it does not run a Python wheel from artifactUri */
+    jarUri: {type: 'string', required: false},
+    /** the main class of the jar in jarUri */
+    mainClass: {type: 'string', required: false, default: ''},
+    /** the Python package the wheel installs */
+    packageName: {
+      type: 'string',
+      required: false,
+      derived: {note: 'the component id, with - read as _'},
+    },
+    schedule: {type: 'string', required: false, default: ''},
+    /** the Spark image the wheel is installed on */
+    sparkBaseImage: {
+      type: 'string',
+      required: false,
+      derived: {note: "the agent's pinned Spark base image"},
+    },
+  },
+} as const satisfies OfferContract;
+
+export const BigData_PaaS_FractalSparkPlatform = {
+  offerType: 'BigData.PaaS.FractalSparkPlatform',
+  serviceTypes: ['BigData.PaaS.SparkPlatform'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-fractalcloud',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'FractalCloud',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    webhookEnabled: {type: 'boolean', required: false, default: true},
+  },
+} as const satisfies OfferContract;
+
+export const BigData_PaaS_FractalUnityCatalog = {
+  offerType: 'BigData.PaaS.FractalUnityCatalog',
+  serviceTypes: ['BigData.PaaS.UnityCatalog'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-fractalcloud',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'FractalCloud',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** the name of the server's objects; the component's by default */
+    serverName: {type: 'string', required: false},
+    /** the buckets of that MinIO whose tables the server vends credentials for */
+    storageBuckets: {type: 'array', required: false},
+    /** the Secret in the server's namespace holding accessKey and secretKey of the MinIO user the server vends credentials as */
+    storageCredentialsSecret: {
+      type: 'string',
+      required: false,
+      sensitive: true,
+    },
+    /** the S3 endpoint of the MinIO the cataloged tables are stored in, whose STS vends their credentials */
+    storageEndpoint: {type: 'string', required: false},
+    /** the region of that endpoint */
+    storageRegion: {type: 'string', required: false, default: 'us-east-1'},
+    /** what happens to the service's data volumes when it is deleted: Retain keeps them until they are reclaimed, Delete deletes their data; unset follows the environment (Retain in production, Delete otherwise) */
+    volumeRetention: {
+      type: 'string',
+      required: false,
+      values: ['Retain', 'Delete'],
+      valuesCaseInsensitive: true,
+    },
+  },
+} as const satisfies OfferContract;
+
+export const BigData_PaaS_FractalUnityCatalogTable = {
+  offerType: 'BigData.PaaS.FractalUnityCatalogTable',
+  serviceTypes: ['BigData.PaaS.UnityCatalogTable'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-fractalcloud',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'FractalCloud',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** the catalog the table is registered in */
+    catalog: {type: 'string', required: true},
+    /** the table's columns, each a name and a Spark SQL type */
+    columns: {type: 'array', required: true},
+    /** what the table holds */
+    comment: {type: 'string', required: false},
+    /** the format of the table's data */
+    format: {
+      type: 'string',
+      required: false,
+      default: 'PARQUET',
+      values: ['PARQUET', 'CSV', 'JSON', 'AVRO', 'ORC', 'TEXT'],
+    },
+    /** where the table's data is: s3://<bucket>/<path> */
+    location: {type: 'string', required: true},
+    /** the table's properties (for CSV, e.g. header) */
+    properties: {type: 'object', required: false},
+    /** the schema the table is registered in */
+    schema: {type: 'string', required: true},
+    /** the table's name */
+    table: {type: 'string', required: true},
   },
 } as const satisfies OfferContract;
 

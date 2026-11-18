@@ -1,0 +1,855 @@
+{
+  "agentId": "aria-agent-fractalcloud",
+  "agentVersion": "v0.1.0",
+  "offers": [
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
+      "offerType": "BigData.PaaS.FractalDatalake",
+      "parameterRules": [],
+      "params": [
+        {
+          "key": "bucketName",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "requestAutoCert",
+          "type": "boolean"
+        },
+        {
+          "default": 4,
+          "key": "servers",
+          "type": "integer"
+        },
+        {
+          "key": "storageClass",
+          "type": "string"
+        },
+        {
+          "key": "tenantName",
+          "type": "string"
+        },
+        {
+          "description": "what happens to the service's data volumes when it is deleted: Retain keeps them until they are reclaimed, Delete deletes their data; unset follows the environment (Retain in production, Delete otherwise)",
+          "example": "Retain",
+          "key": "volumeRetention",
+          "type": "string",
+          "values": [
+            "Retain",
+            "Delete"
+          ],
+          "valuesCaseInsensitive": true
+        },
+        {
+          "default": "10Gi",
+          "key": "volumeSize",
+          "type": "string"
+        },
+        {
+          "default": 4,
+          "key": "volumesPerServer",
+          "type": "integer"
+        }
+      ],
+      "provider": "FractalCloud",
+      "providerResources": [],
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "BigData.PaaS.ManagedDatalake"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
+      "offerType": "BigData.PaaS.FractalMlflow",
+      "parameterRules": [],
+      "params": [
+        {
+          "key": "artifactRoot",
+          "type": "string"
+        },
+        {
+          "key": "trackingUri",
+          "type": "string"
+        },
+        {
+          "description": "what happens to the service's data volumes when it is deleted: Retain keeps them until they are reclaimed, Delete deletes their data; unset follows the environment (Retain in production, Delete otherwise)",
+          "example": "Retain",
+          "key": "volumeRetention",
+          "type": "string",
+          "values": [
+            "Retain",
+            "Delete"
+          ],
+          "valuesCaseInsensitive": true
+        }
+      ],
+      "provider": "FractalCloud",
+      "providerResources": [
+        {
+          "discriminator": {
+            "name": "app.kubernetes.io/name",
+            "value": "mlflow"
+          },
+          "type": "apps/Deployment"
+        }
+      ],
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "BigData.PaaS.SparkPlatformMlExperiment"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": true,
+      "contractSchemaVersion": "2.0",
+      "offerType": "BigData.PaaS.FractalSparkCluster",
+      "parameterRules": [],
+      "params": [
+        {
+          "default": "1",
+          "key": "driverCores",
+          "type": "string"
+        },
+        {
+          "default": "1g",
+          "key": "driverMemory",
+          "type": "string"
+        },
+        {
+          "description": "the short names of the environment secrets this component may read",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
+          "default": "1",
+          "key": "executorCores",
+          "type": "string"
+        },
+        {
+          "default": 2,
+          "key": "executorInstances",
+          "type": "integer"
+        },
+        {
+          "default": "1g",
+          "key": "executorMemory",
+          "type": "string"
+        },
+        {
+          "default": "apache/spark:3.5.0",
+          "key": "image",
+          "type": "string"
+        }
+      ],
+      "provider": "FractalCloud",
+      "providerResources": [],
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "BigData.PaaS.SparkPlatformCluster"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": true,
+      "contractSchemaVersion": "2.0",
+      "offerType": "BigData.PaaS.FractalSparkJob",
+      "parameterRules": [
+        {
+          "fix": "Set artifactUri to the URL of the Python wheel the job runs, or jarUri to the jar and mainClass to its main class.",
+          "id": "job-artifact",
+          "keys": [
+            "jarUri",
+            "artifactUri"
+          ],
+          "kind": "anyOf",
+          "message": "The job does not say what to run."
+        }
+      ],
+      "params": [
+        {
+          "description": "the kind of artifact in artifactUri; when unset, a Python wheel",
+          "key": "artifactType",
+          "type": "string",
+          "values": [
+            "python_wheel"
+          ],
+          "valuesLevel": "warn"
+        },
+        {
+          "description": "the URL of the Python wheel the job runs, wrapped into an image by the agent",
+          "example": "https://artifacts.example/etl-1.0-py3-none-any.whl#sha256=<digest>",
+          "key": "artifactUri",
+          "type": "string"
+        },
+        {
+          "description": "the short names of the environment secrets this component may read",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
+          "default": "apache/spark:3.5.0",
+          "key": "image",
+          "type": "string"
+        },
+        {
+          "description": "the jar the job runs, when it does not run a Python wheel from artifactUri",
+          "example": "local:///opt/spark/examples/jars/spark-examples_2.12-3.5.0.jar",
+          "key": "jarUri",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "description": "the main class of the jar in jarUri",
+          "example": "org.apache.spark.examples.SparkPi",
+          "key": "mainClass",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "the component id, with - read as _"
+          },
+          "description": "the Python package the wheel installs",
+          "key": "packageName",
+          "type": "string"
+        },
+        {
+          "default": "",
+          "key": "schedule",
+          "type": "string"
+        },
+        {
+          "derived": {
+            "note": "the agent's pinned Spark base image"
+          },
+          "description": "the Spark image the wheel is installed on",
+          "key": "sparkBaseImage",
+          "type": "string"
+        }
+      ],
+      "provider": "FractalCloud",
+      "providerResources": [
+        {
+          "type": "sparkoperator.k8s.io/SparkApplication"
+        },
+        {
+          "type": "sparkoperator.k8s.io/ScheduledSparkApplication"
+        }
+      ],
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "BigData.PaaS.SparkPlatformJob"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
+      "offerType": "BigData.PaaS.FractalSparkPlatform",
+      "parameterRules": [],
+      "params": [
+        {
+          "default": true,
+          "key": "webhookEnabled",
+          "type": "boolean"
+        }
+      ],
+      "provider": "FractalCloud",
+      "providerResources": [
+        {
+          "discriminator": {
+            "name": "app.kubernetes.io/name",
+            "value": "spark-operator"
+          },
+          "type": "apps/Deployment"
+        }
+      ],
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "BigData.PaaS.SparkPlatform"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
+      "offerType": "BigData.PaaS.FractalUnityCatalog",
+      "parameterRules": [],
+      "params": [
+        {
+          "description": "the name of the server's objects; the component's by default",
+          "key": "serverName",
+          "type": "string"
+        },
+        {
+          "description": "the buckets of that MinIO whose tables the server vends credentials for",
+          "example": [
+            "lake"
+          ],
+          "key": "storageBuckets",
+          "type": "array"
+        },
+        {
+          "description": "the Secret in the server's namespace holding accessKey and secretKey of the MinIO user the server vends credentials as",
+          "example": "uc-lake-user",
+          "key": "storageCredentialsSecret",
+          "type": "string"
+        },
+        {
+          "description": "the S3 endpoint of the MinIO the cataloged tables are stored in, whose STS vends their credentials",
+          "example": "http://minio.lake.svc.cluster.local",
+          "key": "storageEndpoint",
+          "type": "string"
+        },
+        {
+          "default": "us-east-1",
+          "description": "the region of that endpoint",
+          "key": "storageRegion",
+          "type": "string"
+        },
+        {
+          "description": "what happens to the service's data volumes when it is deleted: Retain keeps them until they are reclaimed, Delete deletes their data; unset follows the environment (Retain in production, Delete otherwise)",
+          "example": "Retain",
+          "key": "volumeRetention",
+          "type": "string",
+          "values": [
+            "Retain",
+            "Delete"
+          ],
+          "valuesCaseInsensitive": true
+        }
+      ],
+      "provider": "FractalCloud",
+      "providerResources": [
+        {
+          "discriminator": {
+            "name": "app.kubernetes.io/name",
+            "value": "unitycatalog"
+          },
+          "type": "apps/Deployment"
+        }
+      ],
+      "runtimeChecks": [
+        {
+          "field": "storageEndpoint",
+          "fix": "set all three, or none",
+          "id": "storage-together",
+          "message": "storageEndpoint, storageCredentialsSecret and storageBuckets go together",
+          "reason": "NOT_EXPRESSIBLE"
+        }
+      ],
+      "serviceTypes": [
+        "BigData.PaaS.UnityCatalog"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
+      "offerType": "BigData.PaaS.FractalUnityCatalogTable",
+      "parameterRules": [],
+      "params": [
+        {
+          "description": "the catalog the table is registered in",
+          "example": "pilot",
+          "key": "catalog",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "the table's columns, each a name and a Spark SQL type",
+          "example": [
+            {
+              "name": "id",
+              "type": "bigint"
+            }
+          ],
+          "key": "columns",
+          "required": true,
+          "type": "array"
+        },
+        {
+          "description": "what the table holds",
+          "key": "comment",
+          "type": "string"
+        },
+        {
+          "default": "PARQUET",
+          "description": "the format of the table's data",
+          "key": "format",
+          "type": "string",
+          "values": [
+            "PARQUET",
+            "CSV",
+            "JSON",
+            "AVRO",
+            "ORC",
+            "TEXT"
+          ]
+        },
+        {
+          "description": "where the table's data is: s3://<bucket>/<path>",
+          "example": "s3://lake/orders",
+          "key": "location",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "the table's properties (for CSV, e.g. header)",
+          "key": "properties",
+          "type": "object"
+        },
+        {
+          "description": "the schema the table is registered in",
+          "example": "sales",
+          "key": "schema",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "the table's name",
+          "example": "orders",
+          "key": "table",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "provider": "FractalCloud",
+      "providerResources": [],
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "BigData.PaaS.UnityCatalogTable"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
+      "offerType": "Messaging.PaaS.FractalArtemis",
+      "parameterRules": [],
+      "params": [
+        {
+          "constraints": {
+            "pattern": "[a-z0-9](?:[-a-z0-9]{0,38}[a-z0-9])?"
+          },
+          "example": "orders",
+          "key": "brokerName",
+          "type": "string"
+        },
+        {
+          "default": "1Gi",
+          "example": "2Gi",
+          "key": "memory",
+          "type": "string"
+        },
+        {
+          "description": "what happens to the service's data volumes when it is deleted: Retain keeps them until they are reclaimed, Delete deletes their data; unset follows the environment (Retain in production, Delete otherwise)",
+          "example": "Retain",
+          "key": "volumeRetention",
+          "type": "string",
+          "values": [
+            "Retain",
+            "Delete"
+          ],
+          "valuesCaseInsensitive": true
+        }
+      ],
+      "provider": "FractalCloud",
+      "providerResources": [
+        {
+          "type": "broker.amq.io/ActiveMQArtemis"
+        }
+      ],
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "Messaging.PaaS.MessageBroker"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
+      "offerType": "Messaging.PaaS.FractalArtemisQueue",
+      "parameterRules": [],
+      "params": [
+        {
+          "constraints": {
+            "pattern": "[A-Za-z0-9_/-]+(?:\\.[A-Za-z0-9_/-]+){0,99}"
+          },
+          "example": "orders",
+          "key": "address",
+          "type": "string"
+        }
+      ],
+      "provider": "FractalCloud",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "Messaging.PaaS.MessageBrokerEntity"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
+      "offerType": "Messaging.PaaS.FractalArtemisTopic",
+      "parameterRules": [],
+      "params": [
+        {
+          "constraints": {
+            "pattern": "[A-Za-z0-9_/-]+(?:\\.[A-Za-z0-9_/-]+){0,99}"
+          },
+          "example": "orders",
+          "key": "address",
+          "type": "string"
+        }
+      ],
+      "provider": "FractalCloud",
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "Messaging.PaaS.MessageBrokerEntity"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
+      "offerType": "Messaging.PaaS.FractalKafka",
+      "parameterRules": [],
+      "params": [
+        {
+          "key": "clusterName",
+          "type": "string"
+        },
+        {
+          "description": "what happens to the service's data volumes when it is deleted: Retain keeps them until they are reclaimed, Delete deletes their data; unset follows the environment (Retain in production, Delete otherwise)",
+          "example": "Retain",
+          "key": "volumeRetention",
+          "type": "string",
+          "values": [
+            "Retain",
+            "Delete"
+          ],
+          "valuesCaseInsensitive": true
+        }
+      ],
+      "provider": "FractalCloud",
+      "providerResources": [
+        {
+          "type": "kafka.strimzi.io/Kafka"
+        }
+      ],
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "Messaging.PaaS.StreamProcessing"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
+      "offerType": "Messaging.PaaS.FractalKafkaTopic",
+      "parameterRules": [],
+      "params": [
+        {
+          "default": 1,
+          "key": "partitions",
+          "type": "integer"
+        },
+        {
+          "default": 1,
+          "key": "replicas",
+          "type": "integer"
+        }
+      ],
+      "provider": "FractalCloud",
+      "providerResources": [
+        {
+          "type": "kafka.strimzi.io/KafkaTopic"
+        }
+      ],
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "Messaging.PaaS.StreamProcessingEntity"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
+      "offerType": "Security.PaaS.FractalWorkloadIdentity",
+      "parameterRules": [],
+      "params": [],
+      "provider": "FractalCloud",
+      "providerResources": [
+        {
+          "discriminator": {
+            "name": "app.kubernetes.io/name",
+            "value": "server"
+          },
+          "type": "apps/StatefulSet"
+        },
+        {
+          "discriminator": {
+            "name": "app.kubernetes.io/name",
+            "value": "agent"
+          },
+          "type": "apps/DaemonSet"
+        }
+      ],
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "Security.PaaS.WorkloadIdentity"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
+      "offerType": "Storage.PaaS.FractalFerretDb",
+      "parameterRules": [],
+      "params": [
+        {
+          "key": "clusterName",
+          "type": "string"
+        },
+        {
+          "description": "what happens to the service's data volumes when it is deleted: Retain keeps them until they are reclaimed, Delete deletes their data; unset follows the environment (Retain in production, Delete otherwise)",
+          "example": "Retain",
+          "key": "volumeRetention",
+          "type": "string",
+          "values": [
+            "Retain",
+            "Delete"
+          ],
+          "valuesCaseInsensitive": true
+        }
+      ],
+      "provider": "FractalCloud",
+      "providerResources": [
+        {
+          "type": "postgresql.cnpg.io/Cluster"
+        }
+      ],
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "Storage.PaaS.MongoDb"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
+      "offerType": "Storage.PaaS.FractalObjectStorage",
+      "parameterRules": [],
+      "params": [
+        {
+          "key": "bucketName",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "key": "requestAutoCert",
+          "type": "boolean"
+        },
+        {
+          "default": 4,
+          "key": "servers",
+          "type": "integer"
+        },
+        {
+          "key": "storageClass",
+          "type": "string"
+        },
+        {
+          "key": "tenantName",
+          "type": "string"
+        },
+        {
+          "description": "what happens to the service's data volumes when it is deleted: Retain keeps them until they are reclaimed, Delete deletes their data; unset follows the environment (Retain in production, Delete otherwise)",
+          "example": "Retain",
+          "key": "volumeRetention",
+          "type": "string",
+          "values": [
+            "Retain",
+            "Delete"
+          ],
+          "valuesCaseInsensitive": true
+        },
+        {
+          "default": "10Gi",
+          "key": "volumeSize",
+          "type": "string"
+        },
+        {
+          "default": 4,
+          "key": "volumesPerServer",
+          "type": "integer"
+        }
+      ],
+      "provider": "FractalCloud",
+      "providerResources": [
+        {
+          "type": "minio.min.io/Tenant"
+        }
+      ],
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "Storage.PaaS.FilesAndBlobs"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
+      "offerType": "Storage.PaaS.FractalObjectStorageBucket",
+      "parameterRules": [],
+      "params": [
+        {
+          "constraints": {
+            "pattern": "[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]"
+          },
+          "description": "Name of the bucket in the tenant; unset = the component id",
+          "example": "orders",
+          "key": "bucketName",
+          "type": "string"
+        }
+      ],
+      "provider": "FractalCloud",
+      "providerResources": [],
+      "runtimeChecks": [
+        {
+          "field": "/bucketName",
+          "fix": "Set bucketName to 3 to 63 lower-case letters, digits, '.' and '-', starting and ending with a letter or digit.",
+          "id": "minio-bucket-name-from-id",
+          "message": "Without bucketName the bucket is named after the component id, which is not a valid bucket name.",
+          "reason": "NOT_EXPRESSIBLE"
+        },
+        {
+          "field": "/bucketName",
+          "fix": "Set bucketName to a name no bucket of the tenant has.",
+          "id": "minio-bucket-name-taken",
+          "message": "A bucket of this name already exists in the MinIO tenant and was not made by this component; it is never taken over.",
+          "reason": "CLOUD_STATE"
+        }
+      ],
+      "serviceTypes": [
+        "Storage.PaaS.FilesAndBlobs"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
+      "offerType": "Storage.PaaS.FractalOpenSearch",
+      "parameterRules": [],
+      "params": [
+        {
+          "description": "CPU requested by each node, a Kubernetes quantity; never limited. Unset = the chart's",
+          "key": "cpu",
+          "type": "string"
+        },
+        {
+          "default": false,
+          "description": "Install OpenSearch Dashboards beside the cluster",
+          "key": "dashboards",
+          "type": "boolean"
+        },
+        {
+          "description": "Memory of each node (requested and limited), a Kubernetes quantity; the JVM heap is half of it. Unset = the chart's",
+          "key": "memory",
+          "type": "string"
+        },
+        {
+          "default": "100Gi",
+          "description": "Volume size of each node, a Kubernetes quantity",
+          "key": "storage",
+          "type": "string"
+        },
+        {
+          "description": "StorageClass of the nodes' volumes; unset = the class its cluster publishes, else the agent's default, else the cluster's default class",
+          "key": "storageClassName",
+          "type": "string"
+        },
+        {
+          "description": "what happens to the service's data volumes when it is deleted: Retain keeps them until they are reclaimed, Delete deletes their data; unset follows the environment (Retain in production, Delete otherwise)",
+          "example": "Retain",
+          "key": "volumeRetention",
+          "type": "string",
+          "values": [
+            "Retain",
+            "Delete"
+          ],
+          "valuesCaseInsensitive": true
+        }
+      ],
+      "provider": "FractalCloud",
+      "providerResources": [
+        {
+          "discriminator": {
+            "name": "app.kubernetes.io/name",
+            "value": "opensearch"
+          },
+          "type": "apps/StatefulSet"
+        }
+      ],
+      "runtimeChecks": [],
+      "serviceTypes": [
+        "Storage.PaaS.Search"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
+      "canAccessSecrets": false,
+      "contractSchemaVersion": "2.0",
+      "offerType": "Storage.PaaS.FractalValkey",
+      "parameterRules": [],
+      "params": [
+        {
+          "constraints": {
+            "pattern": "[a-z0-9](?:[-a-z0-9]{0,28}[a-z0-9])?"
+          },
+          "example": "cache",
+          "key": "clusterName",
+          "type": "string"
+        },
+        {
+          "description": "what happens to the service's data volumes when it is deleted: Retain keeps them until they are reclaimed, Delete deletes their data; unset follows the environment (Retain in production, Delete otherwise)",
+          "example": "Retain",
+          "key": "volumeRetention",
+          "type": "string",
+          "values": [
+            "Retain",
+            "Delete"
+          ],
+          "valuesCaseInsensitive": true
+        }
+      ],
+      "provider": "FractalCloud",
+      "providerResources": [
+        {
+          "discriminator": {
+            "name": "app.kubernetes.io/name",
+            "value": "valkey"
+          },
+          "type": "apps/StatefulSet"
+        }
+      ],
+      "runtimeChecks": [
+        {
+          "field": "clusterName",
+          "fix": "set clusterName",
+          "id": "valkey-name-length",
+          "message": "a cluster without clusterName is named after its component id, which must then be at most 30 characters",
+          "reason": "NOT_EXPRESSIBLE"
+        }
+      ],
+      "serviceTypes": [
+        "Storage.PaaS.VendorSpecificKeyValueDbms"
+      ]
+    }
+  ],
+  "schemaVersion": "2.0"
+}

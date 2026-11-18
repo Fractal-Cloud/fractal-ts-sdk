@@ -125,6 +125,21 @@ export const Security_PaaS_AzureEntraExternalId = {
   },
 } as const satisfies OfferContract;
 
+export const Security_PaaS_FractalWorkloadIdentity = {
+  offerType: 'Security.PaaS.FractalWorkloadIdentity',
+  serviceTypes: ['Security.PaaS.WorkloadIdentity'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-fractalcloud',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'FractalCloud',
+      parameterRules: [],
+    },
+  ],
+  params: {},
+} as const satisfies OfferContract;
+
 export const Security_SaaS_Unmanaged = {
   offerType: 'Security.SaaS.Unmanaged',
   serviceTypes: [],

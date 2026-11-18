@@ -1589,6 +1589,137 @@ export const NetworkAndCompute_IaaS_VNet = {
   },
 } as const satisfies OfferContract;
 
+export const NetworkAndCompute_IaaS_WiitCloudServer = {
+  offerType: 'NetworkAndCompute.IaaS.WiitCloudServer',
+  serviceTypes: ['NetworkAndCompute.IaaS.VirtualMachine'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-wiit',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'WIIT',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** whether a floating IP is bound to the primary port */
+    associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** the availability zone (AZ1, AZ2, AZ3); the agent default when empty */
+    availabilityZone: {type: 'string', required: false},
+    /** the size in GiB of a boot volume made from the image; 0 boots from the hypervisor disk */
+    bootVolumeSize: {type: 'integer', required: false, default: 0},
+    /** the Cinder volume type of the boot volume; the cloud default when empty */
+    bootVolumeType: {type: 'string', required: false},
+    /** the Nova flavor name or ID */
+    flavor: {type: 'string', required: true},
+    /** the Glance image name or ID the server boots */
+    image: {type: 'string', required: true},
+    /** the server name; derived from the component ID when empty */
+    name: {type: 'string', required: false},
+    /** the cloud-init user data, as a value (environment secret references are refused); readable by every process on the server through the metadata service */
+    userData: {type: 'string', required: false, sensitive: true},
+  },
+} as const satisfies OfferContract;
+
+export const NetworkAndCompute_IaaS_WiitLoadBalancer = {
+  offerType: 'NetworkAndCompute.IaaS.WiitLoadBalancer',
+  serviceTypes: ['NetworkAndCompute.IaaS.LoadBalancer'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-wiit',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'WIIT',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** whether a floating IP is bound to the VIP */
+    associatePublicIp: {type: 'boolean', required: false, default: false},
+    /** the listeners as [{port, targetPort?, protocol?, allowedCidrs?, healthCheck?}]; allowedCidrs needs the amphora provider */
+    listeners: {type: 'string', required: false},
+    /** the load balancer name; derived from the component ID when empty */
+    name: {type: 'string', required: false},
+    /** the Octavia provider; fixed once created */
+    provider: {
+      type: 'string',
+      required: false,
+      default: 'ovn',
+      values: ['ovn', 'amphora'],
+    },
+  },
+} as const satisfies OfferContract;
+
+export const NetworkAndCompute_IaaS_WiitNetwork = {
+  offerType: 'NetworkAndCompute.IaaS.WiitNetwork',
+  serviceTypes: ['NetworkAndCompute.IaaS.VirtualNetwork'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-wiit',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'WIIT',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** the network name; derived from the component ID when empty */
+    name: {type: 'string', required: false},
+  },
+} as const satisfies OfferContract;
+
+export const NetworkAndCompute_IaaS_WiitSecurityGroup = {
+  offerType: 'NetworkAndCompute.IaaS.WiitSecurityGroup',
+  serviceTypes: ['NetworkAndCompute.IaaS.SecurityGroup'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-wiit',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'WIIT',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** whether all outbound traffic is allowed */
+    allowAllEgress: {type: 'boolean', required: false, default: true},
+    /** whether members of the group may reach each other on every port */
+    allowIntraGroup: {type: 'boolean', required: false, default: false},
+    /** outbound rules as [{fromPort, toPort?, protocol?, destCidr}], in addition to allowAllEgress; destCidr is required */
+    egressRules: {type: 'string', required: false},
+    /** inbound rules as [{fromPort, toPort?, protocol?, sourceCidr}]; sourceCidr is required (0.0.0.0/0 allows every address) and an omitted toPort means the single port fromPort */
+    ingressRules: {type: 'string', required: false},
+    /** the security group name; derived from the component ID when empty */
+    name: {type: 'string', required: false},
+  },
+} as const satisfies OfferContract;
+
+export const NetworkAndCompute_IaaS_WiitSubnet = {
+  offerType: 'NetworkAndCompute.IaaS.WiitSubnet',
+  serviceTypes: ['NetworkAndCompute.IaaS.Subnet'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-wiit',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'WIIT',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** the subnet's IPv4 CIDR, from IPAM or the blueprint */
+    cidrBlock: {type: 'string', required: true},
+    /** comma-separated DNS servers handed out by DHCP */
+    dnsNameservers: {type: 'string', required: false},
+    /** whether a router connects the subnet to the external network */
+    externalGateway: {type: 'boolean', required: false, default: false},
+    /** the gateway address; the first address of the CIDR when empty */
+    gatewayIp: {type: 'string', required: false},
+    /** the subnet name; derived from the component ID when empty */
+    name: {type: 'string', required: false},
+  },
+} as const satisfies OfferContract;
+
 export const NetworkAndCompute_PaaS_AKS = {
   offerType: 'NetworkAndCompute.PaaS.AKS',
   serviceTypes: [],
@@ -2811,7 +2942,7 @@ export const NetworkAndCompute_PaaS_GKE = {
   },
 } as const satisfies OfferContract;
 
-export const NetworkAndCompute_PaaS_Kubernetes = {
+export const NetworkAndCompute_PaaS_Kubernetes_Aruba = {
   offerType: 'NetworkAndCompute.PaaS.Kubernetes',
   serviceTypes: ['NetworkAndCompute.PaaS.Kubernetes'],
   declaredBy: [
@@ -2822,6 +2953,19 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
       provider: 'Aruba',
       parameterRules: [],
     },
+  ],
+  params: {
+    ha: {type: 'boolean', required: false, default: true},
+    kubernetesVersion: {type: 'string', required: false},
+    nodePoolCount: {type: 'integer', required: false, default: 3},
+    nodePoolFlavor: {type: 'string', required: false},
+  },
+} as const satisfies OfferContract;
+
+export const NetworkAndCompute_PaaS_Kubernetes_AWS = {
+  offerType: 'NetworkAndCompute.PaaS.Kubernetes',
+  serviceTypes: [],
+  declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
       agentVersion: 'v8.31.0',
@@ -2830,57 +2974,10 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
       aliasOf: 'NetworkAndCompute.PaaS.AwsEks',
       parameterRules: [],
     },
-    {
-      agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
-      contractSchemaVersion: '2.0',
-      provider: 'Azure',
-      aliasOf: 'NetworkAndCompute.PaaS.AzureAks',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
-      contractSchemaVersion: '2.0',
-      provider: 'GCP',
-      aliasOf: 'NetworkAndCompute.PaaS.GcpGke',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.31.0',
-      contractSchemaVersion: '2.0',
-      provider: 'OCI',
-      parameterRules: [],
-    },
   ],
   params: {
     /** EKS add-ons to install, as a list of add-on objects. When unset, the agent's default add-ons. eks-pod-identity-agent is always installed, declared or not; unusable entries are ignored with a status warning. */
-    addons: {
-      type: 'array',
-      required: false,
-      agents: ['fractal-cloud-agent-aws'],
-    },
-    /** Microsoft Entra integration of the cluster: {managed?, enableAzureRbac?, adminGroupObjectIDs?}. managed defaults to true and enableAzureRbac to the value of managed; adminGroupObjectIDs lists Entra group object IDs granted cluster admin. When unset, managed Entra integration with Azure RBAC, which the platform's Kubernetes agent needs to reach the cluster. */
-    azureActiveDirectoryProfile: {
-      type: 'object',
-      required: false,
-      default: {},
-      agents: ['fractal-cloud-agent-azure'],
-    },
-    /** Range of the cluster's node subnet in an environment with a spoke network, when the cluster has no VNet dependency and no vnetSubnetAddressIpRange: copied to vnetSubnetAddressIpRange. When unset there, a /24 allocated by IPAM (or the range already deployed). */
-    cidrBlock: {
-      type: 'string',
-      required: false,
-      default: '',
-      agents: ['fractal-cloud-agent-azure'],
-    },
-    /** OCI compartment the component's resource is created in, as {parentId, name, description?}: parentId is the OCID of the parent compartment or tenancy, name the compartment's name. The compartment is looked up under parentId and created there when absent (description defaults to 'Standard compartment'). Required for a new component; nothing is assumed. A deployed component without it is kept in the compartment its resource lives in, with a warning. Offers that run on a Kubernetes cluster do not read it. */
-    compartment: {
-      type: 'object',
-      required: false,
-      agents: ['fractal-cloud-agent-oci'],
-    },
+    addons: {type: 'array', required: false},
     /** Control-plane log types shipped to CloudWatch (api, audit, authenticator, controllerManager, scheduler). When unset, none on a new cluster and an existing cluster's logging is left as it is. Declared, every type not named is disabled, so an empty list turns logging off. */
     controlPlaneLogTypes: {
       type: 'array',
@@ -2893,65 +2990,9 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
         'scheduler',
       ],
       valuesCaseInsensitive: true,
-      agents: ['fractal-cloud-agent-aws'],
-    },
-    ha: {
-      type: 'boolean',
-      required: false,
-      default: true,
-      agents: ['aria-agent-aruba'],
     },
     /** Kubernetes version of the cluster as major.minor (e.g. 1.31). When unset, a new cluster gets the current EKS default version and is never upgraded. Declared one minor ahead of an existing cluster's version, it upgrades the control plane on the next pass; more than one minor ahead, a major change or a downgrade is refused. */
-    kubernetesVersion: {
-      type: 'string',
-      required: false,
-      agents: [
-        'aria-agent-aruba',
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-gcp',
-      ],
-    },
-    /** AKS pricing tier of the control plane: Free (no uptime SLA, for development and test), Standard (uptime SLA, for production) or Premium (Standard plus long-term support), case-insensitive. Required to create a cluster, as is a known tier; a deployed cluster without it, or with an unknown one, keeps its tier, with a warning. */
-    managedClusterSkuTier: {
-      type: 'string',
-      required: false,
-      values: ['Free', 'Standard', 'Premium'],
-      valuesCaseInsensitive: true,
-      agents: ['fractal-cloud-agent-azure'],
-    },
-    /** Control-plane range of a private cluster, e.g. 172.16.0.0/28. Not set when omitted. */
-    masterIpv4CidrBlock: {
-      type: 'string',
-      required: false,
-      agents: ['fractal-cloud-agent-gcp'],
-    },
-    /** Name of the VPC network the cluster and its subnet are created in. When unset, the environment's spoke network. */
-    networkName: {
-      type: 'string',
-      required: false,
-      default: '',
-      agents: ['fractal-cloud-agent-gcp'],
-    },
-    /** Network policy provider: CALICO enables Kubernetes NetworkPolicy enforcement (GKE's Calico provider and its add-on); any other value is refused for a new cluster. Applied when the cluster is created only. When unset, network policies are not enforced. */
-    networkPolicyProvider: {
-      type: 'string',
-      required: false,
-      values: ['CALICO'],
-      valuesCaseInsensitive: true,
-      valuesLevel: 'warn',
-      agents: ['fractal-cloud-agent-gcp'],
-    },
-    nodePoolCount: {
-      type: 'integer',
-      required: false,
-      default: 3,
-      agents: ['aria-agent-aruba'],
-    },
-    nodePoolFlavor: {
-      type: 'string',
-      required: false,
-      agents: ['aria-agent-aruba'],
-    },
+    kubernetesVersion: {type: 'string', required: false},
     /** EKS Auto Mode NodePools to create, as a list of pool objects (Graviton/arm64 by default). When unset, the built-in general-purpose and system pools. Declaring pools on an existing cluster disables the amd64-only general-purpose pool on the next pass, so amd64-only images stop scheduling unless a declared pool offers amd64. */
     nodePools: {
       type: 'array',
@@ -3160,118 +3201,209 @@ export const NetworkAndCompute_PaaS_Kubernetes = {
           ],
         },
       },
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-      ],
-    },
-    /** Public IPs the cluster's outbound traffic leaves from: [{name, azureResourceGroup?: {name, region}}]; each IP is created when missing, in the cluster's resource group unless one is named. When unset, a single public IP named pip-<cluster name>. */
-    outboundIps: {
-      type: 'array',
-      required: false,
-      default: [],
-      agents: ['fractal-cloud-agent-azure'],
     },
     /** Prefix length of the pod block allocated from IPAM when podIpRange is unset (e.g. 20 for a /20). When unset, 20. */
-    podCidrPrefixLength: {
-      type: 'integer',
-      required: false,
-      default: 20,
-      agents: ['fractal-cloud-agent-aws', 'fractal-cloud-agent-gcp'],
-    },
+    podCidrPrefixLength: {type: 'integer', required: false, default: 20},
     /** CIDR block for pod addresses. When unset in an environment with a spoke network, allocated from IPAM. Used only by clusters running the VPC CNI with custom networking and only when it is a 100.64.0.0/10 block; Auto Mode clusters give pods node-subnet addresses. */
-    podIpRange: {
-      type: 'string',
-      required: false,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-      ],
-    },
-    /** Name of the pod secondary range the agent creates on the cluster's subnet, holding podIpRange. When unset, tier-1-pods. */
-    podsRangeName: {
-      type: 'string',
-      required: false,
-      default: '',
-      agents: ['fractal-cloud-agent-gcp'],
-    },
-    /** Kubernetes PriorityClasses the agent keeps in the cluster: [{name, value, description?, preemptionPolicy?}]. When unset, none. */
-    priorityClasses: {
-      type: 'array',
-      required: false,
-      default: [],
-      agents: ['fractal-cloud-agent-gcp'],
-    },
+    podIpRange: {type: 'string', required: false, default: ''},
     /** Set true to give a new cluster an unrestricted public API endpoint. When unset or false, the endpoint is limited to the operator's allowlist when one is configured, else private when the agent shares the cluster's VPC, else left public. Applies at creation. */
-    privateClusterDisabled: {
+    privateClusterDisabled: {type: 'boolean', required: false, default: false},
+    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
+    region: {type: 'string', required: false},
+    /** Prefix length of the service block allocated from IPAM when serviceIpRange is unset (e.g. 20 for a /20). When unset, 20. */
+    serviceCidrPrefixLength: {type: 'integer', required: false, default: 20},
+    /** CIDR of Kubernetes service addresses (e.g. 172.20.0.0/16), set at creation. When unset in an environment with a spoke network, allocated from IPAM; otherwise the EKS default range. */
+    serviceIpRange: {type: 'string', required: false, default: ''},
+    /** Whether workloads get cloud identities (EKS Pod Identity). Always enabled on Fractal-managed clusters: false is ignored with a status warning. When unset, true. */
+    workloadIdentityEnabled: {type: 'boolean', required: false, default: true},
+  },
+} as const satisfies OfferContract;
+
+export const NetworkAndCompute_PaaS_Kubernetes_Azure = {
+  offerType: 'NetworkAndCompute.PaaS.Kubernetes',
+  serviceTypes: [],
+  declaredBy: [
+    {
+      agentId: 'fractal-cloud-agent-azure',
+      agentVersion: 'v8.31.0',
+      contractSchemaVersion: '2.0',
+      provider: 'Azure',
+      aliasOf: 'NetworkAndCompute.PaaS.AzureAks',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** Microsoft Entra integration of the cluster: {managed?, enableAzureRbac?, adminGroupObjectIDs?}. managed defaults to true and enableAzureRbac to the value of managed; adminGroupObjectIDs lists Entra group object IDs granted cluster admin. When unset, managed Entra integration with Azure RBAC, which the platform's Kubernetes agent needs to reach the cluster. */
+    azureActiveDirectoryProfile: {type: 'object', required: false, default: {}},
+    /** Range of the cluster's node subnet in an environment with a spoke network, when the cluster has no VNet dependency and no vnetSubnetAddressIpRange: copied to vnetSubnetAddressIpRange. When unset there, a /24 allocated by IPAM (or the range already deployed). */
+    cidrBlock: {type: 'string', required: false, default: ''},
+    /** AKS pricing tier of the control plane: Free (no uptime SLA, for development and test), Standard (uptime SLA, for production) or Premium (Standard plus long-term support), case-insensitive. Required to create a cluster, as is a known tier; a deployed cluster without it, or with an unknown one, keeps its tier, with a warning. */
+    managedClusterSkuTier: {
+      type: 'string',
+      required: false,
+      values: ['Free', 'Standard', 'Premium'],
+      valuesCaseInsensitive: true,
+    },
+    /** Node pools: [{name, agentPoolMode (System | User), machineType? (Azure VM size; when unset, the cheapest size of at least 2 vCPUs and 4 GB, at most 4 vCPUs, in a burstable or small general-purpose family that this subscription may use in the cluster's region and has cores quota for), osType? (Linux), osSku?, diskSizeGb? (100), initialNodeCount? (1), minNodeCount? (1), maxNodeCount? (20), autoscalingEnabled? (true), maxPodsPerNode? (30, at most 250), maxSurge?, drainTimeoutInMinutes?, nodeTaints?, labels?}]. A Windows pool is always a User pool. Required to create a cluster, with at least one pool whose agentPoolMode is System; a deployed cluster without it keeps its pools, which are then not managed. */
+    nodePools: {type: 'array', required: false},
+    /** Public IPs the cluster's outbound traffic leaves from: [{name, azureResourceGroup?: {name, region}}]; each IP is created when missing, in the cluster's resource group unless one is named. When unset, a single public IP named pip-<cluster name>. */
+    outboundIps: {type: 'array', required: false, default: []},
+    /** Pod CIDR of the cluster network. When unset in an environment with a spoke network, the Live System's IPAM k8s-pods range; otherwise required to create the cluster (no default range is applied, to avoid collisions). */
+    podIpRange: {type: 'string', required: false, default: ''},
+    /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
+    region: {type: 'string', required: false},
+    /** Kubernetes service CIDR of the cluster; the cluster DNS service IP is taken from it. When unset in an environment with a spoke network, the Live System's IPAM k8s-services range; otherwise required to create the cluster (no default range is applied, to avoid collisions). */
+    serviceIpRange: {type: 'string', required: false, default: ''},
+    /** CIDR of the subnet snet-<cluster> the nodes are placed in, inside the target VNet: the VNet dependency, else the environment's spoke. Used only when it fits that VNet and clashes with no other subnet; an existing subnet keeps its range. When unset or unusable, the spoke's IPAM allocation or a free /24 carved from the VNet. */
+    vnetSubnetAddressIpRange: {type: 'string', required: false, default: ''},
+  },
+} as const satisfies OfferContract;
+
+export const NetworkAndCompute_PaaS_Kubernetes_GCP = {
+  offerType: 'NetworkAndCompute.PaaS.Kubernetes',
+  serviceTypes: [],
+  declaredBy: [
+    {
+      agentId: 'fractal-cloud-agent-gcp',
+      agentVersion: 'v8.31.0',
+      contractSchemaVersion: '2.0',
+      provider: 'GCP',
+      aliasOf: 'NetworkAndCompute.PaaS.GcpGke',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** Initial Kubernetes version of the cluster, e.g. 1.30. Applied at creation only; the cluster is enrolled in the REGULAR release channel and upgraded by GKE. When unset, the channel's default version. */
+    kubernetesVersion: {type: 'string', required: false, default: ''},
+    /** Control-plane range of a private cluster, e.g. 172.16.0.0/28. Not set when omitted. */
+    masterIpv4CidrBlock: {type: 'string', required: false},
+    /** Name of the VPC network the cluster and its subnet are created in. When unset, the environment's spoke network. */
+    networkName: {type: 'string', required: false, default: ''},
+    /** Network policy provider: CALICO enables Kubernetes NetworkPolicy enforcement (GKE's Calico provider and its add-on); any other value is refused for a new cluster. Applied when the cluster is created only. When unset, network policies are not enforced. */
+    networkPolicyProvider: {
+      type: 'string',
+      required: false,
+      values: ['CALICO'],
+      valuesCaseInsensitive: true,
+      valuesLevel: 'warn',
+    },
+    /** Node pools: [{name, machineType, diskSizeGb?, initialNodeCount?, autoscalingEnabled?, minNodeCount?, maxNodeCount?, maxPodsPerNode?, maxSurge?}]. Per pool, when unset: 100 GB disk, 1 initial node, autoscaling on from 1 to 20 nodes, 30 pods per node, surge of 1. Required to create a cluster, with a machineType per pool offered in the cluster's region: no pool or machine type is assumed. A running cluster without the list keeps the pools it has, and a declared pool without machineType keeps the machine type it runs on. */
+    nodePools: {type: 'array', required: false},
+    /** Prefix length of the pod range IPAM allocates in spoke mode, e.g. 20 for a /20. Ignored when podIpRange is set or in atom mode. When unset, 20. */
+    podCidrPrefixLength: {type: 'integer', required: false, default: 20},
+    /** Pod range of the cluster. Allocated by IPAM in spoke mode; required in atom mode. */
+    podIpRange: {type: 'string', required: false},
+    /** Name of the pod secondary range the agent creates on the cluster's subnet, holding podIpRange. When unset, tier-1-pods. */
+    podsRangeName: {type: 'string', required: false, default: ''},
+    /** Kubernetes PriorityClasses the agent keeps in the cluster: [{name, value, description?, preemptionPolicy?}]. When unset, none. */
+    priorityClasses: {type: 'array', required: false, default: []},
+    /** When true, nodes get public IP addresses; when false (the default), the cluster has private nodes. The control plane endpoint is private either way. */
+    privateClusterDisabled: {type: 'boolean', required: false, default: false},
+    /** GCP region the resource is placed in, e.g. us-central1. When unset, the Live System's region parameter, else the region of the environment's GCP agent (else the region the agent is deployed in). With none of the three a new resource is refused (no region is assumed), while a deployed one is found in the region it recorded. Offers whose resource is not regional (Kubernetes workloads, Pub/Sub, Bigtable tables, Firestore collections, ...) ignore it. */
+    region: {type: 'string', required: false},
+    /** Prefix length of the service range IPAM allocates in spoke mode. Ignored when serviceIpRange is set or in atom mode. When unset, 20. */
+    serviceCidrPrefixLength: {type: 'integer', required: false, default: 20},
+    /** Service range of the cluster. Allocated by IPAM in spoke mode; required in atom mode. */
+    serviceIpRange: {type: 'string', required: false},
+    /** Name of the service secondary range the agent creates on the cluster's subnet, holding serviceIpRange. When unset, tier-1-services. */
+    servicesRangeName: {type: 'string', required: false, default: ''},
+    /** Primary range of the cluster's subnet. Allocated by IPAM in spoke mode; required in atom mode. */
+    subnetworkIpRange: {type: 'string', required: false},
+    /** Name of the dedicated subnet the agent creates for the cluster. When unset, <component id>-compute-tier-1. */
+    subnetworkName: {type: 'string', required: false, default: ''},
+    /** Workload identity is always enabled on the cluster; false is ignored with a warning in the component's status message. */
+    workloadIdentityEnabled: {type: 'boolean', required: false, default: true},
+  },
+} as const satisfies OfferContract;
+
+export const NetworkAndCompute_PaaS_Kubernetes_OCI = {
+  offerType: 'NetworkAndCompute.PaaS.Kubernetes',
+  serviceTypes: [],
+  declaredBy: [
+    {
+      agentId: 'fractal-cloud-agent-oci',
+      agentVersion: 'v8.31.0',
+      contractSchemaVersion: '2.0',
+      provider: 'OCI',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** OCI compartment the component's resource is created in, as {parentId, name, description?}: parentId is the OCID of the parent compartment or tenancy, name the compartment's name. The compartment is looked up under parentId and created there when absent (description defaults to 'Standard compartment'). Required for a new component; nothing is assumed. A deployed component without it is kept in the compartment its resource lives in, with a warning. Offers that run on a Kubernetes cluster do not read it. */
+    compartment: {type: 'object', required: false},
+  },
+} as const satisfies OfferContract;
+
+export const NetworkAndCompute_PaaS_Kubernetes_WIIT = {
+  offerType: 'NetworkAndCompute.PaaS.Kubernetes',
+  serviceTypes: ['NetworkAndCompute.PaaS.Kubernetes'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-wiit',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'WIIT',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** comma-separated IPv4 CIDRs allowed to reach the Kubernetes API from outside the node subnet; nobody outside when empty */
+    apiAllowedCidrs: {type: 'string', required: false},
+    /** comma-separated availability zones the nodes are spread over */
+    availabilityZones: {
+      type: 'string',
+      required: false,
+      default: 'AZ1,AZ2,AZ3',
+    },
+    /** boot the control plane nodes from Cinder volumes of this size in GiB; 0 uses the flavor's disk */
+    controlPlaneBootVolumeSize: {type: 'integer', required: false, default: 0},
+    /** the number of control plane nodes (an odd number, for etcd quorum) */
+    controlPlaneCount: {type: 'integer', required: false, default: 3},
+    /** the Nova flavor of the control plane nodes */
+    controlPlaneFlavor: {type: 'string', required: true},
+    /** comma-separated DNS resolvers for the nodes; the subnet default when empty */
+    dnsNameservers: {type: 'string', required: false},
+    /** the Glance image (name or ID) of the Talos OpenStack disk image; fixed after creation */
+    image: {type: 'string', required: true},
+    /** the Kubernetes release */
+    kubernetesVersion: {type: 'string', required: false, default: 'v1.37.1'},
+    /** the number of addresses reserved for Services of type LoadBalancer, 1 to 10; lowering it is refused while a Service holds a released address */
+    loadBalancerAddresses: {type: 'integer', required: false, default: 2},
+    /** comma-separated IPv4 CIDRs (at most 20, none wider than /8) allowed to reach Services of type LoadBalancer; the node subnet only when empty */
+    loadBalancerAllowedCidrs: {type: 'string', required: false},
+    /** comma-separated TCP ports (at most 20) clients may reach Services of type LoadBalancer on; the cluster's own ports are refused */
+    loadBalancerPorts: {type: 'string', required: false, default: '80,443'},
+    /** the Octavia provider of the API load balancer: ovn or amphora */
+    loadBalancerProvider: {type: 'string', required: false, default: 'ovn'},
+    /** how Services of type LoadBalancer get addresses: cilium (Cilium L2 on addresses reserved on the node subnet) or none (they stay Pending); cannot change from cilium to none */
+    loadBalancers: {type: 'string', required: false, default: 'cilium'},
+    /** the cluster name, a lowercase DNS label of at most 32 characters; derived from the component ID when empty */
+    name: {type: 'string', required: false},
+    /** the IPv4 subnet the agent creates for the nodes */
+    nodeCidr: {type: 'string', required: false, default: '10.240.0.0/24'},
+    /** put a floating IP on the API load balancer (still limited to apiAllowedCidrs) */
+    publicApi: {type: 'boolean', required: false, default: false},
+    /** give each Service address a floating IP (still limited to loadBalancerAllowedCidrs) */
+    publicLoadBalancerAddresses: {
       type: 'boolean',
       required: false,
       default: false,
-      agents: ['fractal-cloud-agent-aws', 'fractal-cloud-agent-gcp'],
     },
-    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {
+    /** the Talos release of the image */
+    talosVersion: {type: 'string', required: false, default: 'v1.14.4'},
+    /** what happens to the cluster's persistent volumes (the Cinder volumes its CSI driver made) when the cluster is deleted: Retain keeps them until they are reclaimed, Delete deletes their data; unset follows the environment (Retain in production, Delete otherwise); in production a cluster that keeps them cannot be switched to Delete */
+    volumeRetention: {
       type: 'string',
       required: false,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-      ],
+      values: ['Retain', 'Delete'],
+      valuesCaseInsensitive: true,
     },
-    /** Prefix length of the service block allocated from IPAM when serviceIpRange is unset (e.g. 20 for a /20). When unset, 20. */
-    serviceCidrPrefixLength: {
-      type: 'integer',
-      required: false,
-      default: 20,
-      agents: ['fractal-cloud-agent-aws', 'fractal-cloud-agent-gcp'],
-    },
-    /** CIDR of Kubernetes service addresses (e.g. 172.20.0.0/16), set at creation. When unset in an environment with a spoke network, allocated from IPAM; otherwise the EKS default range. */
-    serviceIpRange: {
-      type: 'string',
-      required: false,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-      ],
-    },
-    /** Name of the service secondary range the agent creates on the cluster's subnet, holding serviceIpRange. When unset, tier-1-services. */
-    servicesRangeName: {
-      type: 'string',
-      required: false,
-      default: '',
-      agents: ['fractal-cloud-agent-gcp'],
-    },
-    /** Primary range of the cluster's subnet. Allocated by IPAM in spoke mode; required in atom mode. */
-    subnetworkIpRange: {
-      type: 'string',
-      required: false,
-      agents: ['fractal-cloud-agent-gcp'],
-    },
-    /** Name of the dedicated subnet the agent creates for the cluster. When unset, <component id>-compute-tier-1. */
-    subnetworkName: {
-      type: 'string',
-      required: false,
-      default: '',
-      agents: ['fractal-cloud-agent-gcp'],
-    },
-    /** CIDR of the subnet snet-<cluster> the nodes are placed in, inside the target VNet: the VNet dependency, else the environment's spoke. Used only when it fits that VNet and clashes with no other subnet; an existing subnet keeps its range. When unset or unusable, the spoke's IPAM allocation or a free /24 carved from the VNet. */
-    vnetSubnetAddressIpRange: {
-      type: 'string',
-      required: false,
-      default: '',
-      agents: ['fractal-cloud-agent-azure'],
-    },
-    /** Whether workloads get cloud identities (EKS Pod Identity). Always enabled on Fractal-managed clusters: false is ignored with a status warning. When unset, true. */
-    workloadIdentityEnabled: {
-      type: 'boolean',
-      required: false,
-      default: true,
-      agents: ['fractal-cloud-agent-aws', 'fractal-cloud-agent-gcp'],
-    },
+    /** boot the worker nodes from Cinder volumes of this size in GiB; 0 uses the flavor's disk */
+    workerBootVolumeSize: {type: 'integer', required: false, default: 0},
+    /** the number of worker nodes over all zones */
+    workerCount: {type: 'integer', required: false, default: 3},
+    /** the Nova flavor of the worker nodes */
+    workerFlavor: {type: 'string', required: true},
   },
 } as const satisfies OfferContract;
 
@@ -3335,6 +3467,56 @@ export const NetworkAndCompute_PaaS_OKE = {
   params: {
     /** OCI compartment the component's resource is created in, as {parentId, name, description?}: parentId is the OCID of the parent compartment or tenancy, name the compartment's name. The compartment is looked up under parentId and created there when absent (description defaults to 'Standard compartment'). Required for a new component; nothing is assumed. A deployed component without it is kept in the compartment its resource lives in, with a warning. Offers that run on a Kubernetes cluster do not read it. */
     compartment: {type: 'object', required: false},
+  },
+} as const satisfies OfferContract;
+
+export const NetworkAndCompute_PaaS_WiitDnsZone = {
+  offerType: 'NetworkAndCompute.PaaS.WiitDnsZone',
+  serviceTypes: ['NetworkAndCompute.PaaS.DnsZone'],
+  declaredBy: [
+    {
+      agentId: 'aria-agent-wiit',
+      agentVersion: 'v0.1.0',
+      contractSchemaVersion: '2.0',
+      provider: 'WIIT',
+      parameterRules: [],
+    },
+  ],
+  params: {
+    /** whether one pass may delete 3 or more record sets that are also more than half of the zone's */
+    allowBulkDelete: {type: 'boolean', required: false, default: false},
+    /** the record types the zone may declare; A, AAAA, CAA, CNAME, MX, NS, PTR, SRV and TXT when empty */
+    allowedRecordTypes: {type: 'array', required: false},
+    /** whether NS record sets below the apex may be declared */
+    allowSubdomainDelegation: {
+      type: 'boolean',
+      required: false,
+      default: false,
+    },
+    /** certificate authorities allowed to issue for the domain; one apex CAA 0 issue record each */
+    caaIssuers: {type: 'array', required: false},
+    /** disabled or optional; Designate does not sign zones, so required is refused */
+    dnssec: {type: 'string', required: false, default: 'disabled'},
+    /** the domain the zone is authoritative for (e.g. example.com); fixed after creation */
+    domainName: {type: 'string', required: true},
+    /** the zone's SOA contact; hostmaster@<domain> when empty */
+    email: {type: 'string', required: false},
+    /** the largest TTL a record set may declare, in seconds */
+    maxTtl: {type: 'integer', required: false, default: 604800},
+    /** the smallest TTL a record set may declare, in seconds */
+    minTtl: {type: 'integer', required: false, default: 0},
+    /** authoritative (the zone holds exactly its declared record sets) or lax (record sets it never declared are kept) */
+    recordManagement: {
+      type: 'string',
+      required: false,
+      default: 'authoritative',
+    },
+    /** the record sets the zone holds: [{"name": "www", "type": "A", "ttl": 300, "values": ["192.0.2.10"]}]; name is relative to the zone ("@" for the apex) or fully qualified */
+    records: {type: 'array', required: false},
+    /** the zone's default TTL in seconds */
+    ttl: {type: 'integer', required: false, default: 3600},
+    /** public; Designate has no private zones, so private is refused */
+    visibility: {type: 'string', required: false, default: 'public'},
   },
 } as const satisfies OfferContract;
 
