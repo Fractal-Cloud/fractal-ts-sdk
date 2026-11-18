@@ -21,6 +21,7 @@ import {sameValue, withoutUndefined} from './parameter_value';
 import type {ComponentReference} from './component_reference';
 import type {OfferContract} from './offers/contract/offer_contract';
 import type {NeutralRule} from './neutral_rule';
+import type {IncomingLinkRule} from './incoming_link_rule';
 import {applyNeutralRules} from './apply_neutral_rules';
 import {isRouteSettings, mergeRouteSettings} from './route_link_merge';
 import type {EnvironmentSecretsSelection} from './offers/environment_secrets_selection';
@@ -35,7 +36,16 @@ import {
 // vendor-neutral self-hosted offers (e.g. generic Kafka/Prometheus on any
 // cluster) omit it and are identified by `deliveryModel` + `offerType`.
 export type Provider =
-  'AWS' | 'Azure' | 'GCP' | 'OCI' | 'Hetzner' | 'Aruba' | 'RedHat' | 'VMware';
+  | 'AWS'
+  | 'Azure'
+  | 'GCP'
+  | 'OCI'
+  | 'Hetzner'
+  | 'Aruba'
+  | 'RedHat'
+  | 'VMware'
+  | 'FractalCloud'
+  | 'WIIT';
 export type DeliveryModel = 'IaaS' | 'PaaS' | 'CaaS' | 'SaaS' | 'FaaS';
 
 // ── Offers (Catalogue, Level 3) ──────────────────────────────────────────────
@@ -134,6 +144,12 @@ export type Offer<C extends string = string, Cfg = unknown> = {
     self: LiveSystemComponent,
     all: readonly LiveSystemComponent[],
   ) => void;
+  /**
+   * Optional: what this offer's agent reads from the links other components
+   * make to its component (see `IncomingLinkRule`). Absent, incoming links reach
+   * the agent as the blueprint wrote them.
+   */
+  readonly incomingLinks?: IncomingLinkRule;
 };
 
 /**
@@ -169,6 +185,15 @@ export const defineOffer = <C extends string, Cfg>(
       all: readonly LiveSystemComponent[],
       config: Cfg,
     ) => void;
+    /**
+     * The settings this offer's agent reads from each link made to its
+     * component, or a refusal (see `IncomingLinkRule`).
+     */
+    incomingLinks?: (
+      settings: Readonly<Record<string, unknown>>,
+      link: {from: LiveSystemComponent; target: LiveSystemComponent},
+      config: Cfg,
+    ) => Record<string, unknown>;
   } & (
     | {offerType: string; contract?: undefined}
     | {contract: OfferContract; offerType?: undefined}
@@ -219,6 +244,10 @@ export const defineOffer = <C extends string, Cfg>(
     deliveryModel: spec.deliveryModel,
     config,
     contract: spec.contract,
+    // Only on an offer that declares one, so every other offer keeps its shape.
+    ...(spec.incomingLinks === undefined
+      ? {}
+      : {incomingLinks: bindIncomingLinks(spec.incomingLinks, config)}),
     // Value constraints come from the agent's published contract: every
     // parameter emitted for the offer's own type is checked against it, then
     // the offer's own structural rules run.
@@ -303,6 +332,19 @@ export const defineOffer = <C extends string, Cfg>(
     neutral: spec.neutral,
   });
 };
+
+/** An offer's incoming-link rule, bound to the config the offer was built with. */
+const bindIncomingLinks =
+  <Cfg>(
+    rule: (
+      settings: Readonly<Record<string, unknown>>,
+      link: {from: LiveSystemComponent; target: LiveSystemComponent},
+      config: Cfg,
+    ) => Record<string, unknown>,
+    config: Cfg,
+  ): IncomingLinkRule =>
+  (settings, from, target) =>
+    rule(settings, {from, target}, config);
 
 /**
  * Offer config is spread over the component's parameters, so a config key named
@@ -636,6 +678,32 @@ const serialize = (st: FractalState): Blueprint => ({
   }),
 });
 
+/**
+ * The components with every link's settings as its target's offer receives
+ * them (`Offer.incomingLinks`). A link whose target has no rule, or is not in
+ * this Live System, keeps its settings; a component none of whose links
+ * changed is returned as it was.
+ */
+const withIncomingLinkRules = (
+  components: readonly LiveSystemComponent[],
+  emittedBy: ReadonlyMap<string, Offer<string, unknown>>,
+): LiveSystemComponent[] => {
+  const byId = new Map(components.map(c => [c.id, c]));
+  return components.map(from => {
+    let changed = false;
+    const links = from.links.map(link => {
+      const rule = emittedBy.get(link.componentId)?.incomingLinks;
+      const target = byId.get(link.componentId);
+      if (rule === undefined || target === undefined) {
+        return link;
+      }
+      changed = true;
+      return {...link, settings: rule(link.settings, from, target)};
+    });
+    return changed ? {...from, links} : from;
+  });
+};
+
 const toLiveSystem = (st: FractalState, args: ToLiveSystemArgs): LiveSystem => {
   // Reject unknown selection keys (e.g. a typo'd component id) — selection must
   // map exactly to the blueprint's top-level components. Child components are
@@ -650,10 +718,9 @@ const toLiveSystem = (st: FractalState, args: ToLiveSystemArgs): LiveSystem => {
     }
   }
 
-  const components: LiveSystemComponent[] = [];
-  const pendingValidations: Array<
-    [Offer<string, unknown>, LiveSystemComponent[]]
-  > = [];
+  const emittedComponents: LiveSystemComponent[] = [];
+  // The offer that emitted each component (a child is its parent's offer's).
+  const emittedBy = new Map<string, Offer<string, unknown>>();
   for (const id of st.order) {
     const node = st.nodes[id];
     const offer = args.select[id];
@@ -690,18 +757,19 @@ const toLiveSystem = (st: FractalState, args: ToLiveSystemArgs): LiveSystem => {
         );
       }
     }
-    components.push(...emitted);
-    if (offer.validate) {
-      pendingValidations.push([offer, emitted]);
+    emittedComponents.push(...emitted);
+    for (const component of emitted) {
+      emittedBy.set(component.id, offer);
     }
   }
+  // Each link reaches its target's agent in the settings that agent reads: the
+  // target's offer translates (or refuses) what the blueprint wrote.
+  const components = withIncomingLinkRules(emittedComponents, emittedBy);
   // Cross-component invariants run only once every component exists, so an offer
   // can refuse a Live System that is unbuildable as a whole even though its own
   // component is well-formed in isolation.
-  for (const [offer, emitted] of pendingValidations) {
-    for (const component of emitted) {
-      offer.validate!(component, components);
-    }
+  for (const component of components) {
+    emittedBy.get(component.id)?.validate?.(component, components);
   }
   return {
     name: args.name,

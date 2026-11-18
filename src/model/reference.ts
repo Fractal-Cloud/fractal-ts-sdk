@@ -126,6 +126,11 @@ export const referenceTo = <C extends string>(
     provider: target.provider,
     deliveryModel: target.deliveryModel,
     config: frozen,
+    // The referenced component's agent reads the links made to it, so they reach
+    // it in the settings that agent reads, as they would in its own Live System.
+    ...(target.incomingLinks === undefined
+      ? {}
+      : {incomingLinks: target.incomingLinks}),
     instantiate: (ctx): LiveSystemComponent[] => {
       ensureNothingIsLost(ctx);
       const component: LiveSystemComponent = {
