@@ -13,6 +13,10 @@ import {
   guardrail,
   addDependency,
 } from '../core';
+import {
+  ManagedServiceSetters,
+  managedServiceSetters,
+} from './managed/managed_service_setters';
 
 // ── ComputeCluster ───────────────────────────────────────────────────────────
 export type ComputeClusterNode<Id extends string = string> = ComponentNode<
@@ -109,15 +113,23 @@ export const MlExperiment = <const Id extends string>(cfg: {
 export type DatalakeNode<Id extends string = string> = ComponentNode<
   Id,
   'BigData.Datalake'
-> & {
-  withVersioningEnabled: (v: boolean) => DatalakeNode<Id>;
-  withRetentionDays: (v: number) => DatalakeNode<Id>;
-};
+> &
+  ManagedServiceSetters<DatalakeNode<Id>> & {
+    withVersioningEnabled: (v: boolean) => DatalakeNode<Id>;
+    withRetentionDays: (v: number) => DatalakeNode<Id>;
+    /**
+     * Declare a structural dependency: e.g. the ContainerPlatform a managed
+     * offer runs on, which its agent requires.
+     */
+    dependsOn: (other: AnyNode) => DatalakeNode<Id>;
+  };
 const datalakeNode = <Id extends string>(s: NodeState): DatalakeNode<Id> => ({
   state: s,
+  ...managedServiceSetters(s, datalakeNode<Id>),
   withVersioningEnabled: v =>
     datalakeNode<Id>(guardrail(s, 'versioningEnabled', v)),
   withRetentionDays: v => datalakeNode<Id>(guardrail(s, 'retentionDays', v)),
+  dependsOn: other => datalakeNode<Id>(addDependency(s, other.state.id)),
 });
 export const Datalake = <const Id extends string>(cfg: {
   id: Id;
@@ -127,14 +139,16 @@ export const Datalake = <const Id extends string>(cfg: {
 
 // ── DistributedDataProcessing ────────────────────────────────────────────────
 export type DistributedDataProcessingNode<Id extends string = string> =
-  ComponentNode<Id, 'BigData.DistributedDataProcessing'> & {
-    withWorkspaceName: (v: string) => DistributedDataProcessingNode<Id>;
-    dependsOn: (other: AnyNode) => DistributedDataProcessingNode<Id>;
-  };
+  ComponentNode<Id, 'BigData.DistributedDataProcessing'> &
+    ManagedServiceSetters<DistributedDataProcessingNode<Id>> & {
+      withWorkspaceName: (v: string) => DistributedDataProcessingNode<Id>;
+      dependsOn: (other: AnyNode) => DistributedDataProcessingNode<Id>;
+    };
 const distributedDataProcessingNode = <Id extends string>(
   s: NodeState,
 ): DistributedDataProcessingNode<Id> => ({
   state: s,
+  ...managedServiceSetters(s, distributedDataProcessingNode<Id>),
   withWorkspaceName: v =>
     distributedDataProcessingNode<Id>(guardrail(s, 'workspaceName', v)),
   dependsOn: other =>

@@ -37,6 +37,10 @@ import type {AwsRdsDbmsConfig} from './aws_rds_dbms_config';
 import type {OpenSearchConfig} from './open_search_config';
 import {searchLinkRefusal} from '../components/search_link_refusal';
 import {indexPrefixLink} from './index_prefix_link';
+import {
+  haLayoutToReplicas,
+  noManagedServiceSettings,
+} from './managed_service_rules';
 
 /**
  * A DBMS offer emits itself PLUS one Database live component per child the
@@ -114,6 +118,7 @@ export const AwsS3 = defineOffer<
   provider: 'AWS',
   deliveryModel: 'PaaS',
   neutral: {
+    ...noManagedServiceSettings,
     encryption: unsupportedUnless(
       v => v === 'at-rest',
       'S3 always encrypts at rest',
@@ -156,6 +161,7 @@ export const AzureBlob = defineOffer<
   provider: 'Azure',
   deliveryModel: 'PaaS',
   neutral: {
+    ...noManagedServiceSettings,
     // The contract's `encryption` is the agent's customer-managed-key object,
     // not the neutral 'at-rest' / 'none'; Azure Storage always encrypts at
     // rest. A customer-managed key is the offer's own `encryption` config.
@@ -181,6 +187,7 @@ export const GcsBucket = defineOffer<
   provider: 'GCP',
   deliveryModel: 'PaaS',
   neutral: {
+    ...noManagedServiceSettings,
     encryption: unsupportedUnless(
       v => v === 'at-rest',
       'Cloud Storage always encrypts at rest',
@@ -205,6 +212,9 @@ export const MinIO = defineOffer<
   contract: Storage_CaaS_MinioTenant,
   deliveryModel: 'CaaS',
   neutral: {
+    ...noManagedServiceSettings,
+    // The tenant's servers are its replicas; nothing places them over zones.
+    haLayout: haLayoutToReplicas(Storage_CaaS_MinioTenant, 'servers', false),
     encryption: unsupported('the agent configures no encryption'),
     publicAccess: unsupportedUnless(
       v => v === false,
@@ -550,6 +560,7 @@ export const OpenshiftPersistentVolume = defineOffer<
   provider: 'RedHat',
   deliveryModel: 'CaaS',
   neutral: {
+    ...noManagedServiceSettings,
     storageClass: unsupported(
       "an object storage tier is not a Kubernetes StorageClass: set the claim's storageClassName",
     ),
@@ -595,6 +606,11 @@ export const StorageOpenSearch = defineOffer<
   satisfies: 'Storage.Search',
   contract: Storage_CaaS_OpenSearch,
   deliveryModel: 'CaaS',
+  neutral: {
+    ...noManagedServiceSettings,
+    // `replicas` is the number of OpenSearch nodes; nothing places them over zones.
+    haLayout: haLayoutToReplicas(Storage_CaaS_OpenSearch, 'replicas', false),
+  },
   incomingLinks: (settings, {from, target}) =>
     indexPrefixLink(settings, from.id, target.id),
   validate: (self, all) => {

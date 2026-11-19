@@ -25,6 +25,11 @@ import * as observabilityComponents from './components/observability';
 import * as securityComponents from './components/security';
 import * as storageComponents from './components/storage';
 import * as unmanagedComponents from './components/unmanaged';
+import * as keyValueDbmsComponents from './components/key_value_dbms';
+import * as documentDbmsComponents from './components/document_dbms';
+import * as dataCatalogComponents from './components/data_catalog';
+import * as dataCatalogTableComponents from './components/data_catalog_table';
+import * as blockVolumeComponents from './components/block_volume';
 import * as apiManagementOffers from './offers/api_management';
 import * as bigDataOffers from './offers/big_data';
 import * as customWorkloadOffers from './offers/custom_workloads';
@@ -130,6 +135,7 @@ const SETTER_VALUES: Readonly<Record<string, unknown>> = {
   withAuthenticationMode: 'jwt',
   withAutoTerminationMinutes: 30,
   withAutoscaling: {minReplicas: 2, maxReplicas: 6, targetCpuUtilization: 70},
+  withBackupPolicy: {schedule: '0 1 * * *', retentionDays: 14},
   withBackupRetentionDays: 7,
   withCaaIssuers: ['letsencrypt.org'],
   withCharset: 'UTF8',
@@ -152,6 +158,7 @@ const SETTER_VALUES: Readonly<Record<string, unknown>> = {
   withEnv: {LOG_LEVEL: 'info'},
   withEnvironment: {LOG_LEVEL: 'info'},
   withExperimentName: 'churn',
+  withHaLayout: {replicas: 3},
   withHealthCheck: {path: '/health', port: 8080},
   withHighAvailability: 'zone-redundant',
   withHttpsOnly: true,
@@ -160,6 +167,7 @@ const SETTER_VALUES: Readonly<Record<string, unknown>> = {
   withJobName: 'nightly',
   withKubernetesVersion: '1.33',
   withLivenessProbe: {path: '/health/live', initialDelaySeconds: 30},
+  withMaintenanceWindow: {start: '0 2 * * 0', durationHours: 2},
   withMaxDeliveryAttempts: 5,
   withMaxReplicas: 6,
   withMaxRetries: 2,
@@ -202,6 +210,7 @@ const SETTER_VALUES: Readonly<Record<string, unknown>> = {
   withSecretEnv: {DB_PASSWORD: secretRef('accounts-db-password')},
   withSessionDuration: 3600,
   withSize: 'small',
+  withSizeGb: 20,
   withSizeTier: 'small',
   withSourceArtifact: 'https://artifacts.example.com/fn.zip',
   withSparkVersion: '15.4.x-scala2.12',
@@ -217,6 +226,7 @@ const SETTER_VALUES: Readonly<Record<string, unknown>> = {
   withTopologySpread: true,
   withTtlBounds: {minTtl: 60, maxTtl: 3600},
   withUserDirectoryName: 'customers',
+  withVersionLine: '3.0',
   withVersioningEnabled: true,
   withVisibility: 'public',
   withWorkspaceName: 'analytics',
@@ -279,6 +289,11 @@ const NEUTRAL = new Map<string, ProbedNode['state']>(
     securityComponents,
     storageComponents,
     unmanagedComponents,
+    keyValueDbmsComponents,
+    documentDbmsComponents,
+    dataCatalogComponents,
+    dataCatalogTableComponents,
+    blockVolumeComponents,
   ]
     .flatMap(m => Object.values(m))
     .filter(
