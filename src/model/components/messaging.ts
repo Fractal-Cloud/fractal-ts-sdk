@@ -15,22 +15,28 @@ import {
 } from '../core';
 import type {DnsZoneAccessRequest} from './dns_zone_access_request';
 import {withDnsZonesParameter} from './dns_zones_parameter';
+import {
+  ManagedServiceSetters,
+  managedServiceSetters,
+} from './managed/managed_service_setters';
 
 // ── Broker ───────────────────────────────────────────────────────────────────
 export type BrokerNode<Id extends string = string> = ComponentNode<
   Id,
   'Messaging.Broker'
-> & {
-  withTier: (v: string) => BrokerNode<Id>;
-  withEncryption: (v: 'at-rest' | 'none') => BrokerNode<Id>;
-  /**
-   * Declare a structural dependency: e.g. the ContainerPlatform a self-hosted
-   * offer is installed on, which its agent requires.
-   */
-  dependsOn: (other: AnyNode) => BrokerNode<Id>;
-};
+> &
+  ManagedServiceSetters<BrokerNode<Id>> & {
+    withTier: (v: string) => BrokerNode<Id>;
+    withEncryption: (v: 'at-rest' | 'none') => BrokerNode<Id>;
+    /**
+     * Declare a structural dependency: e.g. the ContainerPlatform a self-hosted
+     * offer is installed on, which its agent requires.
+     */
+    dependsOn: (other: AnyNode) => BrokerNode<Id>;
+  };
 const brokerNode = <Id extends string>(s: NodeState): BrokerNode<Id> => ({
   state: s,
+  ...managedServiceSetters(s, brokerNode<Id>),
   withTier: v => brokerNode<Id>(guardrail(s, 'tier', v)),
   withEncryption: v => brokerNode<Id>(guardrail(s, 'encryption', v)),
   dependsOn: other => brokerNode<Id>(addDependency(s, other.state.id)),

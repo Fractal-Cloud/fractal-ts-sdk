@@ -11,6 +11,7 @@
  * on a cluster and take their region from it, so they do NOT expose `region`.
  */
 import {toContractKey, unsupported} from './neutral_rules';
+import {noManagedServiceSettings} from './managed_service_rules';
 import {
   BigData_CaaS_SparkCluster,
   BigData_CaaS_SparkJob,
@@ -228,6 +229,7 @@ export const AwsS3Datalake = defineOffer<
   provider: 'AWS',
   deliveryModel: 'PaaS',
   neutral: {
+    ...noManagedServiceSettings,
     // The agent reads `versioning`; `versioningEnabled` only as its alias.
     versioningEnabled: toContractKey(BigData_PaaS_AwsS3Datalake, 'versioning'),
     retentionDays: toContractKey(
@@ -245,6 +247,7 @@ export const AzureDatalake = defineOffer<
   provider: 'Azure',
   deliveryModel: 'PaaS',
   neutral: {
+    ...noManagedServiceSettings,
     retentionDays: unsupported('the agent sets no retention'),
     versioningEnabled: unsupported('the agent sets no blob versioning'),
   },
@@ -262,6 +265,7 @@ export const GcpDatalake = defineOffer<
   provider: 'GCP',
   deliveryModel: 'PaaS',
   neutral: {
+    ...noManagedServiceSettings,
     retentionDays: unsupported('the agent sets no retention'),
   },
 });
@@ -291,6 +295,7 @@ export const AwsDatabricks = defineOffer<
   provider: 'AWS',
   deliveryModel: 'PaaS',
   neutral: {
+    ...noManagedServiceSettings,
     workspaceName: unsupported('the agent names the workspace itself'),
   },
 });
@@ -307,6 +312,7 @@ export const AzureDatabricks = defineOffer<
   provider: 'Azure',
   deliveryModel: 'PaaS',
   neutral: {
+    ...noManagedServiceSettings,
     workspaceName: unsupported('the agent names the workspace itself'),
   },
 });
@@ -323,6 +329,7 @@ export const GcpDatabricks = defineOffer<
   provider: 'GCP',
   deliveryModel: 'PaaS',
   neutral: {
+    ...noManagedServiceSettings,
     workspaceName: unsupported('the agent names the workspace itself'),
   },
 });
