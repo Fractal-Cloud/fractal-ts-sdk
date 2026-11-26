@@ -137,8 +137,9 @@ describe('blueprints.create', () => {
     const body = h.requests[1].body as BlueprintBody;
     expect(body.components).toHaveLength(1);
     const uploads = body.components[0];
-    // The Level-1 Component tag — re-satisfiable by ANY vendor's offer.
-    expect(uploads.type).toBe('Storage.ObjectStorage');
+    // The catalogue's Level-1 component for the abstract tag, so the editor
+    // finds its services; still no vendor in it.
+    expect(uploads.type).toBe('Storage.PaaS.FilesAndBlobs');
     expect(uploads.id).toBe('uploads');
     // Vendor identity belongs to the LiveSystem, not the blueprint.
     expect(uploads).not.toHaveProperty('provider');
