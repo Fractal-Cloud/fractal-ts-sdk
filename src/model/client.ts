@@ -18,6 +18,7 @@
  * blueprint as a side effect — callers that want both compose the two calls.
  */
 import superagent from 'superagent';
+import {catalogueComponentType} from './catalogue_component_types';
 import type {LiveSystem, PublishableFractal, SerializedComponent} from './core';
 import {
   apiUrl,
@@ -70,9 +71,12 @@ import type {BoundedContextOwner} from './bounded_context/bounded_context_owner'
 export type FractalCloudClientConfig = ApiConfig;
 
 // ── blueprint body ───────────────────────────────────────────────────────────
-// A blueprint component is an abstract CONTRACT: the Level-1 Component tag plus
-// the architect's guardrail parameters, dependencies and links. It carries no
-// vendor identity — no `provider`, no `deliveryModel`, no Offer type.
+// A blueprint component is a CONTRACT: the catalogue's Level-1 Component type
+// plus the architect's guardrail parameters, dependencies and links. It carries
+// no vendor identity — no `provider`, no `deliveryModel` field, no Offer type.
+// The type is the catalogue's own name for the component
+// (`BigData.PaaS.DistributedDataProcessing`), because services and offers are
+// attached to exactly that string; see catalogue_component_types.ts.
 const DELIVERY_MODEL_SEGMENTS = ['IaaS', 'PaaS', 'CaaS', 'SaaS', 'FaaS'];
 
 /** Reject an Offer type reaching the blueprint. An Offer type is 3-part and its
@@ -107,7 +111,7 @@ const blueprintBody = (
   components: f.blueprint.components.map(c => {
     assertAbstractComponent(c);
     return {
-      type: c.component,
+      type: catalogueComponentType(c.component),
       id: c.id,
       displayName: c.displayName,
       parameters: c.parameters,
