@@ -9,6 +9,7 @@
  */
 import {describe, it, expect} from 'vitest';
 import {createFractal} from './core';
+import type {DeliveryModel} from './core';
 import {
   ObjectStorage,
   RelationalDbms,
@@ -27,7 +28,8 @@ import {
 const environment = {};
 const boundedContextId = {id: 'storage-templates'};
 
-function authorFractal() {
+/** `uploadsModel`: the delivery model of the `uploads` bucket (default: PaaS). */
+function authorFractal(uploadsModel?: DeliveryModel) {
   return createFractal({
     id: 'storage-stack',
     version: {major: 1, minor: 0, patch: 0},
@@ -36,7 +38,10 @@ function authorFractal() {
       const uploads = bp.add(
         // Only guardrails every object-storage offer selected below honors:
         // the others are refused by the offers whose agent cannot apply them.
-        ObjectStorage({id: 'uploads'}).withPublicAccess(false),
+        ObjectStorage({
+          id: 'uploads',
+          deliveryModel: uploadsModel,
+        }).withPublicAccess(false),
       );
       const dbms = bp.add(
         RelationalDbms({id: 'app-dbms'})
@@ -248,7 +253,7 @@ describe('Storage domain on the locked Fractal model', () => {
     // Spelled out on purpose: importing a constant would make this pass after
     // any rename. The literal is what pins the wire contract. `Storage.CaaS.MinIO`
     // is the catalogue service type, not an offer id — no handler is keyed on it.
-    const ls = authorFractal().toLiveSystem({
+    const ls = authorFractal('CaaS').toLiveSystem({
       name: 'acme-prod',
       environment,
       select: {...fullSelect(), uploads: MinIO({storageClass: 'gp3'})},

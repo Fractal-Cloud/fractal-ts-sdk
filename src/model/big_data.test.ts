@@ -144,11 +144,11 @@ describe('BigData domain — data-platform Fractal', () => {
       blueprint: bp => {
         // No Spark version and no retry count either: only the Java agents
         // read them, and aria-agent-caas-k8s may be the one reconciling.
-        const cluster = bp.add(ComputeCluster({id: 'cluster'}));
+        const cluster = bp.add(ComputeCluster({id: 'cluster', deliveryModel: 'CaaS'}));
         const job = bp.add(
-          DataProcessingJob({id: 'etl-job'}).dependsOn(cluster),
+          DataProcessingJob({id: 'etl-job', deliveryModel: 'CaaS'}).dependsOn(cluster),
         );
-        const experiment = bp.add(MlExperiment({id: 'experiment'}));
+        const experiment = bp.add(MlExperiment({id: 'experiment', deliveryModel: 'CaaS'}));
         return {cluster, job, experiment};
       },
     }).toLiveSystem({

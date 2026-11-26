@@ -19,13 +19,14 @@ const gatewayComponent = (
   id: string,
   offer: unknown,
   bucket = false,
+  deliveryModel: 'PaaS' | 'CaaS' = 'PaaS',
 ): LiveSystemComponent =>
   createFractal({
     id: 'structural',
     version,
     boundedContextId,
     blueprint: bp => {
-      const main = bp.add(ApiGateway({id}));
+      const main = bp.add(ApiGateway({id, deliveryModel}));
       if (bucket) {
         const b = bp.add(ObjectStorage({id: 'bucket'}));
         bp.link(main, b, {access: 'read'});
@@ -56,7 +57,7 @@ describe('AwsCloudFront', () => {
 });
 
 const gateway = (config: Record<string, unknown>) =>
-  gatewayComponent('traefik', TraefikGateway(config as never));
+  gatewayComponent('traefik', TraefikGateway(config as never), false, 'CaaS');
 
 describe('TraefikGateway', () => {
   it.each([

@@ -27,6 +27,9 @@ const authorFractal = () =>
     blueprint: bp => {
       const platform = bp.add(ContainerPlatform({id: 'app-platform'}));
       const api = bp.add(
+        // The catalogue files the Container App offer under the CaaS Workload
+        // on purpose (it nests in the Container Apps Environment), so the
+        // component keeps its default model.
         Workload({id: 'api-workload'}).dependsOn(platform),
       );
       return {platform, api};
@@ -57,7 +60,9 @@ describe('Azure Container Apps', () => {
     const env = ls.components.find(c => c.id === 'app-platform')!;
     // The agent matches the dependency on this exact 3-part string and keys its
     // PaaS handler registry on the third segment. Both are load-bearing.
-    expect(env.type).toBe('NetworkAndCompute.PaaS.AzureContainerAppsEnvironment');
+    expect(env.type).toBe(
+      'NetworkAndCompute.PaaS.AzureContainerAppsEnvironment',
+    );
     expect(env.provider).toBe('Azure');
     expect(env.deliveryModel).toBe('PaaS');
     // `location`, not `region`: it is the only region key this component reads,
@@ -96,7 +101,9 @@ describe('Azure Container Apps', () => {
         'app-platform': Aks({}),
         'api-workload': AzureContainerApp({resourceGroup: 'rg-cp'}),
       }),
-    ).toThrow(/has no NetworkAndCompute\.PaaS\.AzureContainerAppsEnvironment dependency/);
+    ).toThrow(
+      /has no NetworkAndCompute\.PaaS\.AzureContainerAppsEnvironment dependency/,
+    );
   });
 
   it('refuses a Container App that depends on nothing at all', () => {
@@ -114,6 +121,8 @@ describe('Azure Container Apps', () => {
         environment,
         select: {'api-workload': AzureContainerApp({resourceGroup: 'rg-cp'})},
       }),
-    ).toThrow(/An Azure Container App can only run inside a managed environment/);
+    ).toThrow(
+      /An Azure Container App can only run inside a managed environment/,
+    );
   });
 });

@@ -304,7 +304,7 @@ describe('AwsCloudFront — static site from an S3 bucket', () => {
       boundedContextId,
       blueprint: bp => {
         const content = bp.add(ObjectStorage({id: 'content'}));
-        const traefik = bp.add(ApiGateway({id: 'traefik'}));
+        const traefik = bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}));
         const cdn = bp.add(ApiGateway({id: 'cdn'}));
         bp.link(cdn, content, {access: 'read'});
         bp.link(cdn, traefik);
@@ -346,7 +346,7 @@ describe('AwsCloudFront — static site from an S3 bucket', () => {
         boundedContextId,
         blueprint: bp => {
           const content = bp.add(ObjectStorage({id: 'content'}));
-          const traefik = bp.add(ApiGateway({id: 'traefik'}));
+          const traefik = bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}));
           const cdn = bp.add(ApiGateway({id: 'cdn'}));
           bp.link(cdn, content, {access: 'read'});
           bp.link(cdn, traefik);

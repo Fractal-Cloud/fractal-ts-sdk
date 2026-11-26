@@ -30,9 +30,9 @@ type Seen = {settings: Record<string, unknown>[]};
 const translatingSearch = (seen: Seen) =>
   defineOffer<'Storage.Search', {grant: string}>({
     satisfies: 'Storage.Search',
-    offerType: 'Storage.PaaS.TranslatingSearch',
+    offerType: 'Storage.CaaS.TranslatingSearch',
     provider: 'FractalCloud',
-    deliveryModel: 'PaaS',
+    deliveryModel: 'CaaS',
     incomingLinks: (settings, {from, target}, config) => {
       if (settings.access === 'write') {
         throw new Error(

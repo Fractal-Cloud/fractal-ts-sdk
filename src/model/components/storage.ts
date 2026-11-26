@@ -53,9 +53,16 @@ const objectStorageNode = <Id extends string>(
 export const ObjectStorage = <const Id extends string>(cfg: {
   id: Id;
   displayName?: string;
+  /** `PaaS` (default, files and blobs) or `CaaS` (e.g. MinIO): one component per model. */
+  deliveryModel?: 'PaaS' | 'CaaS';
 }): ObjectStorageNode<Id> =>
   objectStorageNode<Id>(
-    newNode(cfg.id, 'Storage.ObjectStorage', cfg.displayName),
+    newNode(
+      cfg.id,
+      'Storage.ObjectStorage',
+      cfg.displayName,
+      cfg.deliveryModel,
+    ),
   );
 
 /**
@@ -109,9 +116,16 @@ const relationalDbmsNode = <Id extends string>(
 export const RelationalDbms = <const Id extends string>(cfg: {
   id: Id;
   displayName?: string;
+  /** `PaaS` (default) or `CaaS`: one DBMS component per model. */
+  deliveryModel?: 'PaaS' | 'CaaS';
 }): RelationalDbmsNode<Id> =>
   relationalDbmsNode<Id>(
-    newNode(cfg.id, 'Storage.RelationalDbms', cfg.displayName),
+    newNode(
+      cfg.id,
+      'Storage.RelationalDbms',
+      cfg.displayName,
+      cfg.deliveryModel,
+    ),
   );
 
 // ── Storage.RelationalDatabase ───────────────────────────────────────────────
@@ -135,9 +149,16 @@ const relationalDatabaseNode = <Id extends string>(
 export const RelationalDatabase = <const Id extends string>(cfg: {
   id: Id;
   displayName?: string;
+  /** `PaaS` (default) or `CaaS`: one database component per model. */
+  deliveryModel?: 'PaaS' | 'CaaS';
 }): RelationalDatabaseNode<Id> =>
   relationalDatabaseNode<Id>(
-    newNode(cfg.id, 'Storage.RelationalDatabase', cfg.displayName),
+    newNode(
+      cfg.id,
+      'Storage.RelationalDatabase',
+      cfg.displayName,
+      cfg.deliveryModel,
+    ),
   );
 
 /**

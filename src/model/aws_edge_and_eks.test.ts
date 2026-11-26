@@ -105,7 +105,7 @@ describe('AwsCloudFront — edge in front of the platform gateway', () => {
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
       blueprint: bp => {
-        const gateway = bp.add(ApiGateway({id: 'traefik'}));
+        const gateway = bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}));
         const cdn = bp.add(ApiGateway({id: 'cdn'}));
         if (link) {
           bp.link(cdn, gateway);
@@ -167,8 +167,8 @@ describe('AwsCloudFront — edge in front of the platform gateway', () => {
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
       blueprint: bp => {
-        const a = bp.add(ApiGateway({id: 'a'}));
-        const b = bp.add(ApiGateway({id: 'b'}));
+        const a = bp.add(ApiGateway({id: 'a', deliveryModel: 'CaaS'}));
+        const b = bp.add(ApiGateway({id: 'b', deliveryModel: 'CaaS'}));
         const cdn = bp.add(ApiGateway({id: 'cdn'}));
         bp.link(cdn, a);
         bp.link(cdn, b);

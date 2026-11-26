@@ -111,7 +111,7 @@ const blueprintBody = (
   components: f.blueprint.components.map(c => {
     assertAbstractComponent(c);
     return {
-      type: catalogueComponentType(c.component),
+      type: catalogueComponentType(c.component, c.deliveryModel),
       id: c.id,
       displayName: c.displayName,
       parameters: c.parameters,
