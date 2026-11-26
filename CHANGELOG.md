@@ -9,6 +9,38 @@ The version published for a release is the GitHub release tag: `release.yml` run
 `npm version <tag>` at publish time, so `package.json` on `main` is not the source
 of truth for what is on npm.
 
+## 2.16.0
+
+### Fixed — blueprint components now use the catalogue's component types
+
+`cloud.blueprints.create` published each component under the SDK's abstract tag
+(`BigData.DistributedDataProcessing`). The catalogue declares its components with the
+service delivery model in the middle (`BigData.PaaS.DistributedDataProcessing`) and attaches
+services and offers to that string, so the Live System editor showed "No services available"
+for every blueprint component. The blueprint body now carries the catalogue's type
+(`catalogue_component_types.ts`). Offer selection, `satisfies` and the abstract factories are
+unchanged.
+
+- **Re-register existing blueprints.** A blueprint published by an earlier release keeps the
+  old types until `blueprints.create` is run again (it updates in place).
+- Each component maps to the catalogue component of its default delivery model (BigData to
+  `PaaS`, network components to `IaaS`, Observability to `CaaS`, ...). `Unmanaged` has one
+  catalogue component per domain, so it is still published as `Unmanaged`.
+- **Known limitation: the delivery model cannot be chosen yet.** The catalogue keeps a
+  separate component per delivery model (`BigData.CaaS.ComputeCluster` next to
+  `BigData.PaaS.ComputeCluster`, likewise for `DataProcessingJob`, `Datalake`,
+  `DistributedDataProcessing`, `Storage.*` and `Messaging.*`). A blueprint is published under
+  the default one, so the editor lists that model's offers for it. The Spark-on-Kubernetes
+  (`CaaSSparkCluster`, `CaaSSparkJob`), MinIO and Kafka offers still deploy through `select`,
+  but they do not appear under a blueprint component published as `PaaS`.
+
+### Added — `DatalakeLink` settings for a job-to-lake link
+
+`DatalakeLink` (`{purpose: 'raw' | 'curated' | 'checkpoint', path?}`) types the settings of a
+link from a `DataProcessingJob` to a `Datalake`, as `MessagingEntityLink` does for messaging.
+Use it with `bp.link(job, lake, {purpose: 'raw'} satisfies DatalakeLink)`. It matches the lake
+link properties the catalogue publishes; the agent injects `LAKE_<PURPOSE>_URI` into the job.
+
 ## 2.15.0
 
 ### Breaking — what to change when upgrading

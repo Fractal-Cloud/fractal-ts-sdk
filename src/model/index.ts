@@ -69,6 +69,7 @@ export * from './components/search_link_settings';
 export * from './components/big_data';
 export * from './components/messaging';
 export type {MessagingEntityLink} from './components/messaging_entity_link';
+export type {DatalakeLink} from './components/datalake_link';
 export * from './components/api_management';
 export type {GatewayRoute} from './components/gateway_route';
 export type {GatewayRouteOptions} from './components/gateway_route_options';
