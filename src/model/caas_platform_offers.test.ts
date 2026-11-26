@@ -193,7 +193,7 @@ describe('TraefikGateway platform keys', () => {
         id: 'platform-gateway',
         version,
         boundedContextId,
-        blueprint: bp => ({traefik: bp.add(ApiGateway({id: 'traefik'}))}),
+        blueprint: bp => ({traefik: bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}))}),
       }).toLiveSystem({
         name: 'platform',
         environment,
@@ -244,7 +244,7 @@ describe('TraefikGateway platform keys', () => {
           boundedContextId,
           blueprint: bp => ({
             traefik: bp.add(
-              ApiGateway({id: 'traefik'}).withDnsZones([
+              ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}).withDnsZones([
                 zone as {
                   name: string;
                   access: Record<string, 'read' | 'write'>;
@@ -273,7 +273,7 @@ describe('TraefikGateway platform keys', () => {
       boundedContextId,
       blueprint: bp => ({
         traefik: bp.add(
-          ApiGateway({id: 'traefik'}).withDnsZones([
+          ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}).withDnsZones([
             {name: 'fractal.cloud', access: {TXT: 'write'}},
           ]),
         ),
@@ -454,7 +454,7 @@ describe('TraefikGateway platform keys', () => {
         version,
         boundedContextId,
         blueprint: bp => {
-          const traefik = bp.add(ApiGateway({id: 'traefik'}));
+          const traefik = bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}));
           const cdn = bp.add(ApiGateway({id: 'cdn'}));
           bp.link(cdn, traefik);
           return {traefik, cdn};
@@ -855,7 +855,7 @@ describe('TLS gateway certificate coverage', () => {
       version,
       boundedContextId,
       blueprint: bp => {
-        const traefik = bp.add(ApiGateway({id: 'traefik'}));
+        const traefik = bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}));
         const cdn = bp.add(ApiGateway({id: 'cdn'}));
         const api = bp.add(Workload({id: 'orders'}));
         bp.link(
@@ -915,7 +915,7 @@ describe('TLS gateway certificate coverage', () => {
         version,
         boundedContextId,
         blueprint: bp => {
-          const traefik = bp.add(ApiGateway({id: 'traefik'}));
+          const traefik = bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}));
           const api = bp.add(Workload({id: 'orders'}));
           bp.link(api, traefik, {'routes.0.path': '/orders'});
           return {traefik, api};
@@ -981,7 +981,7 @@ describe('TLS gateway certificate coverage', () => {
         version,
         boundedContextId,
         blueprint: bp => {
-          const traefik = bp.add(ApiGateway({id: 'traefik'}));
+          const traefik = bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}));
           const api = bp.add(Workload({id: 'orders'}));
           bp.link(api, traefik, {
             routes: [{prefix: '/orders', host: 'api.fractal.cloud'}],
@@ -1012,7 +1012,7 @@ describe('CloudFront alias coverage edge cases', () => {
       blueprint: bp => {
         // The distribution is validated before the gateway.
         const cdn = bp.add(ApiGateway({id: 'cdn'}));
-        const traefik = bp.add(ApiGateway({id: 'traefik'}));
+        const traefik = bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}));
         bp.link(cdn, traefik);
         return {cdn, traefik};
       },
@@ -1047,7 +1047,7 @@ describe('CloudFront alias coverage edge cases', () => {
         blueprint: bp => {
           const cdn = bp.add(ApiGateway({id: 'cdn'}));
           const traefik = bp.add(
-            ApiGateway({id: 'traefik'}).withDnsZones([
+            ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}).withDnsZones([
               {name: 'fractal.cloud', access: {TXT: 'write'}},
             ]),
           );
@@ -1086,7 +1086,7 @@ describe('KubePrometheusStack route link to a TraefikGateway', () => {
       version,
       boundedContextId,
       blueprint: bp => {
-        const traefik = bp.add(ApiGateway({id: 'traefik'}));
+        const traefik = bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}));
         const prometheus = bp.add(Monitoring({id: 'prometheus'}));
         bp.link(prometheus, traefik, gatewayRouteSettings({routes: [route]}));
         return {traefik, prometheus};
@@ -1130,7 +1130,7 @@ describe('KubePrometheusStack route link to a TraefikGateway', () => {
       version,
       boundedContextId,
       blueprint: bp => {
-        const traefik = bp.add(ApiGateway({id: 'traefik'}));
+        const traefik = bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}));
         const bucket = bp.add(ObjectStorage({id: 'bucket'}));
         const prometheus = bp.add(Monitoring({id: 'prometheus'}));
         bp.link(prometheus, target === 'traefik' ? traefik : bucket, settings);

@@ -23,16 +23,47 @@ unchanged.
 
 - **Re-register existing blueprints.** A blueprint published by an earlier release keeps the
   old types until `blueprints.create` is run again (it updates in place).
-- Each component maps to the catalogue component of its default delivery model (BigData to
-  `PaaS`, network components to `IaaS`, Observability to `CaaS`, ...). `Unmanaged` has one
-  catalogue component per domain, so it is still published as `Unmanaged`.
-- **Known limitation: the delivery model cannot be chosen yet.** The catalogue keeps a
-  separate component per delivery model (`BigData.CaaS.ComputeCluster` next to
-  `BigData.PaaS.ComputeCluster`, likewise for `DataProcessingJob`, `Datalake`,
-  `DistributedDataProcessing`, `Storage.*` and `Messaging.*`). A blueprint is published under
-  the default one, so the editor lists that model's offers for it. The Spark-on-Kubernetes
-  (`CaaSSparkCluster`, `CaaSSparkJob`), MinIO and Kafka offers still deploy through `select`,
-  but they do not appear under a blueprint component published as `PaaS`.
+- Each component is published as the catalogue component of its delivery model: the one the
+  author states with `deliveryModel`, else its default (BigData `PaaS`, network components
+  `IaaS`, Observability `CaaS`, Workload `CaaS`, ...). `Unmanaged` has one catalogue component
+  per domain, so it is still published as `Unmanaged` and checks no model.
+
+### Breaking — an offer's delivery model must be its component's
+
+The catalogue keeps one component per delivery model, each with its own services and offers
+(`BigData.PaaS.ComputeCluster` for Databricks, `BigData.CaaS.ComputeCluster` for Spark on
+Kubernetes). So `toLiveSystem` now refuses an offer whose delivery model differs from its
+component's, instead of accepting it and leaving the offer unreachable in the editor:
+
+```
+Offer 'APIManagement.CaaS.TraefikGateway' is CaaS but component 'traefik'
+(APIManagement.ApiGateway) is PaaS by default. Author the component with
+deliveryModel: 'CaaS', or select a PaaS offer.
+```
+
+**What to change when upgrading:** where you select an offer of a model other than the
+component's default, state the model on the component:
+`ApiGateway({id: 'traefik', deliveryModel: 'CaaS'})`. `deliveryModel` is accepted by
+`ApiGateway`, `Broker`, `MessagingEntity`, `ObjectStorage`, `RelationalDbms`,
+`RelationalDatabase`, `Workload`, `ComputeCluster`, `DataProcessingJob`, `MlExperiment`,
+`Datalake` and `DistributedDataProcessing`, and refuses a model the component has no
+catalogue component for, at compile time (each factory accepts only its own models) and at
+runtime. Defaults: `ApiGateway`, `Broker`, `MessagingEntity`, `ObjectStorage`,
+`RelationalDbms`, `RelationalDatabase` and all BigData components `PaaS`; `Workload` `CaaS`.
+The offer check itself runs in `toLiveSystem`, after the blueprint is authored, and is not yet
+a compile-time error.
+
+Exceptions, because the catalogue has no component of the offer's model: `OpenshiftService`,
+`OpenshiftSecurityGroup`, `OpenshiftIpAddressPool` (their agent publishes them as
+`NetworkAndCompute.CaaS.*`, while the catalogue's load balancer, security group and subnet are
+IaaS; the agent is moving the last two to IaaS) and `Keycloak` (the catalogue's identity
+provider is PaaS only). `AzureContainerApp` is exempt too, the other way round: the catalogue
+files this PaaS offer under the `CaaS` `Workload` on purpose, because a Container App nests in
+the Container Apps Environment, so keep the `Workload` at its default model for it. They are
+listed in `DELIVERY_MODEL_EXEMPT_OFFERS`, and an exemption goes when its gap is closed.
+
+Samples that select a CaaS offer on a component whose default is `PaaS` need the option, for
+example an Ambassador `ApiGateway` or an `OpenshiftPersistentVolume` `ObjectStorage`.
 
 ### Added — `DatalakeLink` settings for a job-to-lake link
 

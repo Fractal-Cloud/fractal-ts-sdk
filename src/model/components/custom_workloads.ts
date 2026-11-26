@@ -110,9 +110,16 @@ const workloadNode = <Id extends string>(s: NodeState): WorkloadNode<Id> => ({
 export const Workload = <const Id extends string>(cfg: {
   id: Id;
   displayName?: string;
+  /** `CaaS` (default, Kubernetes), `PaaS` (e.g. ECS, Container Apps) or `IaaS`. */
+  deliveryModel?: 'CaaS' | 'PaaS' | 'IaaS';
 }): WorkloadNode<Id> =>
   workloadNode<Id>(
-    newNode(cfg.id, 'CustomWorkloads.Workload', cfg.displayName),
+    newNode(
+      cfg.id,
+      'CustomWorkloads.Workload',
+      cfg.displayName,
+      cfg.deliveryModel,
+    ),
   );
 
 // ── Function ─────────────────────────────────────────────────────────────────

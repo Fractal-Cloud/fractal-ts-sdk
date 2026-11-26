@@ -48,6 +48,8 @@ Level 3 — OFFER       {domain}.{deliveryModel}.{name} + a provider
 
 A blueprint references a Component (`Storage.ObjectStorage`); a Live System selects any Offer that `satisfies` it (`AwsS3`, `AzureBlob`, `GcsBucket`, `MinIO`, …). Selection is **compile-checked**: an offer that does not satisfy a slot's Component is a type error (and is also rejected at runtime).
 
+**A component has a delivery model, and an offer must match it.** The platform catalogue keeps one component per delivery model, each with its own services and offers: `BigData.PaaS.ComputeCluster` (Databricks) and `BigData.CaaS.ComputeCluster` (Spark on Kubernetes) are different components. Where a component has more than one, state the model on the factory (`ComputeCluster({id: 'c', deliveryModel: 'CaaS'})`); unstated it is the component's default (BigData, storage, messaging and API gateway `PaaS`; `Workload` `CaaS`). The blueprint is published as the catalogue component of that model, and `toLiveSystem` refuses an offer of another model. A few offers sit on a component of another model because the catalogue has none of theirs (see `DELIVERY_MODEL_EXEMPT_OFFERS`); `AzureContainerApp` is one: the catalogue nests it under the `CaaS` `Workload`.
+
 `provider` is a **vendor** axis (`AWS | Azure | GCP | OCI | Hetzner | Aruba | RedHat | VMware`). `IaaS | PaaS | CaaS | SaaS | FaaS` is the separate `deliveryModel` axis. Vendor-neutral self-hosted offers (e.g. `Kafka`, `Prometheus`, `MinIO` on any cluster) omit `provider`.
 
 ### Guardrails vs operations

@@ -117,7 +117,7 @@ const domainService = (subscriptions: Subscription[]) =>
     blueprint: bp => {
       const cluster = bp.add(ContainerPlatform({id: 'cluster'}));
       const dbms = bp.add(RelationalDbms({id: 'dbms'}));
-      const gateway = bp.add(ApiGateway({id: 'gateway'}));
+      const gateway = bp.add(ApiGateway({id: 'gateway', deliveryModel: 'CaaS'}));
       const database = bp.add(
         RelationalDatabase({id: 'database'}).dependsOn(dbms),
       );

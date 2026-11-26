@@ -23,6 +23,12 @@ import type {OfferContract} from './offers/contract/offer_contract';
 import type {NeutralRule} from './neutral_rule';
 import type {IncomingLinkRule} from './incoming_link_rule';
 import {applyNeutralRules} from './apply_neutral_rules';
+import {
+  DELIVERY_MODEL_EXEMPT_OFFERS,
+  assertDeliveryModelAvailable,
+  deliveryModelsOf,
+  effectiveDeliveryModel,
+} from './catalogue_component_types';
 import {isRouteSettings, mergeRouteSettings} from './route_link_merge';
 import type {EnvironmentSecretsSelection} from './offers/environment_secrets_selection';
 import {
@@ -381,6 +387,10 @@ export type NodeState = {
   readonly id: string;
   readonly component: string; // Level-1 Component tag, e.g. 'Storage.ObjectStorage'
   readonly displayName?: string; // human-readable name; defaults to id when unset
+  /** The service delivery model the author chose; unset = the component's
+   *  default (see catalogue_component_types.ts). An offer of another model is
+   *  refused for this component. */
+  readonly deliveryModel?: DeliveryModel;
   readonly parameters: Readonly<Record<string, unknown>>;
   readonly locked: ReadonlySet<string>;
   readonly dependencies: readonly string[];
@@ -406,14 +416,21 @@ export const newNode = (
   id: string,
   component: string,
   displayName?: string,
-): NodeState => ({
-  id,
-  component,
-  displayName,
-  parameters: {},
-  locked: new Set(),
-  dependencies: [],
-});
+  deliveryModel?: DeliveryModel,
+): NodeState => {
+  if (deliveryModel !== undefined) {
+    assertDeliveryModelAvailable(component, deliveryModel);
+  }
+  return {
+    id,
+    component,
+    displayName,
+    deliveryModel,
+    parameters: {},
+    locked: new Set(),
+    dependencies: [],
+  };
+};
 /** Authoring primitive: set a neutral param AND lock it (guardrail, design time). */
 export const guardrail = (
   s: NodeState,
@@ -636,6 +653,8 @@ export type SerializedComponent = {
   id: string;
   displayName: string;
   component: string;
+  /** The delivery model the author chose; absent = the component's default. */
+  deliveryModel?: DeliveryModel;
   parameters: Record<string, unknown>;
   locked: string[];
   dependencies: string[];
@@ -670,6 +689,9 @@ const serialize = (st: FractalState): Blueprint => ({
       id,
       displayName: n.displayName ?? id,
       component: n.component,
+      ...(n.deliveryModel === undefined
+        ? {}
+        : {deliveryModel: n.deliveryModel}),
       parameters: {...n.parameters},
       locked: [...n.locked],
       dependencies: [...n.dependencies],
@@ -684,6 +706,48 @@ const serialize = (st: FractalState): Blueprint => ({
  * this Live System, keeps its settings; a component none of whose links
  * changed is returned as it was.
  */
+/**
+ * Why `offer` cannot be selected for `node`, or `undefined` when it can. An
+ * offer's delivery model must be the component's: the catalogue keeps one
+ * component per model, each with its own offers, so a CaaS offer on a PaaS
+ * component would never be listed under it. A component the catalogue does not
+ * know (`Unmanaged`) and the exempt offers are not checked.
+ */
+const deliveryModelMismatch = (
+  node: NodeState,
+  offer: Offer<string, unknown>,
+): string | undefined => {
+  const expected = effectiveDeliveryModel(node.component, node.deliveryModel);
+  if (expected === undefined) {
+    return undefined;
+  }
+  if (DELIVERY_MODEL_EXEMPT_OFFERS.has(offer.offerType)) {
+    // An exempt offer is filed by the catalogue under the component's default
+    // model, whatever its own model is. Any other model on the component would
+    // publish it where the offer is not listed, even when the two models agree.
+    const home = effectiveDeliveryModel(node.component);
+    return expected === home
+      ? undefined
+      : `Offer '${offer.offerType}' belongs under the ${home} ${node.component} ` +
+          `component in the catalogue, but component '${node.id}' is authored as ` +
+          `${expected}. Leave deliveryModel unset`;
+  }
+  if (offer.deliveryModel === expected) {
+    return undefined;
+  }
+  const stated =
+    node.deliveryModel === undefined
+      ? `${expected} by default`
+      : `${expected} as authored`;
+  const fix = deliveryModelsOf(node.component).includes(offer.deliveryModel)
+    ? `Author the component with deliveryModel: '${offer.deliveryModel}', or select a ${expected} offer.`
+    : `Select a ${expected} offer.`;
+  return (
+    `Offer '${offer.offerType}' is ${offer.deliveryModel} but component ` +
+    `'${node.id}' (${node.component}) is ${stated}. ${fix}`
+  );
+};
+
 const withIncomingLinkRules = (
   components: readonly LiveSystemComponent[],
   emittedBy: ReadonlyMap<string, Offer<string, unknown>>,
@@ -731,6 +795,10 @@ const toLiveSystem = (st: FractalState, args: ToLiveSystemArgs): LiveSystem => {
       throw new Error(
         `Offer '${offer.offerType}' does not satisfy component '${node.component}' (selected for '${id}').`,
       );
+    }
+    const modelMismatch = deliveryModelMismatch(node, offer);
+    if (modelMismatch) {
+      throw new Error(`${modelMismatch} (selected for '${id}').`);
     }
     // The selected offer emits the component plus a live component for each
     // app-added child (in the offer's own vendor family).
