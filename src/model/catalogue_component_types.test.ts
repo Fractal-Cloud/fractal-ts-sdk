@@ -25,19 +25,26 @@ import * as model from './index';
 const COMPONENTS_DIR = join(__dirname, 'components');
 
 /**
- * The Level-1 components the catalogue (WebBFF blueprintComponents/*.ts)
- * declares. A snapshot, so the table is checked against the catalogue's own
- * spelling and a rename there is a deliberate edit here.
+ * The Level-1 components the catalogue (WebBFF blueprintComponents/*.ts, and
+ * the aria-spec taxonomy, packages/go/taxonomy/taxonomy.json) declares. A
+ * snapshot, so the table is checked against the catalogue's own spelling and a
+ * rename there is a deliberate edit here.
+ *
+ * `BigData.PaaS.DataCatalog`, `BigData.PaaS.DataCatalogTable` and
+ * `Storage.IaaS.BlockVolume` are declared by the aria-spec taxonomy only.
  */
 const CATALOGUE_TYPES: ReadonlySet<string> = new Set([
   'APIManagement.CaaS.APIGateway',
   'APIManagement.PaaS.APIGateway',
   'BigData.CaaS.ComputeCluster',
+  'BigData.CaaS.DataCatalog',
   'BigData.CaaS.Datalake',
   'BigData.CaaS.DataProcessingJob',
   'BigData.CaaS.DistributedDataProcessing',
   'BigData.CaaS.MlExperiment',
   'BigData.PaaS.ComputeCluster',
+  'BigData.PaaS.DataCatalog',
+  'BigData.PaaS.DataCatalogTable',
   'BigData.PaaS.Datalake',
   'BigData.PaaS.DataProcessingJob',
   'BigData.PaaS.DistributedDataProcessing',
@@ -68,7 +75,10 @@ const CATALOGUE_TYPES: ReadonlySet<string> = new Set([
   'Storage.CaaS.RelationalDatabase',
   'Storage.CaaS.RelationalDbms',
   'Storage.CaaS.Search',
+  'Storage.IaaS.BlockVolume',
+  'Storage.PaaS.DocumentDbms',
   'Storage.PaaS.FilesAndBlobs',
+  'Storage.PaaS.KeyValueDbms',
   'Storage.PaaS.RelationalDatabase',
   'Storage.PaaS.RelationalDbms',
 ]);

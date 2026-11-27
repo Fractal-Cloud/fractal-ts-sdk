@@ -1065,8 +1065,30 @@ K8sWorkload({containerImageCredentials: 'docker-hub-pull'})
 | `RelationalDbms` | `AwsRdsPostgresDbms` · `AwsRdsMySqlDbms` | `AzurePostgresDbms` | `GcpPostgresDbms` | `ArubaMySqlDbms` | — | — |
 | `RelationalDatabase` | `AwsRdsPostgresDatabase` · `AwsRdsMySqlDatabase` | `AzurePostgresDatabase` | `GcpPostgresDatabase` | — | — | — |
 | `Search` | — | — | — | — | — | `StorageOpenSearch` |
+| `KeyValueDbms` | — | — | — | — | — | — |
+| `DocumentDbms` | — | — | — | — | — | — |
+| `BlockVolume` | — | — | — | — | — | — |
 
 > `RelationalDatabase` components added under a DBMS via an operation are emitted by the **DBMS's own offer** in its vendor family — selecting `AzurePostgresDbms` makes its databases `AzurePostgresDatabase`. They are not independently offer-selected.
+
+`KeyValueDbms`, `DocumentDbms`, `BlockVolume`, `DataCatalog` and `DataCatalogTable` can be authored
+in a blueprint, but no SDK offer satisfies them yet, so a Live System cannot select one. A
+`DataCatalogTable` depends on the `DataCatalog` it is created with. Consumers link to them with
+`KeyValueDbmsLink` and `DocumentDbmsLink` (both `@experimental`), `DataCatalogLink` and
+`DataCatalogTableLink`.
+
+#### Managed-service settings
+
+`KeyValueDbms`, `DocumentDbms`, `DataCatalog`, `Search`, `ObjectStorage`, `Datalake`,
+`DistributedDataProcessing` and `Broker` lock four guardrails: `withHaLayout({replicas,
+spreadZones})`, `withBackupPolicy({schedule, retentionDays})`, `withMaintenanceWindow({start,
+durationHours})` and `withVersionLine('9.1')`. `spreadZones: false`, or leaving it out, asks for
+nothing; only `true` is a requirement.
+
+Every existing offer of those components reads or refuses each setting, so none reaches an agent
+unread. `MinIO` sends the layout's `replicas` as `servers` and `StorageOpenSearch` as `replicas`;
+both refuse fewer than one replica and refuse `spreadZones: true`, which their agent does not
+promise. Every other existing offer refuses all four settings, naming the reason.
 
 #### Amazon RDS: requiring TLS (`requireSecureTransport`)
 
@@ -1218,6 +1240,8 @@ one of the two intents.
 | `DataProcessingJob` | `AwsDatabricksJob` | `AzureDatabricksJob` | `GcpDatabricksJob` | `CaaSSparkJob` |
 | `MlExperiment` | `AwsDatabricksMlflow` | `AzureDatabricksMlflow` | `GcpDatabricksMlflow` | `CaaSMlflow` |
 | `Datalake` | `AwsS3Datalake` | `AzureDatalake` | `GcpDatalake` | — |
+| `DataCatalog` | — | — | — | — |
+| `DataCatalogTable` | — | — | — | — |
 
 ### APIManagement
 

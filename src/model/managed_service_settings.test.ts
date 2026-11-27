@@ -55,18 +55,35 @@ const SETTERS = Object.keys(SETTINGS) as Setter[];
 
 type ManagedNode = AnyNode & Record<Setter, (v: unknown) => ManagedNode>;
 
-const MANAGED_COMPONENTS: ReadonlyArray<[string, () => ManagedNode]> = [
+/** Builds the probe component; a component with more than one delivery model
+ *  is authored with the given one, so an offer of that model may be selected. */
+type MakeManaged = (deliveryModel?: 'PaaS' | 'CaaS') => ManagedNode;
+
+const MANAGED_COMPONENTS: ReadonlyArray<[string, MakeManaged]> = [
   ['Storage.KeyValueDbms', () => KeyValueDbms({id: 'probe'}) as never],
   ['Storage.DocumentDbms', () => DocumentDbms({id: 'probe'}) as never],
   ['Storage.Search', () => Search({id: 'probe'}) as never],
-  ['Storage.ObjectStorage', () => ObjectStorage({id: 'probe'}) as never],
-  ['BigData.Datalake', () => Datalake({id: 'probe'}) as never],
-  ['BigData.DataCatalog', () => DataCatalog({id: 'probe'}) as never],
+  [
+    'Storage.ObjectStorage',
+    deliveryModel => ObjectStorage({id: 'probe', deliveryModel}) as never,
+  ],
+  [
+    'BigData.Datalake',
+    deliveryModel => Datalake({id: 'probe', deliveryModel}) as never,
+  ],
+  [
+    'BigData.DataCatalog',
+    deliveryModel => DataCatalog({id: 'probe', deliveryModel}) as never,
+  ],
   [
     'BigData.DistributedDataProcessing',
-    () => DistributedDataProcessing({id: 'probe'}) as never,
+    deliveryModel =>
+      DistributedDataProcessing({id: 'probe', deliveryModel}) as never,
   ],
-  ['Messaging.Broker', () => Broker({id: 'probe'}) as never],
+  [
+    'Messaging.Broker',
+    deliveryModel => Broker({id: 'probe', deliveryModel}) as never,
+  ],
 ];
 
 describe('managed-service guardrails', () => {
@@ -117,9 +134,10 @@ describe('the components added for managed services', () => {
   });
 });
 
-/** A Live System of one component of `make`'s type, `setter` locked, on `offer`. */
+/** A Live System of one component of `make`'s type, `setter` locked, on
+ *  `offer`. The component is authored with the offer's delivery model. */
 const oneComponent = (
-  make: () => ManagedNode,
+  make: MakeManaged,
   setter: Setter,
   value: unknown,
   offer: Offer,
@@ -128,7 +146,11 @@ const oneComponent = (
     id: 'managed',
     version,
     boundedContextId,
-    blueprint: bp => ({probe: bp.add(make()[setter](value) as never)}),
+    blueprint: bp => ({
+      probe: bp.add(
+        make(offer.deliveryModel as 'PaaS' | 'CaaS')[setter](value) as never,
+      ),
+    }),
   }).toLiveSystem({
     name: 'acme-managed',
     environment,

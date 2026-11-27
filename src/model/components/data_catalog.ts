@@ -40,5 +40,9 @@ const dataCatalogNode = <Id extends string>(
 export const DataCatalog = <const Id extends string>(cfg: {
   id: Id;
   displayName?: string;
+  /** `PaaS` (default, e.g. Unity Catalog) or `CaaS`: one catalog component per model. */
+  deliveryModel?: 'PaaS' | 'CaaS';
 }): DataCatalogNode<Id> =>
-  dataCatalogNode<Id>(newNode(cfg.id, 'BigData.DataCatalog', cfg.displayName));
+  dataCatalogNode<Id>(
+    newNode(cfg.id, 'BigData.DataCatalog', cfg.displayName, cfg.deliveryModel),
+  );
