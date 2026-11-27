@@ -6,6 +6,7 @@
  * Vendor-neutral self-hosted offers (Kafka on any cluster) OMIT `provider`.
  */
 import {toContractKey, unsupported, unsupportedUnless} from './neutral_rules';
+import {noManagedServiceSettings} from './managed_service_rules';
 import {
   Messaging_CaaS_Kafka,
   Messaging_CaaS_KafkaTopic,
@@ -155,6 +156,7 @@ export const AzureServiceBus = defineOffer<
   provider: 'Azure',
   deliveryModel: 'PaaS',
   neutral: {
+    ...noManagedServiceSettings,
     // The contract's `encryption` is the agent's customer-managed-key map, not
     // the neutral 'at-rest' / 'none'; Service Bus always encrypts at rest. A
     // customer-managed key is the offer's own `encryption` config.
@@ -226,6 +228,7 @@ export const GcpPubSub = defineOffer<
   provider: 'GCP',
   deliveryModel: 'PaaS',
   neutral: {
+    ...noManagedServiceSettings,
     encryption: unsupportedUnless(
       v => v === 'at-rest',
       'Pub/Sub always encrypts at rest',
@@ -242,6 +245,7 @@ export const Kafka = defineOffer<
   contract: Messaging_CaaS_Kafka,
   deliveryModel: 'CaaS',
   neutral: {
+    ...noManagedServiceSettings,
     encryption: unsupported('the agent configures no encryption'),
     tier: unsupported('the agent has no tiers'),
   },

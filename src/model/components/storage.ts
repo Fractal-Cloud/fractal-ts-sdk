@@ -18,28 +18,34 @@ import {
   guardrail,
   addDependency,
 } from '../core';
+import {
+  ManagedServiceSetters,
+  managedServiceSetters,
+} from './managed/managed_service_setters';
 
 // ── Storage.ObjectStorage ────────────────────────────────────────────────────
 export type ObjectStorageNode<Id extends string = string> = ComponentNode<
   Id,
   'Storage.ObjectStorage'
-> & {
-  withVersioningEnabled: (v: boolean) => ObjectStorageNode<Id>;
-  withStorageClass: (v: string) => ObjectStorageNode<Id>;
-  withPublicAccess: (v: boolean) => ObjectStorageNode<Id>;
-  withEncryption: (v: 'at-rest' | 'none') => ObjectStorageNode<Id>;
-  withRetentionDays: (v: number) => ObjectStorageNode<Id>;
-  withTags: (v: Record<string, string>) => ObjectStorageNode<Id>;
-  /**
-   * Declare a structural dependency: e.g. the ContainerPlatform a self-hosted
-   * offer is installed on, which its agent requires.
-   */
-  dependsOn: (other: AnyNode) => ObjectStorageNode<Id>;
-};
+> &
+  ManagedServiceSetters<ObjectStorageNode<Id>> & {
+    withVersioningEnabled: (v: boolean) => ObjectStorageNode<Id>;
+    withStorageClass: (v: string) => ObjectStorageNode<Id>;
+    withPublicAccess: (v: boolean) => ObjectStorageNode<Id>;
+    withEncryption: (v: 'at-rest' | 'none') => ObjectStorageNode<Id>;
+    withRetentionDays: (v: number) => ObjectStorageNode<Id>;
+    withTags: (v: Record<string, string>) => ObjectStorageNode<Id>;
+    /**
+     * Declare a structural dependency: e.g. the ContainerPlatform a self-hosted
+     * offer is installed on, which its agent requires.
+     */
+    dependsOn: (other: AnyNode) => ObjectStorageNode<Id>;
+  };
 const objectStorageNode = <Id extends string>(
   s: NodeState,
 ): ObjectStorageNode<Id> => ({
   state: s,
+  ...managedServiceSetters(s, objectStorageNode<Id>),
   withVersioningEnabled: v =>
     objectStorageNode<Id>(guardrail(s, 'versioningEnabled', v)),
   withStorageClass: v => objectStorageNode<Id>(guardrail(s, 'storageClass', v)),
@@ -190,15 +196,17 @@ export type RelationalDatabaseLink = {
 export type SearchNode<Id extends string = string> = ComponentNode<
   Id,
   'Storage.Search'
-> & {
-  /**
-   * Declare a structural dependency: e.g. the ContainerPlatform a self-hosted
-   * offer is installed on, which its agent requires.
-   */
-  dependsOn: (other: AnyNode) => SearchNode<Id>;
-};
+> &
+  ManagedServiceSetters<SearchNode<Id>> & {
+    /**
+     * Declare a structural dependency: e.g. the ContainerPlatform a self-hosted
+     * offer is installed on, which its agent requires.
+     */
+    dependsOn: (other: AnyNode) => SearchNode<Id>;
+  };
 const searchNode = <Id extends string>(s: NodeState): SearchNode<Id> => ({
   state: s,
+  ...managedServiceSetters(s, searchNode<Id>),
   dependsOn: other => searchNode<Id>(addDependency(s, other.state.id)),
 });
 export const Search = <const Id extends string>(cfg: {

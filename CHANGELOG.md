@@ -11,6 +11,25 @@ of truth for what is on npm.
 
 ## Unreleased
 
+### Added — managed-service components and settings
+
+- New components `KeyValueDbms`, `DocumentDbms`, `DataCatalog`, `DataCatalogTable` (it depends
+  on its catalog) and `BlockVolume` (`withSizeGb`). A blueprint publishes them as
+  `Storage.PaaS.KeyValueDbms`, `Storage.PaaS.DocumentDbms`, `BigData.PaaS.DataCatalog` (or
+  `BigData.CaaS.DataCatalog` with `deliveryModel: 'CaaS'`), `BigData.PaaS.DataCatalogTable` and
+  `Storage.IaaS.BlockVolume`. No SDK offer satisfies them yet.
+- New link types `DataCatalogLink`, `DataCatalogTableLink`, and the `@experimental`
+  `KeyValueDbmsLink` and `DocumentDbmsLink`.
+- New guardrails `withHaLayout`, `withBackupPolicy`, `withMaintenanceWindow` and
+  `withVersionLine` on the new managed components and on `Search`, `ObjectStorage`, `Datalake`,
+  `DistributedDataProcessing` and `Broker`. `Datalake` gains `dependsOn`.
+- Every existing offer of those components has a rule for each setting. `MinIO` sends the
+  layout's replicas as `servers` and `StorageOpenSearch` as `replicas`; both refuse fewer than one
+  replica and refuse `spreadZones: true`. The other 13 offers refuse each setting with a reason.
+
+No existing setter, type member or wire shape changes. A hand-written implementation of one of
+the five existing node types must add the four setters.
+
 ### Added — a Live System no agent could reconcile is refused before it is submitted
 
 The control plane stores a component whose offer it holds no contract for without checking it,

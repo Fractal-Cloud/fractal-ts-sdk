@@ -52,6 +52,17 @@ export const CATALOGUE_COMPONENTS: Readonly<
       CaaS: 'BigData.CaaS.Datalake',
     },
   },
+  'BigData.DataCatalog': {
+    default: 'PaaS',
+    types: {
+      PaaS: 'BigData.PaaS.DataCatalog',
+      CaaS: 'BigData.CaaS.DataCatalog',
+    },
+  },
+  'BigData.DataCatalogTable': {
+    default: 'PaaS',
+    types: {PaaS: 'BigData.PaaS.DataCatalogTable'},
+  },
   'BigData.DataProcessingJob': {
     default: 'PaaS',
     types: {
@@ -157,6 +168,18 @@ export const CATALOGUE_COMPONENTS: Readonly<
     types: {CaaS: 'Security.CaaS.ServiceMeshSecurity'},
   },
 
+  'Storage.BlockVolume': {
+    default: 'IaaS',
+    types: {IaaS: 'Storage.IaaS.BlockVolume'},
+  },
+  'Storage.DocumentDbms': {
+    default: 'PaaS',
+    types: {PaaS: 'Storage.PaaS.DocumentDbms'},
+  },
+  'Storage.KeyValueDbms': {
+    default: 'PaaS',
+    types: {PaaS: 'Storage.PaaS.KeyValueDbms'},
+  },
   'Storage.ObjectStorage': {
     default: 'PaaS',
     types: {
