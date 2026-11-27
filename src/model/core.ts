@@ -26,9 +26,18 @@ import {applyNeutralRules} from './apply_neutral_rules';
 import {
   DELIVERY_MODEL_EXEMPT_OFFERS,
   assertDeliveryModelAvailable,
+  catalogueComponentOf,
   deliveryModelsOf,
   effectiveDeliveryModel,
 } from './catalogue_component_types';
+import type {OfferTypeName} from './offer_type_name';
+import {registerOfferType} from './offer_type_registry';
+import {
+  deliveryModelOfOfferType,
+  offerTypeProblem,
+} from './offer_type_problems';
+import {liveSystemProblems} from './live_system_problems';
+import {LiveSystemStructureError} from './validation/live_system_structure_error';
 import {isRouteSettings, mergeRouteSettings} from './route_link_merge';
 import type {EnvironmentSecretsSelection} from './offers/environment_secrets_selection';
 import {
@@ -201,13 +210,15 @@ export const defineOffer = <C extends string, Cfg>(
       config: Cfg,
     ) => Record<string, unknown>;
   } & (
-    | {offerType: string; contract?: undefined}
+    | {offerType: OfferTypeName; contract?: undefined}
     | {contract: OfferContract; offerType?: undefined}
   ),
 ) => {
   const offerType: string = spec.contract
     ? spec.contract.offerType
     : (spec.offerType as string);
+  assertDefinableOfferType(offerType, spec.deliveryModel);
+  registerOfferType(offerType, spec.satisfies, spec.provider);
   // The selection is checked however it arrives, through
   // withEnvironmentSecrets or as the raw config key.
   const selectionFor = (shortNames: unknown): string[] => {
@@ -337,6 +348,31 @@ export const defineOffer = <C extends string, Cfg>(
     satisfies: spec.satisfies,
     neutral: spec.neutral,
   });
+};
+
+/**
+ * Refuse, when an offer is defined, an offer type no agent could dispatch on:
+ * a catalogue component type in its place (an offer of its own would be
+ * stored, and never claimed), a type that is not
+ * `<Domain>.<DeliveryModel>.<Name>`, or one whose middle segment is not the
+ * offer's own delivery model. A type the SDK knows nothing else about is the
+ * documented extension and is accepted.
+ */
+const assertDefinableOfferType = (
+  offerType: string,
+  deliveryModel: DeliveryModel,
+): void => {
+  const named = deliveryModelOfOfferType(offerType);
+  if (named === undefined || catalogueComponentOf(offerType) !== undefined) {
+    throw new Error(`Cannot define an offer on ${offerTypeProblem(offerType)}`);
+  }
+  if (named !== deliveryModel) {
+    throw new Error(
+      `Cannot define an offer on '${offerType}' with deliveryModel ` +
+        `'${deliveryModel}': its type names ${named} as its delivery model, and ` +
+        'the agent dispatches on that segment. Make the two agree.',
+    );
+  }
 };
 
 /** An offer's incoming-link rule, bound to the config the offer was built with. */
@@ -839,7 +875,7 @@ const toLiveSystem = (st: FractalState, args: ToLiveSystemArgs): LiveSystem => {
   for (const component of components) {
     emittedBy.get(component.id)?.validate?.(component, components);
   }
-  return {
+  const liveSystem: LiveSystem = {
     name: args.name,
     fractalId: st.fractalId,
     fractalName: st.fractalName,
@@ -848,6 +884,13 @@ const toLiveSystem = (st: FractalState, args: ToLiveSystemArgs): LiveSystem => {
     environment: args.environment,
     components,
   };
+  // An offer's own `instantiate` decides the components it emits, so a typed
+  // selection alone does not guarantee each names a type an agent claims.
+  const problems = liveSystemProblems(liveSystem);
+  if (problems.length > 0) {
+    throw new LiveSystemStructureError(args.name, problems);
+  }
+  return liveSystem;
 };
 
 // ── Type-safe per-component offer selection ──────────────────────────────────

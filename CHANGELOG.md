@@ -9,6 +9,24 @@ The version published for a release is the GitHub release tag: `release.yml` run
 `npm version <tag>` at publish time, so `package.json` on `main` is not the source
 of truth for what is on npm.
 
+## Unreleased
+
+### Added — a Live System no agent could reconcile is refused before it is submitted
+
+The control plane stores a component whose offer it holds no contract for without checking it,
+and every agent skips a type it registers no handler for, so such a component sat in
+Instantiating with nothing said. `deploy`, `validate` and `toLiveSystem` now throw a
+`LiveSystemStructureError` first, one line per defect naming the component and the valid
+options: a catalogue component type (`BigData.PaaS.DataProcessingJob`) where the offer type
+belongs, an offer type no agent declares and no offer is defined on, a `deliveryModel` or
+`provider` the offer type is not declared for, a repeated component id, or a dependency or link
+to a component the Live System does not have. `liveSystemProblems` returns the same lines.
+
+`defineOffer` refuses a catalogue component type as its `offerType`, a type that is not
+`<Domain>.<DeliveryModel>.<Name>` (also a compile error, `OfferTypeName`) and one whose middle
+segment is not its `deliveryModel`. A Live System built through typed offer selection is
+unaffected.
+
 ## 2.16.0
 
 ### Fixed — blueprint components now use the catalogue's component types

@@ -41,6 +41,12 @@ export type {BoundedContextDefinition} from './bounded_context/bounded_context_d
 // LiveSystem operation options + results (the operations live on the client).
 export type {DeployOptions, ComponentState, LiveSystemState} from './service';
 
+// The SDK's own check, before any request: every component names an offer type
+// an agent claims, and refers only to components of its Live System.
+export {LiveSystemStructureError} from './validation/live_system_structure_error';
+export {liveSystemProblems} from './live_system_problems';
+export type {OfferTypeName} from './offer_type_name';
+
 // Parameter validation by the control plane, before a deploy.
 export {LiveSystemValidationError} from './validation/live_system_validation_error';
 export type {ParameterValidationResult} from './validation/parameter_validation_result';

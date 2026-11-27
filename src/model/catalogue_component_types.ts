@@ -247,6 +247,21 @@ export const assertDeliveryModelAvailable = (
   }
 };
 
+/** The abstract tag and delivery model a catalogue component type stands for,
+ *  or undefined when `type` is not one (an offer type, or unknown). */
+export const catalogueComponentOf = (
+  type: string,
+): {abstractType: string; model: DeliveryModel} | undefined => {
+  for (const [abstractType, entry] of Object.entries(CATALOGUE_COMPONENTS)) {
+    for (const [model, published] of Object.entries(entry.types)) {
+      if (published === type) {
+        return {abstractType, model: model as DeliveryModel};
+      }
+    }
+  }
+  return undefined;
+};
+
 /** The catalogue component type a blueprint publishes for an abstract tag and
  *  its delivery model. A tag with no entry (`Unmanaged`, or a component outside
  *  this SDK) is unchanged. */
