@@ -65,7 +65,7 @@ describe('Locked Fractal model — APIManagement', () => {
       boundedContextId,
       blueprint: bp => ({
         gateway: bp.add(
-          ApiGateway({id: 'api-gateway'}).withCustomDomain('api.example.com'),
+          ApiGateway({id: 'api-gateway', deliveryModel: 'CaaS'}).withCustomDomain('api.example.com'),
         ),
       }),
     }).toLiveSystem({

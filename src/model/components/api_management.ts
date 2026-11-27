@@ -65,7 +65,14 @@ const apiGatewayNode = <Id extends string>(
 export const ApiGateway = <const Id extends string>(cfg: {
   id: Id;
   displayName?: string;
+  /** `PaaS` (default) or `CaaS`: the catalogue keeps one gateway component per model. */
+  deliveryModel?: 'PaaS' | 'CaaS';
 }): ApiGatewayNode<Id> =>
   apiGatewayNode<Id>(
-    newNode(cfg.id, 'APIManagement.ApiGateway', cfg.displayName),
+    newNode(
+      cfg.id,
+      'APIManagement.ApiGateway',
+      cfg.displayName,
+      cfg.deliveryModel,
+    ),
   );

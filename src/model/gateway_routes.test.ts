@@ -125,7 +125,7 @@ describe('Workload → Traefik route link across Live Systems', () => {
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
       blueprint: bp => {
-        const gateway = bp.add(ApiGateway({id: 'gateway'}));
+        const gateway = bp.add(ApiGateway({id: 'gateway', deliveryModel: 'CaaS'}));
         const service = bp.add(Workload({id: 'service'}));
         bp.link(
           service,
@@ -170,7 +170,7 @@ describe('TraefikGateway offer (caas-k8s)', () => {
       id: 'platform-gateway',
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
-      blueprint: bp => ({gateway: bp.add(ApiGateway({id: 'traefik'}))}),
+      blueprint: bp => ({gateway: bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}))}),
     }).toLiveSystem({
       name: 'platform',
       environment,
@@ -210,7 +210,7 @@ describe('Traefik offer (Java agents)', () => {
       id: 'java-traefik',
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
-      blueprint: bp => ({gateway: bp.add(ApiGateway({id: 'traefik'}))}),
+      blueprint: bp => ({gateway: bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}))}),
     }).toLiveSystem({
       name: 'platform',
       environment,
@@ -231,7 +231,7 @@ describe('repeated route declarations to one gateway', () => {
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
       blueprint: bp => {
-        const gateway = bp.add(ApiGateway({id: 'gateway'}));
+        const gateway = bp.add(ApiGateway({id: 'gateway', deliveryModel: 'CaaS'}));
         const service = bp.add(Workload({id: 'service'}));
         bp.link(
           service,
@@ -363,7 +363,7 @@ describe('TraefikGateway ForwardAuth (ocelot)', () => {
       id: 'platform-gateway',
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
-      blueprint: bp => ({gateway: bp.add(ApiGateway({id: 'traefik'}))}),
+      blueprint: bp => ({gateway: bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}))}),
     }).toLiveSystem({
       name: 'platform',
       environment,
@@ -396,7 +396,7 @@ describe('TraefikGateway behind a CloudFront VPC origin', () => {
       version: {major: 1, minor: 0, patch: 0},
       boundedContextId,
       blueprint: bp => {
-        const gateway = bp.add(ApiGateway({id: 'traefik'}));
+        const gateway = bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}));
         const cdn = bp.add(ApiGateway({id: 'cdn'}));
         bp.link(cdn, gateway);
         return {gateway, cdn};

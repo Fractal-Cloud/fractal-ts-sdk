@@ -44,8 +44,12 @@ const brokerNode = <Id extends string>(s: NodeState): BrokerNode<Id> => ({
 export const Broker = <const Id extends string>(cfg: {
   id: Id;
   displayName?: string;
+  /** `PaaS` (default) or `CaaS`: the catalogue keeps one broker component per model. */
+  deliveryModel?: 'PaaS' | 'CaaS';
 }): BrokerNode<Id> =>
-  brokerNode<Id>(newNode(cfg.id, 'Messaging.Broker', cfg.displayName));
+  brokerNode<Id>(
+    newNode(cfg.id, 'Messaging.Broker', cfg.displayName, cfg.deliveryModel),
+  );
 
 // ── MessagingEntity (depends on a Broker) ─────────────────────────────────────
 export type MessagingEntityNode<Id extends string = string> = ComponentNode<
@@ -82,9 +86,16 @@ const messagingEntityNode = <Id extends string>(
 export const MessagingEntity = <const Id extends string>(cfg: {
   id: Id;
   displayName?: string;
+  /** `PaaS` (default) or `CaaS`: the catalogue keeps one entity component per model. */
+  deliveryModel?: 'PaaS' | 'CaaS';
 }): MessagingEntityNode<Id> =>
   messagingEntityNode<Id>(
-    newNode(cfg.id, 'Messaging.MessagingEntity', cfg.displayName),
+    newNode(
+      cfg.id,
+      'Messaging.MessagingEntity',
+      cfg.displayName,
+      cfg.deliveryModel,
+    ),
   );
 
 // ── EmailSender ──────────────────────────────────────────────────────────────

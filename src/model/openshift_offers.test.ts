@@ -419,7 +419,7 @@ describe('OpenShift parameters in the agent shape', () => {
         version: {major: 1, minor: 0, patch: 0},
         boundedContextId,
         blueprint: bp => {
-          const base = ObjectStorage({id: 'data'}).withPublicAccess(false);
+          const base = ObjectStorage({id: 'data', deliveryModel: 'CaaS'}).withPublicAccess(false);
           return {
             data: bp.add(
               tier === undefined ? base : base.withStorageClass(tier),

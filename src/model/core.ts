@@ -23,6 +23,21 @@ import type {OfferContract} from './offers/contract/offer_contract';
 import type {NeutralRule} from './neutral_rule';
 import type {IncomingLinkRule} from './incoming_link_rule';
 import {applyNeutralRules} from './apply_neutral_rules';
+import {
+  DELIVERY_MODEL_EXEMPT_OFFERS,
+  assertDeliveryModelAvailable,
+  catalogueComponentOf,
+  deliveryModelsOf,
+  effectiveDeliveryModel,
+} from './catalogue_component_types';
+import type {OfferTypeName} from './offer_type_name';
+import {registerOfferType} from './offer_type_registry';
+import {
+  deliveryModelOfOfferType,
+  offerTypeProblem,
+} from './offer_type_problems';
+import {liveSystemProblems} from './live_system_problems';
+import {LiveSystemStructureError} from './validation/live_system_structure_error';
 import {isRouteSettings, mergeRouteSettings} from './route_link_merge';
 import type {EnvironmentSecretsSelection} from './offers/environment_secrets_selection';
 import {
@@ -195,13 +210,15 @@ export const defineOffer = <C extends string, Cfg>(
       config: Cfg,
     ) => Record<string, unknown>;
   } & (
-    | {offerType: string; contract?: undefined}
+    | {offerType: OfferTypeName; contract?: undefined}
     | {contract: OfferContract; offerType?: undefined}
   ),
 ) => {
   const offerType: string = spec.contract
     ? spec.contract.offerType
     : (spec.offerType as string);
+  assertDefinableOfferType(offerType, spec.deliveryModel);
+  registerOfferType(offerType, spec.satisfies, spec.provider);
   // The selection is checked however it arrives, through
   // withEnvironmentSecrets or as the raw config key.
   const selectionFor = (shortNames: unknown): string[] => {
@@ -333,6 +350,31 @@ export const defineOffer = <C extends string, Cfg>(
   });
 };
 
+/**
+ * Refuse, when an offer is defined, an offer type no agent could dispatch on:
+ * a catalogue component type in its place (an offer of its own would be
+ * stored, and never claimed), a type that is not
+ * `<Domain>.<DeliveryModel>.<Name>`, or one whose middle segment is not the
+ * offer's own delivery model. A type the SDK knows nothing else about is the
+ * documented extension and is accepted.
+ */
+const assertDefinableOfferType = (
+  offerType: string,
+  deliveryModel: DeliveryModel,
+): void => {
+  const named = deliveryModelOfOfferType(offerType);
+  if (named === undefined || catalogueComponentOf(offerType) !== undefined) {
+    throw new Error(`Cannot define an offer on ${offerTypeProblem(offerType)}`);
+  }
+  if (named !== deliveryModel) {
+    throw new Error(
+      `Cannot define an offer on '${offerType}' with deliveryModel ` +
+        `'${deliveryModel}': its type names ${named} as its delivery model, and ` +
+        'the agent dispatches on that segment. Make the two agree.',
+    );
+  }
+};
+
 /** An offer's incoming-link rule, bound to the config the offer was built with. */
 const bindIncomingLinks =
   <Cfg>(
@@ -381,6 +423,10 @@ export type NodeState = {
   readonly id: string;
   readonly component: string; // Level-1 Component tag, e.g. 'Storage.ObjectStorage'
   readonly displayName?: string; // human-readable name; defaults to id when unset
+  /** The service delivery model the author chose; unset = the component's
+   *  default (see catalogue_component_types.ts). An offer of another model is
+   *  refused for this component. */
+  readonly deliveryModel?: DeliveryModel;
   readonly parameters: Readonly<Record<string, unknown>>;
   readonly locked: ReadonlySet<string>;
   readonly dependencies: readonly string[];
@@ -406,14 +452,21 @@ export const newNode = (
   id: string,
   component: string,
   displayName?: string,
-): NodeState => ({
-  id,
-  component,
-  displayName,
-  parameters: {},
-  locked: new Set(),
-  dependencies: [],
-});
+  deliveryModel?: DeliveryModel,
+): NodeState => {
+  if (deliveryModel !== undefined) {
+    assertDeliveryModelAvailable(component, deliveryModel);
+  }
+  return {
+    id,
+    component,
+    displayName,
+    deliveryModel,
+    parameters: {},
+    locked: new Set(),
+    dependencies: [],
+  };
+};
 /** Authoring primitive: set a neutral param AND lock it (guardrail, design time). */
 export const guardrail = (
   s: NodeState,
@@ -636,6 +689,8 @@ export type SerializedComponent = {
   id: string;
   displayName: string;
   component: string;
+  /** The delivery model the author chose; absent = the component's default. */
+  deliveryModel?: DeliveryModel;
   parameters: Record<string, unknown>;
   locked: string[];
   dependencies: string[];
@@ -670,6 +725,9 @@ const serialize = (st: FractalState): Blueprint => ({
       id,
       displayName: n.displayName ?? id,
       component: n.component,
+      ...(n.deliveryModel === undefined
+        ? {}
+        : {deliveryModel: n.deliveryModel}),
       parameters: {...n.parameters},
       locked: [...n.locked],
       dependencies: [...n.dependencies],
@@ -684,6 +742,48 @@ const serialize = (st: FractalState): Blueprint => ({
  * this Live System, keeps its settings; a component none of whose links
  * changed is returned as it was.
  */
+/**
+ * Why `offer` cannot be selected for `node`, or `undefined` when it can. An
+ * offer's delivery model must be the component's: the catalogue keeps one
+ * component per model, each with its own offers, so a CaaS offer on a PaaS
+ * component would never be listed under it. A component the catalogue does not
+ * know (`Unmanaged`) and the exempt offers are not checked.
+ */
+const deliveryModelMismatch = (
+  node: NodeState,
+  offer: Offer<string, unknown>,
+): string | undefined => {
+  const expected = effectiveDeliveryModel(node.component, node.deliveryModel);
+  if (expected === undefined) {
+    return undefined;
+  }
+  if (DELIVERY_MODEL_EXEMPT_OFFERS.has(offer.offerType)) {
+    // An exempt offer is filed by the catalogue under the component's default
+    // model, whatever its own model is. Any other model on the component would
+    // publish it where the offer is not listed, even when the two models agree.
+    const home = effectiveDeliveryModel(node.component);
+    return expected === home
+      ? undefined
+      : `Offer '${offer.offerType}' belongs under the ${home} ${node.component} ` +
+          `component in the catalogue, but component '${node.id}' is authored as ` +
+          `${expected}. Leave deliveryModel unset`;
+  }
+  if (offer.deliveryModel === expected) {
+    return undefined;
+  }
+  const stated =
+    node.deliveryModel === undefined
+      ? `${expected} by default`
+      : `${expected} as authored`;
+  const fix = deliveryModelsOf(node.component).includes(offer.deliveryModel)
+    ? `Author the component with deliveryModel: '${offer.deliveryModel}', or select a ${expected} offer.`
+    : `Select a ${expected} offer.`;
+  return (
+    `Offer '${offer.offerType}' is ${offer.deliveryModel} but component ` +
+    `'${node.id}' (${node.component}) is ${stated}. ${fix}`
+  );
+};
+
 const withIncomingLinkRules = (
   components: readonly LiveSystemComponent[],
   emittedBy: ReadonlyMap<string, Offer<string, unknown>>,
@@ -732,6 +832,10 @@ const toLiveSystem = (st: FractalState, args: ToLiveSystemArgs): LiveSystem => {
         `Offer '${offer.offerType}' does not satisfy component '${node.component}' (selected for '${id}').`,
       );
     }
+    const modelMismatch = deliveryModelMismatch(node, offer);
+    if (modelMismatch) {
+      throw new Error(`${modelMismatch} (selected for '${id}').`);
+    }
     // The selected offer emits the component plus a live component for each
     // app-added child (in the offer's own vendor family).
     const children = childrenFor(st, id);
@@ -771,7 +875,7 @@ const toLiveSystem = (st: FractalState, args: ToLiveSystemArgs): LiveSystem => {
   for (const component of components) {
     emittedBy.get(component.id)?.validate?.(component, components);
   }
-  return {
+  const liveSystem: LiveSystem = {
     name: args.name,
     fractalId: st.fractalId,
     fractalName: st.fractalName,
@@ -780,6 +884,13 @@ const toLiveSystem = (st: FractalState, args: ToLiveSystemArgs): LiveSystem => {
     environment: args.environment,
     components,
   };
+  // An offer's own `instantiate` decides the components it emits, so a typed
+  // selection alone does not guarantee each names a type an agent claims.
+  const problems = liveSystemProblems(liveSystem);
+  if (problems.length > 0) {
+    throw new LiveSystemStructureError(args.name, problems);
+  }
+  return liveSystem;
 };
 
 // ── Type-safe per-component offer selection ──────────────────────────────────

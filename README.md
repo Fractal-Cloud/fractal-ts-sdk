@@ -48,6 +48,8 @@ Level 3 — OFFER       {domain}.{deliveryModel}.{name} + a provider
 
 A blueprint references a Component (`Storage.ObjectStorage`); a Live System selects any Offer that `satisfies` it (`AwsS3`, `AzureBlob`, `GcsBucket`, `MinIO`, …). Selection is **compile-checked**: an offer that does not satisfy a slot's Component is a type error (and is also rejected at runtime).
 
+**A component has a delivery model, and an offer must match it.** The platform catalogue keeps one component per delivery model, each with its own services and offers: `BigData.PaaS.ComputeCluster` (Databricks) and `BigData.CaaS.ComputeCluster` (Spark on Kubernetes) are different components. Where a component has more than one, state the model on the factory (`ComputeCluster({id: 'c', deliveryModel: 'CaaS'})`); unstated it is the component's default (BigData, storage, messaging and API gateway `PaaS`; `Workload` `CaaS`). The blueprint is published as the catalogue component of that model, and `toLiveSystem` refuses an offer of another model. A few offers sit on a component of another model because the catalogue has none of theirs (see `DELIVERY_MODEL_EXEMPT_OFFERS`); `AzureContainerApp` is one: the catalogue nests it under the `CaaS` `Workload`.
+
 `provider` is a **vendor** axis (`AWS | Azure | GCP | OCI | Hetzner | Aruba | RedHat | VMware`). `IaaS | PaaS | CaaS | SaaS | FaaS` is the separate `deliveryModel` axis. Vendor-neutral self-hosted offers (e.g. `Kafka`, `Prometheus`, `MinIO` on any cluster) omit `provider`.
 
 ### Guardrails vs operations
@@ -178,6 +180,16 @@ against the contract of its offer: a blocking issue throws a `LiveSystemValidati
 the issues (and in `wait` mode logs `ERROR Live System validation failed  system=… errors=…`),
 warnings are logged and the deploy continues. `cloud.liveSystems.validate(liveSystem)` returns the
 same result without deploying.
+
+Before any request, `deploy` and `validate` also refuse a Live System no agent could reconcile as
+written, throwing a `LiveSystemStructureError` whose `problems` name each component and the valid
+options: a component `type` that is a catalogue component type (`BigData.PaaS.DataProcessingJob`)
+instead of the offer type implementing it (`BigData.PaaS.AzureDatabricksJob`), an offer type no
+agent declares and no offer is defined on, a `deliveryModel` or `provider` its offer type is not
+declared for, a repeated id, or a dependency or link to a component the Live System does not have.
+`toLiveSystem` applies the same check, so a Live System built through typed offer selection never
+trips it; it guards Live Systems written or edited by hand. `liveSystemProblems(liveSystem)` returns
+the same lines without throwing.
 
 ## The client
 
@@ -1543,13 +1555,16 @@ const Ceph = defineOffer<'Storage.ObjectStorage', {storageClass?: string}>({
   deliveryModel: 'CaaS',
 });
 
-// Select it for any ObjectStorage slot, just like a built-in offer:
+// Select it for any ObjectStorage slot authored as CaaS
+// (`ObjectStorage({id: 'uploads', deliveryModel: 'CaaS'})`), like a built-in offer:
 fractal.specialize().toLiveSystem({
   name: 'acme-prod',
   environment,
   select: {uploads: Ceph({storageClass: 'rbd'})},
 });
 ```
+
+The `offerType` is `<Domain>.<DeliveryModel>.<Name>` (a compile error otherwise, typed `OfferTypeName`), its middle segment must be the offer's `deliveryModel`, and it must not be a catalogue component type: `defineOffer({offerType: 'BigData.PaaS.DataProcessingJob', ...})` throws, naming the offers that already implement that component. A custom offer type still needs an agent that registers it, or its components are never reconciled.
 
 By default an offer emits one live component merging the blueprint's neutral params with its vendor config. Pass an `instantiate(ctx, config)` to emit a custom set of live components (e.g. a parent plus one child per `ctx.children` entry).
 

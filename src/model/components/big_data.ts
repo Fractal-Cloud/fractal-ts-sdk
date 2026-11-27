@@ -49,9 +49,16 @@ const computeClusterNode = <Id extends string>(
 export const ComputeCluster = <const Id extends string>(cfg: {
   id: Id;
   displayName?: string;
+  /** `PaaS` (default, Databricks) or `CaaS` (Spark on Kubernetes). */
+  deliveryModel?: 'PaaS' | 'CaaS';
 }): ComputeClusterNode<Id> =>
   computeClusterNode<Id>(
-    newNode(cfg.id, 'BigData.ComputeCluster', cfg.displayName),
+    newNode(
+      cfg.id,
+      'BigData.ComputeCluster',
+      cfg.displayName,
+      cfg.deliveryModel,
+    ),
   );
 
 // ── DataProcessingJob ────────────────────────────────────────────────────────
@@ -80,9 +87,16 @@ const dataProcessingJobNode = <Id extends string>(
 export const DataProcessingJob = <const Id extends string>(cfg: {
   id: Id;
   displayName?: string;
+  /** `PaaS` (default, Databricks) or `CaaS` (Spark on Kubernetes). */
+  deliveryModel?: 'PaaS' | 'CaaS';
 }): DataProcessingJobNode<Id> =>
   dataProcessingJobNode<Id>(
-    newNode(cfg.id, 'BigData.DataProcessingJob', cfg.displayName),
+    newNode(
+      cfg.id,
+      'BigData.DataProcessingJob',
+      cfg.displayName,
+      cfg.deliveryModel,
+    ),
   );
 
 // ── MlExperiment ─────────────────────────────────────────────────────────────
@@ -104,9 +118,11 @@ const mlExperimentNode = <Id extends string>(
 export const MlExperiment = <const Id extends string>(cfg: {
   id: Id;
   displayName?: string;
+  /** `PaaS` (default, Databricks MLflow) or `CaaS` (MLflow on Kubernetes). */
+  deliveryModel?: 'PaaS' | 'CaaS';
 }): MlExperimentNode<Id> =>
   mlExperimentNode<Id>(
-    newNode(cfg.id, 'BigData.MlExperiment', cfg.displayName),
+    newNode(cfg.id, 'BigData.MlExperiment', cfg.displayName, cfg.deliveryModel),
   );
 
 // ── Datalake ─────────────────────────────────────────────────────────────────
@@ -134,8 +150,12 @@ const datalakeNode = <Id extends string>(s: NodeState): DatalakeNode<Id> => ({
 export const Datalake = <const Id extends string>(cfg: {
   id: Id;
   displayName?: string;
+  /** `PaaS` (default, object storage) or `CaaS`. */
+  deliveryModel?: 'PaaS' | 'CaaS';
 }): DatalakeNode<Id> =>
-  datalakeNode<Id>(newNode(cfg.id, 'BigData.Datalake', cfg.displayName));
+  datalakeNode<Id>(
+    newNode(cfg.id, 'BigData.Datalake', cfg.displayName, cfg.deliveryModel),
+  );
 
 // ── DistributedDataProcessing ────────────────────────────────────────────────
 export type DistributedDataProcessingNode<Id extends string = string> =
@@ -157,7 +177,14 @@ const distributedDataProcessingNode = <Id extends string>(
 export const DistributedDataProcessing = <const Id extends string>(cfg: {
   id: Id;
   displayName?: string;
+  /** `PaaS` (default, a Databricks workspace) or `CaaS` (Spark on Kubernetes). */
+  deliveryModel?: 'PaaS' | 'CaaS';
 }): DistributedDataProcessingNode<Id> =>
   distributedDataProcessingNode<Id>(
-    newNode(cfg.id, 'BigData.DistributedDataProcessing', cfg.displayName),
+    newNode(
+      cfg.id,
+      'BigData.DistributedDataProcessing',
+      cfg.displayName,
+      cfg.deliveryModel,
+    ),
   );

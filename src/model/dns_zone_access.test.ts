@@ -40,13 +40,16 @@ const only = (
   return found;
 };
 
-const gatewaySystem = (zones: DnsZoneAccessRequest[] | undefined) =>
+const gatewaySystem = (
+  zones: DnsZoneAccessRequest[] | undefined,
+  deliveryModel: 'PaaS' | 'CaaS' = 'CaaS',
+) =>
   createFractal({
     id: 'platform-gateway',
     version,
     boundedContextId,
     blueprint: bp => {
-      const gateway = ApiGateway({id: 'gateway'});
+      const gateway = ApiGateway({id: 'gateway', deliveryModel});
       return {
         gateway: bp.add(
           zones === undefined ? gateway : gateway.withDnsZones(zones),
@@ -154,7 +157,7 @@ describe('a component asking for access to environment DNS zones', () => {
 
   it('is refused by an offer whose agent takes no DNS zone access', () => {
     expect(() =>
-      gatewaySystem(TXT_WRITE).toLiveSystem({
+      gatewaySystem(TXT_WRITE, 'PaaS').toLiveSystem({
         name: 'platform',
         environment,
         select: {gateway: AwsCloudFront({})},
@@ -214,7 +217,7 @@ describe('a component asking for access to environment DNS zones', () => {
     [{name: 'example.com'}, 'is not a list of {name, access} entries'],
   ])('refuses dnsZones %j', (zones, reason) => {
     expect(() =>
-      ApiGateway({id: 'gateway'}).withDnsZones(
+      ApiGateway({id: 'gateway', deliveryModel: 'CaaS'}).withDnsZones(
         zones as unknown as DnsZoneAccessRequest[],
       ),
     ).toThrow(new RegExp(`^withDnsZones: .*${escape(reason)}`));
@@ -250,7 +253,7 @@ describe('TraefikGateway issuing its own certificate', () => {
       version,
       boundedContextId,
       blueprint: bp => {
-        const plain = ApiGateway({id: 'traefik'});
+        const plain = ApiGateway({id: 'traefik', deliveryModel: 'CaaS'});
         const traefik = bp.add(
           zones === undefined ? plain : plain.withDnsZones(zones),
         );
