@@ -1,0 +1,95 @@
+name: Security
+
+# Baseline scanning of every pull request: secrets in the commits it adds (gitleaks), dependency
+# vulnerabilities it adds (npm audit), and static-analysis findings it adds (CodeQL). Each
+# gate fails only on what the pull request introduces, so findings already on the base branch never
+# block an unrelated change; each job's summary lists them as the debt to work off. A manual run
+# reports everything on the chosen ref and fails nothing.
+#
+# Third-party code is pinned: actions by commit, tools by version and checksum or image digest.
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: security-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secrets:
+    name: Secrets (gitleaks)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The full history, so the commits between the base and the head can be walked.
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Only the commits this pull request adds: a secret already in the history is not this
+      # change's to fix, and blocking on it would block every pull request. The release binary, not
+      # gitleaks-action, which needs a paid license for organization repositories.
+      - name: Scan the commits this pull request adds
+        env:
+          GITLEAKS_VERSION: '8.30.1'
+          GITLEAKS_SHA256: '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb'
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL --retry 3 -o "$RUNNER_TEMP/$archive" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}"
+          echo "${GITLEAKS_SHA256}  $RUNNER_TEMP/$archive" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" gitleaks
+          "$RUNNER_TEMP/gitleaks" git --log-opts="${BASE_SHA}..${HEAD_SHA}" \
+            --redact --no-banner --exit-code 1 .
+
+  dependencies:
+    name: Dependencies (npm audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The merge commit and its first parent: the base the findings are compared with.
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Compare with the base
+        env:
+          # Empty outside a pull request: report only.
+          SCA_BASE: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+        run: bash .github/scripts/sca-diff.sh npm .
+
+  sast:
+    name: Static analysis (CodeQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          languages: javascript-typescript
+          build-mode: none
+
+      # Results go to code scanning. On a pull request, GitHub's "Code scanning results" check fails
+      # on alerts the change adds at or above the repository's threshold (High by default), so
+      # existing alerts never block it.
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          category: /language:javascript-typescript

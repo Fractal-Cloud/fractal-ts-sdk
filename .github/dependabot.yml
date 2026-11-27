@@ -1,0 +1,23 @@
+version: 2
+
+# Weekly, with minor and patch updates grouped into one pull request per ecosystem and
+# directory; majors stay separate, since they can break the build.
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      npm-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      github-actions-minor-and-patch:
+        update-types:
+          - minor
+          - patch
