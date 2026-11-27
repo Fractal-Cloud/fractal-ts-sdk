@@ -1,46 +1,88 @@
 name: Security
 
-# Baseline scanning of every pull request: secrets in the commits it adds (gitleaks), dependency
-# vulnerabilities it adds (npm audit), and static-analysis findings it adds (CodeQL). Each
-# gate fails only on what the pull request introduces, so findings already on the base branch never
-# block an unrelated change; each job's summary lists them as the debt to work off. A manual run
-# reports everything on the chosen ref and fails nothing.
+# Dependency vulnerabilities (npm audit), secrets (gitleaks) and static analysis (CodeQL).
+#
+# Pull request: each gate fails only on what the change adds, so findings already on the base branch
+#   never block an unrelated change; each job's summary lists them as the debt to work off.
+# Release: called in `release` mode by release.yml,
+#   on the full tree of the release commit, before anything is published. A dependency
+#   vulnerability with a published fix that .trivyignore does not accept, an undocumented or expired
+#   .trivyignore entry, or any secret fails it, and so stops the release. Static analysis is reported,
+#   not gated.
+# Nightly: security-nightly.yml calls it in `nightly` mode on the default branch and keeps one issue,
+#   labeled `security`, in step with the results.
+# Manual: `report` lists everything on the chosen ref and fails nothing; `release` applies the release
+#   gates, to see whether a release would pass.
 #
 # Third-party code is pinned: actions by commit, tools by version and checksum or image digest.
 on:
   pull_request:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: report lists everything and fails nothing; release applies the release gates
+        type: choice
+        options: [report, release]
+        default: report
+  workflow_call:
+    inputs:
+      mode:
+        description: release (gates the release commit) or nightly (reports for the nightly issue)
+        type: string
+        required: true
+    outputs:
+      secrets-findings:
+        description: The secrets findings that count (empty if the scan did not complete)
+        value: ${{ jobs.secrets.outputs.findings }}
+      secrets-report:
+        description: The secrets report, in Markdown
+        value: ${{ jobs.secrets.outputs.report }}
+      dependencies-findings:
+        description: The dependencies findings that count (empty if the scan did not complete)
+        value: ${{ jobs.dependencies.outputs.findings }}
+      dependencies-report:
+        description: The dependencies report, in Markdown
+        value: ${{ jobs.dependencies.outputs.report }}
+      sast-findings:
+        description: The sast findings that count (empty if the scan did not complete)
+        value: ${{ jobs.sast.outputs.findings }}
+      sast-report:
+        description: The sast report, in Markdown
+        value: ${{ jobs.sast.outputs.report }}
 
 permissions: {}
 
 concurrency:
-  group: security-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # The caller's workflow name is part of the group, so a release run never cancels a nightly one.
+  group: security-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # pr on a pull request; otherwise the mode the caller or the manual run chose.
+  SCAN_MODE: ${{ github.event_name == 'pull_request' && 'pr' || inputs.mode }}
 
 jobs:
   secrets:
     name: Secrets (gitleaks)
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
+    outputs:
+      findings: ${{ steps.tree.outputs.findings }}
+      report: ${{ steps.tree.outputs.report }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # The full history, so the commits between the base and the head can be walked.
-          fetch-depth: 0
+          # A pull request walks the commits between its base and head; the other modes read the tree.
+          fetch-depth: ${{ github.event_name == 'pull_request' && 0 || 1 }}
           persist-credentials: false
 
-      # Only the commits this pull request adds: a secret already in the history is not this
-      # change's to fix, and blocking on it would block every pull request. The release binary, not
-      # gitleaks-action, which needs a paid license for organization repositories.
-      - name: Scan the commits this pull request adds
+      # The release binary, not gitleaks-action, which needs a paid license for organization repositories.
+      - name: Install gitleaks
         env:
           GITLEAKS_VERSION: '8.30.1'
           GITLEAKS_SHA256: '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb'
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
@@ -48,8 +90,57 @@ jobs:
             "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}"
           echo "${GITLEAKS_SHA256}  $RUNNER_TEMP/$archive" | sha256sum -c -
           tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" gitleaks
+
+      # Only the commits this pull request adds: a secret already in the history is not this
+      # change's to fix, and blocking on it would block every pull request.
+      - name: Scan the commits this pull request adds
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
           "$RUNNER_TEMP/gitleaks" git --log-opts="${BASE_SHA}..${HEAD_SHA}" \
             --redact --no-banner --exit-code 1 .
+
+      # Release, nightly and manual runs: every file of the checked-out commit, with .gitleaks.toml and
+      # .gitleaksignore applied. Any finding fails a release. Only the rule, file, line and fingerprint
+      # are printed, never the secret.
+      - name: Scan the tree
+        id: tree
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          json="$RUNNER_TEMP/gitleaks.json"
+          report="$RUNNER_TEMP/gitleaks.md"
+          "$RUNNER_TEMP/gitleaks" dir . --redact --no-banner --exit-code 0 \
+            --report-format json --report-path "$json"
+          count="$(jq length "$json")"
+          {
+            echo "### Secrets (gitleaks): $count in the tree of \`${GITHUB_SHA::12}\`"
+            echo
+            if [ "$count" -gt 0 ]; then
+              echo "Remove each secret and rotate it. For a test fixture, add its fingerprint to \`.gitleaksignore\`"
+              echo "or its path to the allowlist in \`.gitleaks.toml\`."
+              echo
+              echo "| Rule | File | Line | Fingerprint |"
+              echo "|---|---|---|---|"
+              jq -r '.[] | "| \(.RuleID) | \(.File | gsub("\\|"; "\\|")) | \(.StartLine) | `\(.Fingerprint)` |"' "$json"
+            fi
+          } > "$report"
+          cat "$report" >> "$GITHUB_STEP_SUMMARY"
+          delimiter="EOF_$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')"
+          {
+            echo "findings=$count"
+            echo "report<<$delimiter"
+            # Step outputs are size-limited; the full table stays in the job summary.
+            head -c 15000 "$report"
+            echo
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
+          if [ "$SCAN_MODE" = release ] && [ "$count" -gt 0 ]; then
+            echo "::error::gitleaks found $count secrets in the release commit (table in the job summary)."
+            exit 1
+          fi
 
   dependencies:
     name: Dependencies (npm audit)
@@ -57,16 +148,22 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+    outputs:
+      findings: ${{ steps.scan.outputs.findings }}
+      report: ${{ steps.scan.outputs.report }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # The merge commit and its first parent: the base the findings are compared with.
+          # The merge commit and its first parent: the base a pull request is compared with.
           fetch-depth: 2
           persist-credentials: false
 
-      - name: Compare with the base
+      # A pull request fails only on what it adds; a release on every fixable finding that
+      # .trivyignore does not accept; nightly and manual runs report (see sca-diff.sh).
+      - name: Scan
+        id: scan
         env:
-          # Empty outside a pull request: report only.
+          SCA_MODE: ${{ env.SCAN_MODE }}
           SCA_BASE: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
         run: bash .github/scripts/sca-diff.sh npm .
 
@@ -77,6 +174,9 @@ jobs:
     permissions:
       contents: read
       security-events: write
+    outputs:
+      findings: ${{ steps.count.outputs.findings }}
+      report: ${{ steps.count.outputs.report }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -89,7 +189,42 @@ jobs:
 
       # Results go to code scanning. On a pull request, GitHub's "Code scanning results" check fails
       # on alerts the change adds at or above the repository's threshold (High by default), so
-      # existing alerts never block it.
+      # existing alerts never block it. Release and nightly runs report, and fail nothing.
       - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: /language:javascript-typescript
+          output: ${{ runner.temp }}/codeql
+
+      # High and Critical results (a security severity of 7.0 or more), for the nightly issue.
+      - name: Count high-severity results
+        id: count
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          report="$RUNNER_TEMP/codeql.md"
+          jq -s '[.[] | .runs[]
+              | ([.tool.driver.rules[]?, .tool.extensions[]?.rules[]?]
+                 | map({key: .id, value: ((.properties["security-severity"] // "0") | tonumber)}) | from_entries) as $sev
+              | .results[]? | select(($sev[.ruleId] // 0) >= 7.0)
+              | {rule: .ruleId, location: "\(.locations[0].physicalLocation.artifactLocation.uri // "?"):\(.locations[0].physicalLocation.region.startLine // "?")"}]' \
+            "$RUNNER_TEMP"/codeql/*.sarif > "$RUNNER_TEMP/codeql-high.json"
+          count="$(jq length "$RUNNER_TEMP/codeql-high.json")"
+          {
+            echo "### CodeQL: $count High/Critical results (also in code scanning)"
+            echo
+            if [ "$count" -gt 0 ]; then
+              echo "| Rule | Location |"
+              echo "|---|---|"
+              jq -r '.[] | "| \(.rule) | \(.location) |"' "$RUNNER_TEMP/codeql-high.json"
+            fi
+          } > "$report"
+          cat "$report" >> "$GITHUB_STEP_SUMMARY"
+          delimiter="EOF_$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')"
+          {
+            echo "findings=$count"
+            echo "report<<$delimiter"
+            # Step outputs are size-limited; the full table stays in the job summary.
+            head -c 15000 "$report"
+            echo
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"

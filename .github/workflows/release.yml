@@ -4,7 +4,19 @@ on:
   release:
     types: [created]
 jobs:
+  # The full dependency, secret and static-analysis scan of the release commit (security.yml in
+  # release mode). The jobs that publish wait for it, so nothing ships while it fails.
+  security:
+    name: Security
+    uses: ./.github/workflows/security.yml
+    permissions:
+      contents: read
+      security-events: write
+    with:
+      mode: release
+
   release:
+    needs: security
     permissions:
       contents: 'read'
       id-token: 'write'
