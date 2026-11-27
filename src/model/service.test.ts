@@ -56,6 +56,7 @@ import {AwsS3} from './offers/storage';
 import {createFractalCloudClient} from './client';
 import {referenceTo} from './reference';
 import {LiveSystemValidationError} from './validation/live_system_validation_error';
+import {LiveSystemStructureError} from './validation/live_system_structure_error';
 
 const cloud = createFractalCloudClient({
   clientId: 'cid',
@@ -546,9 +547,9 @@ describe('liveSystems.deploy()', () => {
         },
       },
     ];
-    await expect(noRetry.liveSystems.deploy(liveSystem())).rejects.toMatchObject(
-      {status: 403},
-    );
+    await expect(
+      noRetry.liveSystems.deploy(liveSystem()),
+    ).rejects.toMatchObject({status: 403});
     expect(h.requests.map(r => r.method)).toEqual(['GET', 'POST']);
   });
 
@@ -767,5 +768,44 @@ describe('liveSystems.deploy() with a cross-Live-System reference', () => {
     const post = h.requests.find(r => r.method === 'POST')!;
     const body = post.body as {blueprintMap: Record<string, object>};
     expect('reference' in body.blueprintMap.uploads).toBe(false);
+  });
+});
+
+describe('liveSystems.deploy() and validate() refuse a malformed Live System before any request', () => {
+  beforeEach(() => {
+    h.requests.length = 0;
+    h.state.queue = [];
+  });
+
+  /** A Live System written by hand, as generated code may: the catalogue
+   *  component type where the offer type belongs. */
+  const handWritten = () => {
+    const ls = liveSystem();
+    return {
+      ...ls,
+      components: ls.components.map(c => ({
+        ...c,
+        type: 'Storage.PaaS.FilesAndBlobs',
+      })),
+    };
+  };
+
+  it('deploy throws LiveSystemStructureError naming the component, and sends nothing', async () => {
+    const error = await cloud.liveSystems
+      .deploy(handWritten(), {mode: 'wait', quiet: true})
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(LiveSystemStructureError);
+    const structure = error as LiveSystemStructureError;
+    expect(structure.problems).toHaveLength(1);
+    expect(structure.message).toContain("Component 'uploads'");
+    expect(structure.message).toContain('Storage.PaaS.AwsS3');
+    expect(h.requests).toEqual([]);
+  });
+
+  it('validate throws the same, and sends nothing', async () => {
+    await expect(cloud.liveSystems.validate(handWritten())).rejects.toThrow(
+      LiveSystemStructureError,
+    );
+    expect(h.requests).toEqual([]);
   });
 });

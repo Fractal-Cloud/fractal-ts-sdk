@@ -181,6 +181,16 @@ the issues (and in `wait` mode logs `ERROR Live System validation failed  system
 warnings are logged and the deploy continues. `cloud.liveSystems.validate(liveSystem)` returns the
 same result without deploying.
 
+Before any request, `deploy` and `validate` also refuse a Live System no agent could reconcile as
+written, throwing a `LiveSystemStructureError` whose `problems` name each component and the valid
+options: a component `type` that is a catalogue component type (`BigData.PaaS.DataProcessingJob`)
+instead of the offer type implementing it (`BigData.PaaS.AzureDatabricksJob`), an offer type no
+agent declares and no offer is defined on, a `deliveryModel` or `provider` its offer type is not
+declared for, a repeated id, or a dependency or link to a component the Live System does not have.
+`toLiveSystem` applies the same check, so a Live System built through typed offer selection never
+trips it; it guards Live Systems written or edited by hand. `liveSystemProblems(liveSystem)` returns
+the same lines without throwing.
+
 ## The client
 
 `createFractalCloudClient({clientId, clientSecret, baseUrl?})` holds your credentials once — no operation takes them as an argument. Operations are grouped by the entity they act on:
@@ -1545,13 +1555,16 @@ const Ceph = defineOffer<'Storage.ObjectStorage', {storageClass?: string}>({
   deliveryModel: 'CaaS',
 });
 
-// Select it for any ObjectStorage slot, just like a built-in offer:
+// Select it for any ObjectStorage slot authored as CaaS
+// (`ObjectStorage({id: 'uploads', deliveryModel: 'CaaS'})`), like a built-in offer:
 fractal.specialize().toLiveSystem({
   name: 'acme-prod',
   environment,
   select: {uploads: Ceph({storageClass: 'rbd'})},
 });
 ```
+
+The `offerType` is `<Domain>.<DeliveryModel>.<Name>` (a compile error otherwise, typed `OfferTypeName`), its middle segment must be the offer's `deliveryModel`, and it must not be a catalogue component type: `defineOffer({offerType: 'BigData.PaaS.DataProcessingJob', ...})` throws, naming the offers that already implement that component. A custom offer type still needs an agent that registers it, or its components are never reconciled.
 
 By default an offer emits one live component merging the blueprint's neutral params with its vendor config. Pass an `instantiate(ctx, config)` to emit a custom set of live components (e.g. a parent plus one child per `ctx.children` entry).
 

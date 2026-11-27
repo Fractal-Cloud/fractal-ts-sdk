@@ -34,6 +34,8 @@ import type {ApiConfig} from './http';
 import {FractalApiError, sanitizeApiError, send} from './api-error';
 import type {ParameterValidationResult} from './validation/parameter_validation_result';
 import {LiveSystemValidationError} from './validation/live_system_validation_error';
+import {LiveSystemStructureError} from './validation/live_system_structure_error';
+import {liveSystemProblems} from './live_system_problems';
 
 const DEFAULT_POLL_INTERVAL_MS = 5_000;
 const DEFAULT_TIMEOUT_MS = 600_000;
@@ -287,8 +289,22 @@ export async function validateLiveSystem(
   ls: LiveSystem,
   cfg: ApiConfig,
 ): Promise<ParameterValidationResult | undefined> {
+  assertWellFormed(ls);
   return requestValidation(ls, cfg, await liveSystemExists(ls, cfg));
 }
+
+/**
+ * Refuse, before any request, a Live System no agent could reconcile as
+ * written (see `liveSystemProblems`). `toLiveSystem` already refuses one; this
+ * covers a Live System written or changed by hand, which the control plane
+ * would store unchecked and leave in Instantiating.
+ */
+const assertWellFormed = (ls: LiveSystem): void => {
+  const problems = liveSystemProblems(ls);
+  if (problems.length > 0) {
+    throw new LiveSystemStructureError(ls.name, problems);
+  }
+};
 
 /**
  * Reports a validation result in wait mode (one summary line on failure, one
@@ -476,6 +492,7 @@ export async function deployLiveSystem(
     apiConfig,
     opts.mode === 'fire-and-forget' || (opts.quiet ?? false),
   );
+  assertWellFormed(ls);
   const silent = opts.mode === 'fire-and-forget' || (opts.quiet ?? false);
   const quiet = opts.quiet ?? false;
   const startMs = Date.now();
