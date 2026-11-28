@@ -1,8 +1,9 @@
 /**
  * The offer contract generator: the agents' published parameter contracts in,
  * TypeScript modules out. Pure functions only — reading the snapshot and writing
- * files is `scripts/generate-offer-contracts.mjs`; fetching the snapshot is
- * `scripts/refresh-offer-contracts.mjs`. See docs/offer-contracts.md.
+ * files is `scripts/generate-offer-contracts.mjs`; importing a contract into the
+ * snapshot is `scripts/import-agent-contract.mjs` (and, after fetching,
+ * `scripts/refresh-offer-contracts.mjs`). See docs/offer-contracts.md.
  *
  * Input: `param-contract.json` documents (schema 1.x or 2.x). Output: one module
  * per infrastructure domain, exporting one `as const` contract per offer type.

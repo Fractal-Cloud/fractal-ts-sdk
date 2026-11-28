@@ -1,5 +1,5 @@
 {
-  "$comment": "The agent parameter contracts the SDK's offers are generated from. Written by scripts/refresh-offer-contracts.mjs; see docs/offer-contracts.md.",
+  "$comment": "The agent parameter contracts the SDK's offers are generated from. Written by scripts/import-agent-contract.mjs (run by each agent release) and scripts/refresh-offer-contracts.mjs; see docs/offer-contracts.md.",
   "agents": [
     {
       "agentId": "fractal-cloud-agent-aws",
