@@ -51,9 +51,10 @@ CI logs of this repository are): a failure names the step and its exit code only
 
 `.github/workflows/offer-contracts.yml` runs `npm run contracts:check` daily and on demand: it fails,
 listing the agents, when a newer agent release publishes a contract that differs from the
-snapshot. It needs the `AGENT_CONTRACTS_TOKEN` secret (read access to the agent repositories) and
-fails explicitly without it. It is not part of the PR gate, which stays offline. The PR gate checks
-the other half: `src/model/offers/contract/generator.test.ts` regenerates every module from the
+snapshot. It reads the agent repositories with the `AGENT_CONTRACTS_TOKEN` secret, or with
+`GH_PAT` when that one is not set; either needs read access to the agent repositories' releases and
+contents. With neither, it fails explicitly, naming both. It is not part of the PR gate, which
+stays offline. The PR gate checks the other half: `src/model/offers/contract/generator.test.ts` regenerates every module from the
 committed snapshot and requires the committed files to be byte-identical.
 
 ## 2. What is generated

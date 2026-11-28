@@ -22,11 +22,12 @@ jobs:
       - run: npm ci
       - name: Compare the snapshot with the latest agent releases
         env:
-          # Read access to the agent repositories (releases and contents).
-          GH_TOKEN: ${{ secrets.AGENT_CONTRACTS_TOKEN }}
+          # Read access to the agent repositories (releases and contents):
+          # the dedicated AGENT_CONTRACTS_TOKEN when set, else GH_PAT.
+          GH_TOKEN: ${{ secrets.AGENT_CONTRACTS_TOKEN || secrets.GH_PAT }}
         run: |
           if [ -z "$GH_TOKEN" ]; then
-            echo "::error::AGENT_CONTRACTS_TOKEN is not set: the agent contracts cannot be read."
+            echo "::error::Neither AGENT_CONTRACTS_TOKEN nor GH_PAT is set: the agent contracts cannot be read."
             exit 1
           fi
           npm run contracts:check
