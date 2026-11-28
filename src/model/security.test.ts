@@ -231,7 +231,7 @@ describe('Security domain', () => {
 describe('Ocelot routing', () => {
   it('keeps its offer type, though no agent declares it any more', () => {
     // fractal-cloud-agents v8.48.0 keeps Ocelot for the bootstrap Live System
-    // only and caas-k8s v2.0.0 does not serve it yet: no contract lists it,
+    // only and caas-k8s v2.1.0 does not serve it yet: no contract lists it,
     // and the deprecated offer still emits the type it always did.
     expect(
       Object.values(generatedSecurity).map(c => c.offerType as string),

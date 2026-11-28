@@ -6,6 +6,7 @@
  *   - Observability.Tracing
  *   - Observability.Logging
  *   - Observability.LogShipper
+ *   - Observability.Visualization
  *
  * Each agnostic parameter is a typed `.withXxx()` guardrail setter (locks the
  * key at design time). Built exclusively on the LOCKED engine in ../core.
@@ -135,4 +136,34 @@ export const LogShipper = <const Id extends string>(cfg: {
 }): LogShipperNode<Id> =>
   logShipperNode<Id>(
     newNode(cfg.id, 'Observability.LogShipper', cfg.displayName),
+  );
+
+// ── Observability.Visualization ──────────────────────────────────────────────
+/**
+ * Dashboards, exploration and alert views over metrics, logs and traces, on a
+ * container platform (catalogue component `Observability.CaaS.Visualization`).
+ *
+ * What it shows is declared by links, not parameters: link it to the
+ * `Monitoring`, `Logging` and `Tracing` components whose data it serves. Its one
+ * blueprint dependency is the `ContainerPlatform` it runs on
+ * (`dependsOn(platform)`).
+ */
+export type VisualizationNode<Id extends string = string> = ComponentNode<
+  Id,
+  'Observability.Visualization'
+> & {
+  dependsOn: (other: AnyNode) => VisualizationNode<Id>;
+};
+const visualizationNode = <Id extends string>(
+  s: NodeState,
+): VisualizationNode<Id> => ({
+  state: s,
+  dependsOn: other => visualizationNode<Id>(addDependency(s, other.state.id)),
+});
+export const Visualization = <const Id extends string>(cfg: {
+  id: Id;
+  displayName?: string;
+}): VisualizationNode<Id> =>
+  visualizationNode<Id>(
+    newNode(cfg.id, 'Observability.Visualization', cfg.displayName),
   );

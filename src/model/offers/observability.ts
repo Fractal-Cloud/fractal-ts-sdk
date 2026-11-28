@@ -10,6 +10,7 @@ import {unsupported} from './neutral_rules';
 import {Messaging_PaaS_AwsSqsQueue} from './generated/messaging';
 import {Storage_PaaS_AwsS3, Storage_PaaS_S3} from './generated/storage';
 import {
+  Observability_CaaS_Grafana,
   Observability_CaaS_GrafanaAlloy,
   Observability_CaaS_GrafanaLoki,
   Observability_CaaS_GrafanaTempo,
@@ -21,7 +22,10 @@ import type {Observability_CaaS_Prometheus} from './retired/observability_caas_p
 import type {ContractConfig} from './contract/contract_config';
 import {defineOffer, type LiveSystemComponent} from '../core';
 import type {GrafanaAlloyConfig} from './grafana_alloy_config';
+import {ensureGrafanaParameters} from './grafana_checks';
+import type {GrafanaConfig} from './grafana_config';
 import type {GrafanaObjectStorageBackendConfig} from './grafana_object_storage_backend_config';
+import {ensureKubePrometheusStackParameters} from './kube_prometheus_stack_checks';
 import type {KubePrometheusStackConfig} from './kube_prometheus_stack_config';
 import {
   OPEN_SEARCH_OFFER_TYPE,
@@ -231,7 +235,17 @@ const ensureBackend = (
   ensureOneReadWriteBucket(self, all);
 };
 
-/** The routes a Grafana link to a TraefikGateway carries, as the agent reads them. */
+/** Grafana's `root_url` path: the characters the agent accepts in it. */
+const GRAFANA_ROOT_URL_PATH = /^\/[A-Za-z0-9._~/-]*$/;
+
+/**
+ * The routes a Grafana link to a TraefikGateway carries, as the agent reads
+ * them. Both Grafanas route this way: the stack's bundled one and the `Grafana`
+ * offer's, and each route's prefix becomes Grafana's `root_url`.
+ *
+ * Grafana is served at `/` and the gateway strips the sub-path itself, so a
+ * route sets no rewritePath and its prefix ends with `/`.
+ */
 const ensureGrafanaRoutes = (
   self: LiveSystemComponent,
   all: readonly LiveSystemComponent[],
@@ -276,27 +290,39 @@ const ensureGrafanaRoutes = (
           `Grafana route prefix '${route.prefix}' must end with "/" (for example /grafana/)`,
         );
       }
+      if (!GRAFANA_ROOT_URL_PATH.test(route.prefix)) {
+        refuse(
+          self.id,
+          `Grafana route prefix '${route.prefix}' has a path Grafana's root_url cannot carry: ` +
+            "use only letters, digits, '.', '_', '~', '-' and '/'",
+        );
+      }
     }
   }
 };
 
 /**
- * kube-prometheus-stack: Prometheus, Alertmanager and Grafana (chart 91.9.0,
- * objects `kps-*`), selecting every ServiceMonitor and PrometheusRule in the
- * cluster.
+ * kube-prometheus-stack: Prometheus, Alertmanager and, unless
+ * `bundledGrafana: false`, Grafana (chart 91.9.0, objects `kps-*`), selecting
+ * every ServiceMonitor and PrometheusRule in the cluster.
  *
- * Grafana may be routed through a `TraefikGateway` with a route link, as a
- * workload's (`bp.link(stack, gateway, gatewayRouteSettings({routes: [{prefix:
- * '/grafana/'}]}))`): the agent routes to `kps-grafana:80`, strips the sub-path
- * (which must end with `/`) and sets Grafana's `root_url`. The route goes
- * through ForwardAuth unless the gateway's `forwardAuthExemptComponentIds`
- * lists this component.
+ * Its bundled Grafana may be routed through a `TraefikGateway` with a route
+ * link, as a workload's (`bp.link(stack, gateway, gatewayRouteSettings({routes:
+ * [{prefix: '/grafana/'}]}))`): the agent routes to `kps-grafana:80`, strips the
+ * sub-path (which must end with `/`) and sets Grafana's `root_url`. The route
+ * goes through ForwardAuth unless the gateway's `forwardAuthExemptComponentIds`
+ * lists this component. With `bundledGrafana: false`, `lokiUrl`, `tempoUrl` and
+ * `values.grafana` are refused.
+ *
+ * caas-k8s v2.0.0 removed `secretEnv` and `environmentSecretShortNames`: the
+ * stack reads no environment secrets. Google sign-in, dashboards and admins are
+ * the `Grafana` offer's, on a `Visualization` component.
  *
  * Output fields: `namespace`, `releaseName`, `chartVersion`, `prometheusUrl`,
  * `alertmanagerUrl`, `grafanaUrl`, `grafanaAdminSecretName`, `storageClassName`
  * (the class the volume was created with, kept), `gatewayRoutes`.
  */
-const kubePrometheusStack = defineOffer<
+export const KubePrometheusStack = defineOffer<
   'Observability.Monitoring',
   KubePrometheusStackConfig
 >({
@@ -306,60 +332,47 @@ const kubePrometheusStack = defineOffer<
   neutral: {
     scrapeInterval: unsupported('the agent sets no scrape interval'),
   },
-  validate: (self, all) => {
+  validate: (self, all, config) => {
+    ensureKubePrometheusStackParameters(self, config);
     ensureGrafanaRoutes(self, all);
   },
 });
 
-/** Why the stack's environment-secret settings are refused. */
-const STACK_SECRETS_RETIRED =
-  'aria-agent-caas-k8s v2.0.0 no longer gives kube-prometheus-stack ' +
-  'environment secrets (its contract dropped secretEnv and secret access); ' +
-  'remove it';
-
+// ── Observability.Visualization offers ───────────────────────────────────────
 /**
- * Refuse the environment-secret settings caas-k8s v1.x read and v2.0.0 does
- * not: a value the agent ignores would deploy Grafana without it, silently.
+ * Grafana on its own (caas-k8s v2.0.0), as a `Visualization`: dashboards,
+ * exploration and alert views over the metrics, logs and traces of the
+ * container platform.
+ *
+ * Its datasources are its links: each linked `KubePrometheusStack`,
+ * `GrafanaLoki` and `GrafanaTempo` becomes one, whose uid is that component's
+ * id. `datasources` declares the ones outside the Live System and `dashboards`
+ * the dashboards as code; both are carried as given and checked by the agent.
+ *
+ * Sign-in is Google only (`googleClientId`, `allowedDomains`, `hostedDomain`),
+ * with the client secret in the environment secret `secretEnv`
+ * `GF_AUTH_GOOGLE_CLIENT_SECRET` references: select it with
+ * `withEnvironmentSecrets([...])`. Everyone who signs in is a Viewer but the
+ * emails in `admins`. Pair it with `KubePrometheusStack({bundledGrafana:
+ * false})`.
+ *
+ * It may be routed through a `TraefikGateway` with a route link, as the
+ * stack's bundled Grafana: the agent strips the sub-path (which must end with
+ * `/`; a `rewritePath` is refused) and the route's prefix becomes Grafana's
+ * `root_url`.
  */
-const refuseRetiredStackSecrets = (config: KubePrometheusStackConfig): void => {
-  for (const key of ['secretEnv', 'environmentSecretShortNames'] as const) {
-    if (config?.[key] !== undefined) {
-      throw new Error(`KubePrometheusStack ${key}: ${STACK_SECRETS_RETIRED}.`);
-    }
-  }
-};
-
-/**
- * Always refuses: kept so code written for caas-k8s v1.x still compiles and
- * fails with the reason.
- */
-const retiredWithEnvironmentSecrets: (
-  shortNames: readonly string[],
-) => never = () => {
-  throw new Error(
-    `KubePrometheusStack withEnvironmentSecrets: ${STACK_SECRETS_RETIRED}.`,
-  );
-};
-
-export const KubePrometheusStack = Object.assign(
-  (config: KubePrometheusStackConfig) => {
-    refuseRetiredStackSecrets(config);
-    return {
-      ...kubePrometheusStack(config),
-      /**
-       * @deprecated aria-agent-caas-k8s v2.0.0 gives the stack no environment
-       * secrets. Always throws.
-       */
-      withEnvironmentSecrets: retiredWithEnvironmentSecrets,
-    };
+export const Grafana = defineOffer<
+  'Observability.Visualization',
+  GrafanaConfig
+>({
+  satisfies: 'Observability.Visualization',
+  contract: Observability_CaaS_Grafana,
+  deliveryModel: 'CaaS',
+  validate: (self, all) => {
+    ensureGrafanaParameters(self);
+    ensureGrafanaRoutes(self, all);
   },
-  {
-    offerType: kubePrometheusStack.offerType,
-    contract: kubePrometheusStack.contract,
-    satisfies: kubePrometheusStack.satisfies,
-    neutral: kubePrometheusStack.neutral,
-  },
-);
+});
 
 /**
  * Grafana Loki, monolithic (grafana-community chart 18.13.7, Loki 3.7.8). Its

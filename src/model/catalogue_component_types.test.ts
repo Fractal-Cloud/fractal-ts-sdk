@@ -30,8 +30,9 @@ const COMPONENTS_DIR = join(__dirname, 'components');
  * snapshot, so the table is checked against the catalogue's own spelling and a
  * rename there is a deliberate edit here.
  *
- * `BigData.PaaS.DataCatalog`, `BigData.PaaS.DataCatalogTable` and
- * `Storage.IaaS.BlockVolume` are declared by the aria-spec taxonomy only.
+ * `BigData.PaaS.DataCatalog`, `BigData.PaaS.DataCatalogTable`,
+ * `Observability.CaaS.Visualization` and `Storage.IaaS.BlockVolume` are
+ * declared by the aria-spec taxonomy only.
  */
 const CATALOGUE_TYPES: ReadonlySet<string> = new Set([
   'APIManagement.CaaS.APIGateway',
@@ -69,6 +70,7 @@ const CATALOGUE_TYPES: ReadonlySet<string> = new Set([
   'Observability.CaaS.LogShipper',
   'Observability.CaaS.Monitoring',
   'Observability.CaaS.Tracing',
+  'Observability.CaaS.Visualization',
   'Security.CaaS.ServiceMeshSecurity',
   'Security.PaaS.IdentityProvider',
   'Storage.CaaS.ObjectStorage',
