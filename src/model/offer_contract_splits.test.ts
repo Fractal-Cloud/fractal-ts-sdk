@@ -2,23 +2,26 @@
  * offer_contract_splits.test.ts — two agent contracts the 2.15.0 re-pin
  * reshaped, and the SDK offers that must not lose anything over it.
  *
- * - fractal-cloud-agents v8.48.0 (gcp): `NetworkAndCompute.PaaS.CloudRun` is
+ * - fractal-cloud-agents since v8.48.0 (gcp): `NetworkAndCompute.PaaS.CloudRun` is
  *   the Cloud Run platform. It declares `region` only, and the agent creates
  *   nothing for it (platform-only, since v8.28.0). The workload keys are
  *   declared on `NetworkAndCompute.CaaS.CloudRunService` alone. The SDK
  *   `CloudRun` offer emits `CloudRunService`, so every key it sent with 2.14.0
  *   still reaches the agent that reads it.
- * - aria-agent-caas-k8s v2.0.0: MinIO is published as two offers.
+ * - aria-agent-caas-k8s since v2.0.0: MinIO is published as two offers.
  *   `Storage.CaaS.MinioTenant` serves `Storage.CaaS.MinIO`, and
  *   `BigData.CaaS.MinioTenant` serves `BigData.CaaS.MinIO`. The SDK `MinIO`
  *   offer still emits `Storage.CaaS.MinioTenant` with the keys of 2.14.0.
  *
  * The facts about the contracts are read from the committed snapshot, which
  * `readSnapshot` refuses unless it matches the digest and tag pinned in
- * contracts/sources.json. The tag and digest are spelled out below: a re-pin
- * fails here until these facts are checked against the new contract.
+ * contracts/sources.json. The tag is read from there too, not spelled out: each
+ * agent release re-pins it by an automated pull request, and that pull request
+ * fails here only when a fact below stops holding for the new contract (a key
+ * leaves an offer, an offer is re-shaped), never because the tag moved.
  */
 import {describe, expect, it} from 'vitest';
+import {compareTags} from '../../scripts/offer-contracts/import.mjs';
 import {
   readSnapshot,
   readSources,
@@ -60,6 +63,27 @@ const snapshotOffer = (agentId: string, offerType: string): SnapshotOffer => {
 
 const paramKeys = (offer: SnapshotOffer) => offer.params.map(p => p.key).sort();
 
+/**
+ * The pinned contract comes from `repository`'s `asset`, at a release no older
+ * than `since` (the release that introduced the facts asserted), and the
+ * snapshot holds that release.
+ */
+const expectPinnedSince = (
+  agentId: string,
+  repository: string,
+  asset: string,
+  since: string,
+) => {
+  const pin = source(agentId);
+  expect(pin.repository).toBe(repository);
+  expect(pin.fetch).toEqual({kind: 'release-asset', asset});
+  expect(pin.tag).toMatch(/^v\d+\.\d+\.\d+$/);
+  expect(compareTags(pin.tag, since)).toBeGreaterThanOrEqual(0);
+  expect(SNAPSHOTS.find(s => s.agentId === agentId)!.agentVersion).toBe(
+    pin.tag,
+  );
+};
+
 const instantiate = (
   offer: Offer,
   parameters: Record<string, unknown> = {},
@@ -74,7 +98,7 @@ const instantiate = (
     children: [],
   });
 
-describe('GCP Cloud Run: platform and service (fractal-cloud-agents v8.48.0)', () => {
+describe('GCP Cloud Run: platform and service (fractal-cloud-agents since v8.48.0)', () => {
   const GCP = 'fractal-cloud-agent-gcp';
 
   // Every key the CloudRunService contract declared when 2.14.0 was cut
@@ -94,15 +118,13 @@ describe('GCP Cloud Run: platform and service (fractal-cloud-agents v8.48.0)', (
     'serviceAccountEmail',
   ];
 
-  it('is read from the gcp contract published with v8.48.0', () => {
-    expect(source(GCP)).toEqual({
-      agentId: GCP,
-      repository: 'Fractal-Cloud/fractal-cloud-agents',
-      tag: 'v8.48.0',
-      fetch: {kind: 'release-asset', asset: 'param-contract.gcp.json'},
-      snapshotSha256:
-        'f8ab1fcfae4dc4a1e91a99f7fa17f840b3acf645f83d41c30c785d7b5ce74d68',
-    });
+  it('is read from a gcp contract published with v8.48.0 or later', () => {
+    expectPinnedSince(
+      GCP,
+      'Fractal-Cloud/fractal-cloud-agents',
+      'param-contract.gcp.json',
+      'v8.48.0',
+    );
   });
 
   it('declares only region on the platform type, which the agent deploys nothing for', () => {
@@ -159,7 +181,7 @@ describe('GCP Cloud Run: platform and service (fractal-cloud-agents v8.48.0)', (
   });
 });
 
-describe('caas-k8s MinIO: one offer per service type (aria-agent-caas-k8s v2.0.0)', () => {
+describe('caas-k8s MinIO: one offer per service type (aria-agent-caas-k8s since v2.0.0)', () => {
   const CAAS = 'aria-agent-caas-k8s';
 
   // The keys Storage.CaaS.MinioTenant declared when 2.14.0 was cut
@@ -175,15 +197,13 @@ describe('caas-k8s MinIO: one offer per service type (aria-agent-caas-k8s v2.0.0
     'volumesPerServer',
   ];
 
-  it('is read from the caas-k8s contract published with v2.0.0', () => {
-    expect(source(CAAS)).toEqual({
-      agentId: CAAS,
-      repository: 'Fractal-Cloud/aria-agent-caas-k8s',
-      tag: 'v2.0.0',
-      fetch: {kind: 'release-asset', asset: 'param-contract.json'},
-      snapshotSha256:
-        'dc8dfd61f30c2267a5f7f279b5d330f08b3d2c6696b3291793cceddde4eaa671',
-    });
+  it('is read from a caas-k8s contract published with v2.0.0 or later', () => {
+    expectPinnedSince(
+      CAAS,
+      'Fractal-Cloud/aria-agent-caas-k8s',
+      'param-contract.json',
+      'v2.0.0',
+    );
   });
 
   it('serves each MinIO service type from its own offer, with the same keys', () => {

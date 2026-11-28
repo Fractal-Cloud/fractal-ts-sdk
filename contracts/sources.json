@@ -1,5 +1,5 @@
 {
-  "$comment": "The agent parameter contracts the SDK's offers are generated from. Written by scripts/refresh-offer-contracts.mjs; see docs/offer-contracts.md.",
+  "$comment": "The agent parameter contracts the SDK's offers are generated from. Written by scripts/import-agent-contract.mjs (run by each agent release) and scripts/refresh-offer-contracts.mjs; see docs/offer-contracts.md.",
   "agents": [
     {
       "agentId": "fractal-cloud-agent-aws",
@@ -44,12 +44,12 @@
     {
       "agentId": "aria-agent-caas-k8s",
       "repository": "Fractal-Cloud/aria-agent-caas-k8s",
-      "tag": "v2.0.0",
+      "tag": "v2.1.0",
       "fetch": {
         "kind": "release-asset",
         "asset": "param-contract.json"
       },
-      "snapshotSha256": "dc8dfd61f30c2267a5f7f279b5d330f08b3d2c6696b3291793cceddde4eaa671"
+      "snapshotSha256": "bb7b5f87c70dff68f74d7e191c73029b079b94b73f9486f4e588d894db039fd1"
     },
     {
       "agentId": "aria-agent-aruba",

@@ -17,3 +17,15 @@
 # Example (not active):
 #   # CVE-2026-0000 | reason: the vulnerable code path is in a CLI the image never runs | owner: @someone | expires: 2026-12-31
 #   CVE-2026-0000
+
+# minimatch < 11.0.1, glob-pattern denial of service (GHSA-g3hv-75wg-m249, CVE-2026-118764), reached
+# only through typedoc 0.28.20, the latest typedoc, which requires minimatch ^10.2.5. typedoc is a
+# dev dependency run by `npm run build:docs` on this repository's own sources; nothing of it ships in
+# the package, and the patterns it matches are ours, not user input. No fix exists without breaking
+# it: npm's suggestion is a downgrade to typedoc 0.23.25, and overriding typedoc's minimatch to
+# 11.0.9 fails the docs build (`mini.matchOne is not a function`). Remove once typedoc depends on
+# minimatch >= 11.0.1.
+# GHSA-g3hv-75wg-m249 | reason: dev-only docs tool (typedoc) on our own glob patterns; no non-breaking fix until typedoc moves to minimatch 11 | owner: @amenuor | expires: 2027-02-28
+GHSA-g3hv-75wg-m249
+# CVE-2026-118764 | reason: same finding as GHSA-g3hv-75wg-m249, under its CVE ID for scanners that report that | owner: @amenuor | expires: 2027-02-28
+CVE-2026-118764

@@ -34,27 +34,80 @@ SHA-256. Nothing is fetched when the SDK is built, tested or installed.
 Offers whose agent publishes no contract (Hetzner, vSphere, `Keycloak`) stay
 hand-written until it does; the conformance test (section 3) then requires the move.
 
-### Refreshing
+### How a new contract arrives: one pull request per agent release
+
+The agents push their contracts here; this repository never reads theirs. The release workflow of
+each agent repository that publishes a contract (`fractal-cloud-agents`, `aria-agent-caas-k8s`,
+`aria-agent-openshift`) ends with a job, `push-contract-to-sdk`, that:
+
+1. checks this repository out with the agent repository's `GH_PAT`;
+2. runs `scripts/import-agent-contract.mjs` on the `param-contract.json` it has just released (for
+   `fractal-cloud-agents`, once per cloud agent);
+3. opens a pull request, **`<agent repository> <tag> contract`**, from a branch of its own,
+   `contracts/<agent repository>/<tag>`, whose body links the agent release and lists, per offer,
+   the keys added, removed and changed, with the changes that may break consumers first;
+4. closes the open pull requests of that agent's earlier releases, with a comment naming the new
+   one. Their branches are kept, so a fix pushed to one can be picked onto the new one.
+
+It opens nothing when the release publishes the contract the snapshot already holds (only its
+`agentVersion` differs), or when the release is older than the pinned one. Pre-releases push
+nothing. A failure of that job is an error annotation on the agent's release run; it never fails
+or rolls the release back. Each import is a separate pull request, so the PR gate checks it like any
+other change: `src/model/offers/contract/generator.test.ts` regenerates every module from the
+committed snapshot and requires the committed files to be byte-identical, and the conformance tests
+(section 3) name every neutral parameter that needs a rule and every rule that went stale.
+
+### Reviewing a contract pull request
+
+- **Nothing listed under "Possibly breaking"**: the change loosens or extends the contract
+  (section 5). Check the generated diff reads as the summary says, add a line to the CHANGELOG
+  (minor), and merge.
+- **Something listed under "Possibly breaking"** (an offer or key removed without an alias, a key
+  that became required, a type change, allowed values dropped): the pull request usually fails the
+  PR gate, because offers built on the old keys stop compiling. Push the SDK changes it needs to the
+  pull request's branch (a translation becomes a refusal, a renamed key's setter follows it, ...),
+  list the change under **Breaking** in the CHANGELOG with the agent release, and release the SDK
+  accordingly. When a key was removed by mistake, fix the agent and release it instead: its pull
+  request then supersedes this one.
+- **"constraints tightened"** under "Possibly breaking" compiles and usually passes the gate: values
+  outside the new bounds or pattern are refused when the Live System is built. Check that the SDK's
+  own examples, guides and tests use none, and note the change in the CHANGELOG (section 5).
+- No test spells out an agent's tag or digest: a test about a contract reads the pin from
+  `contracts/sources.json` and asserts facts about the contract itself (its keys, its offers, the
+  release they appeared in at the earliest), so an import that keeps those facts passes, and one
+  that breaks them fails, naming the fact. Keep it that way when adding such a test.
+- A later release of the same agent closes the pull request; carry any fix pushed to it over to
+  the new one.
+
+### Importing by hand
 
 ```bash
-# Needs: the GitHub CLI with read access to the agent repositories (GH_TOKEN).
-node scripts/refresh-offer-contracts.mjs            # re-fetch the pinned releases
-node scripts/refresh-offer-contracts.mjs --latest   # move every pin to the agent's latest release
-npm run contracts:generate                           # regenerate src/model/offers/generated/
+# Offline: from a param-contract.json you already have (e.g. downloaded from the agent release).
+node scripts/import-agent-contract.mjs aria-agent-caas-k8s v2.1.0 ./param-contract.json
+# An agent the sources do not list yet also needs its repository and release asset:
+node scripts/import-agent-contract.mjs aria-agent-x v0.1.0 ./param-contract.json \
+  --repository Fractal-Cloud/aria-agent-x --asset param-contract.json
 npm test   # names every neutral parameter that needs a rule, and every rule that went stale
 ```
 
-The script never echoes the output of the tools it runs (the agent repositories are not public, and
-CI logs of this repository are): a failure names the step and its exit code only.
+The import validates that the document is that agent's contract at that tag, writes the canonical
+snapshot, moves the pin in `contracts/sources.json` (repository, tag, asset, digest) and
+regenerates `src/model/offers/generated/`; the whole model is generated, and so validated, before
+the first file is written. It prints the change summary (Markdown, names only) on standard output,
+and nothing when the contract did not change. A tag older than the pinned one imports nothing unless
+`--allow-downgrade`.
 
-### Staleness check
+To fetch and import in one go, with the GitHub CLI and read access to the agent repositories
+(`GH_TOKEN`):
 
-`.github/workflows/offer-contracts.yml` runs `npm run contracts:check` daily and on demand: it fails,
-listing the agents, when a newer agent release publishes a contract that differs from the
-snapshot. It needs the `AGENT_CONTRACTS_TOKEN` secret (read access to the agent repositories) and
-fails explicitly without it. It is not part of the PR gate, which stays offline. The PR gate checks
-the other half: `src/model/offers/contract/generator.test.ts` regenerates every module from the
-committed snapshot and requires the committed files to be byte-identical.
+```bash
+node scripts/refresh-offer-contracts.mjs            # re-fetch the pinned releases
+node scripts/refresh-offer-contracts.mjs --latest   # move every pin to the agent's latest release
+node scripts/refresh-offer-contracts.mjs --latest --check   # write nothing; exit 1 when behind
+```
+
+The refresh never echoes the output of the tools it runs (the agent repositories are not public,
+and CI logs of this repository are): a failure names the step and its exit code only.
 
 ## 2. What is generated
 
@@ -194,6 +247,7 @@ Offer config types follow the contracts, so refreshing the snapshot can change t
 | key becomes optional, allowed values widen | config loosens | minor |
 | key removed or renamed with a declared alias | the agent still reads the alias; the SDK offers the canonical key | minor, noted |
 | key removed or renamed without an alias, becomes required, type or allowed values narrow | consumer code stops compiling | listed under **Breaking** in the CHANGELOG, with the agent release |
+| a key's constraints tighten (a bound added or moved inward, a pattern added or changed, a `warn` constraint made an error) | code compiles; a value the new agent refuses is refused when the Live System is built instead of at deploy | minor, noted in the CHANGELOG with the agent release |
 | an agent starts reading a key the SDK refuses | the conformance test flags the stale refusal; it becomes a translation | minor |
 | an agent stops reading a key a translation writes | the translation stops compiling; it becomes a refusal | listed under **Breaking** |
 
@@ -207,8 +261,10 @@ contracts/snapshot/<agentId>.json       canonical published contracts
 contracts/undeclared-parameters.json    undeclared keys an offer may still send, each with a reason
 scripts/offer-contracts/generator.mjs   contracts -> modules (pure)
 scripts/offer-contracts/snapshot.mjs    read and verify the snapshot
+scripts/offer-contracts/import.mjs      validate, summarize and write one agent's contract
+scripts/import-agent-contract.mjs       import a local param-contract.json (agent releases run it)
 scripts/generate-offer-contracts.mjs    npm run contracts:generate
-scripts/refresh-offer-contracts.mjs     npm run contracts:refresh / contracts:check
+scripts/refresh-offer-contracts.mjs     fetch, then import (npm run contracts:refresh / contracts:check)
 src/model/offers/generated/*.ts         generated contracts (do not edit)
 src/model/offers/contract/*.ts          OfferContract, ContractConfig, contractKey, ...
 src/model/validation/*.ts               ParameterValidationResult, LiveSystemValidationError

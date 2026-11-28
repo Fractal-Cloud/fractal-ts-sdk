@@ -1,5 +1,7 @@
 /**
- * Fetches the agents' published parameter contracts into contracts/snapshot/.
+ * Fetches the agents' published parameter contracts and imports them, for
+ * manual use: each agent release already opens a pull request with its contract
+ * (scripts/import-agent-contract.mjs, run by the agent's release workflow).
  * Needs network and the GitHub CLI with read access to the agent repositories
  * (GH_TOKEN): see docs/offer-contracts.md.
  *
@@ -9,18 +11,15 @@
  *                                                       write nothing; exit 1 when the
  *                                                       snapshot is behind a release
  *
- * After writing, run `npm run contracts:generate`.
+ * Without --check, the snapshot, contracts/sources.json and the generated
+ * modules are written, as one import per agent (scripts/offer-contracts/import.mjs).
  */
 import {execFileSync} from 'node:child_process';
-import {mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {mkdtempSync, readFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {canonicalJson, sha256} from './offer-contracts/generator.mjs';
-import {
-  SOURCES_FILE,
-  readSources,
-  snapshotFile,
-} from './offer-contracts/snapshot.mjs';
+import {applyImports, isChange, planImport} from './offer-contracts/import.mjs';
+import {readSources} from './offer-contracts/snapshot.mjs';
 
 const args = new Set(process.argv.slice(2));
 const latest = args.has('--latest');
@@ -84,7 +83,7 @@ const FETCHERS = {
 };
 
 const sources = readSources(root);
-const stale = [];
+const plans = [];
 const work = mkdtempSync(join(tmpdir(), 'offer-contracts-'));
 try {
   for (const agent of sources.agents) {
@@ -96,47 +95,41 @@ try {
       );
     }
     const agentWork = mkdtempSync(join(work, 'agent-'));
-    const projection = JSON.parse(fetcher(agent, tag, agentWork));
-    if (
-      projection.agentId !== agent.agentId ||
-      projection.agentVersion !== tag
-    ) {
-      throw new Error(
-        `${agent.repository}@${tag} published ${projection.agentId}@${projection.agentVersion}, ` +
-          `expected ${agent.agentId}@${tag}`,
-      );
-    }
-    const text = canonicalJson(projection);
-    const digest = sha256(text);
-    if (tag === agent.tag && digest === agent.snapshotSha256) {
+    const plan = planImport({
+      root,
+      sources,
+      agentId: agent.agentId,
+      tag,
+      text: fetcher(agent, tag, agentWork),
+    });
+    plans.push(plan);
+    if (isChange(plan)) {
+      console.log(`${agent.agentId}: snapshot ${agent.tag}, published ${tag}`);
+    } else {
       console.log(`${agent.agentId}: ${tag} is current`);
-      continue;
-    }
-    stale.push(`${agent.agentId}: snapshot ${agent.tag}, published ${tag}`);
-    if (!check) {
-      writeFileSync(join(root, snapshotFile(agent.agentId)), text);
-      agent.tag = tag;
-      agent.snapshotSha256 = digest;
-      console.log(`${agent.agentId}: wrote ${tag}`);
     }
   }
 } finally {
   rmSync(work, {recursive: true, force: true});
 }
 
+const stale = plans.filter(isChange);
 if (check) {
   if (stale.length > 0) {
     console.error(
-      `The offer contract snapshot is stale:\n  ${stale.join('\n  ')}\n` +
-        'Run `node scripts/refresh-offer-contracts.mjs --latest && npm run contracts:generate`, ' +
-        'review the generated diff and release notes (docs/offer-contracts.md), and open a PR.',
+      `The offer contract snapshot is stale:\n  ${stale
+        .map(
+          plan =>
+            `${plan.agentId}: snapshot ${plan.fromTag}, published ${plan.tag}`,
+        )
+        .join('\n  ')}\n` +
+        'Run `node scripts/refresh-offer-contracts.mjs --latest`, review the generated diff and ' +
+        'release notes (docs/offer-contracts.md), and open a PR.',
     );
     process.exit(1);
   }
   console.log('The offer contract snapshot is current.');
 } else {
-  writeFileSync(
-    join(root, SOURCES_FILE),
-    `${JSON.stringify(sources, null, 2)}\n`,
-  );
+  await applyImports(root, sources, plans);
+  console.log(`Imported ${stale.length} contract(s).`);
 }
