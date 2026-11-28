@@ -9,7 +9,7 @@ export const APIManagement_CaaS_Ambassador = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.17.0',
+      agentVersion: 'v2.0.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -41,90 +41,13 @@ export const APIManagement_CaaS_ArubaAPIGateway = {
   params: {},
 } as const satisfies OfferContract;
 
-export const APIManagement_CaaS_Traefik = {
-  offerType: 'APIManagement.CaaS.Traefik',
-  serviceTypes: [],
-  declaredBy: [
-    {
-      agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
-      contractSchemaVersion: '2.0',
-      provider: 'AWS',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
-      contractSchemaVersion: '2.0',
-      provider: 'Azure',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
-      contractSchemaVersion: '2.0',
-      provider: 'GCP',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.31.0',
-      contractSchemaVersion: '2.0',
-      provider: 'OCI',
-      parameterRules: [],
-    },
-  ],
-  params: {
-    /** Deprecated: id of the Kubernetes cluster component to deploy into. Used only when the component declares no dependency on a Kubernetes cluster; declare that dependency instead. */
-    containerPlatform: {type: 'string', required: false},
-    /** Ports Traefik listens on, each a map {name, port, exposedPort, protocol, isTlsEnabled, isHttpsRedirected} or a 'name:port' string. exposedPort defaults to port, protocol to tcp (tcp or udp), isTlsEnabled to true (in the string form, true only for https and websecure) and isHttpsRedirected to false. Entries without a name or port are skipped and none left fails the component; a name must be a valid Kubernetes port name (at most 15 characters) and cannot be 'traefik', which the agent reserves. */
-    entryPoints: {type: 'array', required: true},
-    /** Name of the environment secret the forward-auth service signs its session cookies with. Required together with the other three OIDC keys; a name that resolves to no secret counts as unset. */
-    forwardAuthSecretId: {type: 'string', required: false},
-    /** Fully qualified host name the Traefik dashboard and API route (and the /_oauth callback when OIDC is on) answers on. When unset, that route matches an empty host, which no request carries: the dashboard and API are unreachable, and so is the /_oauth callback this route serves. */
-    hostname: {type: 'string', required: false, default: ''},
-    /** Static IP address requested for Traefik's LoadBalancer Service (loadBalancerIP). The address must already be reserved for the cluster; when unset, the cloud provider assigns one. */
-    loadbalancerIp: {type: 'string', required: false, default: ''},
-    /** Kubernetes namespace Traefik is deployed into. When unset, the component id, which must then be a valid DNS-1123 label (at most 63 lowercase letters, digits and hyphens). */
-    namespace: {
-      type: 'string',
-      required: false,
-      derived: {note: 'defaults to the component id when absent'},
-    },
-    /** Client id of the OIDC application registered for this gateway. Required together with the other three OIDC keys. */
-    oidcClientId: {type: 'string', required: false},
-    /** Name of the environment secret holding the OIDC client secret; the raw secret is never a parameter. Required together with the other three OIDC keys; a name that resolves to no secret counts as unset. */
-    oidcClientSecretId: {type: 'string', required: false},
-    /** Issuer URL of the OpenID Connect provider that protects the routes through forward authentication. OIDC is enabled only when oidcIssuerUrl, oidcClientId, oidcClientSecretId and forwardAuthSecretId are all set; setting only some of them fails the component. */
-    oidcIssuerUrl: {type: 'string', required: false},
-    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {
-      type: 'string',
-      required: false,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-      ],
-    },
-    /** HSTS security-headers middleware: a map {active, stsSeconds, stsIncludeSubdomains, stsPreload, stsForce}. When unset, the middleware is applied with stsSeconds 63072000 (two years) and the three flags true; any key left out of the map takes that same value, and active=false removes the middleware. */
-    securityHeadersSettings: {type: 'object', required: false, default: {}},
-    /** TLS certificates Traefik serves, each a map {certSecretId, keySecretId, isDefault} naming the environment secrets that hold the base64-encoded PEM certificate and its private key. Entries missing either id are skipped; a named secret that does not exist fails the component. When none is marked isDefault, the first one is the default certificate. */
-    tlsCertificates: {type: 'array', required: false, default: []},
-    /** TLS options of the entry points, as {supportedTlsVersions, supportedCiphers}: supportedTlsVersions lists TLS_1_0, TLS_1_1, TLS_1_2 or TLS_1_3 (the lowest becomes the minimum version; any other value fails the component), supportedCiphers lists cipher-suite names as Go's crypto/tls spells them (e.g. TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256). Each half left unset keeps its default: TLS 1.2 and 1.3, with a fixed list of ECDHE and TLS 1.3 AES-GCM / ChaCha20 suites. */
-    tlsSettings: {type: 'object', required: false, default: {}},
-    /** Distributed tracing, as {jaeger: {collectorEndpoint, localAgentPort, localAgentUrlPath}}. Traefik sends traces over OpenTelemetry (OTLP over HTTP) to that endpoint. When jaeger is set without a collectorEndpoint, the endpoint is the Jaeger component this gateway links to with link type JaegerTracing, on localAgentPort (default 4318) and localAgentUrlPath (default /v1/traces), and the component fails when there is no such link. Only an OTLP traces endpoint (a path ending in /v1/traces, not on a Jaeger v1 port 14268 / 6831 / 6832) is used as declared; any other endpoint is sent to the same host's OTLP receiver (http://<host>:4318/v1/traces), and the remap is published in contractWarnings. An endpoint without a scheme is read as http://. The collector must accept OTLP over HTTP, as Jaeger v2 does. When unset, tracing is off. */
-    tracing: {type: 'object', required: false, default: {}},
-  },
-} as const satisfies OfferContract;
-
 export const APIManagement_CaaS_TraefikGateway = {
   offerType: 'APIManagement.CaaS.TraefikGateway',
   serviceTypes: ['APIManagement.CaaS.Traefik'],
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.17.0',
+      agentVersion: 'v2.0.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [
@@ -345,14 +268,14 @@ export const APIManagement_PaaS_ApiGateway = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
-    /** The gateway's API: either the OpenAPI document itself (YAML starting with 'openapi:' or 'swagger:', or a JSON object), published as an API config this component owns, or an existing config as 'projects/<project>/locations/global/apis/<api>/configs/<config>'. The effective config is published as the apiConfigId output. A new gateway without a usable value is refused; a deployed one keeps serving its config. */
+    /** The gateway's API: either the OpenAPI document itself (YAML starting with 'openapi:' or 'swagger:', or a JSON object), published as an API config this component owns, or an existing config as 'projects/<project>/locations/global/apis/<api>/configs/<config>'. The effective config is published as the apiConfigId output. When it is unset, unusable or only routes to a reserved documentation domain (as the sample does), the gateway serves the routes of its links instead: each 'routes' entry of a link to a Cloud Run service (default '/') and every path under it, forwarded to the service's URL with the path appended. Otherwise a new gateway without a usable value is refused; a deployed one keeps serving its config. */
     apiConfig: {type: 'string', required: false},
     /** Legacy spelling of region, read only when region is unset. */
     location: {
@@ -379,7 +302,7 @@ export const APIManagement_PaaS_ApiManagement = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -395,7 +318,12 @@ export const APIManagement_PaaS_ApiManagement = {
     /** Your organization's name, shown as the API publisher in the developer portal and in notification emails. Required to create: a new instance without it is refused (set it to fix). An instance created before it was required keeps its own while it is unset, with a warning. A change is applied to the existing instance. */
     publisherName: {type: 'string', required: false},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** Tier, optionally with its units as '<tier>_<units>': Consumption, Developer, Basic, Standard, Premium, BasicV2, StandardV2, e.g. 'Consumption', 'Developer_1' or 'Premium_2'. The units default to 1; Consumption has none (Azure requires 0, so only 'Consumption' or 'Consumption_0'), Developer allows 1, Basic up to 2, Standard up to 4, Premium up to 12, BasicV2 and StandardV2 up to 10. A new instance with any other value is refused; a deployed one keeps its SKU, with a warning. When unset, Developer_1 (no SLA: declare a production tier for production). A change is applied to the existing instance; Azure does not move an instance into or out of Consumption. */
     skuName: {
       type: 'string',
@@ -461,7 +389,7 @@ export const APIManagement_PaaS_AwsCloudFront = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -572,7 +500,14 @@ export const APIManagement_PaaS_AwsCloudFront = {
       },
     },
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
     /** Bucket origin only: answer a missing key (403/404) with the root object and status 200, for a single-page app. Excludes errorDocument. When unset, false. */
     spaFallback: {type: 'boolean', required: false},
     /** Whether a site is protected by a WAF web ACL (CLOUDFRONT scope, us-east-1) the agent manages, including a per-IP rate limit. When unset, true. */
@@ -593,7 +528,7 @@ export const APIManagement_PaaS_AzureApiManagement = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -609,7 +544,12 @@ export const APIManagement_PaaS_AzureApiManagement = {
     /** Your organization's name, shown as the API publisher in the developer portal and in notification emails. Required to create: a new instance without it is refused (set it to fix). An instance created before it was required keeps its own while it is unset, with a warning. A change is applied to the existing instance. */
     publisherName: {type: 'string', required: false},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** Tier, optionally with its units as '<tier>_<units>': Consumption, Developer, Basic, Standard, Premium, BasicV2, StandardV2, e.g. 'Consumption', 'Developer_1' or 'Premium_2'. The units default to 1; Consumption has none (Azure requires 0, so only 'Consumption' or 'Consumption_0'), Developer allows 1, Basic up to 2, Standard up to 4, Premium up to 12, BasicV2 and StandardV2 up to 10. A new instance with any other value is refused; a deployed one keeps its SKU, with a warning. When unset, Developer_1 (no SLA: declare a production tier for production). A change is applied to the existing instance; Azure does not move an instance into or out of Consumption. */
     skuName: {
       type: 'string',
@@ -675,7 +615,7 @@ export const APIManagement_PaaS_CloudFront = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -786,7 +726,14 @@ export const APIManagement_PaaS_CloudFront = {
       },
     },
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
     /** Bucket origin only: answer a missing key (403/404) with the root object and status 200, for a single-page app. Excludes errorDocument. When unset, false. */
     spaFallback: {type: 'boolean', required: false},
     /** Whether a site is protected by a WAF web ACL (CLOUDFRONT scope, us-east-1) the agent manages, including a per-IP rate limit. When unset, true. */
@@ -807,14 +754,14 @@ export const APIManagement_PaaS_GcpApiGateway = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
-    /** The gateway's API: either the OpenAPI document itself (YAML starting with 'openapi:' or 'swagger:', or a JSON object), published as an API config this component owns, or an existing config as 'projects/<project>/locations/global/apis/<api>/configs/<config>'. The effective config is published as the apiConfigId output. A new gateway without a usable value is refused; a deployed one keeps serving its config. */
+    /** The gateway's API: either the OpenAPI document itself (YAML starting with 'openapi:' or 'swagger:', or a JSON object), published as an API config this component owns, or an existing config as 'projects/<project>/locations/global/apis/<api>/configs/<config>'. The effective config is published as the apiConfigId output. When it is unset, unusable or only routes to a reserved documentation domain (as the sample does), the gateway serves the routes of its links instead: each 'routes' entry of a link to a Cloud Run service (default '/') and every path under it, forwarded to the service's URL with the path appended. Otherwise a new gateway without a usable value is refused; a deployed one keeps serving its config. */
     apiConfig: {type: 'string', required: false},
     /** Legacy spelling of region, read only when region is unset. */
     location: {
@@ -841,28 +788,28 @@ export const APIManagement_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],

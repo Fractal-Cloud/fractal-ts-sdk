@@ -29,7 +29,7 @@ export const CustomWorkloads_CaaS_KubernetesWorkload = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.17.0',
+      agentVersion: 'v2.0.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [
@@ -531,7 +531,7 @@ export const CustomWorkloads_CaaS_OpenshiftWorkload = {
   declaredBy: [
     {
       agentId: 'aria-agent-openshift',
-      agentVersion: 'v0.1.1',
+      agentVersion: 'v0.2.4',
       contractSchemaVersion: '2.0',
       provider: 'RedHat',
       parameterRules: [],
@@ -551,7 +551,7 @@ export const CustomWorkloads_CaaS_OpenshiftWorkload = {
     /** JSON-encoded environment variables (name to value). `env` is accepted as an alias; `envVars` wins when both are set */
     envVars: {type: 'string', required: false},
     /** Container image */
-    image: {type: 'string', required: false},
+    image: {type: 'string', required: true},
     /** Memory limit per container */
     memoryLimit: {type: 'string', required: false},
     /** Memory request per container */
@@ -564,6 +564,8 @@ export const CustomWorkloads_CaaS_OpenshiftWorkload = {
     port: {type: 'number', required: false},
     /** Port protocol (TCP/UDP) */
     protocol: {type: 'string', required: false, default: 'TCP'},
+    /** How long the component may take to become ready before it is reported Failed: a duration such as 45m or 2h, clamped to [1m, 48h]; defaults to the agent's --provisioning-timeout (at least 2h for virtual machines) */
+    provisioningTimeout: {type: 'string', required: false},
     /** Replica count */
     replicas: {type: 'number', required: false, default: 1},
     /** Service account to use */
@@ -582,7 +584,7 @@ export const CustomWorkloads_FaaS_AwsLambda = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -604,7 +606,14 @@ export const CustomWorkloads_FaaS_AwsLambda = {
     /** How the sourceArtifact is deployed: image or zip. When unset, detected from the artifact's manifest. */
     packageType: {type: 'string', required: false, default: ''},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
     /** ARN of the IAM role the function runs as (arn:aws:iam::<account>:role/<name>). When unset, the environment's Lambda execution role; the function fails when neither exists. */
     roleArn: {type: 'string', required: false},
     /** Lambda runtime identifier matching the language of the function's code (e.g. java21, python3.12, nodejs20.x). Required for a zip-packaged function: no runtime is assumed, and a new zip function without it is refused; an existing function declared without it keeps its own runtime. Ignored for a container image. */
@@ -623,7 +632,7 @@ export const CustomWorkloads_FaaS_AzureFunction = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -643,7 +652,12 @@ export const CustomWorkloads_FaaS_AzureFunction = {
     /** Overrides how sourceArtifact is classified: 'image' or 'zip'. When unset, detected from the artifact's manifest. 'zip' on an artifact that is a container image fails the component. */
     packageType: {type: 'string', required: false, default: ''},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** OCI artifact holding the function code, as '<registry>/<repository>:<tag>': in an Azure Container Registry, read with the agent's managed identity and pulled with the app's, or in a registry serving anonymous pulls. A container image is run as a Linux container function; a zip is staged to a blob and run from package. Redeployed only when the artifact's digest changes. When unset, the app is created with its runtime stack and no code. */
     sourceArtifact: {type: 'string', required: false, default: ''},
     /** Connection string of the storage account the Functions host uses (AzureWebJobsStorage). Required for a zip sourceArtifact, which is staged to a blob in that account: such a component fails without it. */
@@ -663,7 +677,7 @@ export const CustomWorkloads_FaaS_GcpFunction = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -727,7 +741,7 @@ export const CustomWorkloads_FaaS_GoogleFunction = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'CustomWorkloads.FaaS.GcpFunction',
@@ -792,28 +806,28 @@ export const CustomWorkloads_IaaS_Workload = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -842,7 +856,7 @@ export const CustomWorkloads_PaaS_AwsEcsService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -852,7 +866,14 @@ export const CustomWorkloads_PaaS_AwsEcsService = {
     /** Short names of the environment secrets this component may access. */
     environmentSecretShortNames: {type: 'array', required: false},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -863,7 +884,7 @@ export const CustomWorkloads_PaaS_AzureContainerApp = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -879,7 +900,7 @@ export const CustomWorkloads_PaaS_AzureContainerApp = {
     /** Container image reference to run, e.g. 'registry/repository:tag'. Required to create: a deployed one declared without it keeps the image it runs. A change is applied as a new revision. */
     image: {type: 'string', required: false},
     /** Legacy spelling of 'region', read only when 'region' is blank. */
-    location: {type: 'string', required: false, default: ''},
+    location: {type: 'string', required: false, valuesCaseInsensitive: true},
     /** Maximum number of replicas. When unset, 10. */
     maxReplicas: {type: 'integer', required: false, default: 10},
     /** Memory for the container as an Azure quantity string, e.g. '1Gi' or '0.5Gi'. When unset, 1Gi. Must match the cpu value per Azure Container Apps' allowed combinations. */
@@ -889,7 +910,12 @@ export const CustomWorkloads_PaaS_AzureContainerApp = {
     /** Port the container listens on; the ingress target port. When unset, 8080. */
     port: {type: 'integer', required: false, default: 8080},
     /** Azure location the app is created in (e.g. 'westeurope'). When unset, 'location', else the legacy 'azureRegion', else the region of the Live System's resource group. Applied when the app is created. */
-    region: {type: 'string', required: false, default: ''},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -903,7 +929,7 @@ export const CustomWorkloads_PaaS_AzureContainerInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -928,7 +954,7 @@ export const CustomWorkloads_PaaS_AzureContainerInstance = {
     /** Container image reference to run, e.g. 'registry/repository:tag'. Required to create: a deployed one declared without it keeps the image it runs. Changing it deletes and recreates the container group. */
     image: {type: 'string', required: false},
     /** Azure location the container group is created in (e.g. 'westeurope'). When unset, the component's region: 'region', else the legacy 'azureRegion', else its resource group's region. Applied when the container group is created. */
-    location: {type: 'string', required: false, default: ''},
+    location: {type: 'string', required: false, valuesCaseInsensitive: true},
     /** Memory requested for the container, in GB. When unset, 1.5. Changing it deletes and recreates the container group. */
     memoryInGB: {type: 'number', required: false, default: 1.5},
     /** TCP port the container listens on and the group exposes. When unset, 8080. Applied when the container group is created. */
@@ -936,7 +962,12 @@ export const CustomWorkloads_PaaS_AzureContainerInstance = {
     /** When true, the container group gets a public IP address; otherwise a private one. Applied when the container group is created. */
     publicIp: {type: 'boolean', required: false, default: false},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** Container group restart policy: Always, OnFailure or Never (case-sensitive). Any other value means Always. Applied when the container group is created. */
     restartPolicy: {
       type: 'string',
@@ -955,7 +986,7 @@ export const CustomWorkloads_PaaS_GcpCloudRun = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -979,7 +1010,7 @@ export const CustomWorkloads_PaaS_WebApp = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -989,7 +1020,7 @@ export const CustomWorkloads_PaaS_WebApp = {
     /** App Service plan the app runs on: {name? (asp-default), pricingPlan? (e.g. BASIC_B1, STANDARD_S1, PREMIUM_P1V3, as a string or {name}), numberOfWorkers? (1), operatingSystem? (Linux; any other value is Windows), zoneRedundancyEnabled? (false), azureRegion? (the app's region), azureResourceGroup? ({name, region}), tags?}. When unset, plan asp-default, BASIC_B1 with 1 worker, Linux, in the Live System's resource group and the app's region (its region, else its resource group's). An existing app keeps the plan it is bound to. */
     appServicePlan: {type: 'object', required: false, default: {}},
     /** Legacy alias of region: the region a new App Service plan is created in when appServicePlan declares no azureRegion. When unset, region, else the resource group's region. A web app always runs in its plan's region (Azure refuses any other), and an existing plan never moves. */
-    azureRegion: {type: 'string', required: false, default: ''},
+    azureRegion: {type: 'string', required: false, valuesCaseInsensitive: true},
     /** the git branch the workload deploys from */
     branchName: {type: 'string', required: false},
     /** Key Vault certificates for the custom domains: [{keyVaultId, name, passwordSecretId?, region?, tags?}], keyVaultId the vault's ARM ID, name the Key Vault secret holding the certificate, passwordSecretId an environment secret with the PFX password (empty password when unset). Imported into the app's resource group; certificates no longer listed are removed. */
@@ -1041,7 +1072,7 @@ export const CustomWorkloads_PaaS_WebApp = {
     /** Site redundancy mode: None, Manual, Failover, ActiveActive or GeoRedundant. When unset, Azure's default. Applied when the web app is created; later changes are not applied to an existing app. */
     redundancyMode: {type: 'string', required: false, default: ''},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {type: 'string', required: false, valuesCaseInsensitive: true},
     /** the full name (owner/name) of the git repository the workload deploys from */
     repoId: {type: 'string', required: false},
     /** Azure's reserved flag: true for a Linux app. The plan's operating system is set by appServicePlan.operatingSystem. When unset, Azure's default. Applied when the web app is created; later changes are not applied to an existing app. */
@@ -1069,28 +1100,28 @@ export const CustomWorkloads_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],

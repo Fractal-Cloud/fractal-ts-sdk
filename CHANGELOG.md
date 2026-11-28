@@ -11,6 +11,28 @@ of truth for what is on npm.
 
 ## Unreleased
 
+### Changed — offer contracts refreshed to the agents' latest releases
+
+- The contract snapshot moves to fractal-cloud-agents **v8.48.0** (AWS, Azure, GCP, OCI, from
+  v8.31.0), aria-agent-caas-k8s **v2.0.0** (from v1.17.0) and aria-agent-openshift **v0.2.4**
+  (from v0.1.1). Offer configs follow the new contracts: among others, `region` on the Java
+  agents' offers reads its legacy aliases (`azureRegion`, `location`, `awsRegion`) and Azure region
+  values match without regard to case; caas-k8s adds `bundledGrafana` to `KubePrometheusStack`
+  and `cpu`/`memory`/`memoryLimit` to `SparkMlExperiment`; the OpenShift offers gain keys.
+- **Deprecated: `Traefik`, `Prometheus`, `Jaeger` and `Ocelot`.** No agent declares
+  `APIManagement.CaaS.Traefik`, `Observability.CaaS.Prometheus`, `Observability.CaaS.Jaeger` or
+  `Security.CaaS.Ocelot` for a customer Live System any more: fractal-cloud-agents v8.48.0 retired
+  Prometheus and Jaeger and keeps Traefik and Ocelot for the bootstrap Live System only, and
+  caas-k8s v2.0.0 does not serve Ocelot yet. The four offers still compile and emit the same
+  types, but are now contract-less (their parameters are no longer checked against a contract),
+  and a Live System using one is stored and never reconciled. Use `TraefikGateway`,
+  `KubePrometheusStack` and `GrafanaTempo` instead; Ocelot has no replacement until caas-k8s
+  serves it.
+- **`KubePrometheusStack` refuses `secretEnv`, `environmentSecretShortNames` and
+  `withEnvironmentSecrets`.** caas-k8s v2.0.0 dropped Grafana's environment secrets from the
+  stack's contract, so a value set there would deploy Grafana without it. The keys and the method
+  stay in the type, marked `@deprecated`, and throw with the reason when the offer is built.
+
 ### Added — managed-service components and settings
 
 - New components `KeyValueDbms`, `DocumentDbms`, `DataCatalog`, `DataCatalogTable` (it depends

@@ -9,12 +9,12 @@ import {toContractKey, unsupported} from './neutral_rules';
 import {Storage_PaaS_AwsS3} from './generated/storage';
 import {
   APIManagement_CaaS_Ambassador,
-  APIManagement_CaaS_Traefik,
   APIManagement_CaaS_TraefikGateway,
   APIManagement_PaaS_AwsCloudFront,
   APIManagement_PaaS_AzureApiManagement,
   APIManagement_PaaS_GcpApiGateway,
 } from './generated/api_management';
+import {APIManagement_CaaS_Traefik} from './retired/api_management_caas_traefik';
 import type {ContractConfig} from './contract/contract_config';
 import {defineOffer, type LiveSystemComponent} from '../core';
 import {certificateCovers, gatewayCertificateHosts} from './certificate_hosts';
@@ -510,13 +510,21 @@ const ensureRoutesCovered = (
   }
 };
 
-/** Traefik as the Java cloud agents reconcile it. For the platform gateway on EKS use `TraefikGateway`. */
+/**
+ * Traefik as the Java cloud agents reconciled it.
+ *
+ * @deprecated Use `TraefikGateway`. Since fractal-cloud-agents v8.48.0 the
+ * Java agents keep `APIManagement.CaaS.Traefik` for the bootstrap Live System
+ * only, so a customer Live System using it is stored but never reconciled.
+ * `TraefikGateway` (`APIManagement.CaaS.TraefikGateway`) is the Traefik that
+ * aria-agent-caas-k8s installs and owns.
+ */
 export const Traefik = defineOffer<
   'APIManagement.ApiGateway',
   ContractConfig<typeof APIManagement_CaaS_Traefik>
 >({
   satisfies: 'APIManagement.ApiGateway',
-  contract: APIManagement_CaaS_Traefik,
+  offerType: 'APIManagement.CaaS.Traefik',
   deliveryModel: 'CaaS',
   neutral: {
     cors: unsupported('the agent configures no CORS policy'),

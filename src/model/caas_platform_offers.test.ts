@@ -620,58 +620,42 @@ describe('caas-k8s observability parameters and links', () => {
     });
   });
 
-  it('kube-prometheus-stack reads the environment secrets it is granted (caas-k8s v1.17.0)', () => {
-    expect(
-      only(
-        stack({
-          prometheus: KubePrometheusStack({
-            secretEnv: {
-              GF_AUTH_GOOGLE_CLIENT_SECRET: secretRef('grafana-google'),
-            },
-          }).withEnvironmentSecrets(['grafana-google']),
-        }),
-        'prometheus',
-      ).parameters,
-    ).toEqual({
-      secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: {$envSecret: 'grafana-google'}},
-      environmentSecretShortNames: ['grafana-google'],
-    });
-  });
-
   it.each([
-    ['a raw value', {GF_AUTH_GOOGLE_CLIENT_SECRET: 'hunter2'}],
     [
-      'a reference carrying anything beside the tag',
-      {GF_AUTH_GOOGLE_CLIENT_SECRET: {$envSecret: 'g', raw: 'hunter2'}},
+      'secretEnv',
+      () =>
+        KubePrometheusStack({
+          secretEnv: {
+            GF_AUTH_GOOGLE_CLIENT_SECRET: secretRef('grafana-google'),
+          },
+        }),
+    ],
+    [
+      'environmentSecretShortNames',
+      () =>
+        KubePrometheusStack({environmentSecretShortNames: ['grafana-google']}),
+    ],
+    [
+      'withEnvironmentSecrets',
+      () => KubePrometheusStack({}).withEnvironmentSecrets(['grafana-google']),
     ],
   ])(
-    'kube-prometheus-stack refuses %s in secretEnv, without echoing it',
-    (_, secretEnv) => {
-      let message = '';
-      try {
-        stack({
-          prometheus: KubePrometheusStack({secretEnv: secretEnv as never}),
-        });
-      } catch (e) {
-        message = (e as Error).message;
-      }
-      expect(message).toBe(
-        "Live component 'prometheus': secretEnv 'GF_AUTH_GOOGLE_CLIENT_SECRET' is not an " +
-          "environment-secret reference: pass secretRef('<shortName>'), never the secret itself.",
+    'kube-prometheus-stack refuses %s: caas-k8s v2.0.0 gives it no environment secrets',
+    (key, build) => {
+      expect(build).toThrow(
+        `KubePrometheusStack ${key}: aria-agent-caas-k8s v2.0.0 no longer gives ` +
+          'kube-prometheus-stack environment secrets (its contract dropped ' +
+          'secretEnv and secret access); remove it.',
       );
     },
   );
 
-  it('kube-prometheus-stack refuses a secretEnv that is not a map, without echoing it', () => {
-    let message = '';
-    try {
-      stack({prometheus: KubePrometheusStack({secretEnv: 'hunter2' as never})});
-    } catch (e) {
-      message = (e as Error).message;
-    }
-    // The contract's own check: secretEnv is an object.
-    expect(message).toContain("is not the object 'secretEnv' takes");
-    expect(message).not.toContain('hunter2');
+  it('kube-prometheus-stack refuses a raw secretEnv value without echoing it', () => {
+    expect(() =>
+      KubePrometheusStack({
+        secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: 'hunter2'} as never,
+      }),
+    ).toThrow(/^(?![\s\S]*hunter2)KubePrometheusStack secretEnv: /);
   });
 
   it('Alloy ships to the Loki it depends on, or to lokiPushUrl', () => {

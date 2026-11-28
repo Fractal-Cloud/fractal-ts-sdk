@@ -50,7 +50,7 @@ A blueprint references a Component (`Storage.ObjectStorage`); a Live System sele
 
 **A component has a delivery model, and an offer must match it.** The platform catalogue keeps one component per delivery model, each with its own services and offers: `BigData.PaaS.ComputeCluster` (Databricks) and `BigData.CaaS.ComputeCluster` (Spark on Kubernetes) are different components. Where a component has more than one, state the model on the factory (`ComputeCluster({id: 'c', deliveryModel: 'CaaS'})`); unstated it is the component's default (BigData, storage, messaging and API gateway `PaaS`; `Workload` `CaaS`). The blueprint is published as the catalogue component of that model, and `toLiveSystem` refuses an offer of another model. A few offers sit on a component of another model because the catalogue has none of theirs (see `DELIVERY_MODEL_EXEMPT_OFFERS`); `AzureContainerApp` is one: the catalogue nests it under the `CaaS` `Workload`.
 
-`provider` is a **vendor** axis (`AWS | Azure | GCP | OCI | Hetzner | Aruba | RedHat | VMware`). `IaaS | PaaS | CaaS | SaaS | FaaS` is the separate `deliveryModel` axis. Vendor-neutral self-hosted offers (e.g. `Kafka`, `Prometheus`, `MinIO` on any cluster) omit `provider`.
+`provider` is a **vendor** axis (`AWS | Azure | GCP | OCI | Hetzner | Aruba | RedHat | VMware`). `IaaS | PaaS | CaaS | SaaS | FaaS` is the separate `deliveryModel` axis. Vendor-neutral self-hosted offers (e.g. `Kafka`, `KubePrometheusStack`, `MinIO` on any cluster) omit `provider`.
 
 ### Guardrails vs operations
 
@@ -1247,7 +1247,11 @@ one of the two intents.
 
 | Component | AWS | Azure | GCP | Self-hosted |
 |---|---|---|---|---|
-| `ApiGateway` | `AwsCloudFront` | `AzureApiManagement` | `GcpApiGateway` | `Ambassador` · `Traefik` · `TraefikGateway` |
+| `ApiGateway` | `AwsCloudFront` | `AzureApiManagement` | `GcpApiGateway` | `Ambassador` · `TraefikGateway` · `Traefik` (deprecated) |
+
+`Traefik` (`APIManagement.CaaS.Traefik`) is deprecated: since fractal-cloud-agents v8.48.0 the
+Java agents keep it for the bootstrap Live System only, so a customer Live System using it is
+never reconciled. Use `TraefikGateway`.
 
 #### `AwsCloudFront` origins
 
@@ -1387,8 +1391,13 @@ refuses a Live System that sets them instead of letting the platform drop them.
 
 | Component | Offer |
 |---|---|
-| `Monitoring` | `Prometheus` · `KubePrometheusStack` · `SqsExporter` |
-| `Tracing` | `Jaeger` · `GrafanaTempo` |
+| `Monitoring` | `KubePrometheusStack` · `SqsExporter` · `Prometheus` (deprecated) |
+| `Tracing` | `GrafanaTempo` · `Jaeger` (deprecated) |
+
+`Prometheus` and `Jaeger` are deprecated: fractal-cloud-agents v8.48.0 retired the Java
+agents' ownership of `Observability.CaaS.Prometheus` and `Observability.CaaS.Jaeger`, so a
+Live System using either is stored and never reconciled. Use `KubePrometheusStack` and
+`GrafanaTempo`.
 | `Logging` | `GrafanaLoki` |
 | `LogShipper` | `GrafanaAlloy` |
 
@@ -1410,9 +1419,9 @@ Live-System-level dependency which the web editor cannot express: the catalogue
 models `LogShipper` with the container platform as its only dependency, so the
 component renders outside its platform group in the web canvas.
 
-#### `Jaeger` (`Observability.CaaS.Jaeger`, cloud agents)
+#### `Jaeger` (`Observability.CaaS.Jaeger`, cloud agents; deprecated)
 
-Jaeger v2 keeps its traces in OpenSearch. Link it to exactly one `StorageOpenSearch`
+No agent reconciles it since fractal-cloud-agents v8.48.0; use `GrafanaTempo`. Jaeger v2 keeps its traces in OpenSearch. Link it to exactly one `StorageOpenSearch`
 component (or a reference to one) with `access: 'read-write'`, and make it depend on
 that component; the link's `indexPrefix` defaults to `<id>-jaeger-`. Its only key is
 `namespace`.
@@ -1431,7 +1440,7 @@ component's neutral `withRetentionDays` (sent as `retentionDays`), not an offer 
 
 | Offer | Keys (agent defaults) | Links and dependencies |
 |---|---|---|
-| `KubePrometheusStack` (`Observability.CaaS.KubePrometheusStack`) | `namespace`, `storageClassName` (see below), `prometheusStorageGi` (`50`), `lokiUrl` / `tempoUrl` (the Loki / Tempo service in the namespace; `none` = no datasource), `alertRules`, `alertmanagerConfig`, `values`, `secretEnv` (Grafana variables from environment secrets, below); `retentionDays` `15` | optional route link to a `TraefikGateway` for Grafana (below) |
+| `KubePrometheusStack` (`Observability.CaaS.KubePrometheusStack`) | `namespace`, `storageClassName` (see below), `prometheusStorageGi` (`50`), `lokiUrl` / `tempoUrl` (the Loki / Tempo service in the namespace; `none` = no datasource), `alertRules`, `alertmanagerConfig`, `values`, `bundledGrafana` (`true`); `retentionDays` `15` | optional route link to a `TraefikGateway` for Grafana (below) |
 | `GrafanaLoki` (`Observability.CaaS.GrafanaLoki`) | `namespace`, `storageClassName` (see below), `values`; `retentionDays` `14` | exactly one link to an `AwsS3` bucket with `{access: 'read-write'}` |
 | `GrafanaTempo` (`Observability.CaaS.GrafanaTempo`) | as Loki; `retentionDays` `7` | as Loki |
 | `GrafanaAlloy` (`Observability.CaaS.GrafanaAlloy`), on `LogShipper` | `namespace`, `lokiPushUrl` (none = the `pushUrl` of the Loki it depends on), `values` | a dependency on a `GrafanaLoki` component, unless `lokiPushUrl` is set |
@@ -1454,15 +1463,9 @@ The agent routes to `kps-grafana:80` and strips the sub-path, which must end wit
 gateway's `forwardAuthExemptComponentIds` lists the stack. `KubePrometheusStack`
 then publishes `gatewayRoutes`.
 
-Grafana reads environment secrets as environment variables (caas-k8s v1.17.0):
-`secretEnv` maps each variable to a `secretRef`, and `withEnvironmentSecrets`
-grants the secrets. A raw value is refused.
-
-```ts
-KubePrometheusStack({
-  secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: secretRef('grafana-google')},
-}).withEnvironmentSecrets(['grafana-google']);
-```
+Since caas-k8s v2.0.0 the stack takes no environment secrets: `secretEnv`,
+`environmentSecretShortNames` and `withEnvironmentSecrets` (caas-k8s v1.x) are
+deprecated and throw when the offer is built.
 
 #### `SqsExporter` (`Observability.CaaS.SqsExporter`)
 
@@ -1501,7 +1504,7 @@ them from `liveSystems.state(...)` like any other output field.
 
 | Component | AWS | Self-hosted |
 |---|---|---|
-| `ServiceMesh` | — | `Ocelot` |
+| `ServiceMesh` | — | `Ocelot` (deprecated: no agent serves a customer Ocelot since fractal-cloud-agents v8.48.0, until caas-k8s does) |
 | `IdentityProvider` | `Cognito` | `Keycloak` |
 
 #### Certificates

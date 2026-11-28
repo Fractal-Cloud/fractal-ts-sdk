@@ -126,6 +126,11 @@ const UNPUBLISHED: Readonly<Record<string, string>> = {
   VsphereVlan: 'aria-agent-vmware releases no contract',
   VsphereVm: 'aria-agent-vmware releases no contract',
   Keycloak: 'no agent declares Security.CaaS.Keycloak',
+  // Deprecated: no agent declares them since fractal-cloud-agents v8.48.0.
+  Traefik: 'deprecated: no agent declares APIManagement.CaaS.Traefik',
+  Prometheus: 'deprecated: no agent declares Observability.CaaS.Prometheus',
+  Jaeger: 'deprecated: no agent declares Observability.CaaS.Jaeger',
+  Ocelot: 'deprecated: no agent declares Security.CaaS.Ocelot',
 };
 
 /** One argument per neutral setter, so every guardrail of a component is set. */

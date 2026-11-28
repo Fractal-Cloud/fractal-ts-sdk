@@ -9,7 +9,7 @@ export const BigData_CaaS_MinioTenant = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.17.0',
+      agentVersion: 'v2.0.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -39,7 +39,7 @@ export const BigData_CaaS_SparkCluster = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.17.0',
+      agentVersion: 'v2.0.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -69,7 +69,7 @@ export const BigData_CaaS_SparkJob = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.17.0',
+      agentVersion: 'v2.0.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [
@@ -127,7 +127,7 @@ export const BigData_CaaS_SparkMlExperiment = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.17.0',
+      agentVersion: 'v2.0.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -135,6 +135,9 @@ export const BigData_CaaS_SparkMlExperiment = {
   ],
   params: {
     artifactRoot: {type: 'string', required: false},
+    cpu: {type: 'string', required: false, default: '100m'},
+    memory: {type: 'string', required: false, default: '512Mi'},
+    memoryLimit: {type: 'string', required: false, default: '2Gi'},
     namespace: {
       type: 'string',
       required: false,
@@ -151,7 +154,7 @@ export const BigData_CaaS_SparkOperator = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.17.0',
+      agentVersion: 'v2.0.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -174,7 +177,7 @@ export const BigData_CaaS_SparkUnityCatalog = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.17.0',
+      agentVersion: 'v2.0.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -210,7 +213,7 @@ export const BigData_PaaS_AwsDatabricks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -232,7 +235,14 @@ export const BigData_PaaS_AwsDatabricks = {
       valuesCaseInsensitive: true,
     },
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
     /** Id of the storage configuration (the S3 root bucket of the workspace) registered in the Databricks account, from the account console or the Account API. Required to create: a new workspace is refused without it; there is no default. */
     storageConfigurationId: {type: 'string', required: false},
   },
@@ -245,7 +255,7 @@ export const BigData_PaaS_AwsDatabricksCluster = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -297,7 +307,14 @@ export const BigData_PaaS_AwsDatabricksCluster = {
     /** PyPI packages installed on the cluster, each a pip requirement (e.g. pandas==2.2.2). When unset, none. */
     pypiLibraries: {type: 'array', required: false, default: []},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
     /** Whether the cluster runs a driver only, with no workers (the agent adds the Spark settings Databricks requires for that). Wins over the worker counts. When unset, false. */
     singleNode: {type: 'boolean', required: false, default: false},
     /** User or service principal the cluster is dedicated to, used by single-user access modes (the default). When unset, the principal the agent authenticates to the workspace as. */
@@ -322,7 +339,7 @@ export const BigData_PaaS_AwsDatabricksJob = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -481,7 +498,14 @@ export const BigData_PaaS_AwsDatabricksJob = {
     /** the path of the Python file the job runs */
     pythonFile: {type: 'string', required: false},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
     /** When true, the per-run cluster is a driver only, with Spark running locally on it and no redundancy; meant for test environments. Overrides numWorkers, minWorkers and maxWorkers. */
     singleNode: {type: 'boolean', required: false, default: false},
     /** Databricks Runtime version key of the per-run cluster, as listed by the workspace. Used only when the job depends on no cluster. When unset, an existing job keeps the runtime it runs on; a new one gets the newest general-purpose LTS runtime the workspace offers, and is refused naming sparkVersion when none is found. */
@@ -512,7 +536,7 @@ export const BigData_PaaS_AwsDatabricksMlflow = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -524,7 +548,14 @@ export const BigData_PaaS_AwsDatabricksMlflow = {
     /** MLflow experiment name, an absolute workspace path (e.g. /Shared/<name>); a bare name is placed under /Shared/. When unset, /Shared/<componentId>. */
     experimentName: {type: 'string', required: false, default: ''},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -534,7 +565,7 @@ export const BigData_PaaS_AwsS3Datalake = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -557,7 +588,14 @@ export const BigData_PaaS_AwsS3Datalake = {
       constraints: {minimum: 1},
     },
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
     /** Whether the bucket keeps object versions. Wins over versioningEnabled when both are set. When unset, false. */
     versioning: {
       type: 'boolean',
@@ -574,7 +612,7 @@ export const BigData_PaaS_AzureDatabricks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -583,12 +621,17 @@ export const BigData_PaaS_AzureDatabricks = {
   params: {
     /** Secure Cluster Connectivity: when true, cluster nodes get no public IP. Changed in place on an existing workspace. When unset, true. */
     enableNoPublicIp: {type: 'boolean', required: false, default: true},
-    /** Name of the managed resource group Azure creates for the workspace's data-plane resources, outside the Live System's resource group. When unset, databricks-rg-<component id>. Fixed at creation: changing it later has no effect on an existing workspace. */
+    /** Name of the managed resource group Azure creates for the workspace's data-plane resources, outside the Live System's resource group. When unset, databricks-rg-<component id>-<hash of the Live System's resource group>, unique per workspace. Fixed at creation: changing it later has no effect on an existing workspace. */
     managedResourceGroupName: {type: 'string', required: false, default: ''},
     /** Azure Databricks pricing tier (SKU) of the workspace, e.g. standard or premium; compared case-insensitively and changed in place on an existing workspace. Premium is required by the MLflow experiment offer and Unity Catalog. When unset, premium. */
     pricingTier: {type: 'string', required: false, default: 'premium'},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -599,7 +642,7 @@ export const BigData_PaaS_AzureDatabricksCluster = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -651,7 +694,12 @@ export const BigData_PaaS_AzureDatabricksCluster = {
     /** PyPI packages installed on the cluster, as pip requirement strings, e.g. pandas==2.2.2. Installed only when the agent creates the cluster; later changes are not applied to an existing cluster. */
     pypiLibraries: {type: 'array', required: false, default: []},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** When true, the cluster runs a driver only, with Spark in local mode, whatever the worker counts say; the agent adds the single-node Spark settings and tags Databricks requires. When unset, false. */
     singleNode: {type: 'boolean', required: false, default: false},
     /** User or service principal a single-user (dedicated) cluster is assigned to; used only when dataSecurityMode is SINGLE_USER, DATA_SECURITY_MODE_DEDICATED, LEGACY_SINGLE_USER or LEGACY_SINGLE_USER_STANDARD. When unset, the existing cluster's assignee, else the principal the agent authenticates to the workspace as; if neither is found the cluster is created without one. */
@@ -676,7 +724,7 @@ export const BigData_PaaS_AzureDatabricksJob = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [
@@ -835,7 +883,12 @@ export const BigData_PaaS_AzureDatabricksJob = {
     /** the path of the Python file the job runs */
     pythonFile: {type: 'string', required: false},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** When true, the per-run cluster is a driver only, with Spark running locally on it and no redundancy; meant for test environments. Overrides numWorkers, minWorkers and maxWorkers. */
     singleNode: {type: 'boolean', required: false, default: false},
     /** Databricks Runtime version key of the per-run cluster, as listed by the workspace. Used only when the job depends on no cluster. When unset, an existing job keeps the runtime it runs on; a new one gets the newest general-purpose LTS runtime the workspace offers, and is refused naming sparkVersion when none is found. */
@@ -866,7 +919,7 @@ export const BigData_PaaS_AzureDatabricksMlflow = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -878,7 +931,12 @@ export const BigData_PaaS_AzureDatabricksMlflow = {
     /** MLflow experiment name, an absolute workspace path such as /Shared/churn-model; a name without a leading / is placed under /Shared/. When unset or blank, /Shared/<component id>. An existing experiment of that name is adopted. */
     experimentName: {type: 'string', required: false, default: ''},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -888,7 +946,7 @@ export const BigData_PaaS_AzureDatalake = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -912,7 +970,7 @@ export const BigData_PaaS_AzureDatalake = {
     /** Identity-based authentication for Azure Files, as {directoryServiceOptions, defaultSharePermission, activeDirectoryProperties}. directoryServiceOptions is None, AADDS, AD or AADKERB and defaultSharePermission a share-level role name, both None when not named; activeDirectoryProperties carries the on-premises AD domain facts (domainName, domainGuid, domainSid, forestName, netBiosDomainName, azureStorageSid, samAccountName, accountType, default Computer) needed for AD. When unset, none is configured. */
     azureFilesIdentityBasedAuthentication: {type: 'object', required: false},
     /** Legacy alias of region: the Azure region a new storage account is created in, e.g. northeurope. region wins when both are set. When both are unset, the region of the component's resource group, which is the Live System's (environment's) region; a new account with no region at all is refused. An existing account keeps the region it lives in: Azure cannot move it. */
-    azureRegion: {type: 'string', required: false},
+    azureRegion: {type: 'string', required: false, valuesCaseInsensitive: true},
     /** Azure Backup for the account's file shares, as {vaultName, vaultResourceGroupName, vaultLocation, sku, etag, policyName, policyResourceGroupName, policyLocation, policy, policyType}. Defaults: vault <account>-backupVault and policy <account>-policy, both in the account's resource group and region, vault SKU Standard, policyType AzureStorage. policy is the policy JSON; when empty, only the vault is created. When unset, no backup is configured. */
     backup: {type: 'object', required: false},
     /** Custom domain for the blob endpoint, as {name, useSubDomainName}. A block without a name means no custom domain; on an existing account an unset value keeps the domain it has. */
@@ -941,7 +999,7 @@ export const BigData_PaaS_AzureDatalake = {
     isLocalUserEnabled: {type: 'boolean', required: false},
     /** Whether NFS 3.0 is enabled for blobs. Set at creation only and requires the hierarchical namespace (isHnsEnabled). When unset, it is not enabled. */
     isNfsV3Enabled: {type: 'boolean', required: false},
-    /** Whether the SFTP endpoint is enabled. Requires the hierarchical namespace (isHnsEnabled). When unset, it is not enabled. */
+    /** Whether the SFTP endpoint is enabled. Requires a StorageV2 or BlockBlobStorage account with the hierarchical namespace (isHnsEnabled): a new account is created with it, while an existing account without it is refused until it is upgraded to Data Lake Storage Gen2. When unset, it is not enabled. */
     isSftpEnabled: {type: 'boolean', required: false},
     /** Access-key expiration policy, as {keyExpirationPeriodInDays}, at least 1 day. A block without a period keeps an existing account's period and gives a new account 30 days. When unset, no key policy is requested. */
     keyPolicy: {type: 'object', required: false},
@@ -958,7 +1016,7 @@ export const BigData_PaaS_AzureDatalake = {
     /** Whether the public endpoint is reachable at all: Enabled or Disabled. When unset, Enabled; what reaches it is then decided by the network rule set (see publicAccess). */
     publicNetworkAccess: {type: 'string', required: false, default: 'Enabled'},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {type: 'string', required: false, valuesCaseInsensitive: true},
     /** Network routing preference, as {routingChoice: MicrosoftRouting|InternetRouting (default InternetRouting), publishMicrosoftEndpoints (default false), publishInternetEndpoints (default true)}. When unset, none is requested. */
     routingPreference: {type: 'object', required: false},
     /** Shared access signature expiration policy, as {sasExpirationPeriod, expirationAction}. The period has the form <days>.<hours>:<minutes>:<seconds>, e.g. 1.00:00:00; the action is Log or Block. A field not named keeps the account's own value; on a new account a missing period is one day and a missing action Log. When unset, no SAS policy is requested. */
@@ -976,7 +1034,7 @@ export const BigData_PaaS_CloudStorage = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'BigData.PaaS.GcpDatalake',
@@ -1003,21 +1061,21 @@ export const BigData_PaaS_Databricks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1043,7 +1101,7 @@ export const BigData_PaaS_Databricks = {
       default: true,
       agents: ['fractal-cloud-agent-azure'],
     },
-    /** Name of the managed resource group Azure creates for the workspace's data-plane resources, outside the Live System's resource group. When unset, databricks-rg-<component id>. Fixed at creation: changing it later has no effect on an existing workspace. */
+    /** Name of the managed resource group Azure creates for the workspace's data-plane resources, outside the Live System's resource group. When unset, databricks-rg-<component id>-<hash of the Live System's resource group>, unique per workspace. Fixed at creation: changing it later has no effect on an existing workspace. */
     managedResourceGroupName: {
       type: 'string',
       required: false,
@@ -1082,21 +1140,21 @@ export const BigData_PaaS_DatabricksCluster = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1161,7 +1219,7 @@ export const BigData_PaaS_DatabricksJob = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -1231,7 +1289,7 @@ export const BigData_PaaS_DatabricksJob = {
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [
@@ -1301,7 +1359,7 @@ export const BigData_PaaS_DatabricksJob = {
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [
@@ -1491,7 +1549,7 @@ export const BigData_PaaS_DatabricksMlflowExperiment_AWS = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -1503,7 +1561,14 @@ export const BigData_PaaS_DatabricksMlflowExperiment_AWS = {
     /** MLflow experiment name, an absolute workspace path (e.g. /Shared/<name>); a bare name is placed under /Shared/. When unset, /Shared/<componentId>. */
     experimentName: {type: 'string', required: false, default: ''},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -1513,7 +1578,7 @@ export const BigData_PaaS_DatabricksMlflowExperiment_Azure = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -1525,7 +1590,12 @@ export const BigData_PaaS_DatabricksMlflowExperiment_Azure = {
     /** MLflow experiment name, an absolute workspace path such as /Shared/churn-model; a name without a leading / is placed under /Shared/. When unset or blank, /Shared/<component id>. An existing experiment of that name is adopted. */
     experimentName: {type: 'string', required: false, default: ''},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -1535,7 +1605,7 @@ export const BigData_PaaS_DatabricksMlflowExperiment_GCP = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1782,7 +1852,7 @@ export const BigData_PaaS_GcpDatabricks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1812,7 +1882,7 @@ export const BigData_PaaS_GcpDatabricksCluster = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1889,7 +1959,7 @@ export const BigData_PaaS_GcpDatabricksJob = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [
@@ -2079,7 +2149,7 @@ export const BigData_PaaS_GcpDatabricksMlflow = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -2101,7 +2171,7 @@ export const BigData_PaaS_GcpDatalake = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -2127,7 +2197,7 @@ export const BigData_PaaS_S3 = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'BigData.PaaS.AwsS3Datalake',
@@ -2151,7 +2221,14 @@ export const BigData_PaaS_S3 = {
       constraints: {minimum: 1},
     },
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
     /** Whether the bucket keeps object versions. Wins over versioningEnabled when both are set. When unset, false. */
     versioning: {
       type: 'boolean',
@@ -2255,7 +2332,7 @@ export const BigData_PaaS_StorageAccount = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'BigData.PaaS.AzureDatalake',
@@ -2280,7 +2357,7 @@ export const BigData_PaaS_StorageAccount = {
     /** Identity-based authentication for Azure Files, as {directoryServiceOptions, defaultSharePermission, activeDirectoryProperties}. directoryServiceOptions is None, AADDS, AD or AADKERB and defaultSharePermission a share-level role name, both None when not named; activeDirectoryProperties carries the on-premises AD domain facts (domainName, domainGuid, domainSid, forestName, netBiosDomainName, azureStorageSid, samAccountName, accountType, default Computer) needed for AD. When unset, none is configured. */
     azureFilesIdentityBasedAuthentication: {type: 'object', required: false},
     /** Legacy alias of region: the Azure region a new storage account is created in, e.g. northeurope. region wins when both are set. When both are unset, the region of the component's resource group, which is the Live System's (environment's) region; a new account with no region at all is refused. An existing account keeps the region it lives in: Azure cannot move it. */
-    azureRegion: {type: 'string', required: false},
+    azureRegion: {type: 'string', required: false, valuesCaseInsensitive: true},
     /** Azure Backup for the account's file shares, as {vaultName, vaultResourceGroupName, vaultLocation, sku, etag, policyName, policyResourceGroupName, policyLocation, policy, policyType}. Defaults: vault <account>-backupVault and policy <account>-policy, both in the account's resource group and region, vault SKU Standard, policyType AzureStorage. policy is the policy JSON; when empty, only the vault is created. When unset, no backup is configured. */
     backup: {type: 'object', required: false},
     /** Custom domain for the blob endpoint, as {name, useSubDomainName}. A block without a name means no custom domain; on an existing account an unset value keeps the domain it has. */
@@ -2309,7 +2386,7 @@ export const BigData_PaaS_StorageAccount = {
     isLocalUserEnabled: {type: 'boolean', required: false},
     /** Whether NFS 3.0 is enabled for blobs. Set at creation only and requires the hierarchical namespace (isHnsEnabled). When unset, it is not enabled. */
     isNfsV3Enabled: {type: 'boolean', required: false},
-    /** Whether the SFTP endpoint is enabled. Requires the hierarchical namespace (isHnsEnabled). When unset, it is not enabled. */
+    /** Whether the SFTP endpoint is enabled. Requires a StorageV2 or BlockBlobStorage account with the hierarchical namespace (isHnsEnabled): a new account is created with it, while an existing account without it is refused until it is upgraded to Data Lake Storage Gen2. When unset, it is not enabled. */
     isSftpEnabled: {type: 'boolean', required: false},
     /** Access-key expiration policy, as {keyExpirationPeriodInDays}, at least 1 day. A block without a period keeps an existing account's period and gives a new account 30 days. When unset, no key policy is requested. */
     keyPolicy: {type: 'object', required: false},
@@ -2326,7 +2403,7 @@ export const BigData_PaaS_StorageAccount = {
     /** Whether the public endpoint is reachable at all: Enabled or Disabled. When unset, Enabled; what reaches it is then decided by the network rule set (see publicAccess). */
     publicNetworkAccess: {type: 'string', required: false, default: 'Enabled'},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {type: 'string', required: false, valuesCaseInsensitive: true},
     /** Network routing preference, as {routingChoice: MicrosoftRouting|InternetRouting (default InternetRouting), publishMicrosoftEndpoints (default false), publishInternetEndpoints (default true)}. When unset, none is requested. */
     routingPreference: {type: 'object', required: false},
     /** Shared access signature expiration policy, as {sasExpirationPeriod, expirationAction}. The period has the form <days>.<hours>:<minutes>:<seconds>, e.g. 1.00:00:00; the action is Log or Block. A field not named keeps the account's own value; on a new account a missing period is one day and a missing action Log. When unset, no SAS policy is requested. */
@@ -2344,28 +2421,28 @@ export const BigData_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],

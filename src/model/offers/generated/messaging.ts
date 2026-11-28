@@ -9,7 +9,7 @@ export const Messaging_CaaS_Kafka = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.17.0',
+      agentVersion: 'v2.0.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -32,7 +32,7 @@ export const Messaging_CaaS_KafkaTopic = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v1.17.0',
+      agentVersion: 'v2.0.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -50,76 +50,13 @@ export const Messaging_CaaS_KafkaTopic = {
   },
 } as const satisfies OfferContract;
 
-export const Messaging_CaaS_KafkaUser = {
-  offerType: 'Messaging.CaaS.KafkaUser',
-  serviceTypes: [],
-  declaredBy: [
-    {
-      agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
-      contractSchemaVersion: '2.0',
-      provider: 'AWS',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
-      contractSchemaVersion: '2.0',
-      provider: 'Azure',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
-      contractSchemaVersion: '2.0',
-      provider: 'GCP',
-      parameterRules: [],
-    },
-    {
-      agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.31.0',
-      contractSchemaVersion: '2.0',
-      provider: 'OCI',
-      parameterRules: [],
-    },
-  ],
-  params: {
-    /** Kafka ACLs of the user, which authenticates with a TLS client certificate and is named after the component id. Each entry is {resource: {type, name, patternType}, operations: [...]} in Strimzi's simple-authorization form, e.g. type topic, patternType literal or prefix, operations Read, Write, Describe. When unset, no ACLs: the user can authenticate but not access anything. */
-    acls: {type: 'array', required: false, default: []},
-    /** Id of the Kafka cluster component, in the same Live System, the user belongs to. When unset, the Kafka cluster this component depends on; with neither the component fails. It waits while that cluster is not Active. */
-    clusterName: {
-      type: 'string',
-      required: false,
-      derived: {note: 'the Kafka cluster component this user depends on'},
-    },
-    /** Deprecated: id of the Kubernetes cluster component to deploy into. Used only when the component declares no dependency on a Kubernetes cluster; declare that dependency instead. */
-    containerPlatform: {type: 'string', required: false},
-    /** Kubernetes namespace of the user. It always lives in its Kafka cluster's namespace, so leave this unset; a value other than the cluster's namespace fails the component. */
-    namespace: {
-      type: 'string',
-      required: false,
-      derived: {note: 'defaults to the component id when absent'},
-    },
-    /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {
-      type: 'string',
-      required: false,
-      agents: [
-        'fractal-cloud-agent-aws',
-        'fractal-cloud-agent-azure',
-        'fractal-cloud-agent-gcp',
-      ],
-    },
-  },
-} as const satisfies OfferContract;
-
 export const Messaging_PaaS_AwsMessaging = {
   offerType: 'Messaging.PaaS.AwsMessaging',
   serviceTypes: ['Messaging.PaaS.MessageBroker'],
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -127,7 +64,14 @@ export const Messaging_PaaS_AwsMessaging = {
   ],
   params: {
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -137,7 +81,7 @@ export const Messaging_PaaS_AwsSesIdentity = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -211,7 +155,14 @@ export const Messaging_PaaS_AwsSesIdentity = {
     /** Whether to request SES production access (leaving the sandbox) once. Account-wide per region and cannot be reverted. Requires websiteUrl and useCaseDescription; when they are missing the request is not sent and a warning is reported. When unset, false. */
     productionAccess: {type: 'boolean', required: false, default: false},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
     /** Free text sent with the production access request: what is sent, to whom, and how bounces and complaints are handled. Required with productionAccess. */
     useCaseDescription: {type: 'string', required: false, default: ''},
     /** http(s) URL of the sender's website, sent with the production access request. Required with productionAccess. */
@@ -230,7 +181,7 @@ export const Messaging_PaaS_AwsSnsTopic = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -247,7 +198,14 @@ export const Messaging_PaaS_AwsSnsTopic = {
       constraints: {maximum: 1048576, minimum: 1024},
     },
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
     /** Name of the SNS topic; characters SNS refuses become -. When unset, the component id. */
     topicName: {
       type: 'string',
@@ -264,7 +222,7 @@ export const Messaging_PaaS_AwsSqsQueue = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [
@@ -322,7 +280,14 @@ export const Messaging_PaaS_AwsSqsQueue = {
     /** Whether an SNS topic subscription of this queue delivers the raw message body rather than the SNS JSON envelope. When unset, true. */
     rawMessageDelivery: {type: 'boolean', required: false, default: true},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
     /** Seconds a received message stays hidden from other consumers, 0 to 43200. When unset, 60. */
     visibilityTimeoutSeconds: {
       type: 'integer',
@@ -339,7 +304,7 @@ export const Messaging_PaaS_AzureRelayHybridConnection = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -347,7 +312,12 @@ export const Messaging_PaaS_AzureRelayHybridConnection = {
   ],
   params: {
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** Whether a sender must present an authorization token (an Entra role such as Azure Relay Sender, or a SAS token) to reach the listener. When unset, true. Applied when the hybrid connection is created; an existing one keeps the value it has, with a warning. */
     requiresClientAuthorization: {
       type: 'boolean',
@@ -365,7 +335,7 @@ export const Messaging_PaaS_AzureServiceBus = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -385,7 +355,12 @@ export const Messaging_PaaS_AzureServiceBus = {
     /** Managed identity type of the namespace: SystemAssigned, UserAssigned, "SystemAssigned, UserAssigned" or None. When unset, SystemAssigned. */
     identity: {type: 'string', required: false, default: 'SystemAssigned'},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** Pricing tier as a map of tier (Basic, Standard or Premium, case-insensitive) and capacity (messaging units, applied on Premium only; 0 means the tier's own). skuTier wins over sku.tier. An unrecognized tier falls back to Standard. */
     sku: {type: 'object', required: false, default: {}},
     /** Namespace tier: Basic, Standard or Premium; wins over sku.tier. When neither is set, a new namespace is Standard (Basic cannot hold topics) and an existing one keeps its tier, except that a Basic namespace whose topology declares a topic is upgraded to Standard in place. Basic to Standard is applied in place; any other change of an existing namespace is refused unless allowDestructiveTierChange is true. */
@@ -401,7 +376,7 @@ export const Messaging_PaaS_AzureServiceBusTopic = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -437,7 +412,12 @@ export const Messaging_PaaS_AzureServiceBusTopic = {
     /** Maximum topic size in MB; Azure accepts 1024, 2048, 3072, 4096 or 5120 (more on Premium). When unset, 1024. */
     maxSizeInMegabytes: {type: 'integer', required: false, default: 1024},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** Whether duplicate message detection is enabled. Azure fixes it at creation. When unset, false. */
     requiresDuplicateDetection: {
       type: 'boolean',
@@ -457,7 +437,7 @@ export const Messaging_PaaS_EventHubInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -469,7 +449,12 @@ export const Messaging_PaaS_EventHubInstance = {
     /** Number of partitions of the event hub. When unset, 1. */
     partitionCount: {type: 'integer', required: false, default: 1},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** Retention description: timeInHours (message retention in hours), cleanupPolicy (Delete or Compact) and tombstoneTimeInHours (tombstone retention in hours, applied only with Compact). Each field missing from the map takes its default: 12 hours, Compact, 12 hours. */
     retention: {
       type: 'object',
@@ -491,7 +476,7 @@ export const Messaging_PaaS_EventHubNamespace = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -518,7 +503,12 @@ export const Messaging_PaaS_EventHubNamespace = {
     /** Whether the namespace is reachable from public networks: Enabled, Disabled or SecuredByPerimeter. When unset, Disabled. */
     publicNetworkAccess: {type: 'string', required: false, default: 'Disabled'},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** Pricing tier as a map of name (Basic, Standard or Premium), tier (same values) and capacity (throughput units, or processing units on Premium). Each field missing from the map takes its default: Standard, Standard, 1. */
     sku: {
       type: 'object',
@@ -652,7 +642,7 @@ export const Messaging_PaaS_GcpPubSub = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -673,7 +663,7 @@ export const Messaging_PaaS_GcpPubSubTopic = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -728,7 +718,7 @@ export const Messaging_PaaS_PubSub = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -746,7 +736,7 @@ export const Messaging_PaaS_PubSubTopic = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'Messaging.PaaS.GcpPubSubTopic',
@@ -765,7 +755,7 @@ export const Messaging_PaaS_Relay = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -773,7 +763,12 @@ export const Messaging_PaaS_Relay = {
   ],
   params: {
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -783,7 +778,7 @@ export const Messaging_PaaS_ServiceBus = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'Messaging.PaaS.AzureServiceBus',
@@ -804,7 +799,12 @@ export const Messaging_PaaS_ServiceBus = {
     /** Managed identity type of the namespace: SystemAssigned, UserAssigned, "SystemAssigned, UserAssigned" or None. When unset, SystemAssigned. */
     identity: {type: 'string', required: false, default: 'SystemAssigned'},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** Pricing tier as a map of tier (Basic, Standard or Premium, case-insensitive) and capacity (messaging units, applied on Premium only; 0 means the tier's own). skuTier wins over sku.tier. An unrecognized tier falls back to Standard. */
     sku: {type: 'object', required: false, default: {}},
     /** Namespace tier: Basic, Standard or Premium; wins over sku.tier. When neither is set, a new namespace is Standard (Basic cannot hold topics) and an existing one keeps its tier, except that a Basic namespace whose topology declares a topic is upgraded to Standard in place. Basic to Standard is applied in place; any other change of an existing namespace is refused unless allowDestructiveTierChange is true. */
@@ -820,7 +820,7 @@ export const Messaging_PaaS_ServiceBusQueue = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -874,7 +874,12 @@ export const Messaging_PaaS_ServiceBusQueue = {
     /** Maximum queue size in MB; Azure accepts 1024, 2048, 3072, 4096 or 5120 (more on Premium). When unset, 1024. */
     maxSizeInMegabytes: {type: 'integer', required: false, default: 1024},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** Whether duplicate message detection is enabled. Azure fixes it at creation. When unset, false. */
     requiresDuplicateDetection: {
       type: 'boolean',
@@ -894,7 +899,7 @@ export const Messaging_PaaS_ServiceBusTopic = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'Messaging.PaaS.AzureServiceBusTopic',
@@ -931,7 +936,12 @@ export const Messaging_PaaS_ServiceBusTopic = {
     /** Maximum topic size in MB; Azure accepts 1024, 2048, 3072, 4096 or 5120 (more on Premium). When unset, 1024. */
     maxSizeInMegabytes: {type: 'integer', required: false, default: 1024},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** Whether duplicate message detection is enabled. Azure fixes it at creation. When unset, false. */
     requiresDuplicateDetection: {
       type: 'boolean',
@@ -954,7 +964,7 @@ export const Messaging_PaaS_Subscription = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -976,28 +986,28 @@ export const Messaging_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],

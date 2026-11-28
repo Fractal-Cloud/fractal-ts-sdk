@@ -1,6 +1,6 @@
 {
   "agentId": "aria-agent-openshift",
-  "agentVersion": "v0.1.1",
+  "agentVersion": "v0.2.4",
   "offers": [
     {
       "aliasOfOfferType": null,
@@ -41,6 +41,7 @@
         {
           "description": "Container image",
           "key": "image",
+          "required": true,
           "type": "string"
         },
         {
@@ -73,6 +74,11 @@
           "default": "TCP",
           "description": "Port protocol (TCP/UDP)",
           "key": "protocol",
+          "type": "string"
+        },
+        {
+          "description": "How long the component may take to become ready before it is reported Failed: a duration such as 45m or 2h, clamped to [1m, 48h]; defaults to the agent's --provisioning-timeout (at least 2h for virtual machines)",
+          "key": "provisioningTimeout",
           "type": "string"
         },
         {
@@ -142,6 +148,11 @@
           "description": "the node labels selecting the announcing nodes (all when empty)",
           "key": "nodeSelector",
           "type": "object"
+        },
+        {
+          "description": "How long the component may take to become ready before it is reported Failed: a duration such as 45m or 2h, clamped to [1m, 48h]; defaults to the agent's --provisioning-timeout (at least 2h for virtual machines)",
+          "key": "provisioningTimeout",
+          "type": "string"
         }
       ],
       "provider": "RedHat",
@@ -157,29 +168,51 @@
       "parameterRules": [],
       "params": [
         {
-          "description": "JSON-encoded egress rules",
+          "default": false,
+          "description": "Allow DNS to the cluster DNS (openshift-dns, ports 53/5353)",
+          "key": "allowDnsEgress",
+          "type": "boolean"
+        },
+        {
+          "default": false,
+          "description": "Admit the OpenShift ingress routers, so Routes keep working under the policy",
+          "key": "allowRouterIngress",
+          "type": "boolean"
+        },
+        {
+          "description": "JSON array of egress rules: fromPort (1-65535), toPort (range end), or allPorts: true; protocol TCP (default), UDP or SCTP; and at least one destination: destCidr (+ destCidrExcept), toSelector (pod labels), destNamespaceSelector (namespace labels), destGroupId",
           "key": "egressRules",
           "type": "string"
         },
         {
-          "description": "JSON-encoded ingress rules",
+          "description": "JSON array of ingress rules: fromPort (1-65535), toPort (range end), or allPorts: true; protocol TCP (default), UDP or SCTP; and at least one source: sourceCidr (+ sourceCidrExcept), fromSelector (pod labels), sourceNamespaceSelector (namespace labels), sourceGroupId",
           "key": "ingressRules",
           "type": "string"
         },
         {
           "description": "Policy name",
           "key": "name",
+          "required": true,
           "type": "string"
         },
         {
-          "description": "JSON-encoded label selector (default: all pods)",
+          "description": "Pod labels the policy governs: JSON label map or key=value (default: the workloads and VMs linking to it)",
           "key": "podSelector",
           "type": "string"
         },
         {
-          "default": "Ingress",
-          "description": "Ingress, Egress, or Both",
+          "description": "Ingress, Egress or Both; unset follows the rules given (no rules: Ingress, a default deny). A type that would make Kubernetes ignore given rules is refused",
           "key": "policyType",
+          "type": "string",
+          "values": [
+            "Ingress",
+            "Egress",
+            "Both"
+          ]
+        },
+        {
+          "description": "How long the component may take to become ready before it is reported Failed: a duration such as 45m or 2h, clamped to [1m, 48h]; defaults to the agent's --provisioning-timeout (at least 2h for virtual machines)",
+          "key": "provisioningTimeout",
           "type": "string"
         }
       ],
@@ -204,6 +237,7 @@
         {
           "description": "Service name",
           "key": "name",
+          "required": true,
           "type": "string"
         },
         {
@@ -218,14 +252,24 @@
           "type": "string"
         },
         {
-          "description": "Custom hostname for Route",
+          "description": "How long the component may take to become ready before it is reported Failed: a duration such as 45m or 2h, clamped to [1m, 48h]; defaults to the agent's --provisioning-timeout (at least 2h for virtual machines)",
+          "key": "provisioningTimeout",
+          "type": "string"
+        },
+        {
+          "description": "Custom hostname for the Route; it must fall under a domain the agent operator allows (ARIA_ALLOWED_ROUTE_DOMAINS), else the service is refused. Empty: the router generates one",
           "key": "routeHostname",
           "type": "string"
         },
         {
-          "description": "TLS termination: edge, passthrough, reencrypt",
+          "description": "TLS termination: edge, passthrough or reencrypt; unset, the Route serves plain HTTP",
           "key": "routeTlsTermination",
-          "type": "string"
+          "type": "string",
+          "values": [
+            "edge",
+            "passthrough",
+            "reencrypt"
+          ]
         },
         {
           "default": "ClusterIP",
@@ -237,6 +281,11 @@
           "description": "Target container port",
           "key": "targetPort",
           "type": "number"
+        },
+        {
+          "description": "The app label of the pods to select: must name a workload or virtual machine this service links to or depends on (default: that workload or virtual machine, else the service name)",
+          "key": "workloadName",
+          "type": "string"
         }
       ],
       "provider": "RedHat",
@@ -253,13 +302,18 @@
       "params": [
         {
           "default": 1,
-          "description": "Number of CPU cores",
+          "description": "Number of CPU cores (whole number, at least 1)",
           "key": "cpuCores",
           "type": "number"
         },
         {
+          "description": "PVC names managed by this live system, mounted read-write as extra disks in addition to the linked persistent volumes; a claim named here must be this live system's even when a linked persistent volume also claims it",
+          "key": "dataVolumes",
+          "type": "array"
+        },
+        {
           "default": "20Gi",
-          "description": "Root disk size",
+          "description": "Root disk size; \"0\" boots the image as an ephemeral containerDisk. Growth is applied when the storage class allows volume expansion",
           "key": "diskSizeGi",
           "type": "string"
         },
@@ -269,8 +323,9 @@
           "type": "array"
         },
         {
-          "description": "Container disk image or DataVolume source URL",
+          "description": "Disk image: a registry reference (imported, or booted as a containerDisk when diskSizeGi is 0) or an https URL to a public host (imported; needs diskSizeGi)",
           "key": "image",
+          "required": true,
           "type": "string"
         },
         {
@@ -280,8 +335,9 @@
           "type": "string"
         },
         {
-          "description": "VM name",
+          "description": "VM name (DNS-1123 label; with a root disk, at most 54 characters)",
           "key": "name",
+          "required": true,
           "type": "string"
         },
         {
@@ -291,18 +347,29 @@
           "type": "string"
         },
         {
-          "description": "Additional network attachment (multus)",
+          "description": "Additional network attachment (multus NetworkAttachmentDefinition in the VM namespace, or namespace/name allowed by the agent operator), bridged next to the pod network",
           "key": "networkName",
+          "type": "string"
+        },
+        {
+          "description": "How long the component may take to become ready before it is reported Failed: a duration such as 45m or 2h, clamped to [1m, 48h]; defaults to the agent's --provisioning-timeout (at least 2h for virtual machines)",
+          "key": "provisioningTimeout",
           "type": "string"
         },
         {
           "default": "Always",
           "description": "Always, RerunOnFailure, Manual, Halted",
           "key": "runStrategy",
-          "type": "string"
+          "type": "string",
+          "values": [
+            "Always",
+            "RerunOnFailure",
+            "Manual",
+            "Halted"
+          ]
         },
         {
-          "description": "SSH public key to inject",
+          "description": "SSH public key to inject (one line)",
           "key": "sshPublicKey",
           "type": "string"
         },
@@ -312,7 +379,7 @@
           "type": "string"
         },
         {
-          "description": "Raw cloud-init user-data (startup script)",
+          "description": "Raw cloud-init user-data (#cloud-config or a #! script)",
           "key": "userData",
           "type": "string"
         }
@@ -338,17 +405,24 @@
         {
           "description": "PVC name",
           "key": "name",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "How long the component may take to become ready before it is reported Failed: a duration such as 45m or 2h, clamped to [1m, 48h]; defaults to the agent's --provisioning-timeout (at least 2h for virtual machines)",
+          "key": "provisioningTimeout",
           "type": "string"
         },
         {
           "default": "trident-nfs",
-          "description": "StorageClass name",
+          "description": "StorageClass of the claim: set it to use another storage class of the cluster; omit it to get trident-nfs, not the cluster's default class (on a cluster without trident-nfs, set it). Fixed once the claim exists",
           "key": "storageClassName",
           "type": "string"
         },
         {
           "description": "Storage size (e.g. 10Gi)",
           "key": "storageSize",
+          "required": true,
           "type": "string"
         }
       ],
