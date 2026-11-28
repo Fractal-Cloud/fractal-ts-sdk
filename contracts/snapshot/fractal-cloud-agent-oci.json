@@ -1,6 +1,6 @@
 {
   "agentId": "fractal-cloud-agent-oci",
-  "agentVersion": "v8.31.0",
+  "agentVersion": "v8.48.0",
   "offers": [
     {
       "aliasOfOfferType": null,
@@ -24,92 +24,6 @@
           "key": "secretValue",
           "sensitive": true,
           "type": "string"
-        }
-      ],
-      "provider": "OCI",
-      "providerResources": [],
-      "requiredApis": []
-    },
-    {
-      "aliasOfOfferType": null,
-      "canAccessSecrets": false,
-      "offerType": "APIManagement.CaaS.Traefik",
-      "params": [
-        {
-          "description": "Deprecated: id of the Kubernetes cluster component to deploy into. Used only when the component declares no dependency on a Kubernetes cluster; declare that dependency instead.",
-          "key": "containerPlatform",
-          "type": "string"
-        },
-        {
-          "description": "Ports Traefik listens on, each a map {name, port, exposedPort, protocol, isTlsEnabled, isHttpsRedirected} or a 'name:port' string. exposedPort defaults to port, protocol to tcp (tcp or udp), isTlsEnabled to true (in the string form, true only for https and websecure) and isHttpsRedirected to false. Entries without a name or port are skipped and none left fails the component; a name must be a valid Kubernetes port name (at most 15 characters) and cannot be 'traefik', which the agent reserves.",
-          "key": "entryPoints",
-          "required": true,
-          "type": "array"
-        },
-        {
-          "description": "Name of the environment secret the forward-auth service signs its session cookies with. Required together with the other three OIDC keys; a name that resolves to no secret counts as unset.",
-          "key": "forwardAuthSecretId",
-          "type": "string"
-        },
-        {
-          "default": "",
-          "description": "Fully qualified host name the Traefik dashboard and API route (and the /_oauth callback when OIDC is on) answers on. When unset, that route matches an empty host, which no request carries: the dashboard and API are unreachable, and so is the /_oauth callback this route serves.",
-          "example": "traefik.contoso.internal",
-          "key": "hostname",
-          "type": "string"
-        },
-        {
-          "default": "",
-          "description": "Static IP address requested for Traefik's LoadBalancer Service (loadBalancerIP). The address must already be reserved for the cluster; when unset, the cloud provider assigns one.",
-          "key": "loadbalancerIp",
-          "type": "string"
-        },
-        {
-          "derived": {
-            "note": "defaults to the component id when absent"
-          },
-          "description": "Kubernetes namespace Traefik is deployed into. When unset, the component id, which must then be a valid DNS-1123 label (at most 63 lowercase letters, digits and hyphens).",
-          "key": "namespace",
-          "type": "string"
-        },
-        {
-          "description": "Client id of the OIDC application registered for this gateway. Required together with the other three OIDC keys.",
-          "key": "oidcClientId",
-          "type": "string"
-        },
-        {
-          "description": "Name of the environment secret holding the OIDC client secret; the raw secret is never a parameter. Required together with the other three OIDC keys; a name that resolves to no secret counts as unset.",
-          "key": "oidcClientSecretId",
-          "type": "string"
-        },
-        {
-          "description": "Issuer URL of the OpenID Connect provider that protects the routes through forward authentication. OIDC is enabled only when oidcIssuerUrl, oidcClientId, oidcClientSecretId and forwardAuthSecretId are all set; setting only some of them fails the component.",
-          "key": "oidcIssuerUrl",
-          "type": "string"
-        },
-        {
-          "default": {},
-          "description": "HSTS security-headers middleware: a map {active, stsSeconds, stsIncludeSubdomains, stsPreload, stsForce}. When unset, the middleware is applied with stsSeconds 63072000 (two years) and the three flags true; any key left out of the map takes that same value, and active=false removes the middleware.",
-          "key": "securityHeadersSettings",
-          "type": "object"
-        },
-        {
-          "default": [],
-          "description": "TLS certificates Traefik serves, each a map {certSecretId, keySecretId, isDefault} naming the environment secrets that hold the base64-encoded PEM certificate and its private key. Entries missing either id are skipped; a named secret that does not exist fails the component. When none is marked isDefault, the first one is the default certificate.",
-          "key": "tlsCertificates",
-          "type": "array"
-        },
-        {
-          "default": {},
-          "description": "TLS options of the entry points, as {supportedTlsVersions, supportedCiphers}: supportedTlsVersions lists TLS_1_0, TLS_1_1, TLS_1_2 or TLS_1_3 (the lowest becomes the minimum version; any other value fails the component), supportedCiphers lists cipher-suite names as Go's crypto/tls spells them (e.g. TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256). Each half left unset keeps its default: TLS 1.2 and 1.3, with a fixed list of ECDHE and TLS 1.3 AES-GCM / ChaCha20 suites.",
-          "key": "tlsSettings",
-          "type": "object"
-        },
-        {
-          "default": {},
-          "description": "Distributed tracing, as {jaeger: {collectorEndpoint, localAgentPort, localAgentUrlPath}}. Traefik sends traces over OpenTelemetry (OTLP over HTTP) to that endpoint. When jaeger is set without a collectorEndpoint, the endpoint is the Jaeger component this gateway links to with link type JaegerTracing, on localAgentPort (default 4318) and localAgentUrlPath (default /v1/traces), and the component fails when there is no such link. Only an OTLP traces endpoint (a path ending in /v1/traces, not on a Jaeger v1 port 14268 / 6831 / 6832) is used as declared; any other endpoint is sent to the same host's OTLP receiver (http://<host>:4318/v1/traces), and the remap is published in contractWarnings. An endpoint without a scheme is read as http://. The collector must accept OTLP over HTTP, as Jaeger v2 does. When unset, tracing is off.",
-          "key": "tracing",
-          "type": "object"
         }
       ],
       "provider": "OCI",
@@ -218,43 +132,6 @@
     {
       "aliasOfOfferType": null,
       "canAccessSecrets": false,
-      "offerType": "Messaging.CaaS.KafkaUser",
-      "params": [
-        {
-          "default": [],
-          "description": "Kafka ACLs of the user, which authenticates with a TLS client certificate and is named after the component id. Each entry is {resource: {type, name, patternType}, operations: [...]} in Strimzi's simple-authorization form, e.g. type topic, patternType literal or prefix, operations Read, Write, Describe. When unset, no ACLs: the user can authenticate but not access anything.",
-          "key": "acls",
-          "type": "array"
-        },
-        {
-          "derived": {
-            "note": "the Kafka cluster component this user depends on"
-          },
-          "description": "Id of the Kafka cluster component, in the same Live System, the user belongs to. When unset, the Kafka cluster this component depends on; with neither the component fails. It waits while that cluster is not Active.",
-          "key": "clusterName",
-          "type": "string"
-        },
-        {
-          "description": "Deprecated: id of the Kubernetes cluster component to deploy into. Used only when the component declares no dependency on a Kubernetes cluster; declare that dependency instead.",
-          "key": "containerPlatform",
-          "type": "string"
-        },
-        {
-          "derived": {
-            "note": "defaults to the component id when absent"
-          },
-          "description": "Kubernetes namespace of the user. It always lives in its Kafka cluster's namespace, so leave this unset; a value other than the cluster's namespace fails the component.",
-          "key": "namespace",
-          "type": "string"
-        }
-      ],
-      "provider": "OCI",
-      "providerResources": [],
-      "requiredApis": []
-    },
-    {
-      "aliasOfOfferType": null,
-      "canAccessSecrets": false,
       "offerType": "Messaging.SaaS.Unmanaged",
       "params": [
         {
@@ -309,7 +186,8 @@
           "type": "object"
         },
         {
-          "description": "OCID of the image the instance boots from (ocid1.image...). Required to create: a new instance without it is refused; a deployed one keeps its image, with a warning. Applied when the instance is created; changing it does not rebuild an existing one.",
+          "description": "Image the instance boots from: an image OCID (ocid1.image...), or a platform image as <operating system>:<version> (e.g. Oracle Linux:9), resolved when the instance is created to the newest available image of that system and version the shape can boot in the region. Required to create: a new instance without it is refused; a deployed one keeps its image, with a warning. Applied when the instance is created; changing it does not rebuild an existing one.",
+          "example": "Oracle Linux:9",
           "key": "imageId",
           "type": "string"
         },
@@ -386,7 +264,8 @@
           "type": "object"
         },
         {
-          "description": "OCID of the image the instance boots from (ocid1.image...). Required to create: a new instance without it is refused; a deployed one keeps its image, with a warning. Applied when the instance is created; changing it does not rebuild an existing one.",
+          "description": "Image the instance boots from: an image OCID (ocid1.image...), or a platform image as <operating system>:<version> (e.g. Oracle Linux:9), resolved when the instance is created to the newest available image of that system and version the shape can boot in the region. Required to create: a new instance without it is refused; a deployed one keeps its image, with a warning. Applied when the instance is created; changing it does not rebuild an existing one.",
+          "example": "Oracle Linux:9",
           "key": "imageId",
           "type": "string"
         },
@@ -723,79 +602,6 @@
     {
       "aliasOfOfferType": null,
       "canAccessSecrets": false,
-      "offerType": "Observability.CaaS.Jaeger",
-      "params": [
-        {
-          "description": "Deprecated: id of the Kubernetes cluster component to deploy into. Used only when the component declares no dependency on a Kubernetes cluster; declare that dependency instead.",
-          "key": "containerPlatform",
-          "type": "string"
-        },
-        {
-          "derived": {
-            "note": "defaults to the component id when absent"
-          },
-          "description": "Kubernetes namespace Jaeger is deployed into, where its OpenSearch trace store places Jaeger's credentials Secret. When unset, the component id, which must then be a valid DNS-1123 label (at most 63 lowercase letters, digits and hyphens).",
-          "key": "namespace",
-          "type": "string"
-        },
-        {
-          "deprecated": {
-            "level": "warn",
-            "note": "Jaeger no longer generates a trace store: link it to a Storage.CaaS.OpenSearch component with {access: read-write} and size that component instead"
-          },
-          "description": "Retired: the storage class of the private Elasticsearch trace store Jaeger generated. Refused on a new Jaeger, warned on a deployed one.",
-          "key": "storageClassName",
-          "type": "string"
-        },
-        {
-          "deprecated": {
-            "level": "warn",
-            "note": "Jaeger no longer generates a trace store: link it to a Storage.CaaS.OpenSearch component with {access: read-write} and size that component instead"
-          },
-          "description": "Retired: the private Elasticsearch trace store Jaeger generated. Refused on a new Jaeger, warned on a deployed one.",
-          "key": "storageSettings",
-          "type": "object"
-        }
-      ],
-      "provider": "OCI",
-      "providerResources": [],
-      "requiredApis": []
-    },
-    {
-      "aliasOfOfferType": null,
-      "canAccessSecrets": false,
-      "offerType": "Observability.CaaS.Prometheus",
-      "params": [
-        {
-          "derived": {
-            "note": "the address of the API gateway the component links to, when it can route"
-          },
-          "description": "Host name or address, without scheme or path, the stack is reached through: its external URLs become https://<host>/prometheus/, https://<host>/alertmanager/ and https://<host>/grafana/, and they are published as its outputs. When unset, the address of the API gateway the component links to, once it can route; with neither, the stack is reachable in-cluster only and publishes its in-cluster addresses.",
-          "example": "monitoring.contoso.internal",
-          "key": "apiGatewayUrl",
-          "type": "string"
-        },
-        {
-          "description": "Deprecated: id of the Kubernetes cluster component to install into. Used only when the component declares no dependency on a Kubernetes cluster; declare that dependency instead.",
-          "key": "containerPlatform",
-          "type": "string"
-        },
-        {
-          "derived": {
-            "note": "defaults to the component id when absent"
-          },
-          "description": "Kubernetes namespace the Prometheus, Alertmanager and Grafana stack is installed into. When unset, the component id, which must then be a valid DNS-1123 label (at most 63 lowercase letters, digits and hyphens).",
-          "key": "namespace",
-          "type": "string"
-        }
-      ],
-      "provider": "OCI",
-      "providerResources": [],
-      "requiredApis": []
-    },
-    {
-      "aliasOfOfferType": null,
-      "canAccessSecrets": false,
       "offerType": "Observability.SaaS.Jaeger",
       "params": [
         {
@@ -836,61 +642,6 @@
     {
       "aliasOfOfferType": null,
       "canAccessSecrets": false,
-      "offerType": "Security.CaaS.Ocelot",
-      "params": [
-        {
-          "description": "Deprecated: id of the Kubernetes cluster component to deploy into. Used only when the component declares no dependency on a Kubernetes cluster; declare that dependency instead.",
-          "key": "containerPlatform",
-          "type": "string"
-        },
-        {
-          "default": 900,
-          "description": "Lifetime, in seconds, of the session cookie Ocelot issues. When unset, 900 (15 minutes).",
-          "key": "cookieMaxAgeSec",
-          "type": "integer"
-        },
-        {
-          "default": [],
-          "description": "Origins (scheme://host[:port]) allowed to call Ocelot cross-origin, passed to it as one comma-separated list. When unset, none.",
-          "key": "corsOrigins",
-          "type": "array"
-        },
-        {
-          "description": "Host name, on the Live System's Traefik gateway, whose /ocelot/ route Ocelot serves. Required to create: a new Ocelot is refused without it; a deployed one is kept as it runs, with a warning.",
-          "key": "host",
-          "type": "string"
-        },
-        {
-          "derived": {
-            "note": "defaults to the component id when absent"
-          },
-          "description": "Kubernetes namespace Ocelot is deployed into. When unset, the component id, which must then be a valid DNS-1123 label (at most 63 lowercase letters, digits and hyphens).",
-          "key": "namespace",
-          "type": "string"
-        },
-        {
-          "deprecated": {
-            "level": "warn",
-            "note": "ignored: a route is authenticated by referencing Ocelot's ForwardAuth middleware"
-          },
-          "description": "Deprecated and ignored: it chose the paths an Ambassador Edge Stack FilterPolicy guarded. Behind Traefik a route is authenticated by referencing Ocelot's ForwardAuth middleware (published as forwardAuthMiddlewareName / forwardAuthMiddlewareNamespace). Leave it unset.",
-          "key": "pathPrefix",
-          "type": "string"
-        },
-        {
-          "default": [],
-          "description": "Cloud roles granted to Ocelot's workload identity, each a map {name, scope, roleType}; roleType is BuiltInRole (when unset), CustomRole, AppRoleAssignment, OcelotRole or CosmosDbSqlRole. When unset, no extra roles.",
-          "key": "roles",
-          "type": "array"
-        }
-      ],
-      "provider": "OCI",
-      "providerResources": [],
-      "requiredApis": []
-    },
-    {
-      "aliasOfOfferType": null,
-      "canAccessSecrets": false,
       "offerType": "Security.SaaS.Unmanaged",
       "params": [
         {
@@ -909,172 +660,6 @@
           "description": "Raw secret value (legacy) that the component stores in the environment secret store under 'secretName', granting read access to the custom workloads linked to it. Required when 'secret' is not set; deleting the component deletes the stored secret.",
           "key": "secretValue",
           "sensitive": true,
-          "type": "string"
-        }
-      ],
-      "provider": "OCI",
-      "providerResources": [],
-      "requiredApis": []
-    },
-    {
-      "aliasOfOfferType": null,
-      "canAccessSecrets": false,
-      "offerType": "Storage.CaaS.CnpgCluster",
-      "params": [
-        {
-          "default": false,
-          "description": "Whether to run the Fractal-built PostgreSQL image bundling the Apache AGE graph extension, preloaded as a shared library. When unset, false. Requires PostgreSQL 17.2, the only version with a published AGE image: a new cluster on any other version is refused, and a deployed one keeps the image it runs, with a warning. Toggling it on a running cluster swaps the image with a rolling update.",
-          "key": "age",
-          "type": "boolean"
-        },
-        {
-          "description": "Deprecated. Id of the Kubernetes cluster component to deploy on, read only when this component declares no dependency on a Kubernetes cluster. Declare that dependency instead.",
-          "key": "containerPlatform",
-          "type": "string"
-        },
-        {
-          "default": "1",
-          "description": "CPU limit of each PostgreSQL instance, as a Kubernetes quantity (cores or millicores). When unset, 1. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image.",
-          "key": "cpuLimit",
-          "type": "string"
-        },
-        {
-          "default": "500m",
-          "description": "CPU requested by each PostgreSQL instance, as a Kubernetes quantity (cores, or millicores such as 500m). When unset, 500m. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image.",
-          "key": "cpuRequest",
-          "type": "string"
-        },
-        {
-          "default": "app",
-          "description": "Name of the database created when the cluster is bootstrapped. When unset, app. Bootstrap runs once: changing it later does not create or rename a database (use a CnpgDatabase component for more).",
-          "key": "database",
-          "type": "string"
-        },
-        {
-          "default": "app",
-          "description": "PostgreSQL role that owns the bootstrap database; CloudNativePG creates it with a generated password. When unset, app. Used only when the cluster is bootstrapped.",
-          "key": "databaseOwner",
-          "type": "string"
-        },
-        {
-          "default": false,
-          "description": "Whether CloudNativePG enables the postgres superuser and publishes its password in a Kubernetes secret. When unset, false. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image.",
-          "key": "enableSuperuserAccess",
-          "type": "boolean"
-        },
-        {
-          "default": 3,
-          "description": "Number of PostgreSQL instances in the CloudNativePG cluster: one primary, the rest streaming replicas, spread across zones when possible. When unset, 3. A change is applied to a running cluster.",
-          "key": "instances",
-          "type": "integer"
-        },
-        {
-          "default": "1Gi",
-          "description": "Memory limit of each PostgreSQL instance, as a Kubernetes quantity (e.g. 1Gi). When unset, 1Gi. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image.",
-          "key": "memoryLimit",
-          "type": "string"
-        },
-        {
-          "default": "512Mi",
-          "description": "Memory requested by each PostgreSQL instance, as a Kubernetes quantity (e.g. 512Mi). When unset, 512Mi. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image.",
-          "key": "memoryRequest",
-          "type": "string"
-        },
-        {
-          "derived": {
-            "note": "defaults to the component id when absent"
-          },
-          "description": "Kubernetes namespace the resources are created in; created when missing. When unset, the component id, which must then be a valid DNS-1123 label (at most 63 lowercase letters, digits and hyphens).",
-          "key": "namespace",
-          "type": "string"
-        },
-        {
-          "default": "17.2",
-          "description": "PostgreSQL version, used as the tag of the ghcr.io/cloudnative-pg/postgresql image (e.g. 17.2). Takes precedence over 'version'; when neither is set, 17.2. A running cluster only moves within its major version: a different major is kept at the deployed one, because a major upgrade needs a migration. With age=true only 17.2 is available.",
-          "key": "postgresqlVersion",
-          "type": "string"
-        },
-        {
-          "default": "",
-          "description": "Kubernetes storage class of the data volumes. When unset, the cluster's default storage class. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image.",
-          "key": "storageClass",
-          "type": "string"
-        },
-        {
-          "default": "10Gi",
-          "description": "Size of each instance's data volume, as a Kubernetes quantity (e.g. 10Gi). When unset, 10Gi. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image.",
-          "key": "storageSize",
-          "type": "string"
-        },
-        {
-          "description": "PostgreSQL version as declared by the blueprint component, used when 'postgresqlVersion' is not set. Applies only when the cluster is created: a running cluster keeps its deployed version unless 'postgresqlVersion' asks for another one.",
-          "key": "version",
-          "type": "string"
-        }
-      ],
-      "provider": "OCI",
-      "providerResources": [],
-      "requiredApis": []
-    },
-    {
-      "aliasOfOfferType": null,
-      "canAccessSecrets": false,
-      "offerType": "Storage.CaaS.CnpgDatabase",
-      "params": [
-        {
-          "derived": {
-            "note": "the CnpgCluster component this database depends on"
-          },
-          "description": "Component id of the CnpgCluster, in the same Live System, that hosts the database. When unset, the CnpgCluster this component depends on; with neither the database fails. It waits until that cluster is Active.",
-          "key": "cnpgClusterName",
-          "type": "string"
-        },
-        {
-          "description": "Deprecated. Id of the Kubernetes cluster component to deploy on, read only when this component declares no dependency on a Kubernetes cluster. Declare that dependency instead.",
-          "key": "containerPlatform",
-          "type": "string"
-        },
-        {
-          "description": "Name of the PostgreSQL database created in the CloudNativePG cluster. Required to create: a new database without one is refused; set it to the database name your application connects to. Used only when the database is created: an existing database is never changed, and one declared without it is kept, with a warning.",
-          "example": "orders",
-          "key": "databaseName",
-          "type": "string"
-        },
-        {
-          "derived": {
-            "note": "the role the CnpgCluster bootstraps (its databaseOwner)"
-          },
-          "description": "Existing PostgreSQL role that owns the database. When unset, the role the CnpgCluster bootstraps (that cluster's databaseOwner). Used only when the database is created: an existing database is never changed.",
-          "example": "orders_owner",
-          "key": "databaseOwner",
-          "type": "string"
-        },
-        {
-          "default": "UTF8",
-          "description": "Character encoding of the database, as PostgreSQL names it (e.g. UTF8). When unset, UTF8. Used only when the database is created: an existing database is never changed.",
-          "key": "encoding",
-          "type": "string"
-        },
-        {
-          "default": "",
-          "description": "Character classification locale (LC_CTYPE) of the database, the Database resource's localeCType; it must be a locale the PostgreSQL image provides. When unset, the cluster's default. Used only when the database is created: CloudNativePG refuses to change it afterwards.",
-          "example": "en_US.UTF-8",
-          "key": "localeCType",
-          "type": "string"
-        },
-        {
-          "default": "",
-          "description": "Collation locale (LC_COLLATE) of the database, the Database resource's localeCollate, e.g. en_US.UTF-8; it must be a locale the PostgreSQL image provides. When unset, the cluster's default. Used only when the database is created: CloudNativePG refuses to change it afterwards.",
-          "example": "en_US.UTF-8",
-          "key": "localeCollate",
-          "type": "string"
-        },
-        {
-          "derived": {
-            "note": "defaults to the component id when absent"
-          },
-          "description": "Kubernetes namespace of the database resource. Always the namespace of its CnpgCluster: when unset, that one is used, and a different value fails the component, because the operator only adopts a database in its cluster's namespace.",
-          "key": "namespace",
           "type": "string"
         }
       ],

@@ -1,6 +1,6 @@
 {
   "agentId": "aria-agent-caas-k8s",
-  "agentVersion": "v1.17.0",
+  "agentVersion": "v2.0.0",
   "offers": [
     {
       "aliasOfOfferType": null,
@@ -682,6 +682,24 @@
       "params": [
         {
           "key": "artifactRoot",
+          "type": "string"
+        },
+        {
+          "default": "100m",
+          "example": "500m",
+          "key": "cpu",
+          "type": "string"
+        },
+        {
+          "default": "512Mi",
+          "example": "1Gi",
+          "key": "memory",
+          "type": "string"
+        },
+        {
+          "default": "2Gi",
+          "example": "4Gi",
+          "key": "memoryLimit",
           "type": "string"
         },
         {
@@ -1724,6 +1742,243 @@
     },
     {
       "aliasOfOfferType": null,
+      "canAccessSecrets": true,
+      "contractSchemaVersion": "2.0",
+      "offerType": "Observability.CaaS.Grafana",
+      "parameterRules": [],
+      "params": [
+        {
+          "constraints": {
+            "maxItems": 50,
+            "pattern": "[a-z0-9._%+-]+@[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?){1,8}"
+          },
+          "description": "the emails (lowercase, each in allowedDomains) that are Grafana admins; everyone else who signs in is a Viewer, and an email removed from the list is a Viewer again at its next sign-in",
+          "example": [
+            "ops@example.com"
+          ],
+          "key": "admins",
+          "type": "array",
+          "typeLevel": "error"
+        },
+        {
+          "constraints": {
+            "maxItems": 20,
+            "minItems": 1,
+            "pattern": "[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?){1,8}"
+          },
+          "description": "the email domains allowed to sign in, lowercase",
+          "example": [
+            "example.com"
+          ],
+          "key": "allowedDomains",
+          "required": true,
+          "type": "array",
+          "typeLevel": "error"
+        },
+        {
+          "description": "the dashboards Grafana serves, by uid: {folder?, dashboard} where dashboard is the Grafana dashboard JSON model. They are provisioned (edits in Grafana are refused) and removed with their entry. No credentials in dashboards: datasources carry them",
+          "example": {
+            "cluster-overview": {
+              "dashboard": {
+                "title": "Cluster overview"
+              },
+              "folder": "Platform"
+            }
+          },
+          "key": "dashboards",
+          "type": "object",
+          "typeLevel": "error"
+        },
+        {
+          "description": "datasources outside the Live System, by uid, besides the linked ones: {type: infinity, allowedHosts, url?, aws?: {region, service, assumeRoleArn}} (public https endpoints only; aws signs with SigV4, Infinity 4.1.0 or later) or {type: athena, region, workgroup, database, catalog?, outputLocation?, assumeRoleArn}. Grafana gets its own AWS role (EKS Pod Identity, published as podIdentityRoleArn) that may assume exactly the declared roles; each must trust it. No credentials: none is accepted. The type's plugin must be in plugins",
+          "example": {
+            "progress": {
+              "allowedHosts": [
+                "https://progress.example.com"
+              ],
+              "type": "infinity",
+              "url": "https://progress.example.com/totals"
+            }
+          },
+          "key": "datasources",
+          "type": "object",
+          "typeLevel": "error"
+        },
+        {
+          "description": "the short names of the environment secrets this component may read",
+          "key": "environmentSecretShortNames",
+          "type": "array"
+        },
+        {
+          "constraints": {
+            "pattern": "[0-9]+-[a-z0-9]+\\.apps\\.googleusercontent\\.com"
+          },
+          "description": "the Google OAuth client id users sign in with; its secret is the environment secret secretEnv GF_AUTH_GOOGLE_CLIENT_SECRET references",
+          "example": "123456789012-abcdefghijklmnop.apps.googleusercontent.com",
+          "key": "googleClientId",
+          "required": true,
+          "type": "string",
+          "typeLevel": "error"
+        },
+        {
+          "constraints": {
+            "pattern": "[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?){1,8}"
+          },
+          "description": "the Google Workspace domain Google's sign-in page is limited to; unset = any Google account of the allowed domains",
+          "example": "example.com",
+          "key": "hostedDomain",
+          "type": "string",
+          "typeLevel": "error"
+        },
+        {
+          "constraints": {
+            "pattern": "[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?"
+          },
+          "default": "monitoring",
+          "example": "team-a",
+          "key": "namespace",
+          "type": "string"
+        },
+        {
+          "constraints": {
+            "maxItems": 30,
+            "pattern": "[a-z0-9][a-z0-9-]*[a-z0-9] [0-9]+\\.[0-9]+\\.[0-9]+([-+][0-9A-Za-z.-]+)?"
+          },
+          "description": "the plugins Grafana installs, each \"<plugin id> <version>\"",
+          "example": [
+            "yesoreyeram-infinity-datasource 4.1.3",
+            "grafana-athena-datasource 3.4.0"
+          ],
+          "key": "plugins",
+          "type": "array",
+          "typeLevel": "error"
+        },
+        {
+          "default": false,
+          "description": "Keep Grafana's volume when the component is deleted; unset = deleted with it",
+          "key": "retainStorageOnDelete",
+          "type": "boolean",
+          "typeLevel": "error"
+        },
+        {
+          "description": "GF_AUTH_GOOGLE_CLIENT_SECRET -> {\"$envSecret\": \"<shortName>\"}, and nothing else: Grafana reads GF_* variables over its settings, so no other variable is taken",
+          "example": {
+            "GF_AUTH_GOOGLE_CLIENT_SECRET": {
+              "$envSecret": "grafana-google-client-secret"
+            }
+          },
+          "key": "secretEnv",
+          "type": "object",
+          "typeLevel": "error"
+        },
+        {
+          "constraints": {
+            "pattern": "[a-z0-9]([a-z0-9.-]*[a-z0-9])?"
+          },
+          "description": "StorageClass of Grafana's volume (users and sessions); unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else the cluster's default class",
+          "example": "fractal-gp3",
+          "key": "storageClassName",
+          "type": "string",
+          "typeLevel": "error"
+        },
+        {
+          "constraints": {
+            "maximum": 2147483647,
+            "minimum": 1
+          },
+          "default": 10,
+          "description": "Size of Grafana's volume",
+          "key": "storageGi",
+          "type": "integer"
+        },
+        {
+          "description": "Chart values deep-merged over the agent's, for operators",
+          "key": "values",
+          "type": "object",
+          "typeLevel": "error"
+        }
+      ],
+      "provider": "CaaS",
+      "providerResources": [
+        {
+          "discriminator": {
+            "name": "app.kubernetes.io/name",
+            "value": "grafana"
+          },
+          "type": "apps/Deployment"
+        }
+      ],
+      "runtimeChecks": [
+        {
+          "field": "/admins",
+          "fix": "Add the admin's domain to allowedDomains, or remove the admin.",
+          "id": "grafana-admins",
+          "message": "Every admin must be an email of one of allowedDomains.",
+          "reason": "NOT_EXPRESSIBLE"
+        },
+        {
+          "field": "/secretEnv",
+          "fix": "Set secretEnv {{\"GF_AUTH_GOOGLE_CLIENT_SECRET\": {{\"$envSecret\": \"<secret short name>\"}}}} and list the secret in environmentSecretShortNames.",
+          "id": "grafana-client-secret",
+          "message": "secretEnv must set GF_AUTH_GOOGLE_CLIENT_SECRET to the environment secret holding the Google OAuth client secret, and nothing else.",
+          "reason": "NOT_EXPRESSIBLE"
+        },
+        {
+          "field": "/dashboards",
+          "fix": "Fix the dashboard the message names: rename its key, shrink or split it, rename its folder, or move the credential to a datasource.",
+          "id": "grafana-dashboards",
+          "message": "Every dashboard must be keyed by its uid (letters, digits, '_' and '-', at most 40), hold a dashboard object whose uid, when set, is its key, be at most 256 KiB serialized (1 MiB and 100 dashboards in all), name its folder with a title no other folder shares the slug of, and carry no Authorization header.",
+          "reason": "NOT_EXPRESSIBLE"
+        },
+        {
+          "field": "/dashboards",
+          "fix": "Set the panel's datasource type to the linked component's (prometheus, loki or tempo), or reference another datasource uid.",
+          "id": "grafana-dashboard-datasources",
+          "message": "A dashboard that names the datasource of a link by uid must name it with that datasource's type.",
+          "reason": "NOT_EXPRESSIBLE"
+        },
+        {
+          "field": "/dashboards",
+          "fix": "Link components whose ids differ and are Grafana uids.",
+          "id": "grafana-datasource-links",
+          "message": "Every linked Prometheus, Loki and Tempo becomes a datasource whose uid is its component id: the ids must be Grafana uids (letters, digits, '_' and '-', at most 40) and no two links may share one.",
+          "reason": "NOT_EXPRESSIBLE"
+        },
+        {
+          "field": "/datasources",
+          "fix": "Fix the datasource the message names: rename it, remove the key, or add its plugin to plugins.",
+          "id": "grafana-datasources",
+          "message": "Every datasource must be keyed by a uid (letters, digits, '_' and '-', at most 40) that is neither Grafana's own nor a linked datasource's, have type infinity (allowedHosts https URLs of public DNS names on port 443, url under one of them, aws optional with region, service and one IAM role ARN, which needs Infinity 4.1.0 or later) or athena (region, workgroup, database, one IAM role ARN to assume, catalog and outputLocation optional), carry no credential or other key, and have its plugin in plugins (at most 50 datasources).",
+          "reason": "NOT_EXPRESSIBLE"
+        },
+        {
+          "field": "/values",
+          "fix": "Remove the key the message names: sign-in is set by googleClientId, allowedDomains, hostedDomain and admins; plugins and datasources by their parameters.",
+          "id": "grafana-values",
+          "message": "values takes only resources, nodeSelector, tolerations, affinity, podAnnotations, env GF_LOG_* and grafana.ini sections log, log.console, date_formats, dashboards and explore, with no line break or template delimiter (double braces) in any value, grafana.ini and env values of letters, digits, spaces and _ . : / , = @ + % - only, and no pluginsSkipHostEnvVars: nothing that changes how users sign in or what Grafana may read or reach.",
+          "reason": "NOT_EXPRESSIBLE"
+        },
+        {
+          "field": "/secretEnv",
+          "fix": "Set each secretEnv entry to {{\"$envSecret\": \"<secret short name>\"}}, named with letters, digits and '_'.",
+          "id": "secret-env-references",
+          "message": "Every secretEnv entry must be an environment variable name set to a reference to an environment secret, and must not also be set in env.",
+          "reason": "NOT_EXPRESSIBLE"
+        },
+        {
+          "field": "/secretEnv",
+          "fix": "Add the secret's short name to environmentSecretShortNames, or remove it from secretEnv.",
+          "id": "environment-secret-granted",
+          "message": "Every environment secret secretEnv references must be listed in environmentSecretShortNames.",
+          "reason": "NOT_EXPRESSIBLE"
+        }
+      ],
+      "serviceTypes": [
+        "Observability.CaaS.Grafana"
+      ]
+    },
+    {
+      "aliasOfOfferType": null,
       "canAccessSecrets": false,
       "contractSchemaVersion": "2.0",
       "offerType": "Observability.CaaS.GrafanaAlloy",
@@ -1888,7 +2143,7 @@
     },
     {
       "aliasOfOfferType": null,
-      "canAccessSecrets": true,
+      "canAccessSecrets": false,
       "contractSchemaVersion": "2.0",
       "offerType": "Observability.CaaS.KubePrometheusStack",
       "parameterRules": [],
@@ -1906,9 +2161,11 @@
           "typeLevel": "error"
         },
         {
-          "description": "the short names of the environment secrets this component may read",
-          "key": "environmentSecretShortNames",
-          "type": "array"
+          "default": true,
+          "description": "Install the chart's own Grafana; false = none (a Grafana component serves the dashboards), and turning it off removes the bundled Grafana with its data",
+          "key": "bundledGrafana",
+          "type": "boolean",
+          "typeLevel": "error"
         },
         {
           "description": "Grafana's Loki datasource; unset = the GrafanaLoki service in this namespace, none = no datasource",
@@ -1946,17 +2203,6 @@
           "type": "integer"
         },
         {
-          "description": "NAME -> {\"$envSecret\": \"<shortName>\"}",
-          "example": {
-            "DB_PASSWORD": {
-              "$envSecret": "db-password"
-            }
-          },
-          "key": "secretEnv",
-          "type": "object",
-          "typeLevel": "error"
-        },
-        {
           "description": "StorageClass of Prometheus' volume; unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else ephemeral",
           "key": "storageClassName",
           "type": "string"
@@ -1982,31 +2228,38 @@
       ],
       "runtimeChecks": [
         {
+          "field": "/bundledGrafana",
+          "fix": "Remove what the message names, or set bundledGrafana to true.",
+          "id": "kps-bundled-grafana",
+          "message": "With bundledGrafana false the stack installs no Grafana: lokiUrl, tempoUrl, values.grafana and links to gateways are the bundled Grafana's and must be unset.",
+          "reason": "NOT_EXPRESSIBLE"
+        },
+        {
           "field": "/lokiUrl",
           "fix": "Set lokiUrl to the URL of Loki, for example http://loki.monitoring.svc.cluster.local:3100, or to none.",
           "id": "loki-url",
-          "message": "lokiUrl must be none or an absolute http or https URL.",
+          "message": "lokiUrl must be none or an absolute http or https URL, with no template delimiter, '$', quote, backslash or whitespace.",
           "reason": "NOT_EXPRESSIBLE"
         },
         {
           "field": "/tempoUrl",
           "fix": "Set tempoUrl to the URL of Tempo, for example http://tempo.monitoring.svc.cluster.local:3200, or to none.",
           "id": "tempo-url",
-          "message": "tempoUrl must be none or an absolute http or https URL.",
+          "message": "tempoUrl must be none or an absolute http or https URL, with no template delimiter, '$', quote, backslash or whitespace.",
+          "reason": "NOT_EXPRESSIBLE"
+        },
+        {
+          "field": "/values",
+          "fix": "Remove the key the message names; for Google sign-in or other Grafana settings use an Observability.CaaS.Grafana component with bundledGrafana false.",
+          "id": "grafana-values",
+          "message": "values.grafana takes only resources, nodeSelector, tolerations, affinity, podAnnotations, env GF_LOG_* and grafana.ini sections log, log.console, date_formats, dashboards and explore, with no line break or template delimiter (double braces) in any value, grafana.ini and env values of letters, digits, spaces and _ . : / , = @ + % - only, and no pluginsSkipHostEnvVars. With the bundled Grafana, values also may not set commonLabels or global, nor extraManifests or extraObjects at any depth, which reach it, and the Prometheus and Alertmanager routePrefix must be a plain path and their service.port a number (both are written into its datasources). The stack's other values are not limited.",
           "reason": "NOT_EXPRESSIBLE"
         },
         {
           "field": "/secretEnv",
-          "fix": "Set each secretEnv entry to {{\"$envSecret\": \"<secret short name>\"}}, named with letters, digits and '_'.",
-          "id": "secret-env-references",
-          "message": "Every secretEnv entry must be an environment variable name set to a reference to an environment secret, and must not also be set in env.",
-          "reason": "NOT_EXPRESSIBLE"
-        },
-        {
-          "field": "/secretEnv",
-          "fix": "Add the secret's short name to environmentSecretShortNames, or remove it from secretEnv.",
-          "id": "environment-secret-granted",
-          "message": "Every environment secret secretEnv references must be listed in environmentSecretShortNames.",
+          "fix": "Remove secretEnv and environmentSecretShortNames; for Google sign-in use an Observability.CaaS.Grafana component and set bundledGrafana to false.",
+          "id": "kps-secret-env",
+          "message": "The stack reads no environment secrets: secretEnv and environmentSecretShortNames must be unset. Its bundled Grafana takes no setting a secret could hold; Google sign-in and other Grafana settings are an Observability.CaaS.Grafana component's.",
           "reason": "NOT_EXPRESSIBLE"
         }
       ],

@@ -2,13 +2,13 @@
  * offer_contract_splits.test.ts — two agent contracts the 2.15.0 re-pin
  * reshaped, and the SDK offers that must not lose anything over it.
  *
- * - fractal-cloud-agents v8.31.0 (gcp): `NetworkAndCompute.PaaS.CloudRun` is
+ * - fractal-cloud-agents v8.48.0 (gcp): `NetworkAndCompute.PaaS.CloudRun` is
  *   the Cloud Run platform. It declares `region` only, and the agent creates
  *   nothing for it (platform-only, since v8.28.0). The workload keys are
  *   declared on `NetworkAndCompute.CaaS.CloudRunService` alone. The SDK
  *   `CloudRun` offer emits `CloudRunService`, so every key it sent with 2.14.0
  *   still reaches the agent that reads it.
- * - aria-agent-caas-k8s v1.17.0: MinIO is published as two offers.
+ * - aria-agent-caas-k8s v2.0.0: MinIO is published as two offers.
  *   `Storage.CaaS.MinioTenant` serves `Storage.CaaS.MinIO`, and
  *   `BigData.CaaS.MinioTenant` serves `BigData.CaaS.MinIO`. The SDK `MinIO`
  *   offer still emits `Storage.CaaS.MinioTenant` with the keys of 2.14.0.
@@ -74,7 +74,7 @@ const instantiate = (
     children: [],
   });
 
-describe('GCP Cloud Run: platform and service (fractal-cloud-agents v8.31.0)', () => {
+describe('GCP Cloud Run: platform and service (fractal-cloud-agents v8.48.0)', () => {
   const GCP = 'fractal-cloud-agent-gcp';
 
   // Every key the CloudRunService contract declared when 2.14.0 was cut
@@ -94,14 +94,14 @@ describe('GCP Cloud Run: platform and service (fractal-cloud-agents v8.31.0)', (
     'serviceAccountEmail',
   ];
 
-  it('is read from the gcp contract published with v8.31.0', () => {
+  it('is read from the gcp contract published with v8.48.0', () => {
     expect(source(GCP)).toEqual({
       agentId: GCP,
       repository: 'Fractal-Cloud/fractal-cloud-agents',
-      tag: 'v8.31.0',
+      tag: 'v8.48.0',
       fetch: {kind: 'release-asset', asset: 'param-contract.gcp.json'},
       snapshotSha256:
-        'a6519548de11b2a6e02b04844a87c7ad623f15c095e4f76c750a7470c804f98b',
+        'f8ab1fcfae4dc4a1e91a99f7fa17f840b3acf645f83d41c30c785d7b5ce74d68',
     });
   });
 
@@ -159,7 +159,7 @@ describe('GCP Cloud Run: platform and service (fractal-cloud-agents v8.31.0)', (
   });
 });
 
-describe('caas-k8s MinIO: one offer per service type (aria-agent-caas-k8s v1.17.0)', () => {
+describe('caas-k8s MinIO: one offer per service type (aria-agent-caas-k8s v2.0.0)', () => {
   const CAAS = 'aria-agent-caas-k8s';
 
   // The keys Storage.CaaS.MinioTenant declared when 2.14.0 was cut
@@ -175,14 +175,14 @@ describe('caas-k8s MinIO: one offer per service type (aria-agent-caas-k8s v1.17.
     'volumesPerServer',
   ];
 
-  it('is read from the caas-k8s contract published with v1.17.0', () => {
+  it('is read from the caas-k8s contract published with v2.0.0', () => {
     expect(source(CAAS)).toEqual({
       agentId: CAAS,
       repository: 'Fractal-Cloud/aria-agent-caas-k8s',
-      tag: 'v1.17.0',
+      tag: 'v2.0.0',
       fetch: {kind: 'release-asset', asset: 'param-contract.json'},
       snapshotSha256:
-        '4f7147f24467ac6eb1aea80724a928a14d45d5da3388a5581810e40b7f9e0cee',
+        'dc8dfd61f30c2267a5f7f279b5d330f08b3d2c6696b3291793cceddde4eaa671',
     });
   });
 

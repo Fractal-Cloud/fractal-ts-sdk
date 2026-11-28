@@ -7,21 +7,28 @@
  */
 import {unsupported} from './neutral_rules';
 import {
-  Security_CaaS_Ocelot,
   Security_PaaS_AwsCognito,
   Security_PaaS_AzureEntraExternalId,
 } from './generated/security';
+import type {Security_CaaS_Ocelot} from './retired/security_caas_ocelot';
 import type {ContractConfig} from './contract/contract_config';
 import {defineOffer} from '../core';
 
 // ── Security.ServiceMesh offers ──────────────────────────────────────────────
 // Vendor-neutral self-hosted — runs on any cluster, so no `provider`.
+/**
+ * @deprecated No agent serves a customer `Security.CaaS.Ocelot` any more:
+ * fractal-cloud-agents v8.48.0 keeps it for the bootstrap Live System only,
+ * and aria-agent-caas-k8s (v2.0.0) does not serve it yet. A Live System using
+ * it is stored but never reconciled. There is no replacement offer until
+ * caas-k8s serves Ocelot; it then returns, defined from that agent's contract.
+ */
 export const Ocelot = defineOffer<
   'Security.ServiceMesh',
   ContractConfig<typeof Security_CaaS_Ocelot>
 >({
   satisfies: 'Security.ServiceMesh',
-  contract: Security_CaaS_Ocelot,
+  offerType: 'Security.CaaS.Ocelot',
   deliveryModel: 'CaaS',
   neutral: {
     authenticationMode: unsupported(

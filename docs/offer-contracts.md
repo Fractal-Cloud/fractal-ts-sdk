@@ -98,7 +98,13 @@ per offer type, named after it (`NetworkAndCompute.IaaS.AwsLb` → `NetworkAndCo
   `environmentSecretShortNames` parameter (type `array`) go together, as ARIA requires: an agent
   that publishes one without the other fails the generator. A flagged offer's config carries the
   key, and its constructor's result has `withEnvironmentSecrets(shortNames)`, which sets it; no
-  other offer has either, so selecting secrets for it does not compile.
+  other offer has either, so selecting secrets for it does not compile. (Exception:
+  `KubePrometheusStack` keeps a deprecated `withEnvironmentSecrets` that always throws, because
+  caas-k8s v2.0.0 dropped the flag that v1.x published.)
+- **An offer no agent declares any more** keeps compiling while it is deprecated: it becomes
+  contract-less, its config type read from the agent's last contract frozen under
+  `src/model/offers/retired/` (`Traefik`, `Prometheus`, `Jaeger`, `Ocelot`), and it is listed in
+  `UNPUBLISHED` in `offer_contracts.test.ts`. Delete the frozen file with the offer.
 - Generated modules hold data only; unused contracts are tree-shaken from the bundle.
 
 Dependencies and links are not generated: in the SDK they are carried by the blueprint.

@@ -1,6 +1,6 @@
 {
   "agentId": "fractal-cloud-agent-azure",
-  "agentVersion": "v8.31.0",
+  "agentVersion": "v8.48.0",
   "offers": [
     {
       "aliasOfOfferType": null,
@@ -24,98 +24,6 @@
           "key": "secretValue",
           "sensitive": true,
           "type": "string"
-        }
-      ],
-      "provider": "Azure",
-      "providerResources": [],
-      "requiredApis": []
-    },
-    {
-      "aliasOfOfferType": null,
-      "canAccessSecrets": false,
-      "offerType": "APIManagement.CaaS.Traefik",
-      "params": [
-        {
-          "description": "Deprecated: id of the Kubernetes cluster component to deploy into. Used only when the component declares no dependency on a Kubernetes cluster; declare that dependency instead.",
-          "key": "containerPlatform",
-          "type": "string"
-        },
-        {
-          "description": "Ports Traefik listens on, each a map {name, port, exposedPort, protocol, isTlsEnabled, isHttpsRedirected} or a 'name:port' string. exposedPort defaults to port, protocol to tcp (tcp or udp), isTlsEnabled to true (in the string form, true only for https and websecure) and isHttpsRedirected to false. Entries without a name or port are skipped and none left fails the component; a name must be a valid Kubernetes port name (at most 15 characters) and cannot be 'traefik', which the agent reserves.",
-          "key": "entryPoints",
-          "required": true,
-          "type": "array"
-        },
-        {
-          "description": "Name of the environment secret the forward-auth service signs its session cookies with. Required together with the other three OIDC keys; a name that resolves to no secret counts as unset.",
-          "key": "forwardAuthSecretId",
-          "type": "string"
-        },
-        {
-          "default": "",
-          "description": "Fully qualified host name the Traefik dashboard and API route (and the /_oauth callback when OIDC is on) answers on. When unset, that route matches an empty host, which no request carries: the dashboard and API are unreachable, and so is the /_oauth callback this route serves.",
-          "example": "traefik.contoso.internal",
-          "key": "hostname",
-          "type": "string"
-        },
-        {
-          "default": "",
-          "description": "Static IP address requested for Traefik's LoadBalancer Service (loadBalancerIP). The address must already be reserved for the cluster; when unset, the cloud provider assigns one.",
-          "key": "loadbalancerIp",
-          "type": "string"
-        },
-        {
-          "derived": {
-            "note": "defaults to the component id when absent"
-          },
-          "description": "Kubernetes namespace Traefik is deployed into. When unset, the component id, which must then be a valid DNS-1123 label (at most 63 lowercase letters, digits and hyphens).",
-          "key": "namespace",
-          "type": "string"
-        },
-        {
-          "description": "Client id of the OIDC application registered for this gateway. Required together with the other three OIDC keys.",
-          "key": "oidcClientId",
-          "type": "string"
-        },
-        {
-          "description": "Name of the environment secret holding the OIDC client secret; the raw secret is never a parameter. Required together with the other three OIDC keys; a name that resolves to no secret counts as unset.",
-          "key": "oidcClientSecretId",
-          "type": "string"
-        },
-        {
-          "description": "Issuer URL of the OpenID Connect provider that protects the routes through forward authentication. OIDC is enabled only when oidcIssuerUrl, oidcClientId, oidcClientSecretId and forwardAuthSecretId are all set; setting only some of them fails the component.",
-          "key": "oidcIssuerUrl",
-          "type": "string"
-        },
-        {
-          "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
-          "example": "westeurope",
-          "key": "region",
-          "type": "string"
-        },
-        {
-          "default": {},
-          "description": "HSTS security-headers middleware: a map {active, stsSeconds, stsIncludeSubdomains, stsPreload, stsForce}. When unset, the middleware is applied with stsSeconds 63072000 (two years) and the three flags true; any key left out of the map takes that same value, and active=false removes the middleware.",
-          "key": "securityHeadersSettings",
-          "type": "object"
-        },
-        {
-          "default": [],
-          "description": "TLS certificates Traefik serves, each a map {certSecretId, keySecretId, isDefault} naming the environment secrets that hold the base64-encoded PEM certificate and its private key. Entries missing either id are skipped; a named secret that does not exist fails the component. When none is marked isDefault, the first one is the default certificate.",
-          "key": "tlsCertificates",
-          "type": "array"
-        },
-        {
-          "default": {},
-          "description": "TLS options of the entry points, as {supportedTlsVersions, supportedCiphers}: supportedTlsVersions lists TLS_1_0, TLS_1_1, TLS_1_2 or TLS_1_3 (the lowest becomes the minimum version; any other value fails the component), supportedCiphers lists cipher-suite names as Go's crypto/tls spells them (e.g. TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256). Each half left unset keeps its default: TLS 1.2 and 1.3, with a fixed list of ECDHE and TLS 1.3 AES-GCM / ChaCha20 suites.",
-          "key": "tlsSettings",
-          "type": "object"
-        },
-        {
-          "default": {},
-          "description": "Distributed tracing, as {jaeger: {collectorEndpoint, localAgentPort, localAgentUrlPath}}. Traefik sends traces over OpenTelemetry (OTLP over HTTP) to that endpoint. When jaeger is set without a collectorEndpoint, the endpoint is the Jaeger component this gateway links to with link type JaegerTracing, on localAgentPort (default 4318) and localAgentUrlPath (default /v1/traces), and the component fails when there is no such link. Only an OTLP traces endpoint (a path ending in /v1/traces, not on a Jaeger v1 port 14268 / 6831 / 6832) is used as declared; any other endpoint is sent to the same host's OTLP receiver (http://<host>:4318/v1/traces), and the remap is published in contractWarnings. An endpoint without a scheme is read as http://. The collector must accept OTLP over HTTP, as Jaeger v2 does. When unset, tracing is off.",
-          "key": "tracing",
-          "type": "object"
         }
       ],
       "provider": "Azure",
@@ -151,10 +59,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": "Developer_1",
@@ -248,10 +163,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": "Developer_1",
@@ -360,7 +282,7 @@
         },
         {
           "default": "",
-          "description": "Name of the managed resource group Azure creates for the workspace's data-plane resources, outside the Live System's resource group. When unset, databricks-rg-<component id>. Fixed at creation: changing it later has no effect on an existing workspace.",
+          "description": "Name of the managed resource group Azure creates for the workspace's data-plane resources, outside the Live System's resource group. When unset, databricks-rg-<component id>-<hash of the Live System's resource group>, unique per workspace. Fixed at creation: changing it later has no effect on an existing workspace.",
           "key": "managedResourceGroupName",
           "type": "string"
         },
@@ -371,10 +293,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",
@@ -460,10 +389,17 @@
           "type": "array"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": false,
@@ -763,10 +699,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": false,
@@ -825,10 +768,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",
@@ -882,7 +832,8 @@
           "description": "Legacy alias of region: the Azure region a new storage account is created in, e.g. northeurope. region wins when both are set. When both are unset, the region of the component's resource group, which is the Live System's (environment's) region; a new account with no region at all is refused. An existing account keeps the region it lives in: Azure cannot move it.",
           "example": "westeurope",
           "key": "azureRegion",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "description": "Azure Backup for the account's file shares, as {vaultName, vaultResourceGroupName, vaultLocation, sku, etag, policyName, policyResourceGroupName, policyLocation, policy, policyType}. Defaults: vault <account>-backupVault and policy <account>-policy, both in the account's resource group and region, vault SKU Standard, policyType AzureStorage. policy is the policy JSON; when empty, only the vault is created. When unset, no backup is configured.",
@@ -948,7 +899,7 @@
           "type": "boolean"
         },
         {
-          "description": "Whether the SFTP endpoint is enabled. Requires the hierarchical namespace (isHnsEnabled). When unset, it is not enabled.",
+          "description": "Whether the SFTP endpoint is enabled. Requires a StorageV2 or BlockBlobStorage account with the hierarchical namespace (isHnsEnabled): a new account is created with it, while an existing account without it is refused until it is upgraded to Data Lake Storage Gen2. When unset, it is not enabled.",
           "key": "isSftpEnabled",
           "type": "boolean"
         },
@@ -995,7 +946,8 @@
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "description": "Network routing preference, as {routingChoice: MicrosoftRouting|InternetRouting (default InternetRouting), publishMicrosoftEndpoints (default false), publishInternetEndpoints (default true)}. When unset, none is requested.",
@@ -1046,7 +998,7 @@
         },
         {
           "default": "",
-          "description": "Name of the managed resource group Azure creates for the workspace's data-plane resources, outside the Live System's resource group. When unset, databricks-rg-<component id>. Fixed at creation: changing it later has no effect on an existing workspace.",
+          "description": "Name of the managed resource group Azure creates for the workspace's data-plane resources, outside the Live System's resource group. When unset, databricks-rg-<component id>-<hash of the Live System's resource group>, unique per workspace. Fixed at creation: changing it later has no effect on an existing workspace.",
           "key": "managedResourceGroupName",
           "type": "string"
         },
@@ -1057,10 +1009,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",
@@ -1141,10 +1100,17 @@
           "type": "array"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": false,
@@ -1441,10 +1407,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": false,
@@ -1500,10 +1473,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",
@@ -1554,7 +1534,8 @@
           "description": "Legacy alias of region: the Azure region a new storage account is created in, e.g. northeurope. region wins when both are set. When both are unset, the region of the component's resource group, which is the Live System's (environment's) region; a new account with no region at all is refused. An existing account keeps the region it lives in: Azure cannot move it.",
           "example": "westeurope",
           "key": "azureRegion",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "description": "Azure Backup for the account's file shares, as {vaultName, vaultResourceGroupName, vaultLocation, sku, etag, policyName, policyResourceGroupName, policyLocation, policy, policyType}. Defaults: vault <account>-backupVault and policy <account>-policy, both in the account's resource group and region, vault SKU Standard, policyType AzureStorage. policy is the policy JSON; when empty, only the vault is created. When unset, no backup is configured.",
@@ -1620,7 +1601,7 @@
           "type": "boolean"
         },
         {
-          "description": "Whether the SFTP endpoint is enabled. Requires the hierarchical namespace (isHnsEnabled). When unset, it is not enabled.",
+          "description": "Whether the SFTP endpoint is enabled. Requires a StorageV2 or BlockBlobStorage account with the hierarchical namespace (isHnsEnabled): a new account is created with it, while an existing account without it is refused until it is upgraded to Data Lake Storage Gen2. When unset, it is not enabled.",
           "key": "isSftpEnabled",
           "type": "boolean"
         },
@@ -1667,7 +1648,8 @@
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "description": "Network routing preference, as {routingChoice: MicrosoftRouting|InternetRouting (default InternetRouting), publishMicrosoftEndpoints (default false), publishInternetEndpoints (default true)}. When unset, none is requested.",
@@ -1771,10 +1753,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": "",
@@ -1820,10 +1809,17 @@
           "type": "array"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",
@@ -1859,11 +1855,11 @@
           "type": "string"
         },
         {
-          "default": "",
           "description": "Legacy spelling of 'region', read only when 'region' is blank.",
           "example": "westeurope",
           "key": "location",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": 10,
@@ -1890,11 +1886,17 @@
           "type": "integer"
         },
         {
-          "default": "",
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure location the app is created in (e.g. 'westeurope'). When unset, 'location', else the legacy 'azureRegion', else the region of the Live System's resource group. Applied when the app is created.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",
@@ -1945,11 +1947,11 @@
           "type": "string"
         },
         {
-          "default": "",
           "description": "Azure location the container group is created in (e.g. 'westeurope'). When unset, the component's region: 'region', else the legacy 'azureRegion', else its resource group's region. Applied when the container group is created.",
           "example": "westeurope",
           "key": "location",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": 1.5,
@@ -1970,10 +1972,17 @@
           "type": "boolean"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": "Always",
@@ -2009,10 +2018,10 @@
           "type": "object"
         },
         {
-          "default": "",
           "description": "Legacy alias of region: the region a new App Service plan is created in when appServicePlan declares no azureRegion. When unset, region, else the resource group's region. A web app always runs in its plan's region (Azure refuses any other), and an existing plan never moves.",
           "key": "azureRegion",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "description": "the git branch the workload deploys from",
@@ -2151,7 +2160,8 @@
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "description": "the full name (owner/name) of the git repository the workload deploys from",
@@ -2257,56 +2267,20 @@
     {
       "aliasOfOfferType": null,
       "canAccessSecrets": false,
-      "offerType": "Messaging.CaaS.KafkaUser",
-      "params": [
-        {
-          "default": [],
-          "description": "Kafka ACLs of the user, which authenticates with a TLS client certificate and is named after the component id. Each entry is {resource: {type, name, patternType}, operations: [...]} in Strimzi's simple-authorization form, e.g. type topic, patternType literal or prefix, operations Read, Write, Describe. When unset, no ACLs: the user can authenticate but not access anything.",
-          "key": "acls",
-          "type": "array"
-        },
-        {
-          "derived": {
-            "note": "the Kafka cluster component this user depends on"
-          },
-          "description": "Id of the Kafka cluster component, in the same Live System, the user belongs to. When unset, the Kafka cluster this component depends on; with neither the component fails. It waits while that cluster is not Active.",
-          "key": "clusterName",
-          "type": "string"
-        },
-        {
-          "description": "Deprecated: id of the Kubernetes cluster component to deploy into. Used only when the component declares no dependency on a Kubernetes cluster; declare that dependency instead.",
-          "key": "containerPlatform",
-          "type": "string"
-        },
-        {
-          "derived": {
-            "note": "defaults to the component id when absent"
-          },
-          "description": "Kubernetes namespace of the user. It always lives in its Kafka cluster's namespace, so leave this unset; a value other than the cluster's namespace fails the component.",
-          "key": "namespace",
-          "type": "string"
-        },
-        {
-          "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
-          "example": "westeurope",
-          "key": "region",
-          "type": "string"
-        }
-      ],
-      "provider": "Azure",
-      "providerResources": [],
-      "requiredApis": []
-    },
-    {
-      "aliasOfOfferType": null,
-      "canAccessSecrets": false,
       "offerType": "Messaging.PaaS.AzureRelayHybridConnection",
       "params": [
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": true,
@@ -2359,10 +2333,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": {},
@@ -2450,10 +2431,17 @@
           "type": "integer"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": false,
@@ -2504,10 +2492,17 @@
           "type": "integer"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": {
@@ -2593,10 +2588,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": {
@@ -2634,10 +2636,17 @@
       "offerType": "Messaging.PaaS.Relay",
       "params": [
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",
@@ -2678,10 +2687,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": {},
@@ -2796,10 +2812,17 @@
           "type": "integer"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": false,
@@ -2886,10 +2909,17 @@
           "type": "integer"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": false,
@@ -2974,10 +3004,17 @@
           "valuesCaseInsensitive": true
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",
@@ -3020,10 +3057,17 @@
           "valuesCaseInsensitive": true
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",
@@ -3053,10 +3097,17 @@
           "type": "array"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "description": "Resource group a new NSG is created in; created (and tagged as Fractal-managed) when it does not exist. Unset places the NSG in the Live System's resource group. An NSG that already exists is never moved: changing this value later has no effect on it.",
@@ -3091,10 +3142,17 @@
           "type": "array"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "description": "Resource group a new NSG is created in; created (and tagged as Fractal-managed) when it does not exist. Unset places the NSG in the Live System's resource group. An NSG that already exists is never moved: changing this value later has no effect on it.",
@@ -3132,10 +3190,17 @@
           "type": "array"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "description": "Resource group a new NSG is created in; created (and tagged as Fractal-managed) when it does not exist. Unset places the NSG in the Live System's resource group. An NSG that already exists is never moved: changing this value later has no effect on it.",
@@ -3166,10 +3231,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",
@@ -3225,10 +3297,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "description": "Vendor-neutral VM size: small (1-2 vCPU, 1-2 GiB, burstable), medium (2 vCPU, 8 GiB), large (4 vCPU, 16 GiB), xlarge (8 vCPU, 32 GiB). Mapped to this offer's own size key when that key is not set; an explicitly set vendor size key wins (a contradiction is published as a contract warning). Applies when the VM is created only: changing it never resizes or recreates an existing VM.",
@@ -3282,10 +3361,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",
@@ -3341,10 +3427,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "description": "Vendor-neutral VM size: small (1-2 vCPU, 1-2 GiB, burstable), medium (2 vCPU, 8 GiB), large (4 vCPU, 16 GiB), xlarge (8 vCPU, 32 GiB). Mapped to this offer's own size key when that key is not set; an explicitly set vendor size key wins (a contradiction is published as a contract warning). Applies when the VM is created only: changing it never resizes or recreates an existing VM.",
@@ -3401,10 +3494,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",
@@ -3437,10 +3537,17 @@
           "type": "array"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "description": "Resource group a new NSG is created in; created (and tagged as Fractal-managed) when it does not exist. Unset places the NSG in the Live System's resource group. An NSG that already exists is never moved: changing this value later has no effect on it.",
@@ -3469,10 +3576,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",
@@ -3541,10 +3655,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": "",
@@ -3629,10 +3750,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": "",
@@ -3670,10 +3798,17 @@
       "offerType": "NetworkAndCompute.PaaS.AzureAppService",
       "params": [
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",
@@ -3697,7 +3832,8 @@
           "description": "Azure location the environment is created in (e.g. 'westeurope'). When unset, the component's region. Applied when the environment is created.",
           "example": "westeurope",
           "key": "location",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": "",
@@ -3713,10 +3849,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",
@@ -3733,10 +3876,17 @@
       "offerType": "NetworkAndCompute.PaaS.AzureContainerInstanceService",
       "params": [
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",
@@ -3849,10 +3999,17 @@
           "type": "array"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "derived": {
@@ -3902,10 +4059,17 @@
           "type": "boolean"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",
@@ -3969,10 +4133,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": "",
@@ -4032,91 +4203,6 @@
     {
       "aliasOfOfferType": null,
       "canAccessSecrets": false,
-      "offerType": "Observability.CaaS.Jaeger",
-      "params": [
-        {
-          "description": "Deprecated: id of the Kubernetes cluster component to deploy into. Used only when the component declares no dependency on a Kubernetes cluster; declare that dependency instead.",
-          "key": "containerPlatform",
-          "type": "string"
-        },
-        {
-          "derived": {
-            "note": "defaults to the component id when absent"
-          },
-          "description": "Kubernetes namespace Jaeger is deployed into, where its OpenSearch trace store places Jaeger's credentials Secret. When unset, the component id, which must then be a valid DNS-1123 label (at most 63 lowercase letters, digits and hyphens).",
-          "key": "namespace",
-          "type": "string"
-        },
-        {
-          "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
-          "example": "westeurope",
-          "key": "region",
-          "type": "string"
-        },
-        {
-          "deprecated": {
-            "level": "warn",
-            "note": "Jaeger no longer generates a trace store: link it to a Storage.CaaS.OpenSearch component with {access: read-write} and size that component instead"
-          },
-          "description": "Retired: the storage class of the private Elasticsearch trace store Jaeger generated. Refused on a new Jaeger, warned on a deployed one.",
-          "key": "storageClassName",
-          "type": "string"
-        },
-        {
-          "deprecated": {
-            "level": "warn",
-            "note": "Jaeger no longer generates a trace store: link it to a Storage.CaaS.OpenSearch component with {access: read-write} and size that component instead"
-          },
-          "description": "Retired: the private Elasticsearch trace store Jaeger generated. Refused on a new Jaeger, warned on a deployed one.",
-          "key": "storageSettings",
-          "type": "object"
-        }
-      ],
-      "provider": "Azure",
-      "providerResources": [],
-      "requiredApis": []
-    },
-    {
-      "aliasOfOfferType": null,
-      "canAccessSecrets": false,
-      "offerType": "Observability.CaaS.Prometheus",
-      "params": [
-        {
-          "derived": {
-            "note": "the address of the API gateway the component links to, when it can route"
-          },
-          "description": "Host name or address, without scheme or path, the stack is reached through: its external URLs become https://<host>/prometheus/, https://<host>/alertmanager/ and https://<host>/grafana/, and they are published as its outputs. When unset, the address of the API gateway the component links to, once it can route; with neither, the stack is reachable in-cluster only and publishes its in-cluster addresses.",
-          "example": "monitoring.contoso.internal",
-          "key": "apiGatewayUrl",
-          "type": "string"
-        },
-        {
-          "description": "Deprecated: id of the Kubernetes cluster component to install into. Used only when the component declares no dependency on a Kubernetes cluster; declare that dependency instead.",
-          "key": "containerPlatform",
-          "type": "string"
-        },
-        {
-          "derived": {
-            "note": "defaults to the component id when absent"
-          },
-          "description": "Kubernetes namespace the Prometheus, Alertmanager and Grafana stack is installed into. When unset, the component id, which must then be a valid DNS-1123 label (at most 63 lowercase letters, digits and hyphens).",
-          "key": "namespace",
-          "type": "string"
-        },
-        {
-          "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
-          "example": "westeurope",
-          "key": "region",
-          "type": "string"
-        }
-      ],
-      "provider": "Azure",
-      "providerResources": [],
-      "requiredApis": []
-    },
-    {
-      "aliasOfOfferType": null,
-      "canAccessSecrets": false,
       "offerType": "Observability.SaaS.Jaeger",
       "params": [
         {
@@ -4148,67 +4234,6 @@
           "description": "Name of the environment secret holding the Grafana configuration, published as-is in this component's outputs for consumers to resolve; the agent does not read the secret. Required to create: a component that published no endpoints yet is refused without it; one that did keeps its own, with a warning.",
           "key": "grafanaConfigSecretId",
           "type": "string"
-        }
-      ],
-      "provider": "Azure",
-      "providerResources": [],
-      "requiredApis": []
-    },
-    {
-      "aliasOfOfferType": null,
-      "canAccessSecrets": false,
-      "offerType": "Security.CaaS.Ocelot",
-      "params": [
-        {
-          "description": "Deprecated: id of the Kubernetes cluster component to deploy into. Used only when the component declares no dependency on a Kubernetes cluster; declare that dependency instead.",
-          "key": "containerPlatform",
-          "type": "string"
-        },
-        {
-          "default": 900,
-          "description": "Lifetime, in seconds, of the session cookie Ocelot issues. When unset, 900 (15 minutes).",
-          "key": "cookieMaxAgeSec",
-          "type": "integer"
-        },
-        {
-          "default": [],
-          "description": "Origins (scheme://host[:port]) allowed to call Ocelot cross-origin, passed to it as one comma-separated list. When unset, none.",
-          "key": "corsOrigins",
-          "type": "array"
-        },
-        {
-          "description": "Host name, on the Live System's Traefik gateway, whose /ocelot/ route Ocelot serves. Required to create: a new Ocelot is refused without it; a deployed one is kept as it runs, with a warning.",
-          "key": "host",
-          "type": "string"
-        },
-        {
-          "derived": {
-            "note": "defaults to the component id when absent"
-          },
-          "description": "Kubernetes namespace Ocelot is deployed into. When unset, the component id, which must then be a valid DNS-1123 label (at most 63 lowercase letters, digits and hyphens).",
-          "key": "namespace",
-          "type": "string"
-        },
-        {
-          "deprecated": {
-            "level": "warn",
-            "note": "ignored: a route is authenticated by referencing Ocelot's ForwardAuth middleware"
-          },
-          "description": "Deprecated and ignored: it chose the paths an Ambassador Edge Stack FilterPolicy guarded. Behind Traefik a route is authenticated by referencing Ocelot's ForwardAuth middleware (published as forwardAuthMiddlewareName / forwardAuthMiddlewareNamespace). Leave it unset.",
-          "key": "pathPrefix",
-          "type": "string"
-        },
-        {
-          "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
-          "example": "westeurope",
-          "key": "region",
-          "type": "string"
-        },
-        {
-          "default": [],
-          "description": "Cloud roles granted to Ocelot's workload identity, each a map {name, scope, roleType}; roleType is BuiltInRole (when unset), CustomRole, AppRoleAssignment, OcelotRole or CosmosDbSqlRole. When unset, no extra roles.",
-          "key": "roles",
-          "type": "array"
         }
       ],
       "provider": "Azure",
@@ -4278,184 +4303,6 @@
     {
       "aliasOfOfferType": null,
       "canAccessSecrets": false,
-      "offerType": "Storage.CaaS.CnpgCluster",
-      "params": [
-        {
-          "default": false,
-          "description": "Whether to run the Fractal-built PostgreSQL image bundling the Apache AGE graph extension, preloaded as a shared library. When unset, false. Requires PostgreSQL 17.2, the only version with a published AGE image: a new cluster on any other version is refused, and a deployed one keeps the image it runs, with a warning. Toggling it on a running cluster swaps the image with a rolling update.",
-          "key": "age",
-          "type": "boolean"
-        },
-        {
-          "description": "Deprecated. Id of the Kubernetes cluster component to deploy on, read only when this component declares no dependency on a Kubernetes cluster. Declare that dependency instead.",
-          "key": "containerPlatform",
-          "type": "string"
-        },
-        {
-          "default": "1",
-          "description": "CPU limit of each PostgreSQL instance, as a Kubernetes quantity (cores or millicores). When unset, 1. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image.",
-          "key": "cpuLimit",
-          "type": "string"
-        },
-        {
-          "default": "500m",
-          "description": "CPU requested by each PostgreSQL instance, as a Kubernetes quantity (cores, or millicores such as 500m). When unset, 500m. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image.",
-          "key": "cpuRequest",
-          "type": "string"
-        },
-        {
-          "default": "app",
-          "description": "Name of the database created when the cluster is bootstrapped. When unset, app. Bootstrap runs once: changing it later does not create or rename a database (use a CnpgDatabase component for more).",
-          "key": "database",
-          "type": "string"
-        },
-        {
-          "default": "app",
-          "description": "PostgreSQL role that owns the bootstrap database; CloudNativePG creates it with a generated password. When unset, app. Used only when the cluster is bootstrapped.",
-          "key": "databaseOwner",
-          "type": "string"
-        },
-        {
-          "default": false,
-          "description": "Whether CloudNativePG enables the postgres superuser and publishes its password in a Kubernetes secret. When unset, false. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image.",
-          "key": "enableSuperuserAccess",
-          "type": "boolean"
-        },
-        {
-          "default": 3,
-          "description": "Number of PostgreSQL instances in the CloudNativePG cluster: one primary, the rest streaming replicas, spread across zones when possible. When unset, 3. A change is applied to a running cluster.",
-          "key": "instances",
-          "type": "integer"
-        },
-        {
-          "default": "1Gi",
-          "description": "Memory limit of each PostgreSQL instance, as a Kubernetes quantity (e.g. 1Gi). When unset, 1Gi. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image.",
-          "key": "memoryLimit",
-          "type": "string"
-        },
-        {
-          "default": "512Mi",
-          "description": "Memory requested by each PostgreSQL instance, as a Kubernetes quantity (e.g. 512Mi). When unset, 512Mi. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image.",
-          "key": "memoryRequest",
-          "type": "string"
-        },
-        {
-          "derived": {
-            "note": "defaults to the component id when absent"
-          },
-          "description": "Kubernetes namespace the resources are created in; created when missing. When unset, the component id, which must then be a valid DNS-1123 label (at most 63 lowercase letters, digits and hyphens).",
-          "key": "namespace",
-          "type": "string"
-        },
-        {
-          "default": "17.2",
-          "description": "PostgreSQL version, used as the tag of the ghcr.io/cloudnative-pg/postgresql image (e.g. 17.2). Takes precedence over 'version'; when neither is set, 17.2. A running cluster only moves within its major version: a different major is kept at the deployed one, because a major upgrade needs a migration. With age=true only 17.2 is available.",
-          "key": "postgresqlVersion",
-          "type": "string"
-        },
-        {
-          "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
-          "example": "westeurope",
-          "key": "region",
-          "type": "string"
-        },
-        {
-          "default": "",
-          "description": "Kubernetes storage class of the data volumes. When unset, the cluster's default storage class. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image.",
-          "key": "storageClass",
-          "type": "string"
-        },
-        {
-          "default": "10Gi",
-          "description": "Size of each instance's data volume, as a Kubernetes quantity (e.g. 10Gi). When unset, 10Gi. Applied when the cluster is created; on a running cluster a change is applied only together with a change of instances or of the PostgreSQL image.",
-          "key": "storageSize",
-          "type": "string"
-        },
-        {
-          "description": "PostgreSQL version as declared by the blueprint component, used when 'postgresqlVersion' is not set. Applies only when the cluster is created: a running cluster keeps its deployed version unless 'postgresqlVersion' asks for another one.",
-          "key": "version",
-          "type": "string"
-        }
-      ],
-      "provider": "Azure",
-      "providerResources": [],
-      "requiredApis": []
-    },
-    {
-      "aliasOfOfferType": null,
-      "canAccessSecrets": false,
-      "offerType": "Storage.CaaS.CnpgDatabase",
-      "params": [
-        {
-          "derived": {
-            "note": "the CnpgCluster component this database depends on"
-          },
-          "description": "Component id of the CnpgCluster, in the same Live System, that hosts the database. When unset, the CnpgCluster this component depends on; with neither the database fails. It waits until that cluster is Active.",
-          "key": "cnpgClusterName",
-          "type": "string"
-        },
-        {
-          "description": "Deprecated. Id of the Kubernetes cluster component to deploy on, read only when this component declares no dependency on a Kubernetes cluster. Declare that dependency instead.",
-          "key": "containerPlatform",
-          "type": "string"
-        },
-        {
-          "description": "Name of the PostgreSQL database created in the CloudNativePG cluster. Required to create: a new database without one is refused; set it to the database name your application connects to. Used only when the database is created: an existing database is never changed, and one declared without it is kept, with a warning.",
-          "example": "orders",
-          "key": "databaseName",
-          "type": "string"
-        },
-        {
-          "derived": {
-            "note": "the role the CnpgCluster bootstraps (its databaseOwner)"
-          },
-          "description": "Existing PostgreSQL role that owns the database. When unset, the role the CnpgCluster bootstraps (that cluster's databaseOwner). Used only when the database is created: an existing database is never changed.",
-          "example": "orders_owner",
-          "key": "databaseOwner",
-          "type": "string"
-        },
-        {
-          "default": "UTF8",
-          "description": "Character encoding of the database, as PostgreSQL names it (e.g. UTF8). When unset, UTF8. Used only when the database is created: an existing database is never changed.",
-          "key": "encoding",
-          "type": "string"
-        },
-        {
-          "default": "",
-          "description": "Character classification locale (LC_CTYPE) of the database, the Database resource's localeCType; it must be a locale the PostgreSQL image provides. When unset, the cluster's default. Used only when the database is created: CloudNativePG refuses to change it afterwards.",
-          "example": "en_US.UTF-8",
-          "key": "localeCType",
-          "type": "string"
-        },
-        {
-          "default": "",
-          "description": "Collation locale (LC_COLLATE) of the database, the Database resource's localeCollate, e.g. en_US.UTF-8; it must be a locale the PostgreSQL image provides. When unset, the cluster's default. Used only when the database is created: CloudNativePG refuses to change it afterwards.",
-          "example": "en_US.UTF-8",
-          "key": "localeCollate",
-          "type": "string"
-        },
-        {
-          "derived": {
-            "note": "defaults to the component id when absent"
-          },
-          "description": "Kubernetes namespace of the database resource. Always the namespace of its CnpgCluster: when unset, that one is used, and a different value fails the component, because the operator only adopts a database in its cluster's namespace.",
-          "key": "namespace",
-          "type": "string"
-        },
-        {
-          "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
-          "example": "westeurope",
-          "key": "region",
-          "type": "string"
-        }
-      ],
-      "provider": "Azure",
-      "providerResources": [],
-      "requiredApis": []
-    },
-    {
-      "aliasOfOfferType": null,
-      "canAccessSecrets": false,
       "offerType": "Storage.PaaS.AzureBlob",
       "params": [
         {
@@ -4496,7 +4343,8 @@
           "description": "Legacy alias of region: the Azure region a new storage account is created in, e.g. northeurope. region wins when both are set. When both are unset, the region of the component's resource group, which is the Live System's (environment's) region; a new account with no region at all is refused. An existing account keeps the region it lives in: Azure cannot move it.",
           "example": "westeurope",
           "key": "azureRegion",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "description": "Azure Backup for the account's file shares, as {vaultName, vaultResourceGroupName, vaultLocation, sku, etag, policyName, policyResourceGroupName, policyLocation, policy, policyType}. Defaults: vault <account>-backupVault and policy <account>-policy, both in the account's resource group and region, vault SKU Standard, policyType AzureStorage. policy is the policy JSON; when empty, only the vault is created. When unset, no backup is configured.",
@@ -4546,7 +4394,7 @@
           "type": "object"
         },
         {
-          "description": "Whether the hierarchical namespace (Data Lake Storage Gen2) is enabled. Set at creation only. When unset, a new account is created without it and an existing account keeps the namespace it was created with.",
+          "description": "Whether the hierarchical namespace (Data Lake Storage Gen2) is enabled. Set at creation only. When unset, a new account is created without it, unless isSftpEnabled or isNfsV3Enabled is true, which need it; an existing account keeps the namespace it was created with.",
           "key": "isHnsEnabled",
           "type": "boolean"
         },
@@ -4561,7 +4409,7 @@
           "type": "boolean"
         },
         {
-          "description": "Whether the SFTP endpoint is enabled. Requires the hierarchical namespace (isHnsEnabled). When unset, it is not enabled.",
+          "description": "Whether the SFTP endpoint is enabled. Requires a StorageV2 or BlockBlobStorage account with the hierarchical namespace (isHnsEnabled): a new account is created with it, while an existing account without it is refused until it is upgraded to Data Lake Storage Gen2. When unset, it is not enabled.",
           "key": "isSftpEnabled",
           "type": "boolean"
         },
@@ -4608,7 +4456,8 @@
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "description": "Network routing preference, as {routingChoice: MicrosoftRouting|InternetRouting (default InternetRouting), publishMicrosoftEndpoints (default false), publishInternetEndpoints (default true)}. When unset, none is requested.",
@@ -4665,10 +4514,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",
@@ -4691,10 +4547,10 @@
           "type": "boolean"
         },
         {
-          "default": "",
           "description": "Azure region of the server or cluster, e.g. northeurope. When unset, the component's region: the region key, else its resource group's region.",
           "key": "azureRegion",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": 10,
@@ -4720,10 +4576,26 @@
           "type": "boolean"
         },
         {
+          "constraints": {
+            "pattern": "[A-Za-z0-9][A-Za-z0-9.-]*\\.privatelink\\.postgres\\.database\\.azure\\.com"
+          },
+          "description": "Private DNS zone the server's private endpoint is registered in, for tenants whose Azure Policy denies creating zones named privatelink*. Set it together with privateDnsZoneResourceGroupName. The name must end with '.privatelink.postgres.database.azure.com' and carry a prefix (e.g. pg-acme.privatelink.postgres.database.azure.com): the bare 'privatelink.postgres.database.azure.com' is denied by the policy as well. When set, the zone must already exist and is never created; the agent only links it to the environment's spoke VNet. When unset, the agent derives the zone name and creates the zone itself. Flexible server only.",
+          "example": "pg-acme.privatelink.postgres.database.azure.com",
+          "key": "privateDnsZoneName",
+          "type": "string"
+        },
+        {
+          "description": "Resource group that holds privateDnsZoneName. Required when privateDnsZoneName is set, because the zone can live in any resource group — including one unrelated to the server or the spoke VNet. When unset, no supplied zone is used. Flexible server only.",
+          "example": "rg-customer-dns",
+          "key": "privateDnsZoneResourceGroupName",
+          "type": "string"
+        },
+        {
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": "Primary",
@@ -4804,10 +4676,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",
@@ -4862,10 +4741,17 @@
           "type": "boolean"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": true,
@@ -4894,10 +4780,17 @@
           "type": "integer"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": -1,
@@ -4926,10 +4819,17 @@
           "type": "integer"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": -1,
@@ -4952,10 +4852,10 @@
       "offerType": "Storage.PaaS.CosmosDbPostgreSqlDatabase",
       "params": [
         {
-          "default": "",
           "description": "Azure region of the server or cluster, e.g. northeurope. When unset, the component's region: the region key, else its resource group's region.",
           "key": "azureRegion",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": 2,
@@ -5003,7 +4903,8 @@
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": 128,
@@ -5041,10 +4942,10 @@
       "offerType": "Storage.PaaS.CosmosDbPostgresSqlCluster",
       "params": [
         {
-          "default": "",
           "description": "Azure region of the server or cluster, e.g. northeurope. When unset, the component's region: the region key, else its resource group's region.",
           "key": "azureRegion",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": 2,
@@ -5092,7 +4993,8 @@
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": 128,
@@ -5136,10 +5038,17 @@
           "type": "integer"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": -1,
@@ -5165,10 +5074,17 @@
           "type": "integer"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": -1,
@@ -5207,10 +5123,17 @@
           "type": "object"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": "",
@@ -5256,10 +5179,17 @@
           "type": "object"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": "",
@@ -5304,10 +5234,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",
@@ -5327,10 +5264,10 @@
           "type": "boolean"
         },
         {
-          "default": "",
           "description": "Azure region of the server or cluster, e.g. northeurope. When unset, the component's region: the region key, else its resource group's region.",
           "key": "azureRegion",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": 10,
@@ -5356,10 +5293,26 @@
           "type": "boolean"
         },
         {
+          "constraints": {
+            "pattern": "[A-Za-z0-9][A-Za-z0-9.-]*\\.privatelink\\.postgres\\.database\\.azure\\.com"
+          },
+          "description": "Private DNS zone the server's private endpoint is registered in, for tenants whose Azure Policy denies creating zones named privatelink*. Set it together with privateDnsZoneResourceGroupName. The name must end with '.privatelink.postgres.database.azure.com' and carry a prefix (e.g. pg-acme.privatelink.postgres.database.azure.com): the bare 'privatelink.postgres.database.azure.com' is denied by the policy as well. When set, the zone must already exist and is never created; the agent only links it to the environment's spoke VNet. When unset, the agent derives the zone name and creates the zone itself. Flexible server only.",
+          "example": "pg-acme.privatelink.postgres.database.azure.com",
+          "key": "privateDnsZoneName",
+          "type": "string"
+        },
+        {
+          "description": "Resource group that holds privateDnsZoneName. Required when privateDnsZoneName is set, because the zone can live in any resource group — including one unrelated to the server or the spoke VNet. When unset, no supplied zone is used. Flexible server only.",
+          "example": "rg-customer-dns",
+          "key": "privateDnsZoneResourceGroupName",
+          "type": "string"
+        },
+        {
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "default": "Primary",
@@ -5456,7 +5409,8 @@
           "description": "Legacy alias of region: the Azure region a new storage account is created in, e.g. northeurope. region wins when both are set. When both are unset, the region of the component's resource group, which is the Live System's (environment's) region; a new account with no region at all is refused. An existing account keeps the region it lives in: Azure cannot move it.",
           "example": "westeurope",
           "key": "azureRegion",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "description": "Azure Backup for the account's file shares, as {vaultName, vaultResourceGroupName, vaultLocation, sku, etag, policyName, policyResourceGroupName, policyLocation, policy, policyType}. Defaults: vault <account>-backupVault and policy <account>-policy, both in the account's resource group and region, vault SKU Standard, policyType AzureStorage. policy is the policy JSON; when empty, only the vault is created. When unset, no backup is configured.",
@@ -5506,7 +5460,7 @@
           "type": "object"
         },
         {
-          "description": "Whether the hierarchical namespace (Data Lake Storage Gen2) is enabled. Set at creation only. When unset, a new account is created without it and an existing account keeps the namespace it was created with.",
+          "description": "Whether the hierarchical namespace (Data Lake Storage Gen2) is enabled. Set at creation only. When unset, a new account is created without it, unless isSftpEnabled or isNfsV3Enabled is true, which need it; an existing account keeps the namespace it was created with.",
           "key": "isHnsEnabled",
           "type": "boolean"
         },
@@ -5521,7 +5475,7 @@
           "type": "boolean"
         },
         {
-          "description": "Whether the SFTP endpoint is enabled. Requires the hierarchical namespace (isHnsEnabled). When unset, it is not enabled.",
+          "description": "Whether the SFTP endpoint is enabled. Requires a StorageV2 or BlockBlobStorage account with the hierarchical namespace (isHnsEnabled): a new account is created with it, while an existing account without it is refused until it is upgraded to Data Lake Storage Gen2. When unset, it is not enabled.",
           "key": "isSftpEnabled",
           "type": "boolean"
         },
@@ -5568,7 +5522,8 @@
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         },
         {
           "description": "Network routing preference, as {routingChoice: MicrosoftRouting|InternetRouting (default InternetRouting), publishMicrosoftEndpoints (default false), publishInternetEndpoints (default true)}. When unset, none is requested.",
@@ -5647,10 +5602,17 @@
           "type": "string"
         },
         {
+          "aliases": [
+            {
+              "deprecated": true,
+              "key": "azureRegion"
+            }
+          ],
           "description": "Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank.",
           "example": "westeurope",
           "key": "region",
-          "type": "string"
+          "type": "string",
+          "valuesCaseInsensitive": true
         }
       ],
       "provider": "Azure",

@@ -13,7 +13,7 @@ export const NetworkAndCompute_CaaS_CloudRunService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -58,7 +58,7 @@ export const NetworkAndCompute_CaaS_ECSService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -74,7 +74,14 @@ export const NetworkAndCompute_CaaS_ECSService = {
     /** ECS launch type of the service: FARGATE or EC2. Applied when the service is created; changing it later does not change an existing service. When unset, FARGATE. */
     launchType: {type: 'string', required: false, default: 'FARGATE'},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -85,7 +92,7 @@ export const NetworkAndCompute_CaaS_ECSTaskDefinition = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -111,7 +118,14 @@ export const NetworkAndCompute_CaaS_ECSTaskDefinition = {
     /** Docker network mode of the task: awsvpc (required by Fargate), bridge, host or none. When unset, awsvpc. */
     networkMode: {type: 'string', required: false, default: 'awsvpc'},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
     /** ARN of the IAM role the containers run as (arn:aws:iam::<account>:role/<name>). Linked platform services (e.g. DynamoDB tables) grant this role, so a link that needs a grant requires it. When unset, the task has no role. */
     taskRoleArn: {type: 'string', required: false, default: ''},
   },
@@ -123,7 +137,7 @@ export const NetworkAndCompute_CaaS_OpenshiftIpAddressPool = {
   declaredBy: [
     {
       agentId: 'aria-agent-openshift',
-      agentVersion: 'v0.1.1',
+      agentVersion: 'v0.2.4',
       contractSchemaVersion: '2.0',
       provider: 'RedHat',
       parameterRules: [],
@@ -145,6 +159,8 @@ export const NetworkAndCompute_CaaS_OpenshiftIpAddressPool = {
     name: {type: 'string', required: true},
     /** the node labels selecting the announcing nodes (all when empty) */
     nodeSelector: {type: 'object', required: false},
+    /** How long the component may take to become ready before it is reported Failed: a duration such as 45m or 2h, clamped to [1m, 48h]; defaults to the agent's --provisioning-timeout (at least 2h for virtual machines) */
+    provisioningTimeout: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
 
@@ -154,23 +170,33 @@ export const NetworkAndCompute_CaaS_OpenshiftSecurityGroup = {
   declaredBy: [
     {
       agentId: 'aria-agent-openshift',
-      agentVersion: 'v0.1.1',
+      agentVersion: 'v0.2.4',
       contractSchemaVersion: '2.0',
       provider: 'RedHat',
       parameterRules: [],
     },
   ],
   params: {
-    /** JSON-encoded egress rules */
+    /** Allow DNS to the cluster DNS (openshift-dns, ports 53/5353) */
+    allowDnsEgress: {type: 'boolean', required: false, default: false},
+    /** Admit the OpenShift ingress routers, so Routes keep working under the policy */
+    allowRouterIngress: {type: 'boolean', required: false, default: false},
+    /** JSON array of egress rules: fromPort (1-65535), toPort (range end), or allPorts: true; protocol TCP (default), UDP or SCTP; and at least one destination: destCidr (+ destCidrExcept), toSelector (pod labels), destNamespaceSelector (namespace labels), destGroupId */
     egressRules: {type: 'string', required: false},
-    /** JSON-encoded ingress rules */
+    /** JSON array of ingress rules: fromPort (1-65535), toPort (range end), or allPorts: true; protocol TCP (default), UDP or SCTP; and at least one source: sourceCidr (+ sourceCidrExcept), fromSelector (pod labels), sourceNamespaceSelector (namespace labels), sourceGroupId */
     ingressRules: {type: 'string', required: false},
     /** Policy name */
-    name: {type: 'string', required: false},
-    /** JSON-encoded label selector (default: all pods) */
+    name: {type: 'string', required: true},
+    /** Pod labels the policy governs: JSON label map or key=value (default: the workloads and VMs linking to it) */
     podSelector: {type: 'string', required: false},
-    /** Ingress, Egress, or Both */
-    policyType: {type: 'string', required: false, default: 'Ingress'},
+    /** Ingress, Egress or Both; unset follows the rules given (no rules: Ingress, a default deny). A type that would make Kubernetes ignore given rules is refused */
+    policyType: {
+      type: 'string',
+      required: false,
+      values: ['Ingress', 'Egress', 'Both'],
+    },
+    /** How long the component may take to become ready before it is reported Failed: a duration such as 45m or 2h, clamped to [1m, 48h]; defaults to the agent's --provisioning-timeout (at least 2h for virtual machines) */
+    provisioningTimeout: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
 
@@ -180,7 +206,7 @@ export const NetworkAndCompute_CaaS_OpenshiftService = {
   declaredBy: [
     {
       agentId: 'aria-agent-openshift',
-      agentVersion: 'v0.1.1',
+      agentVersion: 'v0.2.4',
       contractSchemaVersion: '2.0',
       provider: 'RedHat',
       parameterRules: [],
@@ -190,19 +216,27 @@ export const NetworkAndCompute_CaaS_OpenshiftService = {
     /** Create an OpenShift Route */
     createRoute: {type: 'boolean', required: false, default: false},
     /** Service name */
-    name: {type: 'string', required: false},
+    name: {type: 'string', required: true},
     /** Service port */
     port: {type: 'number', required: false},
     /** Protocol (TCP/UDP) */
     protocol: {type: 'string', required: false, default: 'TCP'},
-    /** Custom hostname for Route */
+    /** How long the component may take to become ready before it is reported Failed: a duration such as 45m or 2h, clamped to [1m, 48h]; defaults to the agent's --provisioning-timeout (at least 2h for virtual machines) */
+    provisioningTimeout: {type: 'string', required: false},
+    /** Custom hostname for the Route; it must fall under a domain the agent operator allows (ARIA_ALLOWED_ROUTE_DOMAINS), else the service is refused. Empty: the router generates one */
     routeHostname: {type: 'string', required: false},
-    /** TLS termination: edge, passthrough, reencrypt */
-    routeTlsTermination: {type: 'string', required: false},
+    /** TLS termination: edge, passthrough or reencrypt; unset, the Route serves plain HTTP */
+    routeTlsTermination: {
+      type: 'string',
+      required: false,
+      values: ['edge', 'passthrough', 'reencrypt'],
+    },
     /** ClusterIP, NodePort, or LoadBalancer */
     serviceType: {type: 'string', required: false, default: 'ClusterIP'},
     /** Target container port */
     targetPort: {type: 'number', required: false},
+    /** The app label of the pods to select: must name a workload or virtual machine this service links to or depends on (default: that workload or virtual machine, else the service name) */
+    workloadName: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
 
@@ -364,7 +398,7 @@ export const NetworkAndCompute_IaaS_AwsEc2Instance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -388,7 +422,14 @@ export const NetworkAndCompute_IaaS_AwsEc2Instance = {
     /** OpenSSH public key (e.g. ssh-ed25519 AAAA...) to authorize on the instance. Imported as a key pair of this component, used at launch and deleted on teardown. Ignored when keyName is set; a value that is not a public key is refused. Changing it does not change a running instance's key. With neither set: When unset, a new VM gets an agent-generated ed25519 key pair: its private key (OpenSSH format) is stored in AWS Secrets Manager (the instance's account and region) as a secret named with a fresh GUID, which is published in the sshPrivateKeySecretName output (the store in sshPrivateKeyStore) and deleted with the VM. A deployed VM is never re-keyed. */
     publicSSHKey: {type: 'string', required: false},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
     /** Vendor-neutral VM size: small (1-2 vCPU, 1-2 GiB, burstable), medium (2 vCPU, 8 GiB), large (4 vCPU, 16 GiB), xlarge (8 vCPU, 32 GiB). Mapped to this offer's own size key when that key is not set; an explicitly set vendor size key wins (a contradiction is published as a contract warning). Applies when the VM is created only: changing it never resizes or recreates an existing VM. */
     size: {
       type: 'string',
@@ -407,7 +448,7 @@ export const NetworkAndCompute_IaaS_AwsLb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -431,7 +472,14 @@ export const NetworkAndCompute_IaaS_AwsLb = {
       valuesLevel: 'warn',
     },
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -441,7 +489,7 @@ export const NetworkAndCompute_IaaS_AwsLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.IaaS.AwsLb',
@@ -466,7 +514,14 @@ export const NetworkAndCompute_IaaS_AwsLoadBalancer = {
       valuesLevel: 'warn',
     },
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -476,7 +531,7 @@ export const NetworkAndCompute_IaaS_AwsSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -490,7 +545,14 @@ export const NetworkAndCompute_IaaS_AwsSecurityGroup = {
     /** Inbound rules: [{protocol?, fromPort?, toPort?, sourceCidr | sourceComponentId}]; sourceComponentId names a Fractal component whose managed security group is admitted. An omitted toPort means the single port fromPort. The group's inbound rules are reconciled to exactly these, so unset removes all. */
     ingressRules: {type: 'array', required: false, default: []},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -500,7 +562,7 @@ export const NetworkAndCompute_IaaS_AwsSubnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -512,7 +574,14 @@ export const NetworkAndCompute_IaaS_AwsSubnet = {
     /** IPv4 address block of the subnet (e.g. 10.20.1.0/24), inside its VPC's block. When unset, a block is carved deterministically from the VPC's block. Cannot be changed after creation. */
     cidrBlock: {type: 'string', required: false, default: ''},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -522,7 +591,7 @@ export const NetworkAndCompute_IaaS_AwsVpc = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -538,7 +607,14 @@ export const NetworkAndCompute_IaaS_AwsVpc = {
     /** Tenancy of instances launched in the VPC: default or dedicated. Set at creation; a different value on an existing VPC is reported as drift, not changed. When unset, default. */
     instanceTenancy: {type: 'string', required: false, default: ''},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -548,7 +624,7 @@ export const NetworkAndCompute_IaaS_AzureLb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -572,7 +648,12 @@ export const NetworkAndCompute_IaaS_AzureLb = {
       valuesCaseInsensitive: true,
     },
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -582,7 +663,7 @@ export const NetworkAndCompute_IaaS_AzureLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureLb',
@@ -607,7 +688,12 @@ export const NetworkAndCompute_IaaS_AzureLoadBalancer = {
       valuesCaseInsensitive: true,
     },
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -617,7 +703,7 @@ export const NetworkAndCompute_IaaS_AzureNetworkSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureNsg',
@@ -630,7 +716,12 @@ export const NetworkAndCompute_IaaS_AzureNetworkSecurityGroup = {
     /** Inbound allow rules: [{protocol?, fromPort?, toPort?, sourceCidr | sourceComponentId}]. protocol defaults to tcp; an omitted toPort means the single port fromPort, and a rule with no fromPort covers all ports. An entry with neither source is skipped, and a rule whose source is a component is skipped (Azure cannot match an NSG without an Application Security Group). When non-empty, the agent's inbound rules are made exactly these; unset or empty leaves the NSG's inbound rules untouched. */
     ingressRules: {type: 'array', required: false, default: []},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** Resource group a new NSG is created in; created (and tagged as Fractal-managed) when it does not exist. Unset places the NSG in the Live System's resource group. An NSG that already exists is never moved: changing this value later has no effect on it. */
     resourceGroup: {type: 'string', required: false},
   },
@@ -642,7 +733,7 @@ export const NetworkAndCompute_IaaS_AzureNsg = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -654,7 +745,12 @@ export const NetworkAndCompute_IaaS_AzureNsg = {
     /** Inbound allow rules: [{protocol?, fromPort?, toPort?, sourceCidr | sourceComponentId}]. protocol defaults to tcp; an omitted toPort means the single port fromPort, and a rule with no fromPort covers all ports. An entry with neither source is skipped, and a rule whose source is a component is skipped (Azure cannot match an NSG without an Application Security Group). When non-empty, the agent's inbound rules are made exactly these; unset or empty leaves the NSG's inbound rules untouched. */
     ingressRules: {type: 'array', required: false, default: []},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** Resource group a new NSG is created in; created (and tagged as Fractal-managed) when it does not exist. Unset places the NSG in the Live System's resource group. An NSG that already exists is never moved: changing this value later has no effect on it. */
     resourceGroup: {type: 'string', required: false},
   },
@@ -666,7 +762,7 @@ export const NetworkAndCompute_IaaS_AzureSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureNsg',
@@ -679,7 +775,12 @@ export const NetworkAndCompute_IaaS_AzureSecurityGroup = {
     /** Inbound allow rules: [{protocol?, fromPort?, toPort?, sourceCidr | sourceComponentId}]. protocol defaults to tcp; an omitted toPort means the single port fromPort, and a rule with no fromPort covers all ports. An entry with neither source is skipped, and a rule whose source is a component is skipped (Azure cannot match an NSG without an Application Security Group). When non-empty, the agent's inbound rules are made exactly these; unset or empty leaves the NSG's inbound rules untouched. */
     ingressRules: {type: 'array', required: false, default: []},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** Resource group a new NSG is created in; created (and tagged as Fractal-managed) when it does not exist. Unset places the NSG in the Live System's resource group. An NSG that already exists is never moved: changing this value later has no effect on it. */
     resourceGroup: {type: 'string', required: false},
   },
@@ -691,7 +792,7 @@ export const NetworkAndCompute_IaaS_AzureSubnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -701,7 +802,12 @@ export const NetworkAndCompute_IaaS_AzureSubnet = {
     /** IPv4 address range of the subnet in CIDR notation, inside its VNet's address space. When unset, the CIDR the subnet was deployed with, else a /24 carved from the VNet's block by the subnet's position among the VNet's subnets (ordered by component id). Immutable after creation: a different value on an existing subnet fails the component. */
     cidrBlock: {type: 'string', required: false, default: ''},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -712,7 +818,7 @@ export const NetworkAndCompute_IaaS_AzureVirtualMachine = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureVm',
@@ -736,7 +842,12 @@ export const NetworkAndCompute_IaaS_AzureVirtualMachine = {
       aliases: [{deprecated: true, key: 'keyName'}],
     },
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** Vendor-neutral VM size: small (1-2 vCPU, 1-2 GiB, burstable), medium (2 vCPU, 8 GiB), large (4 vCPU, 16 GiB), xlarge (8 vCPU, 32 GiB). Mapped to this offer's own size key when that key is not set; an explicitly set vendor size key wins (a contradiction is published as a contract warning). Applies when the VM is created only: changing it never resizes or recreates an existing VM. */
     size: {
       type: 'string',
@@ -761,7 +872,7 @@ export const NetworkAndCompute_IaaS_AzureVirtualNetwork = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureVnet',
@@ -772,7 +883,12 @@ export const NetworkAndCompute_IaaS_AzureVirtualNetwork = {
     /** IPv4 address space of the VNet, e.g. 10.20.0.0/16. Required to create: a deployed VNet declared without it keeps its address space. */
     cidrBlock: {type: 'string', required: false},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -783,7 +899,7 @@ export const NetworkAndCompute_IaaS_AzureVm = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -806,7 +922,12 @@ export const NetworkAndCompute_IaaS_AzureVm = {
       aliases: [{deprecated: true, key: 'keyName'}],
     },
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** Vendor-neutral VM size: small (1-2 vCPU, 1-2 GiB, burstable), medium (2 vCPU, 8 GiB), large (4 vCPU, 16 GiB), xlarge (8 vCPU, 32 GiB). Mapped to this offer's own size key when that key is not set; an explicitly set vendor size key wins (a contradiction is published as a contract warning). Applies when the VM is created only: changing it never resizes or recreates an existing VM. */
     size: {
       type: 'string',
@@ -831,7 +952,7 @@ export const NetworkAndCompute_IaaS_AzureVnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -841,7 +962,12 @@ export const NetworkAndCompute_IaaS_AzureVnet = {
     /** IPv4 address space of the VNet, e.g. 10.20.0.0/16. Required to create: a deployed VNet declared without it keeps its address space. */
     cidrBlock: {type: 'string', required: false},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -852,7 +978,7 @@ export const NetworkAndCompute_IaaS_EC2 = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.IaaS.AwsEc2Instance',
@@ -877,7 +1003,14 @@ export const NetworkAndCompute_IaaS_EC2 = {
     /** OpenSSH public key (e.g. ssh-ed25519 AAAA...) to authorize on the instance. Imported as a key pair of this component, used at launch and deleted on teardown. Ignored when keyName is set; a value that is not a public key is refused. Changing it does not change a running instance's key. With neither set: When unset, a new VM gets an agent-generated ed25519 key pair: its private key (OpenSSH format) is stored in AWS Secrets Manager (the instance's account and region) as a secret named with a fresh GUID, which is published in the sshPrivateKeySecretName output (the store in sshPrivateKeyStore) and deleted with the VM. A deployed VM is never re-keyed. */
     publicSSHKey: {type: 'string', required: false},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
     /** Vendor-neutral VM size: small (1-2 vCPU, 1-2 GiB, burstable), medium (2 vCPU, 8 GiB), large (4 vCPU, 16 GiB), xlarge (8 vCPU, 32 GiB). Mapped to this offer's own size key when that key is not set; an explicitly set vendor size key wins (a contradiction is published as a contract warning). Applies when the VM is created only: changing it never resizes or recreates an existing VM. */
     size: {
       type: 'string',
@@ -897,7 +1030,7 @@ export const NetworkAndCompute_IaaS_GcpComputeInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -943,7 +1076,7 @@ export const NetworkAndCompute_IaaS_GcpFirewall = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -969,7 +1102,7 @@ export const NetworkAndCompute_IaaS_GcpGlb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -995,7 +1128,7 @@ export const NetworkAndCompute_IaaS_GcpLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1021,7 +1154,7 @@ export const NetworkAndCompute_IaaS_GcpSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpFirewall',
@@ -1048,7 +1181,7 @@ export const NetworkAndCompute_IaaS_GcpSubnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1069,7 +1202,7 @@ export const NetworkAndCompute_IaaS_GcpVirtualMachine = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpComputeInstance',
@@ -1117,7 +1250,7 @@ export const NetworkAndCompute_IaaS_GcpVm = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpComputeInstance',
@@ -1164,7 +1297,7 @@ export const NetworkAndCompute_IaaS_GcpVpc = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1190,7 +1323,7 @@ export const NetworkAndCompute_IaaS_GlobalLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -1217,7 +1350,7 @@ export const NetworkAndCompute_IaaS_OciComputeInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1238,7 +1371,7 @@ export const NetworkAndCompute_IaaS_OciComputeInstance = {
     environmentSecretShortNames: {type: 'array', required: false},
     /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
-    /** OCID of the image the instance boots from (ocid1.image...). Required to create: a new instance without it is refused; a deployed one keeps its image, with a warning. Applied when the instance is created; changing it does not rebuild an existing one. */
+    /** Image the instance boots from: an image OCID (ocid1.image...), or a platform image as <operating system>:<version> (e.g. Oracle Linux:9), resolved when the instance is created to the newest available image of that system and version the shape can boot in the region. Required to create: a new instance without it is refused; a deployed one keeps its image, with a warning. Applied when the instance is created; changing it does not rebuild an existing one. */
     imageId: {type: 'string', required: false},
     /** SSH public key(s) in OpenSSH format, set as the instance's ssh_authorized_keys metadata. When unset, no key is installed. Applied when the instance is created. */
     keyName: {type: 'string', required: false, default: ''},
@@ -1267,7 +1400,7 @@ export const NetworkAndCompute_IaaS_OciInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1288,7 +1421,7 @@ export const NetworkAndCompute_IaaS_OciInstance = {
     environmentSecretShortNames: {type: 'array', required: false},
     /** Workload identity attached to the VM, so software on it reaches cloud services without keys. Each cloud reads only its own fields: GCP 'serviceAccount' (email) and 'scopes' (cloud-platform when unset), AWS 'instanceProfile' (IAM instance-profile name), Azure 'managedIdentity' ("system" or a user-assigned identity resource id), OCI 'instancePrincipal' (true) and 'policyStatements' (IAM policy statements granted to the instance's dynamic group). When unset, no identity is requested here; one the VM's links need is created by the agent. */
     identity: {type: 'object', required: false},
-    /** OCID of the image the instance boots from (ocid1.image...). Required to create: a new instance without it is refused; a deployed one keeps its image, with a warning. Applied when the instance is created; changing it does not rebuild an existing one. */
+    /** Image the instance boots from: an image OCID (ocid1.image...), or a platform image as <operating system>:<version> (e.g. Oracle Linux:9), resolved when the instance is created to the newest available image of that system and version the shape can boot in the region. Required to create: a new instance without it is refused; a deployed one keeps its image, with a warning. Applied when the instance is created; changing it does not rebuild an existing one. */
     imageId: {type: 'string', required: false},
     /** SSH public key(s) in OpenSSH format, set as the instance's ssh_authorized_keys metadata. When unset, no key is installed. Applied when the instance is created. */
     keyName: {type: 'string', required: false, default: ''},
@@ -1316,7 +1449,7 @@ export const NetworkAndCompute_IaaS_OciLoadBalancer = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1342,7 +1475,7 @@ export const NetworkAndCompute_IaaS_OciNetworkSecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1368,7 +1501,7 @@ export const NetworkAndCompute_IaaS_OciSecurityList = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1394,7 +1527,7 @@ export const NetworkAndCompute_IaaS_OciSubnet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1416,7 +1549,7 @@ export const NetworkAndCompute_IaaS_OciVcn = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -1437,36 +1570,45 @@ export const NetworkAndCompute_IaaS_OpenshiftVirtualMachine = {
   declaredBy: [
     {
       agentId: 'aria-agent-openshift',
-      agentVersion: 'v0.1.1',
+      agentVersion: 'v0.2.4',
       contractSchemaVersion: '2.0',
       provider: 'RedHat',
       parameterRules: [],
     },
   ],
   params: {
-    /** Number of CPU cores */
+    /** Number of CPU cores (whole number, at least 1) */
     cpuCores: {type: 'number', required: false, default: 1},
-    /** Root disk size */
+    /** PVC names managed by this live system, mounted read-write as extra disks in addition to the linked persistent volumes; a claim named here must be this live system's even when a linked persistent volume also claims it */
+    dataVolumes: {type: 'array', required: false},
+    /** Root disk size; "0" boots the image as an ephemeral containerDisk. Growth is applied when the storage class allows volume expansion */
     diskSizeGi: {type: 'string', required: false, default: '20Gi'},
     /** the short names of the environment secrets this component may read */
     environmentSecretShortNames: {type: 'array', required: false},
-    /** Container disk image or DataVolume source URL */
-    image: {type: 'string', required: false},
+    /** Disk image: a registry reference (imported, or booted as a containerDisk when diskSizeGi is 0) or an https URL to a public host (imported; needs diskSizeGi) */
+    image: {type: 'string', required: true},
     /** Memory size */
     memorySizeGi: {type: 'string', required: false, default: '2Gi'},
-    /** VM name */
-    name: {type: 'string', required: false},
+    /** VM name (DNS-1123 label; with a root disk, at most 54 characters) */
+    name: {type: 'string', required: true},
     /** Namespace */
     namespace: {type: 'string', required: false, default: 'default'},
-    /** Additional network attachment (multus) */
+    /** Additional network attachment (multus NetworkAttachmentDefinition in the VM namespace, or namespace/name allowed by the agent operator), bridged next to the pod network */
     networkName: {type: 'string', required: false},
+    /** How long the component may take to become ready before it is reported Failed: a duration such as 45m or 2h, clamped to [1m, 48h]; defaults to the agent's --provisioning-timeout (at least 2h for virtual machines) */
+    provisioningTimeout: {type: 'string', required: false},
     /** Always, RerunOnFailure, Manual, Halted */
-    runStrategy: {type: 'string', required: false, default: 'Always'},
-    /** SSH public key to inject */
+    runStrategy: {
+      type: 'string',
+      required: false,
+      default: 'Always',
+      values: ['Always', 'RerunOnFailure', 'Manual', 'Halted'],
+    },
+    /** SSH public key to inject (one line) */
     sshPublicKey: {type: 'string', required: false},
     /** StorageClass for DataVolume */
     storageClassName: {type: 'string', required: false},
-    /** Raw cloud-init user-data (startup script) */
+    /** Raw cloud-init user-data (#cloud-config or a #! script) */
     userData: {type: 'string', required: false},
   },
 } as const satisfies OfferContract;
@@ -1477,7 +1619,7 @@ export const NetworkAndCompute_IaaS_SecurityGroup = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureNsg',
@@ -1485,7 +1627,7 @@ export const NetworkAndCompute_IaaS_SecurityGroup = {
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpFirewall',
@@ -1527,7 +1669,7 @@ export const NetworkAndCompute_IaaS_VirtualMachine = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpComputeInstance',
@@ -1574,7 +1716,7 @@ export const NetworkAndCompute_IaaS_VNet = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.IaaS.AzureVnet',
@@ -1585,7 +1727,12 @@ export const NetworkAndCompute_IaaS_VNet = {
     /** IPv4 address space of the VNet, e.g. 10.20.0.0/16. Required to create: a deployed VNet declared without it keeps its address space. */
     cidrBlock: {type: 'string', required: false},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -1726,7 +1873,7 @@ export const NetworkAndCompute_PaaS_AKS = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.PaaS.AzureAks',
@@ -1752,7 +1899,12 @@ export const NetworkAndCompute_PaaS_AKS = {
     /** Pod CIDR of the cluster network. When unset in an environment with a spoke network, the Live System's IPAM k8s-pods range; otherwise required to create the cluster (no default range is applied, to avoid collisions). */
     podIpRange: {type: 'string', required: false, default: ''},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** Kubernetes service CIDR of the cluster; the cluster DNS service IP is taken from it. When unset in an environment with a spoke network, the Live System's IPAM k8s-services range; otherwise required to create the cluster (no default range is applied, to avoid collisions). */
     serviceIpRange: {type: 'string', required: false, default: ''},
     /** CIDR of the subnet snet-<cluster> the nodes are placed in, inside the target VNet: the VNet dependency, else the environment's spoke. Used only when it fits that VNet and clashes with no other subnet; an existing subnet keeps its range. When unset or unusable, the spoke's IPAM allocation or a free /24 carved from the VNet. */
@@ -1784,7 +1936,7 @@ export const NetworkAndCompute_PaaS_AwsEc2Instance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.IaaS.AwsEc2Instance',
@@ -1809,7 +1961,14 @@ export const NetworkAndCompute_PaaS_AwsEc2Instance = {
     /** OpenSSH public key (e.g. ssh-ed25519 AAAA...) to authorize on the instance. Imported as a key pair of this component, used at launch and deleted on teardown. Ignored when keyName is set; a value that is not a public key is refused. Changing it does not change a running instance's key. With neither set: When unset, a new VM gets an agent-generated ed25519 key pair: its private key (OpenSSH format) is stored in AWS Secrets Manager (the instance's account and region) as a secret named with a fresh GUID, which is published in the sshPrivateKeySecretName output (the store in sshPrivateKeyStore) and deleted with the VM. A deployed VM is never re-keyed. */
     publicSSHKey: {type: 'string', required: false},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
     /** Vendor-neutral VM size: small (1-2 vCPU, 1-2 GiB, burstable), medium (2 vCPU, 8 GiB), large (4 vCPU, 16 GiB), xlarge (8 vCPU, 32 GiB). Mapped to this offer's own size key when that key is not set; an explicitly set vendor size key wins (a contradiction is published as a contract warning). Applies when the VM is created only: changing it never resizes or recreates an existing VM. */
     size: {
       type: 'string',
@@ -1828,7 +1987,7 @@ export const NetworkAndCompute_PaaS_AwsEks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -2065,10 +2224,17 @@ export const NetworkAndCompute_PaaS_AwsEks = {
     podCidrPrefixLength: {type: 'integer', required: false, default: 20},
     /** CIDR block for pod addresses. When unset in an environment with a spoke network, allocated from IPAM. Used only by clusters running the VPC CNI with custom networking and only when it is a 100.64.0.0/10 block; Auto Mode clusters give pods node-subnet addresses. */
     podIpRange: {type: 'string', required: false, default: ''},
-    /** Set true to give a new cluster an unrestricted public API endpoint. When unset or false, the endpoint is limited to the operator's allowlist when one is configured, else private when the agent shares the cluster's VPC, else left public. Applies at creation. */
+    /** Set true to give a new cluster a public API endpoint, limited to the operator's allowlist when one is configured, else open to 0.0.0.0/0. When unset or false, the endpoint is private only, and creation is held until the agent has a network route to the cluster's subnets. Applies at creation. */
     privateClusterDisabled: {type: 'boolean', required: false, default: false},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
     /** Prefix length of the service block allocated from IPAM when serviceIpRange is unset (e.g. 20 for a /20). When unset, 20. */
     serviceCidrPrefixLength: {type: 'integer', required: false, default: 20},
     /** CIDR of Kubernetes service addresses (e.g. 172.20.0.0/16), set at creation. When unset in an environment with a spoke network, allocated from IPAM; otherwise the EKS default range. */
@@ -2084,7 +2250,7 @@ export const NetworkAndCompute_PaaS_AwsLb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.IaaS.AwsLb',
@@ -2109,7 +2275,14 @@ export const NetworkAndCompute_PaaS_AwsLb = {
       valuesLevel: 'warn',
     },
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -2119,7 +2292,7 @@ export const NetworkAndCompute_PaaS_AwsRoute53HostedZone = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -2171,7 +2344,14 @@ export const NetworkAndCompute_PaaS_AwsRoute53HostedZone = {
     /** Record sets of the zone, each an object with name (relative to the zone, @ for the apex), type, ttl in seconds and values, or an alias object (dnsName, hostedZoneId) instead of values. Checked against the zone's guardrails; how records nobody declared are treated follows recordManagement. When unset, none. */
     records: {type: 'array', required: false, default: []},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
     /** Who can resolve the zone: public (the internet) or private (only inside the environment's networks). An offer that cannot create a private zone refuses it. Required to create a zone; a deployed zone without it keeps the visibility it has, which never changes. */
     visibility: {
       type: 'string',
@@ -2188,7 +2368,7 @@ export const NetworkAndCompute_PaaS_AzureAks = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -2213,7 +2393,12 @@ export const NetworkAndCompute_PaaS_AzureAks = {
     /** Pod CIDR of the cluster network. When unset in an environment with a spoke network, the Live System's IPAM k8s-pods range; otherwise required to create the cluster (no default range is applied, to avoid collisions). */
     podIpRange: {type: 'string', required: false, default: ''},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** Kubernetes service CIDR of the cluster; the cluster DNS service IP is taken from it. When unset in an environment with a spoke network, the Live System's IPAM k8s-services range; otherwise required to create the cluster (no default range is applied, to avoid collisions). */
     serviceIpRange: {type: 'string', required: false, default: ''},
     /** CIDR of the subnet snet-<cluster> the nodes are placed in, inside the target VNet: the VNet dependency, else the environment's spoke. Used only when it fits that VNet and clashes with no other subnet; an existing subnet keeps its range. When unset or unusable, the spoke's IPAM allocation or a free /24 carved from the VNet. */
@@ -2227,7 +2412,7 @@ export const NetworkAndCompute_PaaS_AzureAppService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -2235,7 +2420,12 @@ export const NetworkAndCompute_PaaS_AzureAppService = {
   ],
   params: {
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -2245,7 +2435,7 @@ export const NetworkAndCompute_PaaS_AzureContainerAppsEnvironment = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -2256,6 +2446,7 @@ export const NetworkAndCompute_PaaS_AzureContainerAppsEnvironment = {
     location: {
       type: 'string',
       required: false,
+      valuesCaseInsensitive: true,
       derived: {note: "defaults to the component's region when absent"},
     },
     /** Shared key of the Log Analytics workspace named by logAnalyticsWorkspaceId. Used only together with it. Applied when the environment is created. */
@@ -2268,7 +2459,12 @@ export const NetworkAndCompute_PaaS_AzureContainerAppsEnvironment = {
     /** Workspace (customer) ID GUID of the Log Analytics workspace that receives the apps' logs, not its ARM resource ID. Used only together with logAnalyticsSharedKey; when either is unset, no log destination is configured. Applied when the environment is created. */
     logAnalyticsWorkspaceId: {type: 'string', required: false, default: ''},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -2278,7 +2474,7 @@ export const NetworkAndCompute_PaaS_AzureContainerInstanceService = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -2286,7 +2482,12 @@ export const NetworkAndCompute_PaaS_AzureContainerInstanceService = {
   ],
   params: {
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -2296,7 +2497,7 @@ export const NetworkAndCompute_PaaS_AzureDnsZone = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -2350,7 +2551,12 @@ export const NetworkAndCompute_PaaS_AzureDnsZone = {
     /** Record sets of the zone: [{name, type, ttl?, values}], name relative to the zone ('@' or empty for the apex) or fully qualified, ttl in seconds (300 when unset), TXT values unquoted. One entry per name and type. Apex NS and SOA are never touched. What happens to record sets not declared here is set by recordManagement. */
     records: {type: 'array', required: false, default: []},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** Azure subscription ID (GUID) the zone lives in. When unset, the Live System's subscriptionId parameter, else the environment's subscription. */
     subscriptionId: {
       type: 'string',
@@ -2379,7 +2585,7 @@ export const NetworkAndCompute_PaaS_CloudRun = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -2397,7 +2603,7 @@ export const NetworkAndCompute_PaaS_DnsZone = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
@@ -2407,7 +2613,12 @@ export const NetworkAndCompute_PaaS_DnsZone = {
     /** When true, the zone is created as a private zone; when false, as a public one. The zone is named after the component id. When unset, true. Applied when the zone is created. */
     isPrivate: {type: 'boolean', required: false, default: true},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -2417,7 +2628,7 @@ export const NetworkAndCompute_PaaS_ECS = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
@@ -2425,7 +2636,14 @@ export const NetworkAndCompute_PaaS_ECS = {
   ],
   params: {
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
   },
 } as const satisfies OfferContract;
 
@@ -2435,7 +2653,7 @@ export const NetworkAndCompute_PaaS_EKS = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.PaaS.AwsEks',
@@ -2673,10 +2891,17 @@ export const NetworkAndCompute_PaaS_EKS = {
     podCidrPrefixLength: {type: 'integer', required: false, default: 20},
     /** CIDR block for pod addresses. When unset in an environment with a spoke network, allocated from IPAM. Used only by clusters running the VPC CNI with custom networking and only when it is a 100.64.0.0/10 block; Auto Mode clusters give pods node-subnet addresses. */
     podIpRange: {type: 'string', required: false, default: ''},
-    /** Set true to give a new cluster an unrestricted public API endpoint. When unset or false, the endpoint is limited to the operator's allowlist when one is configured, else private when the agent shares the cluster's VPC, else left public. Applies at creation. */
+    /** Set true to give a new cluster a public API endpoint, limited to the operator's allowlist when one is configured, else open to 0.0.0.0/0. When unset or false, the endpoint is private only, and creation is held until the agent has a network route to the cluster's subnets. Applies at creation. */
     privateClusterDisabled: {type: 'boolean', required: false, default: false},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
     /** Prefix length of the service block allocated from IPAM when serviceIpRange is unset (e.g. 20 for a /20). When unset, 20. */
     serviceCidrPrefixLength: {type: 'integer', required: false, default: 20},
     /** CIDR of Kubernetes service addresses (e.g. 172.20.0.0/16), set at creation. When unset in an environment with a spoke network, allocated from IPAM; otherwise the EKS default range. */
@@ -2692,7 +2917,7 @@ export const NetworkAndCompute_PaaS_GcpDnsZone = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -2761,20 +2986,22 @@ export const NetworkAndCompute_PaaS_GcpGke = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
   ],
   params: {
+    /** Primary range of the cluster's subnet in an environment with a spoke network: copied to subnetworkIpRange. When unset there, the range already deployed, else a /24 allocated by IPAM, recorded here. Ignored in an environment without a spoke network. */
+    cidrBlock: {type: 'string', required: false, default: ''},
     /** Initial Kubernetes version of the cluster, e.g. 1.30. Applied at creation only; the cluster is enrolled in the REGULAR release channel and upgraded by GKE. When unset, the channel's default version. */
     kubernetesVersion: {type: 'string', required: false, default: ''},
     /** Control-plane range of a private cluster, e.g. 172.16.0.0/28. Not set when omitted. */
     masterIpv4CidrBlock: {type: 'string', required: false},
     /** Name of the VPC network the cluster and its subnet are created in. When unset, the environment's spoke network. */
     networkName: {type: 'string', required: false, default: ''},
-    /** Network policy provider: CALICO enables Kubernetes NetworkPolicy enforcement (GKE's Calico provider and its add-on); any other value is refused for a new cluster. Applied when the cluster is created only. When unset, network policies are not enforced. */
+    /** Network policy provider: CALICO enables Kubernetes NetworkPolicy enforcement (GKE's Calico provider and its add-on); any other value is refused for a new cluster. Applied when the cluster is created only. When unset, a new cluster enforces network policies with Dataplane V2; an existing cluster is never changed. */
     networkPolicyProvider: {
       type: 'string',
       required: false,
@@ -2817,7 +3044,7 @@ export const NetworkAndCompute_PaaS_GcpGlb = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
@@ -2844,7 +3071,7 @@ export const NetworkAndCompute_PaaS_GcpVm = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.IaaS.GcpComputeInstance',
@@ -2891,7 +3118,7 @@ export const NetworkAndCompute_PaaS_GKE = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.PaaS.GcpGke',
@@ -2899,13 +3126,15 @@ export const NetworkAndCompute_PaaS_GKE = {
     },
   ],
   params: {
+    /** Primary range of the cluster's subnet in an environment with a spoke network: copied to subnetworkIpRange. When unset there, the range already deployed, else a /24 allocated by IPAM, recorded here. Ignored in an environment without a spoke network. */
+    cidrBlock: {type: 'string', required: false, default: ''},
     /** Initial Kubernetes version of the cluster, e.g. 1.30. Applied at creation only; the cluster is enrolled in the REGULAR release channel and upgraded by GKE. When unset, the channel's default version. */
     kubernetesVersion: {type: 'string', required: false, default: ''},
     /** Control-plane range of a private cluster, e.g. 172.16.0.0/28. Not set when omitted. */
     masterIpv4CidrBlock: {type: 'string', required: false},
     /** Name of the VPC network the cluster and its subnet are created in. When unset, the environment's spoke network. */
     networkName: {type: 'string', required: false, default: ''},
-    /** Network policy provider: CALICO enables Kubernetes NetworkPolicy enforcement (GKE's Calico provider and its add-on); any other value is refused for a new cluster. Applied when the cluster is created only. When unset, network policies are not enforced. */
+    /** Network policy provider: CALICO enables Kubernetes NetworkPolicy enforcement (GKE's Calico provider and its add-on); any other value is refused for a new cluster. Applied when the cluster is created only. When unset, a new cluster enforces network policies with Dataplane V2; an existing cluster is never changed. */
     networkPolicyProvider: {
       type: 'string',
       required: false,
@@ -2968,7 +3197,7 @@ export const NetworkAndCompute_PaaS_Kubernetes_AWS = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       aliasOf: 'NetworkAndCompute.PaaS.AwsEks',
@@ -3206,10 +3435,17 @@ export const NetworkAndCompute_PaaS_Kubernetes_AWS = {
     podCidrPrefixLength: {type: 'integer', required: false, default: 20},
     /** CIDR block for pod addresses. When unset in an environment with a spoke network, allocated from IPAM. Used only by clusters running the VPC CNI with custom networking and only when it is a 100.64.0.0/10 block; Auto Mode clusters give pods node-subnet addresses. */
     podIpRange: {type: 'string', required: false, default: ''},
-    /** Set true to give a new cluster an unrestricted public API endpoint. When unset or false, the endpoint is limited to the operator's allowlist when one is configured, else private when the agent shares the cluster's VPC, else left public. Applies at creation. */
+    /** Set true to give a new cluster a public API endpoint, limited to the operator's allowlist when one is configured, else open to 0.0.0.0/0. When unset or false, the endpoint is private only, and creation is held until the agent has a network route to the cluster's subnets. Applies at creation. */
     privateClusterDisabled: {type: 'boolean', required: false, default: false},
     /** AWS region code the resource lives in (e.g. eu-west-1). When unset, the Live System's region parameter, else the region of the environment's AWS agent, else the agent's configured region. When none of these is known the component is refused: set the region on the environment's AWS agent, or region on the component. The legacy keys location and awsRegion are still read. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      aliases: [
+        {deprecated: true, key: 'location'},
+        {deprecated: true, key: 'awsRegion'},
+      ],
+    },
     /** Prefix length of the service block allocated from IPAM when serviceIpRange is unset (e.g. 20 for a /20). When unset, 20. */
     serviceCidrPrefixLength: {type: 'integer', required: false, default: 20},
     /** CIDR of Kubernetes service addresses (e.g. 172.20.0.0/16), set at creation. When unset in an environment with a spoke network, allocated from IPAM; otherwise the EKS default range. */
@@ -3225,7 +3461,7 @@ export const NetworkAndCompute_PaaS_Kubernetes_Azure = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       aliasOf: 'NetworkAndCompute.PaaS.AzureAks',
@@ -3251,7 +3487,12 @@ export const NetworkAndCompute_PaaS_Kubernetes_Azure = {
     /** Pod CIDR of the cluster network. When unset in an environment with a spoke network, the Live System's IPAM k8s-pods range; otherwise required to create the cluster (no default range is applied, to avoid collisions). */
     podIpRange: {type: 'string', required: false, default: ''},
     /** Azure region the resource is created in, as an Azure location name (e.g. 'westeurope'). When unset, the region of the Live System's resource group, which is the Live System's own region parameter, else the environment agent's region, else the region the agent is deployed in; with none of these, creating the group is refused until one is set on the environment's Azure agent or here. An existing resource stays where it is deployed. The legacy key 'azureRegion' is still read when 'region' is blank. */
-    region: {type: 'string', required: false},
+    region: {
+      type: 'string',
+      required: false,
+      valuesCaseInsensitive: true,
+      aliases: [{deprecated: true, key: 'azureRegion'}],
+    },
     /** Kubernetes service CIDR of the cluster; the cluster DNS service IP is taken from it. When unset in an environment with a spoke network, the Live System's IPAM k8s-services range; otherwise required to create the cluster (no default range is applied, to avoid collisions). */
     serviceIpRange: {type: 'string', required: false, default: ''},
     /** CIDR of the subnet snet-<cluster> the nodes are placed in, inside the target VNet: the VNet dependency, else the environment's spoke. Used only when it fits that VNet and clashes with no other subnet; an existing subnet keeps its range. When unset or unusable, the spoke's IPAM allocation or a free /24 carved from the VNet. */
@@ -3265,7 +3506,7 @@ export const NetworkAndCompute_PaaS_Kubernetes_GCP = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       aliasOf: 'NetworkAndCompute.PaaS.GcpGke',
@@ -3273,13 +3514,15 @@ export const NetworkAndCompute_PaaS_Kubernetes_GCP = {
     },
   ],
   params: {
+    /** Primary range of the cluster's subnet in an environment with a spoke network: copied to subnetworkIpRange. When unset there, the range already deployed, else a /24 allocated by IPAM, recorded here. Ignored in an environment without a spoke network. */
+    cidrBlock: {type: 'string', required: false, default: ''},
     /** Initial Kubernetes version of the cluster, e.g. 1.30. Applied at creation only; the cluster is enrolled in the REGULAR release channel and upgraded by GKE. When unset, the channel's default version. */
     kubernetesVersion: {type: 'string', required: false, default: ''},
     /** Control-plane range of a private cluster, e.g. 172.16.0.0/28. Not set when omitted. */
     masterIpv4CidrBlock: {type: 'string', required: false},
     /** Name of the VPC network the cluster and its subnet are created in. When unset, the environment's spoke network. */
     networkName: {type: 'string', required: false, default: ''},
-    /** Network policy provider: CALICO enables Kubernetes NetworkPolicy enforcement (GKE's Calico provider and its add-on); any other value is refused for a new cluster. Applied when the cluster is created only. When unset, network policies are not enforced. */
+    /** Network policy provider: CALICO enables Kubernetes NetworkPolicy enforcement (GKE's Calico provider and its add-on); any other value is refused for a new cluster. Applied when the cluster is created only. When unset, a new cluster enforces network policies with Dataplane V2; an existing cluster is never changed. */
     networkPolicyProvider: {
       type: 'string',
       required: false,
@@ -3322,7 +3565,7 @@ export const NetworkAndCompute_PaaS_Kubernetes_OCI = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -3414,7 +3657,7 @@ export const NetworkAndCompute_PaaS_OciContainerInstance = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -3458,7 +3701,7 @@ export const NetworkAndCompute_PaaS_OKE = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],
@@ -3526,28 +3769,28 @@ export const NetworkAndCompute_SaaS_Unmanaged = {
   declaredBy: [
     {
       agentId: 'fractal-cloud-agent-aws',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'AWS',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-azure',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'Azure',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-gcp',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'GCP',
       parameterRules: [],
     },
     {
       agentId: 'fractal-cloud-agent-oci',
-      agentVersion: 'v8.31.0',
+      agentVersion: 'v8.48.0',
       contractSchemaVersion: '2.0',
       provider: 'OCI',
       parameterRules: [],

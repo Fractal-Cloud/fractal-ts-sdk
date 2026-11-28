@@ -10,15 +10,17 @@ import type {SecretRef} from '../secret';
  */
 export type KubePrometheusStackConfig = ContractConfig<
   typeof Observability_CaaS_KubePrometheusStack,
-  'retentionDays',
-  {
-    /**
-     * Grafana's environment variables resolved from environment secrets, by
-     * variable name: `{GF_AUTH_GOOGLE_CLIENT_SECRET: secretRef('grafana-google')}`
-     * (caas-k8s v1.17.0). Only references travel; select each secret with
-     * `withEnvironmentSecrets`. The contract types it only as `object`, so the
-     * offer refuses any value that is not a reference.
-     */
-    secretEnv?: Readonly<Record<string, SecretRef>>;
-  }
->;
+  'retentionDays'
+> & {
+  /**
+   * @deprecated aria-agent-caas-k8s v2.0.0 no longer reads Grafana environment
+   * secrets: the stack's contract dropped `secretEnv`. Setting it is refused
+   * when the offer is built.
+   */
+  secretEnv?: Readonly<Record<string, SecretRef>>;
+  /**
+   * @deprecated aria-agent-caas-k8s v2.0.0 gives the stack no environment
+   * secrets. Setting it is refused when the offer is built.
+   */
+  environmentSecretShortNames?: readonly unknown[];
+};

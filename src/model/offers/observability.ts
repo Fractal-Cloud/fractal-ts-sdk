@@ -13,11 +13,11 @@ import {
   Observability_CaaS_GrafanaAlloy,
   Observability_CaaS_GrafanaLoki,
   Observability_CaaS_GrafanaTempo,
-  Observability_CaaS_Jaeger,
   Observability_CaaS_KubePrometheusStack,
-  Observability_CaaS_Prometheus,
   Observability_CaaS_SqsExporter,
 } from './generated/observability';
+import {Observability_CaaS_Jaeger} from './retired/observability_caas_jaeger';
+import type {Observability_CaaS_Prometheus} from './retired/observability_caas_prometheus';
 import type {ContractConfig} from './contract/contract_config';
 import {defineOffer, type LiveSystemComponent} from '../core';
 import type {GrafanaAlloyConfig} from './grafana_alloy_config';
@@ -30,13 +30,6 @@ import {
 import {searchLinkRefusal} from '../components/search_link_refusal';
 import {parseRouteLink, routeRefusal} from './route_link_routes';
 import type {SqsExporterConfig} from './sqs_exporter_config';
-import {contractKeys} from './contract/contract_keys';
-import {rawSecretEnvVariable} from './raw_secret_env_variable';
-
-/** The kube-prometheus-stack contract's keys. */
-const KUBE_PROMETHEUS_STACK_KEY = contractKeys(
-  Observability_CaaS_KubePrometheusStack,
-);
 
 /** Throw the error every check here throws, naming the component. */
 const refuse = (id: string, why: string): never => {
@@ -44,12 +37,20 @@ const refuse = (id: string, why: string): never => {
 };
 
 // ── Observability.Monitoring offers ──────────────────────────────────────────
+/**
+ * Prometheus as the Java cloud agents reconciled it.
+ *
+ * @deprecated Use `KubePrometheusStack`. fractal-cloud-agents v8.48.0 retired
+ * the Java agents' ownership of `Observability.CaaS.Prometheus`, so a Live
+ * System using it is stored but never reconciled. `KubePrometheusStack`
+ * (`Observability.CaaS.KubePrometheusStack`) is served by aria-agent-caas-k8s.
+ */
 export const Prometheus = defineOffer<
   'Observability.Monitoring',
   ContractConfig<typeof Observability_CaaS_Prometheus>
 >({
   satisfies: 'Observability.Monitoring',
-  contract: Observability_CaaS_Prometheus,
+  offerType: 'Observability.CaaS.Prometheus',
   deliveryModel: 'CaaS',
   neutral: {
     retentionDays: unsupported('the agent sets no retention'),
@@ -75,6 +76,12 @@ const carriesAccess = (settings: Readonly<Record<string, unknown>>): boolean =>
  *
  * Output fields: `frontendUri`, `version`, `namespace`, `serviceName`,
  * `otlpGrpcEndpoint`, `otlpHttpEndpoint`, `collectorEndpoint`.
+ *
+ * @deprecated Use `GrafanaTempo`. fractal-cloud-agents v8.48.0 retired the
+ * Java agents' ownership of `Observability.CaaS.Jaeger`, so a Live System
+ * using it is stored but never reconciled. `GrafanaTempo`
+ * (`Observability.CaaS.GrafanaTempo`) is the tracing backend
+ * aria-agent-caas-k8s serves.
  */
 export const Jaeger = defineOffer<
   'Observability.Tracing',
@@ -84,7 +91,7 @@ export const Jaeger = defineOffer<
   >
 >({
   satisfies: 'Observability.Tracing',
-  contract: Observability_CaaS_Jaeger,
+  offerType: 'Observability.CaaS.Jaeger',
   deliveryModel: 'CaaS',
   neutral: {
     retentionDays: unsupported('the agent sets no retention'),
@@ -289,7 +296,7 @@ const ensureGrafanaRoutes = (
  * `alertmanagerUrl`, `grafanaUrl`, `grafanaAdminSecretName`, `storageClassName`
  * (the class the volume was created with, kept), `gatewayRoutes`.
  */
-export const KubePrometheusStack = defineOffer<
+const kubePrometheusStack = defineOffer<
   'Observability.Monitoring',
   KubePrometheusStackConfig
 >({
@@ -300,30 +307,59 @@ export const KubePrometheusStack = defineOffer<
     scrapeInterval: unsupported('the agent sets no scrape interval'),
   },
   validate: (self, all) => {
-    ensureGrafanaSecretEnvReferences(self);
     ensureGrafanaRoutes(self, all);
   },
 });
 
+/** Why the stack's environment-secret settings are refused. */
+const STACK_SECRETS_RETIRED =
+  'aria-agent-caas-k8s v2.0.0 no longer gives kube-prometheus-stack ' +
+  'environment secrets (its contract dropped secretEnv and secret access); ' +
+  'remove it';
+
 /**
- * Refuse a Grafana `secretEnv` value that is not an environment-secret
- * reference (the contract check already refuses one that is not a map). Names
- * the variable, never the value.
+ * Refuse the environment-secret settings caas-k8s v1.x read and v2.0.0 does
+ * not: a value the agent ignores would deploy Grafana without it, silently.
  */
-const ensureGrafanaSecretEnvReferences = (self: LiveSystemComponent): void => {
-  const secretEnv = self.parameters[KUBE_PROMETHEUS_STACK_KEY.secretEnv];
-  if (typeof secretEnv !== 'object' || secretEnv === null) {
-    return;
-  }
-  const raw = rawSecretEnvVariable(secretEnv as Record<string, unknown>);
-  if (raw !== undefined) {
-    refuse(
-      self.id,
-      `secretEnv '${raw}' is not an environment-secret reference: ` +
-        "pass secretRef('<shortName>'), never the secret itself",
-    );
+const refuseRetiredStackSecrets = (config: KubePrometheusStackConfig): void => {
+  for (const key of ['secretEnv', 'environmentSecretShortNames'] as const) {
+    if (config?.[key] !== undefined) {
+      throw new Error(`KubePrometheusStack ${key}: ${STACK_SECRETS_RETIRED}.`);
+    }
   }
 };
+
+/**
+ * Always refuses: kept so code written for caas-k8s v1.x still compiles and
+ * fails with the reason.
+ */
+const retiredWithEnvironmentSecrets: (
+  shortNames: readonly string[],
+) => never = () => {
+  throw new Error(
+    `KubePrometheusStack withEnvironmentSecrets: ${STACK_SECRETS_RETIRED}.`,
+  );
+};
+
+export const KubePrometheusStack = Object.assign(
+  (config: KubePrometheusStackConfig) => {
+    refuseRetiredStackSecrets(config);
+    return {
+      ...kubePrometheusStack(config),
+      /**
+       * @deprecated aria-agent-caas-k8s v2.0.0 gives the stack no environment
+       * secrets. Always throws.
+       */
+      withEnvironmentSecrets: retiredWithEnvironmentSecrets,
+    };
+  },
+  {
+    offerType: kubePrometheusStack.offerType,
+    contract: kubePrometheusStack.contract,
+    satisfies: kubePrometheusStack.satisfies,
+    neutral: kubePrometheusStack.neutral,
+  },
+);
 
 /**
  * Grafana Loki, monolithic (grafana-community chart 18.13.7, Loki 3.7.8). Its
