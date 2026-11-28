@@ -102,9 +102,10 @@ jobs:
           "$RUNNER_TEMP/gitleaks" git --log-opts="${BASE_SHA}..${HEAD_SHA}" \
             --redact --no-banner --exit-code 1 .
 
-      # Release, nightly and manual runs: every file of the checked-out commit, with .gitleaks.toml and
-      # .gitleaksignore applied. Any finding fails a release. Only the rule, file, line and fingerprint
-      # are printed, never the secret.
+      # Release, nightly and manual runs: every file of the checked-out commit, with .gitleaksignore and
+      # the test-fixture allowlist in .github/gitleaks-release.toml applied (pull requests do not read
+      # it). Any finding fails a release. Only the rule, file, line and fingerprint are printed, never
+      # the secret.
       - name: Scan the tree
         id: tree
         if: github.event_name != 'pull_request'
@@ -112,15 +113,19 @@ jobs:
           set -euo pipefail
           json="$RUNNER_TEMP/gitleaks.json"
           report="$RUNNER_TEMP/gitleaks.md"
-          "$RUNNER_TEMP/gitleaks" dir . --redact --no-banner --exit-code 0 \
+          config=()
+          if [ -f .github/gitleaks-release.toml ]; then
+            config=(--config .github/gitleaks-release.toml)
+          fi
+          "$RUNNER_TEMP/gitleaks" dir . "${config[@]}" --redact --no-banner --exit-code 0 \
             --report-format json --report-path "$json"
           count="$(jq length "$json")"
           {
             echo "### Secrets (gitleaks): $count in the tree of \`${GITHUB_SHA::12}\`"
             echo
             if [ "$count" -gt 0 ]; then
-              echo "Remove each secret and rotate it. For a test fixture, add its fingerprint to \`.gitleaksignore\`"
-              echo "or its path to the allowlist in \`.gitleaks.toml\`."
+              echo "Remove each secret and rotate it. For a test fixture, move it under a test path that"
+              echo "\`.github/gitleaks-release.toml\` allowlists, or add its fingerprint to \`.gitleaksignore\`."
               echo
               echo "| Rule | File | Line | Fingerprint |"
               echo "|---|---|---|---|"

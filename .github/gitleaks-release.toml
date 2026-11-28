@@ -1,0 +1,27 @@
+# gitleaks allowlist for the release and nightly tree scans ONLY (security.yml, "Scan the tree").
+# Pull request scans do not read this file: a secret that a pull request adds blocks it wherever it is,
+# test paths included. Releases and the nightly skip test fixtures only, since tests that prove a
+# secret-looking value is redacted or rejected must contain one. A secret anywhere else still blocks
+# a release.
+#
+# Only test-fixture paths belong here. A real secret is removed and rotated, never allowlisted. A single
+# accepted fixture outside these paths goes in .gitleaksignore by fingerprint.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Test fixtures (release and nightly tree scans only)"
+paths = [
+  # Test directories
+  '''(^|/)(tests?|testdata|__tests__|fixtures?)/''',
+  # Java and Gradle test sources and resources
+  '''(^|/)src/test/''',
+  # .NET test projects (*.Tests)
+  '''(^|/)[^/]+\.Tests?/''',
+  # Go test files
+  '''_test\.go$''',
+  # TypeScript and JavaScript test files
+  '''\.(test|spec)\.[cm]?[jt]sx?$''',
+  # Recorded agent contract snapshots (test fixtures for the contract tests)
+  '''(^|/)contracts/snapshot/''',
+]
