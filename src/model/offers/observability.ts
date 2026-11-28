@@ -235,7 +235,7 @@ const ensureBackend = (
   ensureOneReadWriteBucket(self, all);
 };
 
-/** Grafana's `root_url` path: what the chart renders raw through `tpl` may carry. */
+/** Grafana's `root_url` path: the characters the agent accepts in it. */
 const GRAFANA_ROOT_URL_PATH = /^\/[A-Za-z0-9._~/-]*$/;
 
 /**
@@ -243,14 +243,12 @@ const GRAFANA_ROOT_URL_PATH = /^\/[A-Za-z0-9._~/-]*$/;
  * them. Both Grafanas route this way: the stack's bundled one and the `Grafana`
  * offer's, and each route's prefix becomes Grafana's `root_url`.
  *
- * `stripSubPath` is the stack's rule: the agent strips the sub-path itself, so
- * its routes set no rewritePath and end with `/`. The `Grafana` offer serves
- * under the sub-path and has neither rule.
+ * Grafana is served at `/` and the gateway strips the sub-path itself, so a
+ * route sets no rewritePath and its prefix ends with `/`.
  */
 const ensureGrafanaRoutes = (
   self: LiveSystemComponent,
   all: readonly LiveSystemComponent[],
-  stripSubPath: boolean,
 ): void => {
   for (const link of self.links) {
     const gateway = all.find(c => c.id === link.componentId);
@@ -280,13 +278,13 @@ const ensureGrafanaRoutes = (
         why(`route link from ${self.id}: ${refusal}`);
       }
       // The agent returns its Grafana-specific refusals bare, not as a link error.
-      if (stripSubPath && route.rewritePath !== '') {
+      if (route.rewritePath !== '') {
         refuse(
           self.id,
           `Grafana route ${route.host}${route.prefix} sets rewritePath; the agent strips the sub-path itself`,
         );
       }
-      if (stripSubPath && route.prefix !== '/' && !route.prefix.endsWith('/')) {
+      if (route.prefix !== '/' && !route.prefix.endsWith('/')) {
         refuse(
           self.id,
           `Grafana route prefix '${route.prefix}' must end with "/" (for example /grafana/)`,
@@ -336,7 +334,7 @@ export const KubePrometheusStack = defineOffer<
   },
   validate: (self, all, config) => {
     ensureKubePrometheusStackParameters(self, config);
-    ensureGrafanaRoutes(self, all, true);
+    ensureGrafanaRoutes(self, all);
   },
 });
 
@@ -358,8 +356,10 @@ export const KubePrometheusStack = defineOffer<
  * emails in `admins`. Pair it with `KubePrometheusStack({bundledGrafana:
  * false})`.
  *
- * It may be routed through a `TraefikGateway` with a route link; the route's
- * prefix becomes Grafana's `root_url`.
+ * It may be routed through a `TraefikGateway` with a route link, as the
+ * stack's bundled Grafana: the agent strips the sub-path (which must end with
+ * `/`; a `rewritePath` is refused) and the route's prefix becomes Grafana's
+ * `root_url`.
  */
 export const Grafana = defineOffer<
   'Observability.Visualization',
@@ -370,7 +370,7 @@ export const Grafana = defineOffer<
   deliveryModel: 'CaaS',
   validate: (self, all) => {
     ensureGrafanaParameters(self);
-    ensureGrafanaRoutes(self, all, false);
+    ensureGrafanaRoutes(self, all);
   },
 });
 

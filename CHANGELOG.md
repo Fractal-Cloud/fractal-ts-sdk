@@ -65,10 +65,12 @@ them on every SDK version paired with it.
   components it links to. No neutral parameters; `dependsOn(platform)`.
 - `Grafana` (`Observability.CaaS.Grafana`) satisfies it: Google sign-in (`googleClientId`,
   `allowedDomains`, `hostedDomain`), `admins`, `plugins`, `dashboards`, `datasources`, storage
-  keys and `values`, all from the contract. `secretEnv` takes only
+  keys and `values`, all from the contract. `secretEnv` is required and takes only
   `GF_AUTH_GOOGLE_CLIENT_SECRET` as a `secretRef`, granted with `withEnvironmentSecrets`.
-  Refused before deploy: a raw `secretEnv` value, any other variable, an ungranted secret, an
-  admin outside `allowedDomains`, and a gateway route prefix Grafana's `root_url` cannot carry.
+  Refused before deploy: a missing client secret, a raw `secretEnv` value, any other variable,
+  an ungranted secret, an admin outside `allowedDomains`, and a gateway route that sets
+  `rewritePath`, whose prefix does not end with `/` or that Grafana's `root_url` cannot carry
+  (the agent strips the sub-path, as for the stack's bundled Grafana).
 - `dashboards` and `datasources` are typed as the contract publishes them (objects). Their
   shapes and limits (uid keys, 256 KiB per dashboard, datasource types, no inline credentials)
   are checked by the agent; typed shapes follow when the contract carries them.

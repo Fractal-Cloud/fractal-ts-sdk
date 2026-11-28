@@ -1274,7 +1274,11 @@ describe('Grafana', () => {
   };
 
   /** A Visualization on a ContainerPlatform, optionally routed through Traefik. */
-  const build = (config: Record<string, unknown> = {}, routePrefix?: string) =>
+  const build = (
+    config: Record<string, unknown> = {},
+    routePrefix?: string,
+    rewritePath?: string,
+  ) =>
     createFractal({
       id: 'platform-visualization',
       version,
@@ -1293,7 +1297,13 @@ describe('Grafana', () => {
         bp.link(
           visualization,
           gateway,
-          gatewayRouteSettings({routes: [{prefix: routePrefix}]}),
+          gatewayRouteSettings({
+            routes: [
+              rewritePath === undefined
+                ? {prefix: routePrefix}
+                : {prefix: routePrefix, rewritePath},
+            ],
+          }),
         );
         return {platform, visualization, gateway};
       },
@@ -1414,9 +1424,37 @@ describe('Grafana', () => {
 
   it('routes through a TraefikGateway with a path root_url can carry', () => {
     expect(() => build({}, '/grafana/')).not.toThrow();
-    expect(() => build({}, '/grafana')).not.toThrow();
+    expect(() => build({}, '/')).not.toThrow();
     expect(refusalOf(() => build({}, '/gra%fana/'))).toMatch(
       /Grafana route prefix '\/gra%fana\/' has a path Grafana's root_url cannot carry/,
     );
   });
+
+  it('refuses a route prefix without a trailing "/": the agent strips the sub-path', () => {
+    expect(refusalOf(() => build({}, '/grafana'))).toBe(
+      "Live component 'grafana': Grafana route prefix '/grafana' must end with \"/\" " +
+        '(for example /grafana/).',
+    );
+  });
+
+  it('refuses a rewritePath: the agent strips the sub-path itself', () => {
+    expect(refusalOf(() => build({}, '/grafana/', '/'))).toBe(
+      "Live component 'grafana': Grafana route ops.example.com/grafana/ sets " +
+        'rewritePath; the agent strips the sub-path itself.',
+    );
+  });
+
+  it.each([
+    ['unset', undefined],
+    ['empty', {}],
+  ])(
+    'refuses a secretEnv %s: Google sign-in needs the client secret',
+    (_, secretEnv) => {
+      expect(refusalOf(() => build({secretEnv}))).toBe(
+        "Live component 'grafana': secretEnv sets no GF_AUTH_GOOGLE_CLIENT_SECRET: " +
+          'Google sign-in needs the OAuth client secret; set it to ' +
+          "secretRef('<shortName>') and grant it with withEnvironmentSecrets([...]).",
+      );
+    },
+  );
 });

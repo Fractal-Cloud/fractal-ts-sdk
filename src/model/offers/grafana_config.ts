@@ -18,9 +18,10 @@ export type GrafanaConfig = ContractConfig<
      * The Google OAuth client secret, as a reference to an environment secret:
      * `{GF_AUTH_GOOGLE_CLIENT_SECRET: secretRef('grafana-google')}`. Grafana
      * reads no other variable from secrets. Select the secret with
-     * `withEnvironmentSecrets`. The contract types it only as `object`, so the
-     * offer refuses any value that is not a reference.
+     * `withEnvironmentSecrets`. Required: Google sign-in needs the client
+     * secret. The contract types it only as `object`, so the offer refuses any
+     * value that is not a reference.
      */
-    secretEnv?: Readonly<{GF_AUTH_GOOGLE_CLIENT_SECRET: SecretRef}>;
+    secretEnv: Readonly<{GF_AUTH_GOOGLE_CLIENT_SECRET: SecretRef}>;
   }
 >;

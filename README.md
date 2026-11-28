@@ -1494,9 +1494,10 @@ grafana: Grafana({
 }).withEnvironmentSecrets(['grafana-google']),
 ```
 
-The `Grafana` offer serves under its route's sub-path (no trailing `/` or
-`rewritePath` rule); the prefix becomes Grafana's `root_url`, so it may hold only
-letters, digits, `.`, `_`, `~`, `-` and `/`.
+The `Grafana` offer routes as the stack's bundled Grafana: the agent strips the
+sub-path, which must end with `/` (a `rewritePath` is refused). The prefix becomes
+Grafana's `root_url`, so it may hold only letters, digits, `.`, `_`, `~`, `-` and
+`/`. `secretEnv` with `GF_AUTH_GOOGLE_CLIENT_SECRET` is required.
 
 #### `SqsExporter` (`Observability.CaaS.SqsExporter`)
 

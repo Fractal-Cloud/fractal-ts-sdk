@@ -115,10 +115,22 @@ Grafana({
   // @ts-expect-error Grafana reads only GF_AUTH_GOOGLE_CLIENT_SECRET from secrets.
   secretEnv: {GF_AUTH_ANONYMOUS_ENABLED: secretRef('x')},
 });
+// @ts-expect-error secretEnv is required: Google sign-in needs the client secret.
+Grafana({
+  googleClientId: '1-a.apps.googleusercontent.com',
+  allowedDomains: ['example.com'],
+});
+Grafana({
+  googleClientId: '1-a.apps.googleusercontent.com',
+  allowedDomains: ['example.com'],
+  // @ts-expect-error secretEnv must hold GF_AUTH_GOOGLE_CLIENT_SECRET.
+  secretEnv: {},
+});
 export const grafanaIsAVisualization: Offer<'Observability.Visualization'> =
   Grafana({
     googleClientId: '1-a.apps.googleusercontent.com',
     allowedDomains: [],
+    secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: secretRef('x')},
   });
 
 // ── GrafanaAlloy ──────────────────────────────────────────────────────────────

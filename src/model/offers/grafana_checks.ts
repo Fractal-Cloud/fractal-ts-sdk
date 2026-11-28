@@ -38,18 +38,27 @@ const ensureAdminsAreAllowed = (self: LiveSystemComponent): void => {
 };
 
 /**
- * `secretEnv` holds only the client secret, as a reference to an environment
- * secret granted to the component. Names the variable, never the value.
+ * `secretEnv` holds the client secret, and only it, as a reference to an
+ * environment secret granted to the component. Names the variable, never the
+ * value.
  */
 const ensureSecretEnv = (self: LiveSystemComponent): void => {
-  const secretEnv: unknown = self.parameters.secretEnv;
+  const secretEnv: unknown = self.parameters.secretEnv ?? {};
   if (
     typeof secretEnv !== 'object' ||
     secretEnv === null ||
     Array.isArray(secretEnv)
   ) {
-    // Unset, or not a map, which the contract check already refuses.
+    // Not a map, which the contract check already refuses.
     return;
+  }
+  if (!Object.hasOwn(secretEnv, CLIENT_SECRET_VARIABLE)) {
+    refuse(
+      self.id,
+      `secretEnv sets no ${CLIENT_SECRET_VARIABLE}: Google sign-in needs the ` +
+        "OAuth client secret; set it to secretRef('<shortName>') and grant it " +
+        'with withEnvironmentSecrets([...])',
+    );
   }
   const granted: unknown = self.parameters.environmentSecretShortNames;
   const grantedNames: readonly unknown[] = Array.isArray(granted)
