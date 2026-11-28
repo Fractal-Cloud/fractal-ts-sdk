@@ -175,14 +175,14 @@ describe('caas-k8s MinIO: one offer per service type (aria-agent-caas-k8s v2.0.0
     'volumesPerServer',
   ];
 
-  it('is read from the caas-k8s contract published with v2.0.0', () => {
+  it('is read from the caas-k8s contract published with v2.1.0', () => {
     expect(source(CAAS)).toEqual({
       agentId: CAAS,
       repository: 'Fractal-Cloud/aria-agent-caas-k8s',
-      tag: 'v2.0.0',
+      tag: 'v2.1.0',
       fetch: {kind: 'release-asset', asset: 'param-contract.json'},
       snapshotSha256:
-        'dc8dfd61f30c2267a5f7f279b5d330f08b3d2c6696b3291793cceddde4eaa671',
+        'bb7b5f87c70dff68f74d7e191c73029b079b94b73f9486f4e588d894db039fd1',
     });
   });
 

@@ -9,29 +9,89 @@ The version published for a release is the GitHub release tag: `release.yml` run
 `npm version <tag>` at publish time, so `package.json` on `main` is not the source
 of truth for what is on npm.
 
-## Unreleased
+## 3.0.0
+
+### Breaking — what to change when upgrading
+
+3.0.0 pins the caas-k8s contract to **v2.1.0**. caas-k8s v2.0.0 removed the environment secrets
+of `KubePrometheusStack`; v2.1.0 refuses more stack declarations (below). The agent refuses
+them on every SDK version paired with it.
+
+- **`KubePrometheusStack` loses `secretEnv`, `environmentSecretShortNames` and
+  `withEnvironmentSecrets`.** Its contract no longer publishes `canAccessSecrets`, so the stack
+  reads no environment secret. All three fail to compile; a config that slips one through is
+  refused while the Live System is built (`secretEnv` by name, never by value;
+  `environmentSecretShortNames` with "cannot access environment secrets").
+- **Migration: Google sign-in moves to the new `Grafana` offer.** Turn the bundled Grafana
+  off and add a `Visualization` component:
+
+  ```ts
+  // before (2.x, caas-k8s v1.17.0)
+  KubePrometheusStack({
+    values: {grafana: {'grafana.ini': {'auth.google': {/* ... */}}}},
+    secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: secretRef('grafana-google')},
+  }).withEnvironmentSecrets(['grafana-google']);
+
+  // after (3.0.0, caas-k8s v2.1.0)
+  const grafana = bp.add(Visualization({id: 'grafana'}).dependsOn(platform));
+  bp.link(grafana, metrics, {});
+  // select:
+  metrics: KubePrometheusStack({bundledGrafana: false}),
+  grafana: Grafana({
+    googleClientId: '123456789012-abc.apps.googleusercontent.com',
+    allowedDomains: ['example.com'],
+    secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: secretRef('grafana-google')},
+  }).withEnvironmentSecrets(['grafana-google']),
+  ```
+
+  Move a gateway route link from the stack to the `Grafana` component. Turning the bundled
+  Grafana off removes it with its data (users, sessions, UI-made dashboards).
+- **With `bundledGrafana: false` the stack refuses `lokiUrl`, `tempoUrl` and
+  `values.grafana`**, which only its bundled Grafana reads. Remove them.
+- **`KubePrometheusStack` `storageClassName` must be a StorageClass name** (caas-k8s v2.1.0
+  contract): lowercase letters, digits, `-` and `.`, at most 253. `Fast_SSD` or a template is
+  refused before deploy.
+- **caas-k8s v2.1.0 refuses, at reconcile, stack `values` / `alertmanagerConfig` /
+  `alertRules` templates that read the cluster** (`lookup`, `getHostByName`, `tpl`, `include`,
+  `.Files`, chart helpers, unparseable templates) **and `extraManifests` / `extraObjects` at
+  any depth**, with or without the bundled Grafana. The SDK carries them; the agent names the
+  parameter and path. Install what `extraManifests` would have created as its own component.
+- Everything under "Added" and "Changed" below that came after 2.16.0 ships here too.
+
+### Added — `Visualization` component and `Grafana` offer (caas-k8s v2.0.0)
+
+- `Visualization({id})` (`Observability.Visualization`, published as
+  `Observability.CaaS.Visualization`): dashboards, exploration and alert views over the
+  components it links to. No neutral parameters; `dependsOn(platform)`.
+- `Grafana` (`Observability.CaaS.Grafana`) satisfies it: Google sign-in (`googleClientId`,
+  `allowedDomains`, `hostedDomain`), `admins`, `plugins`, `dashboards`, `datasources`, storage
+  keys and `values`, all from the contract. `secretEnv` takes only
+  `GF_AUTH_GOOGLE_CLIENT_SECRET` as a `secretRef`, granted with `withEnvironmentSecrets`.
+  Refused before deploy: a raw `secretEnv` value, any other variable, an ungranted secret, an
+  admin outside `allowedDomains`, and a gateway route prefix Grafana's `root_url` cannot carry.
+- `dashboards` and `datasources` are typed as the contract publishes them (objects). Their
+  shapes and limits (uid keys, 256 KiB per dashboard, datasource types, no inline credentials)
+  are checked by the agent; typed shapes follow when the contract carries them.
+- `GrafanaConfig` is exported.
 
 ### Changed — offer contracts refreshed to the agents' latest releases
 
 - The contract snapshot moves to fractal-cloud-agents **v8.48.0** (AWS, Azure, GCP, OCI, from
-  v8.31.0), aria-agent-caas-k8s **v2.0.0** (from v1.17.0) and aria-agent-openshift **v0.2.4**
+  v8.31.0), aria-agent-caas-k8s **v2.1.0** (from v1.17.0) and aria-agent-openshift **v0.2.4**
   (from v0.1.1). Offer configs follow the new contracts: among others, `region` on the Java
   agents' offers reads its legacy aliases (`azureRegion`, `location`, `awsRegion`) and Azure region
-  values match without regard to case; caas-k8s adds `bundledGrafana` to `KubePrometheusStack`
-  and `cpu`/`memory`/`memoryLimit` to `SparkMlExperiment`; the OpenShift offers gain keys.
+  values match without regard to case; caas-k8s adds `bundledGrafana` (default `true`) to
+  `KubePrometheusStack` and `cpu`/`memory`/`memoryLimit` to `SparkMlExperiment`; the OpenShift
+  offers gain keys.
 - **Deprecated: `Traefik`, `Prometheus`, `Jaeger` and `Ocelot`.** No agent declares
   `APIManagement.CaaS.Traefik`, `Observability.CaaS.Prometheus`, `Observability.CaaS.Jaeger` or
   `Security.CaaS.Ocelot` for a customer Live System any more: fractal-cloud-agents v8.48.0 retired
   Prometheus and Jaeger and keeps Traefik and Ocelot for the bootstrap Live System only, and
-  caas-k8s v2.0.0 does not serve Ocelot yet. The four offers still compile and emit the same
+  caas-k8s v2.1.0 does not serve Ocelot yet. The four offers still compile and emit the same
   types, but are now contract-less (their parameters are no longer checked against a contract),
   and a Live System using one is stored and never reconciled. Use `TraefikGateway`,
   `KubePrometheusStack` and `GrafanaTempo` instead; Ocelot has no replacement until caas-k8s
   serves it.
-- **`KubePrometheusStack` refuses `secretEnv`, `environmentSecretShortNames` and
-  `withEnvironmentSecrets`.** caas-k8s v2.0.0 dropped Grafana's environment secrets from the
-  stack's contract, so a value set there would deploy Grafana without it. The keys and the method
-  stay in the type, marked `@deprecated`, and throw with the reason when the offer is built.
 
 ### Added — managed-service components and settings
 

@@ -3,7 +3,7 @@
  *   - `SqsExporter` (Observability.CaaS.SqsExporter) and its queue links;
  *   - the Traefik-terminated TLS and ForwardAuth exemption keys of `TraefikGateway`;
  *   - the parameters and links of the Grafana stack offers (kube-prometheus-stack,
- *     Loki, Tempo, Alloy).
+ *     Loki, Tempo, Alloy) and of the `Grafana` Visualization offer.
  *
  * Every key is the one the caas-k8s agent declares in the offer's catalog `Config`:
  * an undeclared key is pruned by the platform before the agent sees it.
@@ -23,13 +23,17 @@ import {
   LogShipper,
   Monitoring,
   Tracing,
+  Visualization,
 } from './components/observability';
+import {ContainerPlatform} from './components/network_and_compute';
 import {ObjectStorage, Search} from './components/storage';
 import {searchLinkSettings} from './components/search_link_settings';
 import {AwsCloudFront, TraefikGateway} from './offers/api_management';
 import {AwsSqsQueue} from './offers/messaging';
 import {K8sWorkload} from './offers/custom_workloads';
+import {Aks} from './offers/network_and_compute';
 import {
+  Grafana,
   GrafanaAlloy,
   GrafanaLoki,
   GrafanaTempo,
@@ -60,6 +64,16 @@ const only = (
     throw new Error(`no component ${id}`);
   }
   return found;
+};
+
+/** The message a build throws, or '' when it throws nothing. */
+const refusalOf = (build: () => unknown): string => {
+  try {
+    build();
+  } catch (e) {
+    return (e as Error).message;
+  }
+  return '';
 };
 
 // ── SQS exporter ─────────────────────────────────────────────────────────────
@@ -193,7 +207,9 @@ describe('TraefikGateway platform keys', () => {
         id: 'platform-gateway',
         version,
         boundedContextId,
-        blueprint: bp => ({traefik: bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}))}),
+        blueprint: bp => ({
+          traefik: bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'})),
+        }),
       }).toLiveSystem({
         name: 'platform',
         environment,
@@ -454,7 +470,9 @@ describe('TraefikGateway platform keys', () => {
         version,
         boundedContextId,
         blueprint: bp => {
-          const traefik = bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}));
+          const traefik = bp.add(
+            ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}),
+          );
           const cdn = bp.add(ApiGateway({id: 'cdn'}));
           bp.link(cdn, traefik);
           return {traefik, cdn};
@@ -620,43 +638,75 @@ describe('caas-k8s observability parameters and links', () => {
     });
   });
 
-  it.each([
-    [
-      'secretEnv',
-      () =>
-        KubePrometheusStack({
-          secretEnv: {
-            GF_AUTH_GOOGLE_CLIENT_SECRET: secretRef('grafana-google'),
-          },
-        }),
-    ],
-    [
-      'environmentSecretShortNames',
-      () =>
-        KubePrometheusStack({environmentSecretShortNames: ['grafana-google']}),
-    ],
-    [
+  it('kube-prometheus-stack reads no environment secrets (caas-k8s v2.0.0)', () => {
+    // The contract no longer publishes canAccessSecrets, so there is no selection.
+    expect(KubePrometheusStack({})).not.toHaveProperty(
       'withEnvironmentSecrets',
-      () => KubePrometheusStack({}).withEnvironmentSecrets(['grafana-google']),
-    ],
+    );
+    expect(() =>
+      stack({
+        prometheus: KubePrometheusStack({
+          environmentSecretShortNames: ['grafana-google'],
+        } as never),
+      }),
+    ).toThrow(/cannot access environment secrets/);
+  });
+
+  it('kube-prometheus-stack refuses secretEnv by name, without echoing it', () => {
+    // No longer a contract key, so a hand-written config is where it arrives.
+    expect(
+      refusalOf(() =>
+        stack({
+          prometheus: KubePrometheusStack({
+            secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: 'hunter2'},
+          } as never),
+        }),
+      ),
+    ).toBe(
+      "Live component 'prometheus': the stack reads no environment secrets: secretEnv " +
+        'must be unset. Google sign-in is an Observability.CaaS.Grafana ' +
+        "component's: remove secretEnv, and use the Grafana offer with bundledGrafana false.",
+    );
+  });
+
+  it('kube-prometheus-stack refuses a storageClassName that is not a StorageClass name (caas-k8s v2.1.0)', () => {
+    expect(
+      refusalOf(() =>
+        stack({
+          prometheus: KubePrometheusStack({storageClassName: 'Fast_SSD'}),
+        }),
+      ),
+    ).toContain('storageClassName');
+  });
+
+  it('kube-prometheus-stack carries bundledGrafana false', () => {
+    expect(
+      only(
+        stack({prometheus: KubePrometheusStack({bundledGrafana: false})}),
+        'prometheus',
+      ).parameters,
+    ).toEqual({bundledGrafana: false});
+  });
+
+  it.each([
+    ['lokiUrl', {lokiUrl: 'http://loki.monitoring.svc.cluster.local:3100'}],
+    ['tempoUrl', {tempoUrl: 'http://tempo.monitoring.svc.cluster.local:3200'}],
+    ['values.grafana', {values: {grafana: {replicas: 1}}}],
   ])(
-    'kube-prometheus-stack refuses %s: caas-k8s v2.0.0 gives it no environment secrets',
-    (key, build) => {
-      expect(build).toThrow(
-        `KubePrometheusStack ${key}: aria-agent-caas-k8s v2.0.0 no longer gives ` +
-          'kube-prometheus-stack environment secrets (its contract dropped ' +
-          'secretEnv and secret access); remove it.',
+    'kube-prometheus-stack refuses %s beside bundledGrafana false',
+    (key, config) => {
+      expect(
+        refusalOf(() =>
+          stack({
+            prometheus: KubePrometheusStack({bundledGrafana: false, ...config}),
+          }),
+        ),
+      ).toBe(
+        `Live component 'prometheus': bundledGrafana is false, so the stack installs ` +
+          `no Grafana: ${key} is the bundled Grafana's; remove it or set bundledGrafana to true.`,
       );
     },
   );
-
-  it('kube-prometheus-stack refuses a raw secretEnv value without echoing it', () => {
-    expect(() =>
-      KubePrometheusStack({
-        secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: 'hunter2'} as never,
-      }),
-    ).toThrow(/^(?![\s\S]*hunter2)KubePrometheusStack secretEnv: /);
-  });
 
   it('Alloy ships to the Loki it depends on, or to lokiPushUrl', () => {
     expect(only(stack({}), 'alloy').dependencies).toEqual(['loki']);
@@ -839,7 +889,9 @@ describe('TLS gateway certificate coverage', () => {
       version,
       boundedContextId,
       blueprint: bp => {
-        const traefik = bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}));
+        const traefik = bp.add(
+          ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}),
+        );
         const cdn = bp.add(ApiGateway({id: 'cdn'}));
         const api = bp.add(Workload({id: 'orders'}));
         bp.link(
@@ -899,7 +951,9 @@ describe('TLS gateway certificate coverage', () => {
         version,
         boundedContextId,
         blueprint: bp => {
-          const traefik = bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}));
+          const traefik = bp.add(
+            ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}),
+          );
           const api = bp.add(Workload({id: 'orders'}));
           bp.link(api, traefik, {'routes.0.path': '/orders'});
           return {traefik, api};
@@ -965,7 +1019,9 @@ describe('TLS gateway certificate coverage', () => {
         version,
         boundedContextId,
         blueprint: bp => {
-          const traefik = bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}));
+          const traefik = bp.add(
+            ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}),
+          );
           const api = bp.add(Workload({id: 'orders'}));
           bp.link(api, traefik, {
             routes: [{prefix: '/orders', host: 'api.fractal.cloud'}],
@@ -996,7 +1052,9 @@ describe('CloudFront alias coverage edge cases', () => {
       blueprint: bp => {
         // The distribution is validated before the gateway.
         const cdn = bp.add(ApiGateway({id: 'cdn'}));
-        const traefik = bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}));
+        const traefik = bp.add(
+          ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}),
+        );
         bp.link(cdn, traefik);
         return {cdn, traefik};
       },
@@ -1070,7 +1128,9 @@ describe('KubePrometheusStack route link to a TraefikGateway', () => {
       version,
       boundedContextId,
       blueprint: bp => {
-        const traefik = bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}));
+        const traefik = bp.add(
+          ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}),
+        );
         const prometheus = bp.add(Monitoring({id: 'prometheus'}));
         bp.link(prometheus, traefik, gatewayRouteSettings({routes: [route]}));
         return {traefik, prometheus};
@@ -1114,7 +1174,9 @@ describe('KubePrometheusStack route link to a TraefikGateway', () => {
       version,
       boundedContextId,
       blueprint: bp => {
-        const traefik = bp.add(ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}));
+        const traefik = bp.add(
+          ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}),
+        );
         const bucket = bp.add(ObjectStorage({id: 'bucket'}));
         const prometheus = bp.add(Monitoring({id: 'prometheus'}));
         bp.link(prometheus, target === 'traefik' ? traefik : bucket, settings);
@@ -1197,6 +1259,164 @@ describe('KubePrometheusStack route link to a TraefikGateway', () => {
       routedGrafana({prefix: '/grafana/', rewritePath: '/'}),
     ).toThrow(
       /^Live component 'prometheus': Grafana route api.fractal.cloud\/grafana\/ sets rewritePath; the agent strips the sub-path itself/,
+    );
+  });
+});
+
+// ── Grafana (Observability.Visualization) ────────────────────────────────────
+describe('Grafana', () => {
+  const CLIENT_ID = '123456789012-abcdefghijklmnop.apps.googleusercontent.com';
+  const GRANTED = 'grafana-google-client-secret';
+  const SIGN_IN = {
+    googleClientId: CLIENT_ID,
+    allowedDomains: ['example.com'],
+    secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: secretRef(GRANTED)},
+  };
+
+  /** A Visualization on a ContainerPlatform, optionally routed through Traefik. */
+  const build = (config: Record<string, unknown> = {}, routePrefix?: string) =>
+    createFractal({
+      id: 'platform-visualization',
+      version,
+      boundedContextId,
+      blueprint: bp => {
+        const platform = bp.add(ContainerPlatform({id: 'cluster'}));
+        const visualization = bp.add(
+          Visualization({id: 'grafana'}).dependsOn(platform),
+        );
+        if (routePrefix === undefined) {
+          return {platform, visualization};
+        }
+        const gateway = bp.add(
+          ApiGateway({id: 'traefik', deliveryModel: 'CaaS'}),
+        );
+        bp.link(
+          visualization,
+          gateway,
+          gatewayRouteSettings({routes: [{prefix: routePrefix}]}),
+        );
+        return {platform, visualization, gateway};
+      },
+    }).toLiveSystem({
+      name: 'platform',
+      environment,
+      select: {
+        cluster: Aks({}),
+        grafana: Grafana({
+          ...SIGN_IN,
+          ...config,
+        } as never).withEnvironmentSecrets([GRANTED]),
+        ...(routePrefix === undefined
+          ? {}
+          : {traefik: TraefikGateway({host: 'ops.example.com'})}),
+      },
+    }).components;
+
+  it('satisfies Observability.Visualization and emits Observability.CaaS.Grafana', () => {
+    const offer = Grafana(SIGN_IN);
+    expect(offer.satisfies).toBe('Observability.Visualization');
+    expect(offer.offerType).toBe('Observability.CaaS.Grafana');
+    const emitted = only(build(), 'grafana');
+    expect(emitted.type).toBe('Observability.CaaS.Grafana');
+    expect(emitted.deliveryModel).toBe('CaaS');
+    expect(emitted.provider).toBeUndefined();
+    expect(emitted.dependencies).toEqual(['cluster']);
+  });
+
+  it('carries the sign-in keys, dashboards and datasources as given', () => {
+    const dashboards = {
+      'cluster-overview': {
+        folder: 'Platform',
+        dashboard: {uid: 'cluster-overview', title: 'Cluster overview'},
+      },
+    };
+    const datasources = {
+      progress: {
+        type: 'infinity',
+        allowedHosts: ['https://progress.example.com/'],
+      },
+    };
+    expect(
+      only(
+        build({
+          admins: ['ops@example.com'],
+          hostedDomain: 'example.com',
+          dashboards,
+          datasources,
+        }),
+        'grafana',
+      ).parameters,
+    ).toEqual({
+      googleClientId: CLIENT_ID,
+      allowedDomains: ['example.com'],
+      admins: ['ops@example.com'],
+      hostedDomain: 'example.com',
+      dashboards,
+      datasources,
+      secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: {$envSecret: GRANTED}},
+      environmentSecretShortNames: [GRANTED],
+    });
+  });
+
+  it('refuses a googleClientId the contract pattern does not match', () => {
+    expect(refusalOf(() => build({googleClientId: 'not-a-client-id'}))).toMatch(
+      /googleClientId/,
+    );
+  });
+
+  it('refuses an admin outside allowedDomains', () => {
+    expect(refusalOf(() => build({admins: ['ops@other.example.com']}))).toBe(
+      "Live component 'grafana': admin 'ops@other.example.com' is not in an allowed " +
+        "domain: add 'other.example.com' to allowedDomains, or remove the admin.",
+    );
+  });
+
+  it('refuses a secretEnv variable Grafana does not read', () => {
+    expect(
+      refusalOf(() =>
+        build({
+          secretEnv: {
+            GF_AUTH_GOOGLE_CLIENT_SECRET: secretRef(GRANTED),
+            GF_AUTH_ANONYMOUS_ENABLED: secretRef(GRANTED),
+          },
+        }),
+      ),
+    ).toBe(
+      "Live component 'grafana': secretEnv 'GF_AUTH_ANONYMOUS_ENABLED' is not read: " +
+        'Grafana takes only GF_AUTH_GOOGLE_CLIENT_SECRET.',
+    );
+  });
+
+  it('refuses a secretEnv value that is not a reference, without echoing it', () => {
+    expect(
+      refusalOf(() =>
+        build({secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: 'hunter2'}}),
+      ),
+    ).toBe(
+      "Live component 'grafana': secretEnv 'GF_AUTH_GOOGLE_CLIENT_SECRET' is not an " +
+        "environment-secret reference: pass secretRef('<shortName>'), never the secret itself.",
+    );
+  });
+
+  it('refuses a secretEnv secret that is not granted', () => {
+    expect(
+      refusalOf(() =>
+        build({
+          secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: secretRef('other-secret')},
+        }),
+      ),
+    ).toBe(
+      "Live component 'grafana': secretEnv 'GF_AUTH_GOOGLE_CLIENT_SECRET' reads " +
+        "environment secret 'other-secret', which is not granted: add it to " +
+        'withEnvironmentSecrets([...]).',
+    );
+  });
+
+  it('routes through a TraefikGateway with a path root_url can carry', () => {
+    expect(() => build({}, '/grafana/')).not.toThrow();
+    expect(() => build({}, '/grafana')).not.toThrow();
+    expect(refusalOf(() => build({}, '/gra%fana/'))).toMatch(
+      /Grafana route prefix '\/gra%fana\/' has a path Grafana's root_url cannot carry/,
     );
   });
 });

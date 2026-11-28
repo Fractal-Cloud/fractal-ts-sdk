@@ -138,6 +138,7 @@ export * from './offers/api_management';
 export type {TraefikGatewayConfig} from './offers/traefik_gateway_config';
 export * from './offers/observability';
 export type {KubePrometheusStackConfig} from './offers/kube_prometheus_stack_config';
+export type {GrafanaConfig} from './offers/grafana_config';
 export type {GrafanaObjectStorageBackendConfig} from './offers/grafana_object_storage_backend_config';
 export type {GrafanaAlloyConfig} from './offers/grafana_alloy_config';
 export type {SqsExporterConfig} from './offers/sqs_exporter_config';

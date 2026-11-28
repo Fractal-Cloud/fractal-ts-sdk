@@ -1,6 +1,6 @@
 {
   "agentId": "aria-agent-caas-k8s",
-  "agentVersion": "v2.0.0",
+  "agentVersion": "v2.1.0",
   "offers": [
     {
       "aliasOfOfferType": null,
@@ -2203,9 +2203,14 @@
           "type": "integer"
         },
         {
+          "constraints": {
+            "pattern": "[a-z0-9]([a-z0-9.-]*[a-z0-9])?"
+          },
           "description": "StorageClass of Prometheus' volume; unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else ephemeral",
+          "example": "fractal-gp3",
           "key": "storageClassName",
-          "type": "string"
+          "type": "string",
+          "typeLevel": "error"
         },
         {
           "description": "Grafana's Tempo datasource; unset = the GrafanaTempo service in this namespace, none = no datasource",
@@ -2253,6 +2258,20 @@
           "fix": "Remove the key the message names; for Google sign-in or other Grafana settings use an Observability.CaaS.Grafana component with bundledGrafana false.",
           "id": "grafana-values",
           "message": "values.grafana takes only resources, nodeSelector, tolerations, affinity, podAnnotations, env GF_LOG_* and grafana.ini sections log, log.console, date_formats, dashboards and explore, with no line break or template delimiter (double braces) in any value, grafana.ini and env values of letters, digits, spaces and _ . : / , = @ + % - only, and no pluginsSkipHostEnvVars. With the bundled Grafana, values also may not set commonLabels or global, nor extraManifests or extraObjects at any depth, which reach it, and the Prometheus and Alertmanager routePrefix must be a plain path and their service.port a number (both are written into its datasources). The stack's other values are not limited.",
+          "reason": "NOT_EXPRESSIBLE"
+        },
+        {
+          "field": "/values",
+          "fix": "Remove the call; plain templates, such as an Alertmanager message, its slack.default templates or a rule's $labels, are fine.",
+          "id": "kps-values-template",
+          "message": "No string or key in values, alertmanagerConfig or alertRules may hold a template (double braces) that calls lookup, getHostByName, tpl or include, reads .Files, runs one of the chart's own templates, or does not parse: the chart renders many values through tpl with the agent's access.",
+          "reason": "NOT_EXPRESSIBLE"
+        },
+        {
+          "field": "/values",
+          "fix": "Remove extraManifests and extraObjects; install what they would create as its own component.",
+          "id": "kps-extra-objects",
+          "message": "values may not set extraManifests or extraObjects, at the top level or in a subchart, with or without the bundled Grafana: the chart renders them through tpl as arbitrary objects of the cluster.",
           "reason": "NOT_EXPRESSIBLE"
         },
         {

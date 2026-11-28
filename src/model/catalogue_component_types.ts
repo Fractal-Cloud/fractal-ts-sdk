@@ -158,6 +158,10 @@ export const CATALOGUE_COMPONENTS: Readonly<
     default: 'CaaS',
     types: {CaaS: 'Observability.CaaS.Tracing'},
   },
+  'Observability.Visualization': {
+    default: 'CaaS',
+    types: {CaaS: 'Observability.CaaS.Visualization'},
+  },
 
   'Security.IdentityProvider': {
     default: 'PaaS',

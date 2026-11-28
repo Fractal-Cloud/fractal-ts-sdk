@@ -3,6 +3,7 @@
  * typecheck` (see storage.test-d.ts for why these are not in a `.test.ts`).
  */
 import {
+  Grafana,
   GrafanaAlloy,
   GrafanaLoki,
   GrafanaTempo,
@@ -46,14 +47,19 @@ KubePrometheusStack({
   alertmanagerConfig: {route: {receiver: 'null'}},
   values: {grafana: {replicas: 1}},
 });
-// caas-k8s v1.17.0: Grafana reads environment secrets as references only.
+// caas-k8s v2.0.0: the stack reads no environment secrets; Google sign-in is
+// the Grafana offer's.
 KubePrometheusStack({
+  // @ts-expect-error secretEnv was removed with caas-k8s v2.0.0.
   secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: secretRef('grafana-google')},
-}).withEnvironmentSecrets(['grafana-google']);
-// @ts-expect-error a secretEnv value is a secretRef, never the secret itself.
-KubePrometheusStack({secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: 'hunter2'}});
-// @ts-expect-error secretEnv maps variable names to references.
-KubePrometheusStack({secretEnv: secretRef('grafana-google')});
+});
+// @ts-expect-error environmentSecretShortNames was removed with caas-k8s v2.0.0.
+KubePrometheusStack({environmentSecretShortNames: ['grafana-google']});
+// @ts-expect-error the stack reads no environment secrets, so it has no selection.
+KubePrometheusStack({}).withEnvironmentSecrets(['grafana-google']);
+KubePrometheusStack({bundledGrafana: false});
+// @ts-expect-error `bundledGrafana` is a boolean.
+KubePrometheusStack({bundledGrafana: 'no'});
 // @ts-expect-error `prometheusStorageGi` is a number of GiB.
 KubePrometheusStack({prometheusStorageGi: '50'});
 // @ts-expect-error `retentionDays` is the component's `withRetentionDays`, not an offer key.
@@ -80,6 +86,40 @@ GrafanaLoki({bucketName: 'loki-chunks'});
 GrafanaTempo({bucketName: 'tempo-traces'});
 // @ts-expect-error `samplingRate` is read by no agent and is refused.
 GrafanaTempo({samplingRate: 0.1});
+
+// ── Grafana: a Visualization offer, Google sign-in ───────────────────────────
+// @ts-expect-error googleClientId and allowedDomains are required.
+Grafana({});
+Grafana({
+  googleClientId: '123456789012-abcdefghijklmnop.apps.googleusercontent.com',
+  allowedDomains: ['example.com'],
+  hostedDomain: 'example.com',
+  admins: ['ops@example.com'],
+  plugins: ['yesoreyeram-infinity-datasource 4.1.3'],
+  secretEnv: {
+    GF_AUTH_GOOGLE_CLIENT_SECRET: secretRef('grafana-google-client-secret'),
+  },
+  // As the contract generates them: objects, shapes checked by the agent.
+  dashboards: {d: {dashboard: {title: 'D'}}},
+  datasources: {p: {type: 'infinity', allowedHosts: ['https://a.example/']}},
+}).withEnvironmentSecrets(['grafana-google-client-secret']);
+Grafana({
+  googleClientId: '1-a.apps.googleusercontent.com',
+  allowedDomains: ['example.com'],
+  // @ts-expect-error a secretEnv value is a secretRef, never the secret itself.
+  secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: 'hunter2'},
+});
+Grafana({
+  googleClientId: '1-a.apps.googleusercontent.com',
+  allowedDomains: ['example.com'],
+  // @ts-expect-error Grafana reads only GF_AUTH_GOOGLE_CLIENT_SECRET from secrets.
+  secretEnv: {GF_AUTH_ANONYMOUS_ENABLED: secretRef('x')},
+});
+export const grafanaIsAVisualization: Offer<'Observability.Visualization'> =
+  Grafana({
+    googleClientId: '1-a.apps.googleusercontent.com',
+    allowedDomains: [],
+  });
 
 // ── GrafanaAlloy ──────────────────────────────────────────────────────────────
 GrafanaAlloy({});

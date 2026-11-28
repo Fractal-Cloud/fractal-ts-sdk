@@ -19,7 +19,7 @@ import {defineOffer} from '../core';
 /**
  * @deprecated No agent serves a customer `Security.CaaS.Ocelot` any more:
  * fractal-cloud-agents v8.48.0 keeps it for the bootstrap Live System only,
- * and aria-agent-caas-k8s (v2.0.0) does not serve it yet. A Live System using
+ * and aria-agent-caas-k8s (v2.1.0) does not serve it yet. A Live System using
  * it is stored but never reconciled. There is no replacement offer until
  * caas-k8s serves Ocelot; it then returns, defined from that agent's contract.
  */

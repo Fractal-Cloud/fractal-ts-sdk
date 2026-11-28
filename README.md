@@ -1400,11 +1400,17 @@ Live System using either is stored and never reconciled. Use `KubePrometheusStac
 `GrafanaTempo`.
 | `Logging` | `GrafanaLoki` |
 | `LogShipper` | `GrafanaAlloy` |
+| `Visualization` | `Grafana` |
 
 `LogShipper` (`Observability.LogShipper`) collects the logs of the container platform
 it runs on and forwards them to a logging backend. It stores nothing, so it has no
 retention. Its one blueprint dependency is the `ContainerPlatform`
 (`LogShipper({id: 'shipper'}).dependsOn(platform)`).
+
+`Visualization` (`Observability.Visualization`, published as
+`Observability.CaaS.Visualization`) shows the metrics, logs and traces of the
+components it links to. It has no neutral parameters; its one blueprint
+dependency is the `ContainerPlatform`.
 
 Point `GrafanaAlloy` at Loki with `lokiPushUrl`:
 `GrafanaAlloy({lokiPushUrl: 'http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push'})`.
@@ -1440,10 +1446,11 @@ component's neutral `withRetentionDays` (sent as `retentionDays`), not an offer 
 
 | Offer | Keys (agent defaults) | Links and dependencies |
 |---|---|---|
-| `KubePrometheusStack` (`Observability.CaaS.KubePrometheusStack`) | `namespace`, `storageClassName` (see below), `prometheusStorageGi` (`50`), `lokiUrl` / `tempoUrl` (the Loki / Tempo service in the namespace; `none` = no datasource), `alertRules`, `alertmanagerConfig`, `values`, `bundledGrafana` (`true`); `retentionDays` `15` | optional route link to a `TraefikGateway` for Grafana (below) |
+| `KubePrometheusStack` (`Observability.CaaS.KubePrometheusStack`) | `namespace`, `storageClassName` (see below), `prometheusStorageGi` (`50`), `lokiUrl` / `tempoUrl` (the Loki / Tempo service in the namespace; `none` = no datasource), `alertRules`, `alertmanagerConfig`, `values`, `bundledGrafana` (`true`; `false` = no Grafana in the stack, below); `retentionDays` `15` | optional route link to a `TraefikGateway` for Grafana (below) |
 | `GrafanaLoki` (`Observability.CaaS.GrafanaLoki`) | `namespace`, `storageClassName` (see below), `values`; `retentionDays` `14` | exactly one link to an `AwsS3` bucket with `{access: 'read-write'}` |
 | `GrafanaTempo` (`Observability.CaaS.GrafanaTempo`) | as Loki; `retentionDays` `7` | as Loki |
 | `GrafanaAlloy` (`Observability.CaaS.GrafanaAlloy`), on `LogShipper` | `namespace`, `lokiPushUrl` (none = the `pushUrl` of the Loki it depends on), `values` | a dependency on a `GrafanaLoki` component, unless `lokiPushUrl` is set |
+| `Grafana` (`Observability.CaaS.Grafana`), on `Visualization` | `googleClientId`, `allowedDomains` (required), `hostedDomain`, `admins`, `plugins`, `dashboards`, `datasources`, `secretEnv` (the Google client secret, below), `namespace`, `storageClassName`, `storageGi` (`10`), `retainStorageOnDelete`, `values` | links to the `KubePrometheusStack`, `GrafanaLoki` and `GrafanaTempo` it reads (each a datasource, uid = component id); a dependency on the `ContainerPlatform`; optional route link to a `TraefikGateway` |
 
 Without `storageClassName`, `KubePrometheusStack`, `GrafanaLoki` and `GrafanaTempo`
 on EKS use `fractal-gp3`, which the agent creates when absent (encrypted gp3, EKS
@@ -1463,9 +1470,33 @@ The agent routes to `kps-grafana:80` and strips the sub-path, which must end wit
 gateway's `forwardAuthExemptComponentIds` lists the stack. `KubePrometheusStack`
 then publishes `gatewayRoutes`.
 
-Since caas-k8s v2.0.0 the stack takes no environment secrets: `secretEnv`,
-`environmentSecretShortNames` and `withEnvironmentSecrets` (caas-k8s v1.x) are
-deprecated and throw when the offer is built.
+The stack reads no environment secrets (caas-k8s v2.0.0). For Google sign-in,
+dashboards as code and admins, turn the bundled Grafana off and add a
+`Visualization` component with the `Grafana` offer. Its only secret is the
+Google client secret: `secretEnv` maps `GF_AUTH_GOOGLE_CLIENT_SECRET` to a
+`secretRef`, and `withEnvironmentSecrets` grants it. A raw value, any other
+variable, an ungranted secret and an admin outside `allowedDomains` are refused.
+With `bundledGrafana: false` the stack refuses `lokiUrl`, `tempoUrl` and
+`values.grafana`. `dashboards` and `datasources` are carried as given; the agent
+checks their shape.
+
+```ts
+const grafana = bp.add(Visualization({id: 'grafana'}).dependsOn(platform));
+bp.link(grafana, metrics, {});
+bp.link(grafana, gateway, gatewayRouteSettings({routes: [{prefix: '/grafana/'}]}));
+// select:
+metrics: KubePrometheusStack({bundledGrafana: false}),
+grafana: Grafana({
+  googleClientId: '123456789012-abc.apps.googleusercontent.com',
+  allowedDomains: ['example.com'],
+  admins: ['ops@example.com'],
+  secretEnv: {GF_AUTH_GOOGLE_CLIENT_SECRET: secretRef('grafana-google')},
+}).withEnvironmentSecrets(['grafana-google']),
+```
+
+The `Grafana` offer serves under its route's sub-path (no trailing `/` or
+`rewritePath` rule); the prefix becomes Grafana's `root_url`, so it may hold only
+letters, digits, `.`, `_`, `~`, `-` and `/`.
 
 #### `SqsExporter` (`Observability.CaaS.SqsExporter`)
 
@@ -1639,7 +1670,7 @@ src/model/
     big_data.ts              # DistributedDataProcessing, ComputeCluster, DataProcessingJob,
                              #   MlExperiment, Datalake
     api_management.ts        # ApiGateway
-    observability.ts         # Monitoring, Tracing, Logging, LogShipper
+    observability.ts         # Monitoring, Tracing, Logging, LogShipper, Visualization
     security.ts              # ServiceMesh, IdentityProvider
     unmanaged.ts             # Unmanaged (external / SaaS)
   offers/          # Concrete Offers (Level 3) declaring what Component they satisfy
