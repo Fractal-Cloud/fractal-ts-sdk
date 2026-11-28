@@ -25,6 +25,7 @@ import {
   planImport,
   renderSummary,
   summarizeChanges,
+  tightenedConstraints,
 } from '../../../../scripts/offer-contracts/import.mjs';
 import {generateFromSnapshot} from '../../../../scripts/offer-contracts/snapshot.mjs';
 
@@ -104,6 +105,42 @@ describe('summarizeChanges', () => {
     const summary = summarizeChanges(previous, withoutOffer);
     expect(summary.offersRemoved).toEqual(['Messaging.CaaS.Kafka']);
     expect(summary.breaking).toEqual(['Messaging.CaaS.Kafka: offer removed']);
+  });
+
+  it('reports constraints that refuse values the previous ones accepted', () => {
+    const withConstraints = (constraints: object) =>
+      contract('v', [{key: 'namespace', type: 'string', constraints}]);
+    const breaking = (from: object, to: object) =>
+      summarizeChanges(withConstraints(from), withConstraints(to)).breaking;
+    expect(breaking({maxLength: 63}, {maxLength: 40, minLength: 3})).toEqual([
+      'Messaging.CaaS.Kafka.namespace: constraints tightened: minLength none -> 3, maxLength 63 -> 40',
+    ]);
+    expect(breaking({}, {pattern: '[a-z]+'})).toEqual([
+      'Messaging.CaaS.Kafka.namespace: constraints tightened: pattern added',
+    ]);
+    expect(breaking({pattern: '[a-z]+'}, {pattern: '[a-z0-9]+'})).toEqual([
+      'Messaging.CaaS.Kafka.namespace: constraints tightened: pattern changed',
+    ]);
+    expect(
+      breaking({level: 'warn', pattern: '[a-z]+'}, {pattern: '[a-z]+'}),
+    ).toEqual([
+      'Messaging.CaaS.Kafka.namespace: constraints tightened: pattern added',
+    ]);
+  });
+
+  it('does not report constraints that loosen, or that only warn', () => {
+    const withConstraints = (constraints: object) =>
+      contract('v', [{key: 'namespace', type: 'string', constraints}]);
+    const breaking = (from: object, to: object) =>
+      summarizeChanges(withConstraints(from), withConstraints(to)).breaking;
+    expect(
+      breaking({minimum: 1, maximum: 10}, {minimum: 0, maximum: 20}),
+    ).toEqual([]);
+    expect(breaking({pattern: '[a-z]+', maxItems: 5}, {})).toEqual([]);
+    expect(
+      breaking({}, {level: 'warn', pattern: '[a-z]+', minimum: 3}),
+    ).toEqual([]);
+    expect(tightenedConstraints(undefined, undefined)).toBeNull();
   });
 
   it('renders names only, never values', () => {

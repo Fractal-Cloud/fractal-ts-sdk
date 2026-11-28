@@ -69,6 +69,9 @@ committed snapshot and requires the committed files to be byte-identical, and th
   list the change under **Breaking** in the CHANGELOG with the agent release, and release the SDK
   accordingly. When a key was removed by mistake, fix the agent and release it instead: its pull
   request then supersedes this one.
+- **"constraints tightened"** under "Possibly breaking" compiles and usually passes the gate: values
+  outside the new bounds or pattern are refused when the Live System is built. Check that the SDK's
+  own examples, guides and tests use none, and note the change in the CHANGELOG (section 5).
 - No test spells out an agent's tag or digest: a test about a contract reads the pin from
   `contracts/sources.json` and asserts facts about the contract itself (its keys, its offers, the
   release they appeared in at the earliest), so an import that keeps those facts passes, and one
@@ -244,6 +247,7 @@ Offer config types follow the contracts, so refreshing the snapshot can change t
 | key becomes optional, allowed values widen | config loosens | minor |
 | key removed or renamed with a declared alias | the agent still reads the alias; the SDK offers the canonical key | minor, noted |
 | key removed or renamed without an alias, becomes required, type or allowed values narrow | consumer code stops compiling | listed under **Breaking** in the CHANGELOG, with the agent release |
+| a key's constraints tighten (a bound added or moved inward, a pattern added or changed, a `warn` constraint made an error) | code compiles; a value the new agent refuses is refused when the Live System is built instead of at deploy | minor, noted in the CHANGELOG with the agent release |
 | an agent starts reading a key the SDK refuses | the conformance test flags the stale refusal; it becomes a translation | minor |
 | an agent stops reading a key a translation writes | the translation stops compiling; it becomes a refusal | listed under **Breaking** |
 

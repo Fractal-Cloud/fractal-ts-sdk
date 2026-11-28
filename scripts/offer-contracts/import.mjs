@@ -68,7 +68,60 @@ const changedMembers = (a, b, ignored) =>
     .filter(member => !same(a[member], b[member]))
     .sort();
 
-/** Why a parameter change can stop consumer code compiling (section 5 of the docs). */
+/** Constraint members that set a lower bound; a higher one refuses more values. */
+const LOWER_BOUNDS = ['minimum', 'minLength', 'minItems'];
+/** Constraint members that set an upper bound; a lower one refuses more values. */
+const UPPER_BOUNDS = ['maximum', 'maxLength', 'maxItems'];
+
+/** Constraints that are checked, or none: a `level: warn` constraint refuses nothing. */
+const enforced = constraints =>
+  constraints !== undefined &&
+  constraints !== null &&
+  constraints.level !== 'warn'
+    ? constraints
+    : {};
+
+/**
+ * How a parameter's own constraints refuse values the previous ones accepted:
+ * a bound added or moved inward, a pattern added or changed (a changed pattern
+ * is not compared, so it counts as tightened), or a `warn` constraint made an
+ * error. `null` when they refuse nothing new. The constraints of nested
+ * `properties` and `items` are not compared.
+ */
+export const tightenedConstraints = (before, after) => {
+  const was = enforced(before);
+  const now = enforced(after);
+  const reasons = [];
+  for (const member of LOWER_BOUNDS) {
+    if (
+      typeof now[member] === 'number' &&
+      !(typeof was[member] === 'number' && now[member] <= was[member])
+    ) {
+      reasons.push(`${member} ${was[member] ?? 'none'} -> ${now[member]}`);
+    }
+  }
+  for (const member of UPPER_BOUNDS) {
+    if (
+      typeof now[member] === 'number' &&
+      !(typeof was[member] === 'number' && now[member] >= was[member])
+    ) {
+      reasons.push(`${member} ${was[member] ?? 'none'} -> ${now[member]}`);
+    }
+  }
+  if (typeof now.pattern === 'string' && now.pattern !== was.pattern) {
+    reasons.push(
+      was.pattern === undefined ? 'pattern added' : 'pattern changed',
+    );
+  }
+  return reasons.length === 0
+    ? null
+    : `constraints tightened: ${reasons.join(', ')}`;
+};
+
+/**
+ * Why a parameter change can break consumers (section 5 of the docs): code that
+ * stops compiling, or a value that a Live System build now refuses.
+ */
 const breakingParameterChange = (before, after) => {
   if (before.required !== true && after.required === true) {
     return 'became required';
@@ -86,7 +139,7 @@ const breakingParameterChange = (before, after) => {
       return `allowed values dropped: ${dropped.join(', ')}`;
     }
   }
-  return null;
+  return tightenedConstraints(before.constraints, after.constraints);
 };
 
 /**
