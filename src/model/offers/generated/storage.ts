@@ -9,7 +9,7 @@ export const Storage_CaaS_CnpgCluster = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v2.0.0',
+      agentVersion: 'v2.1.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -43,7 +43,7 @@ export const Storage_CaaS_CnpgDatabase = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v2.0.0',
+      agentVersion: 'v2.1.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -70,7 +70,7 @@ export const Storage_CaaS_MinioBucket = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v2.0.0',
+      agentVersion: 'v2.1.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -92,7 +92,7 @@ export const Storage_CaaS_MinioTenant = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v2.0.0',
+      agentVersion: 'v2.1.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -121,7 +121,7 @@ export const Storage_CaaS_OpenSearch = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v2.0.0',
+      agentVersion: 'v2.1.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],

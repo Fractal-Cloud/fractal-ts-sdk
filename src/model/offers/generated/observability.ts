@@ -10,7 +10,7 @@ export const Observability_CaaS_Grafana = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v2.0.0',
+      agentVersion: 'v2.1.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -105,7 +105,7 @@ export const Observability_CaaS_GrafanaAlloy = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v2.0.0',
+      agentVersion: 'v2.1.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -131,7 +131,7 @@ export const Observability_CaaS_GrafanaLoki = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v2.0.0',
+      agentVersion: 'v2.1.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -166,7 +166,7 @@ export const Observability_CaaS_GrafanaTempo = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v2.0.0',
+      agentVersion: 'v2.1.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -199,7 +199,7 @@ export const Observability_CaaS_KubePrometheusStack = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v2.0.0',
+      agentVersion: 'v2.1.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],
@@ -235,7 +235,11 @@ export const Observability_CaaS_KubePrometheusStack = {
       constraints: {maximum: 2147483647, minimum: 1},
     },
     /** StorageClass of Prometheus' volume; unset = on EKS the agent's encrypted gp3 class fractal-gp3 (Auto Mode), else ephemeral */
-    storageClassName: {type: 'string', required: false},
+    storageClassName: {
+      type: 'string',
+      required: false,
+      constraints: {pattern: '[a-z0-9]([a-z0-9.-]*[a-z0-9])?'},
+    },
     /** Grafana's Tempo datasource; unset = the GrafanaTempo service in this namespace, none = no datasource */
     tempoUrl: {type: 'string', required: false},
     /** Chart values deep-merged over the agent's, for operators */
@@ -249,7 +253,7 @@ export const Observability_CaaS_SqsExporter = {
   declaredBy: [
     {
       agentId: 'aria-agent-caas-k8s',
-      agentVersion: 'v2.0.0',
+      agentVersion: 'v2.1.0',
       contractSchemaVersion: '2.0',
       provider: 'CaaS',
       parameterRules: [],

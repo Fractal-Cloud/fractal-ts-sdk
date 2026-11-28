@@ -32,6 +32,12 @@ of truth for what is on npm.
   `withEnvironmentSecrets`.** caas-k8s v2.0.0 dropped Grafana's environment secrets from the
   stack's contract, so a value set there would deploy Grafana without it. The keys and the method
   stay in the type, marked `@deprecated`, and throw with the reason when the offer is built.
+- **aria-agent-caas-k8s v2.1.0** (from v2.0.0): `KubePrometheusStack`'s `storageClassName` must
+  now be a Kubernetes object name (lowercase letters, digits, `-` and `.`, starting and ending
+  with a letter or digit), checked when the Live System is built; other values were never a
+  valid StorageClass. The agent also refuses, at deploy, `values` that set `extraManifests` or
+  `extraObjects` or hold a template calling `lookup`, `tpl`, `include` and the like. No key is
+  added or removed.
 
 ### Added — managed-service components and settings
 
