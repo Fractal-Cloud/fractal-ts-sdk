@@ -1,0 +1,19 @@
+# Vulnerabilities this repository deliberately accepts. Read by the container image scans (pull
+# request, release, nightly; Trivy and Grype) and by the release and nightly dependency scans of
+# .github/workflows/security.yml. Pull request dependency gates do not read it: they only fail on
+# what a change adds.
+#
+# Every entry is one ID line, directly below one comment line of this exact shape:
+#   # <ID> | reason: <why it is accepted> | owner: <GitHub handle> | expires: <YYYY-MM-DD>
+#   <ID>
+# .github/scripts/check-trivyignore.sh fails every scan that reads this file on an entry without
+# that comment, or past its expiry. Prefer fixing: an entry is for a finding that cannot be fixed
+# yet, or does not apply to how the code is used, and the reason says which.
+#
+# Scanners can name one vulnerability differently (CVE-…, GHSA-…, GO-…): enter the ID each scanner
+# reports, each with its own comment line. A dependency finding is accepted when any of its IDs or
+# aliases is listed. Secrets are not accepted here: gitleaks reads .gitleaksignore and .gitleaks.toml.
+#
+# Example (not active):
+#   # CVE-2026-0000 | reason: the vulnerable code path is in a CLI the image never runs | owner: @someone | expires: 2026-12-31
+#   CVE-2026-0000

@@ -1,0 +1,53 @@
+name: Security nightly
+
+# Every night, the full dependency, secret and static-analysis scans of the default branch
+# (security.yml in nightly mode), kept in one open issue labeled `security`: opened or rewritten while
+# anything is found or a scan did not complete, closed on a clean night. Dependency and secret
+# findings in it would fail a release. The container images have their own nightly scan.
+on:
+  schedule:
+    - cron: '11 4 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: security-nightly
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    name: Scan
+    uses: ./.github/workflows/security.yml
+    permissions:
+      contents: read
+      security-events: write
+    with:
+      mode: nightly
+
+  issue:
+    name: Update the security issue
+    needs: scan
+    # Also when a scan failed: the issue then says which one did not complete.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
+      - name: Open, update or close the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SECRETS_FINDINGS: ${{ needs.scan.outputs.secrets-findings }}
+          SECRETS_REPORT: ${{ needs.scan.outputs.secrets-report }}
+          DEPENDENCIES_FINDINGS: ${{ needs.scan.outputs.dependencies-findings }}
+          DEPENDENCIES_REPORT: ${{ needs.scan.outputs.dependencies-report }}
+          SAST_FINDINGS: ${{ needs.scan.outputs.sast-findings }}
+          SAST_REPORT: ${{ needs.scan.outputs.sast-report }}
+        run: bash .github/scripts/security-nightly-issue.sh secrets dependencies sast
